@@ -146,7 +146,7 @@ function publicState(){
                 groupDiscard:S.groupDiscard.length,plotDiscard:S.plotDiscard.length},
     neutralArea:clone(S.neutralArea),
     attack:S.attack?clone(S.attack):null,
-    log:S.log.slice(-40),
+    log:S.log.slice(-400),
     victoryStatus:victoryStatus()
   };
 }

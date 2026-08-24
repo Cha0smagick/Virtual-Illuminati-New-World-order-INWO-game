@@ -95,7 +95,24 @@
     '🎲 La IA lanzó un ataque CONTRA UN GRUPO TUYO — puedes 🛡 defenderlo. Reacciona con los botones de la barra amarilla… o simplemente pulsa 🎲 RESOLVER.':
       { en: '🎲 The AI launched an attack AGAINST ONE OF YOUR GROUPS — you may 🛡 defend. React with the yellow-bar buttons… or simply press 🎲 RESOLVE.' },
     'Turno libre: ataca ⚔, juega Plots (clic en tu mano) o pasa turno. GANAS controlando 12 grupos (mira las barras arriba).':
-      { en: 'Free turn: attack ⚔, play Plots (click your hand) or end turn. WIN by controlling 12 groups (see bars above).' }
+      { en: 'Free turn: attack ⚔, play Plots (click your hand) or end turn. WIN by controlling 12 groups (see bars above).' },
+"FIN DEL JUEGO":{en:"END OF GAME"},
+"Nueva partida":{en:"New game"},
+"OPERACI\u00F3N COMPLETADA":{en:"OPERATION COMPLETE"},
+"META CUMPLIDA":{en:"GOAL MET"},
+"SOCIEDAD":{en:"SOCIETY"},
+"PROGRESO":{en:"PROGRESS"},
+"IMPERIO":{en:"EMPIRE"},
+"OBJETIVO":{en:"OBJECTIVE"},
+"JUGADOR":{en:"PLAYER"},
+"TIPO":{en:"TYPE"},
+"GRUPOS":{en:"GROUPS"},
+"META":{en:"GOAL"},
+"Humano":{en:"Human"},
+"IA":{en:"AI"},
+"Registro":{en:"LOG"},
+"\u2694 COMENZAR PARTIDA \u25B6":{en:"\u2694 START GAME \u25B6"},
+  "⟳ NUEVO JUEGO":{en:"⟳ NEW GAME"}
   };
   var REV = {};
   function build() {
@@ -103,10 +120,34 @@
   }
   var lang = localStorage.getItem('inwo_lang') || 'en';
 
+  /* reglas para mensajes del motor (fuente ES -> EN por patrones) */
+  var LOG_RULES = [
+    [/^\u2014 Turno de (.+) \(\+(\d+) acci\u00F3n Illuminati\) \u2014$/, function (m) { return '\u2014 Turn of ' + m[1] + ' (+' + m[2] + ' Illuminati action) \u2014'; }],
+    [/^(.{1,28}) toma posesi\u00F3n autom\u00E1tica de (.+)$/, function (m) { return m[1] + ' takes automatic control of ' + m[2]; }],
+    [/^(.{1,28}) declara ataque a destroy con (.+) contra (.+)$/, function (m) { return m[1] + ' declares ATTACK TO DESTROY with ' + m[2] + ' against ' + m[3]; }],
+    [/^(.{1,28}) declara ataque a control con (.+) contra (.+)$/, function (m) { return m[1] + ' declares ATTACK TO CONTROL with ' + m[2] + ' against ' + m[3]; }],
+    [/^Ataque \+10 jugada \((.+)\)$/, function (m) { return '+10 plot played (' + m[1] + ')'; }],
+    [/^auto-fail \(fuerza (.+?) < 2\) \u2014 ataque de (.+) fall\u00F3$/, function (m) { return 'AUTO-FAIL (strength ' + m[1] + ' < 2) \u2014 ' + m[2] + "'s attack failed"; }],
+    [/^Fin de turno\. Nadie cumple meta a\u00FAn\.$/, function () { return 'End of turn. No goal met yet.'; }],
+    [/^\u00A1(.+) toma CONTROL de (.+) y todo su t\u00EDtere!$/, function (m) { return m[1] + ' takes CONTROL of ' + m[2] + ' and its whole puppet!'; }],
+    [/^\u00A1VICTORIA de (.+)! (.+)$/, function (m) { return m[1] + ' WINS! ' + m[2]; }],
+    [/^Meta b\u00E1sica cumplida \((.+)\)$/, function (m) { return 'Basic Goal met (' + m[1] + ')'; }],
+    [/^(.{1,28}) intercambia tokens por una carta de Plot$/, function (m) { return m[1] + ' exchanges action tokens for a Plot card'; }],
+    [/^fallo \u2014 ataque de (.+) fall\u00F3$/, function (m) { return 'MISS \u2014 ' + m[1] + "'s attack failed"; }],
+    [/^\u00E9xito \u2014 (.+)$/, function (m) { return 'SUCCESS \u2014 ' + m[1]; }],
+    [/^(.{1,28}) roba su Plot$/, function (m) { return m[1] + ' draws a Plot'; }],
+    [/^(.{1,28}) roba un Grupo$/, function (m) { return m[1] + ' draws a Group'; }],
+    [/^DESTRUIDO: (.+) \(por (.+)\)\. T\u00EDteres vuelven a la mano de (.+)$/, function (m) { return 'DESTROYED: ' + m[1] + ' (by ' + m[2] + '). Puppets return to ' + m[3] + "'s hand"; }],
+    [/^Partida iniciada: modo (.+)$/, function (m) { return 'Game started: ' + m[1] + ' mode'; }]
+  ];
   function tr(text) {
     if (!text) return text;
     if (lang === 'en') {
       if (REV[text]) return REV[text];
+      for (var ri = 0; ri < LOG_RULES.length; ri++) {
+        var rm = LOG_RULES[ri][0].exec(text);
+        if (rm) return LOG_RULES[ri][1](rm);
+      }
       var m = /^\u26a1 Poder (\d+)$/.exec(text);
       if (m) return '\u26a1 Power ' + m[1];
       return text;
@@ -118,7 +159,7 @@
   }
   function sweep(root) {
     root = root || document;
-    var els = root.querySelectorAll('button,.lbl,h3,h4,.hpill,.aiwait,.vname,.vsub,li,.tabbtn,.setup-tip,.startBig,.pm,.dmuted,.setup-sub,.drow i');
+    var els = root.querySelectorAll('button,.lbl,h2,h3,h4,.hpill,.aiwait,.vname,.vsub,li,.tabbtn,.setup-tip,.startBig,.pm,.dmuted,.setup-sub,.drow i,.go-stamp,.gotable th,.gotable td');
     for (var i = 0; i < els.length; i++) {
       var el = els[i], t = el.childNodes && el.textContent ? el.textContent.trim() : '';
       if (!t || t.length > 220) continue;
@@ -149,5 +190,5 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
-  window.I18N = { get lang() { return lang; }, setLang: function (l) { if (l === 'en' || l === 'es') { lang = l; try { localStorage.setItem('inwo_lang', l); } catch (e) {} } }, sweep: sweep };
+  window.I18N = { get lang() { return lang; }, setLang: function (l) { if (l === 'en' || l === 'es') { lang = l; try { localStorage.setItem('inwo_lang', l); } catch (e) {} sweep(document); } }, sweep: sweep, tr: tr };
 })();

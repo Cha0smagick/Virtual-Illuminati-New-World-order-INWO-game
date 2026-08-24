@@ -672,3 +672,12 @@ body.spectate #logPanel { max-height: none; }
 .overlay.setup .langpill { top: auto !important; bottom: 20px; right: 24px; }
 body:not(.ingame) #app main { display: none !important; }
 body:not(.ingame) #handBar { display: none !important; }
+
+/* ============ v24 — GAMEOVER CERRABLE + BOTON NUEVO JUEGO ============ */
+.box.wide.gameover { position: relative; }
+.goclose {
+  position: absolute; top: 10px; right: 14px; cursor: pointer;
+  font-size: 22px; color: var(--muted); line-height: 1; padding: 4px 8px;
+}
+.goclose:hover { color: var(--red); }
+.ngbtn { margin-left: 10px; }

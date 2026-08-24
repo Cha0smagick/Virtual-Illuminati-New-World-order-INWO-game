@@ -111,7 +111,8 @@ function classFor(msg) {
 function normLog(m) { if (m && typeof m === 'object') return String(m.msg || m.text || ''); return String(m); }
 function paintLog() {
   var box = document.getElementById('logLines'); if (!box) return;
-  box.innerHTML = LOGARR.slice(-120).map(normLog).filter(Boolean).map(function (s) {
+  box.innerHTML = LOGARR.slice(-300).map(normLog).filter(Boolean).map(function (raw) {
+    var s = (window.I18N && window.I18N.tr) ? window.I18N.tr(raw) : raw;
     return '<div class="' + classFor(s) + '">' + esc(s) + '</div>';
   }).join("");
   box.scrollTop = box.scrollHeight;
@@ -183,6 +184,11 @@ function showGameOver(msg, state) {
   }).join("");
   html += '<table class="gotable"><thead><tr><th>JUGADOR</th><th>TIPO</th><th>GRUPOS</th><th>META</th></tr></thead><tbody>' + rows + '</tbody></table>';
   b.innerHTML = html;
+  var x = document.createElement('span');
+  x.className = 'goclose'; x.textContent = '✕';
+  x.title = 'Cerrar y ver el campo final';
+  x.onclick = function () { ov.remove(); };
+  b.appendChild(x);
   var btn = document.createElement('button');
   btn.className = 'primary startBig';
   btn.textContent = 'Nueva partida';
@@ -309,7 +315,8 @@ function render(state) {
     '<span class="hpill w">▶ ' + esc(cur ? cur.name : '?') + '</span>' +
     (st.attack && !st.attack.resolved ? '<span class="atk">⚔ ATAQUE EN CURSO</span>' : '');
 
-  $('hdrBtns').innerHTML = goalBars(st);
+  $('hdrBtns').innerHTML = goalBars(st) + (st.phase === 'gameover' ?
+    '<button class="primary ngbtn" data-act="newgame" title="Volver al menú de selección">⟳ NUEVO JUEGO</button>' : '');
 
   var board = '';
   board += panelHtml(st, 0);
@@ -615,7 +622,7 @@ function route(uid) {
     else if (m === 'aid') { clearSel(); CB.onSupport({ uid: uid, oppose: false }); }
     else if (m === 'oppose') { clearSel(); CB.onSupport({ uid: uid, oppose: true }); }
     else render(curState);
-  } catch (e) { log('⚠ ' + e.message); clearSel(); render(curState); }
+  } catch (e) { log('\u26A0 ' + e.message); clearSel(); render(curState); }
 }
 function handClick(ix) {
   var c = cardOf(ix);
@@ -627,7 +634,7 @@ function handClick(ix) {
   if (sel.mode === 'handPick' && sel.data.for === 'resource') {
     clearSel();
     if (c.type !== 'resource') { log('⚠ Eso no es un RECURSO. Este botón es solo para cartas de recurso.'); return; }
-    try { CB.onPlayResource(ix); } catch (e) { log('⚠ ' + e.message); }
+    try { CB.onPlayResource(ix); } catch (e) { log('\u26A0 ' + e.message); }
     return;
   }
   if (sel.mode === 'handPick' && sel.data.for === 'takeover') {
@@ -635,7 +642,7 @@ function handClick(ix) {
     clearSel();
     if (c.type === 'resource') {
       log('📦 ' + c.name + ' es un RECURSO: se coloca junto a tu Illuminati (no ocupa flechas).');
-      try { CB.onAutoTakeover(ix, null); } catch (e) { log('⚠ ' + e.message); }
+      try { CB.onAutoTakeover(ix, null); } catch (e) { log('\u26A0 ' + e.message); }
       return;
     }
     sel = { mode: 'takeoverHost', data: { handIdx: ix } }; render(curState); return;
@@ -652,7 +659,7 @@ function handClick(ix) {
   ].filter(Boolean)).then(function (v) {
     if (v === 'place') {
       clearSel();
-      if (c.type === 'resource') { try { CB.onAutoTakeover(ix, null); } catch (e) { log('⚠ ' + e.message); } }
+      if (c.type === 'resource') { try { CB.onAutoTakeover(ix, null); } catch (e) { log('\u26A0 ' + e.message); } }
       else { sel = { mode: 'takeoverHost', data: { handIdx: ix } }; render(curState); }
     }
     else if (v === 'plot') { sel = { mode: 'plotTarget', data: { handIdx: ix } }; log('🎯 PASO 2/2 — clic en el grupo OBJETIVO de este Plot.'); render(curState); }
@@ -766,6 +773,10 @@ function toggleHelp() {
   $('encyClose').onclick = function () { ov.remove(); };
 }
 function bindEvents() {
+  $('hdrBtns').addEventListener('click', function (ev) {
+    var nb = ev.target.closest ? ev.target.closest('button') : null;
+    if (nb && nb.getAttribute('data-act') === 'newgame') location.reload();
+  });
   $('board').addEventListener('click', function (ev) {
     var nd = ev.target.closest('.node,.slot');
     var chip = ev.target.closest('.cardChip');
@@ -797,7 +808,7 @@ function bindEvents() {
         if (curState.attack && !curState.attack.resolved) { log('⚠ Tienes un ataque sin resolver: pulsa 🎲 RESOLVER primero.'); return; }
         clearSel(); CB.onEndTurn();
       }
-    } catch (e) { log('⚠ ' + e.message); }
+    } catch (e) { log('\u26A0 ' + e.message); }
   });
   $('handCards').addEventListener('click', function (ev) {
     var hc = ev.target.closest('.handCard');
@@ -841,6 +852,11 @@ function showHowTo(cb) {
   $('howToBtn').onclick = function () { ov.remove(); if (cb) cb(); };
 }
 
+function resetForNewGame() {
+  LOGARR.length = 0; engSeen = 0; curState = null;
+  sel.mode = null; sel.data = {};
+  var cp = document.getElementById('cardPreview'); if (cp) cp.style.display = 'none';
+}
 window.UI = {
   init: init,
   render: render,
@@ -851,5 +867,6 @@ window.UI = {
   showGameOver: showGameOver,
   showHowTo: showHowTo,
   fxFlash: fxFlash,
+  resetForNewGame: resetForNewGame,
 };
 })();

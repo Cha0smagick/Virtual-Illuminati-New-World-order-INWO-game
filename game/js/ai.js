@@ -1,9 +1,9 @@
 ﻿/* ================================================================
    INWO AI v2 â€” Sisyphus self-build.
-   IA competitiva: economÃ­a de tokens, colocaciÃ³n por sinergia,
-   uso real de Plots, ataques con matemÃ¡tica del motor
+   IA competitiva: economía de tokens, colocación por sinergia,
+   uso real de Plots, ataques con matemática del motor
    (previewStrength + boosts) y RESPUESTAS defensivas
-   (autodefensa, boost de defensa, oposiciÃ³n/ayuda selectiva).
+   (autodefensa, boost de defensa, oposición/ayuda selectiva).
    API: window.AI = { takeTurn(E,pid), respond(E,pid) }
    ================================================================ */
 (function () {
@@ -72,7 +72,7 @@ function alignDeltaControl(aA, aT) {
   });
   return d;
 }
-function alignDeltaDestroy(aA, aT) { /* opuestos suman, idÃ©nticos restan */
+function alignDeltaDestroy(aA, aT) { /* opuestos suman, idénticos restan */
   var d = 0;
   aA.forEach(function (a) {
     if (aT.indexOf(a) >= 0) d -= 4;
@@ -80,8 +80,8 @@ function alignDeltaDestroy(aA, aT) { /* opuestos suman, idÃ©nticos restan */
   });
   return d;
 }
-/* P(Ã©xito) tirando â‰¤ fuerza en 2d6 con 11-12 fallo automÃ¡tico */
-var W2D6 = [0, 0, 1, 2, 3, 4, 5, 6, 5, 4, 3, 0, 0]; /* Ã­ndice 2..10 */
+/* P(éxito) tirando ≤ fuerza en 2d6 con 11-12 fallo automático */
+var W2D6 = [0, 0, 1, 2, 3, 4, 5, 6, 5, 4, 3, 0, 0]; /* índice 2..10 */
 var CUM = (function () { var s = 0, o = [0, 0]; for (var i = 2; i <= 10; i++) { s += W2D6[i]; o[i] = s; } o[11] = s; o[12] = s; return o; })();
 function winProb(strength) {
   var s = Math.max(0, Math.min(12, Math.floor(strength)));
@@ -117,7 +117,7 @@ function openArrows(st, pid, nd) {
   var cap = isRootNode(nd) ? 4 : 3;
   return cap - (nd.children || []).length;
 }
-/* Plots "genÃ©ricos" reutilizables como +10 en combate */
+/* Plots "genéricos" reutilizables como +10 en combate */
 function sparePlotIdx(st, pid) {
   var h = st.players[pid].hand;
   for (var i = 0; i < h.length; i++) {
@@ -129,7 +129,7 @@ function sparePlotIdx(st, pid) {
   return null;
 }
 
-/* ---------- economÃ­a y colocaciÃ³n ---------- */
+/* ---------- economía y colocación ---------- */
 function bestHandGroup(st, pid) {
   var h = (st.players[pid] || {}).hand || [];
   var best = null, bv = -1;
@@ -274,7 +274,7 @@ function curPow(st, nd, c) {
 }
 function logless(k, n) { try { if (window.AI_LOG) window.AI_LOG.push(k + ': ' + n); } catch (e) {} }
 
-/* ---------- evaluaciÃ³n de ataques ---------- */
+/* ---------- evaluación de ataques ---------- */
 function candidateAttacks(E, st, pid) {
   var out = [];
   if (st.config && st.config.players && st.config.players.length === 2 && st.turn < 2) return out;
@@ -410,7 +410,7 @@ function runAttack(E, st, pid) {
   return 'none';
 }
 
-/* ---------- RESPUESTAS (defensa/oposiciÃ³n/ayuda) ---------- */
+/* ---------- RESPUESTAS (defensa/oposición/ayuda) ---------- */
 
 /* ======== AI v3: meta + playbook ======== */
 function victoryRow(st, pid) {
@@ -476,7 +476,7 @@ function respondInternal(E, q) {
     }
   }
 
-  /* 3) oposiciÃ³n selectiva: frenar al lÃ­der o protegerme */
+  /* 3) oposición selectiva: frenar al líder o protegerme */
   var attIsLeader = leaderPid(st) === A.pid;
   var threatensMe = A.targetPid === q;
   var gain = A.type === 'control' ? subtreeValue(st, A.targetUid)
@@ -491,7 +491,7 @@ function respondInternal(E, q) {
     if (best) safe(function () { E.addSupport(q, { uid: best.uid, oppose: true }); });
   }
 
-  /* 4) ayudar a DESTRUIR un grupo del lÃ­der (si el atacante no es Ã©l ni yo) */
+  /* 4) ayudar a DESTRUIR un grupo del líder (si el atacante no es él ni yo) */
   if (A.type === 'destroy' && !A.resolved) {
     var lp = leaderPid(st), tp = A.targetPid;
     if (tp === lp && lp !== A.pid && lp !== q) {

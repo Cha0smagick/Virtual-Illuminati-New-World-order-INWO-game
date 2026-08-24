@@ -80,7 +80,7 @@ if (!(speedIx >= 0 && speedIx < SPEEDS.length)) speedIx = 0;
 function isSpec() { try { return E.getState().players.every(function (p) { return !p.human; }); } catch (e) { return false; } }
 function D(ms) {
   var f = SPEEDS[speedIx];
-  var base = isSpec() ? 1500 : 380;
+  var base = isSpec() ? 4000 : 380;
   return Math.max(120, Math.round(ms * base / 1000 / f));
 }
 function ensureSpeedBtn() {
@@ -214,6 +214,17 @@ function start(mode, bases) {
   try {
     window.UI.init(CB);
     ensureSpeedBtn();
+    /* reinicio blindado: sin residuos de partidas anteriores */
+    try {
+      clearTimeout(respTimer); respTimer = null; respKey = null; respDone = {};
+      aiPending = null; busyAI = false;
+      document.body.classList.remove('spectate');
+      var ovz = document.getElementById('overlays'); if (ovz) ovz.innerHTML = '';
+      ['hdrBtns','board','handCards','actionBtns','logLines'].forEach(function (id) {
+        var el = document.getElementById(id); if (el) el.innerHTML = '';
+      });
+      if (window.UI.resetForNewGame) window.UI.resetForNewGame();
+    } catch (e) {}
     window.UI.showSetupScreen({
       illuminati: [],
       onStart: function (m, pickedBases) {
@@ -230,10 +241,8 @@ function start(mode, bases) {
         document.body.classList.add('ingame');
         log('Partida iniciada: modo ' + (m === 'vs-ai' ? 'Humano vs IA' : (m === 'ai-vs-ai' ? 'IA vs IA (espectador)' : 'Hot-seat')));
         refresh();
-        /* tutorial rápido la primera vez */
-        window.UI.showHowTo(function () { refresh(); });
-        /* si la IA sacó la tirada más alta, le toca empezar: arráncala */
-        maybeRunAI();
+        /* tutorial primero; la partida arranca SOLO al pulsar «¡ENTENDIDO, A JUGAR!» */
+        window.UI.showHowTo(function () { refresh(); maybeRunAI(); });
       }
     });
   } catch (e) { alert('Error al iniciar: ' + e.message); }
