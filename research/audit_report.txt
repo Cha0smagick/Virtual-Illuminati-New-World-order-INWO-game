@@ -1,0 +1,72 @@
+ACUERDO OCR↔estimado (sin cambio): 0
+CORREGIDOS por imagen: 166
+A.M.A.: antes 3/4 → imagen 5/5
+Al Gore: antes null/null → imagen 3/3
+American Autoduel Association: antes null/null → imagen 4/4
+Anti-Nuclear Activists: antes null/null → imagen 0/0
+Antiwar Activists: antes null/null → imagen 4/4
+B.A.T.F.: antes 3/2 → imagen 4/4
+Big Media: antes null/null → imagen 4/4
+Bill Clinton: antes null/null → imagen 2/2
+Bjorne: antes null/null → imagen 2/2
+Black Activists: antes null/null → imagen 4/4
+Boy Sprouts: antes null/null → imagen 2/2
+Brazil: antes 5/3 → imagen 2/2
+C.I.A.: antes 6/5 → imagen 5/5
+Cable TV: antes null/null → imagen 4/4
+California: antes null/null → imagen 4/4
+Canada: antes 3/4 → imagen 3/3
+Cattle Mutilators: antes null/null → imagen 4/4
+Center for Disease Control: antes null/null → imagen 5/5
+CFL-AIO: antes null/null → imagen 4/4
+China: antes null/null → imagen 20/20
+Church of Elvis: antes null/null → imagen 8/8
+Clone Arrangers: antes 6/2 → imagen 4/4
+Comic Books: antes null/null → imagen 4/4
+Congressional Wives: antes 4/4 → imagen 8/8
+Conspiracy Theorists: antes null/null → imagen 0/0
+Count Dracula: antes null/null → imagen 3/3
+Cycle Gangs: antes null/null → imagen 4/4
+Dan Quayle: antes null/null → imagen 3/3
+Democrats: antes null/null → imagen 4/4
+Dentists: antes null/null → imagen 24/24
+Deprogrammers: antes null/null → imagen 8/8
+Dinosaur Park: antes null/null → imagen 3/3
+Druids: antes null/null → imagen 1/1
+Eco-Guerillas: antes null/null → imagen 2/2
+EFF: antes null/null → imagen 4/4
+Elders of Zion: antes null/null → imagen 4/4
+Elvis: antes null/null → imagen 9/9
+Empty Vee: antes null/null → imagen 1/1
+England: antes 6/2 → imagen 6/6
+Evil Geniuses for a Better Tomorrow: antes null/null → imagen 6/6
+
+CMU verificados coinciden: 0
+DISCREPANCIAS vs CMU (27):
+A.M.A.: fuente=imagen 5/5 vs CMU 3/4
+B.A.T.F.: fuente=imagen 4/4 vs CMU 3/2
+Brazil: fuente=imagen 2/2 vs CMU 5/3
+C.I.A.: fuente=imagen 5/5 vs CMU 6/5
+Canada: fuente=imagen 3/3 vs CMU 3/4
+Congressional Wives: fuente=imagen 8/8 vs CMU 4/4
+England: fuente=imagen 6/6 vs CMU 6/2
+Finland: fuente=imagen 2/2 vs CMU 6/5
+France: fuente=imagen 8/8 vs CMU 3/5
+Fraternal Orders: fuente=imagen 2/2 vs CMU 5/5
+Germany: fuente=imagen 4/4 vs CMU 4/3
+Hackers: fuente=imagen 3/3 vs CMU 3/2
+Hawaii: fuente=imagen 10/10 vs CMU 0/2
+Japan: fuente=imagen 4/4 vs CMU 6/4
+Libertarians: fuente=imagen 5/5 vs CMU 4/4
+Mossad: fuente=imagen 3/3 vs CMU 2/1
+N.S.A.: fuente=imagen 4/4 vs CMU 5/2
+Nephews of God: fuente=imagen 2/2 vs CMU 1/1
+New York: fuente=imagen 1/1 vs CMU 7/8
+Nuclear Power Companies: fuente=imagen 7/7 vs CMU 4/null
+Pentagon: fuente=imagen 4/4 vs CMU 6/6
+Russia: fuente=imagen 2/2 vs CMU 4/4
+Saddam Hussein: fuente=imagen 1/1 vs CMU 5/4
+Texas: fuente=imagen 4/4 vs CMU 14/9
+Vatican City: fuente=imagen 3/3 vs CMU 4/4
+W.I.T.C.H.: fuente=imagen 2/2 vs CMU 3/3
+Wargamers: fuente=imagen 2/2 vs CMU 1/null

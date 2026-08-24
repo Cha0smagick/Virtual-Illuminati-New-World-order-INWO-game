@@ -1,0 +1,4 @@
+node_modules/
+ocr_progress.log
+ocr_err.log
+*.log

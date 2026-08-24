@@ -1,0 +1,16 @@
+{
+  "name": "illuminati-nwo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "build_cards.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "tesseract.js": "^7.0.0"
+  }
+}
