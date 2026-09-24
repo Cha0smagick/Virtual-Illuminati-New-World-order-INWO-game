@@ -32,8 +32,9 @@ try {
   window.UI.log('render test');
   for (let t = 0; t < 6 && st.phase !== 'gameover'; t++) {
     const pid = st.currentPid;
-    try { E.beginTurn(pid); } catch (e) { if (!/ya|already/i.test(e.message)) throw e; }
     window.AI.takeTurn(E, pid);
+    st = E.getState();
+    if (st.attack && !st.attack.resolved) E.resolveAttack();
     st = E.getState();
     if (st.phase !== 'gameover') E.endTurn();
     st = E.getState();

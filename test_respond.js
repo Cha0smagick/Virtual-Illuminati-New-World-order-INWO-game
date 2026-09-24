@@ -11,19 +11,28 @@ E.setIlluminati(0, 'bavarianilluminati1');
 E.setIlluminati(1, 'servantsofcthulhu2');
 E.startGame();
 
-function aiCycle() {
-  E.endTurn(); E.beginTurn(1); window.AI.takeTurn(E, 1);
+function playAiTurn() {
   var s = E.getState();
+  /* The engine owns turn transitions. If the human is active, hand the
+     turn to the AI instead of calling beginTurn manually. */
+  if (s.currentPid === 0) {
+    E.endTurn();
+    s = E.getState();
+  }
+  if (s.gameover || s.currentPid !== 1) return;
+
+  window.AI.takeTurn(E, 1);
+  s = E.getState();
   if (s.attack && !s.attack.resolved) { /* la IA espera reacción humana: el test "reacciona" y resuelve */
     try { window.AI.respond(E, 0); } catch (e) {}
     try { E.resolveAttack(); } catch (e) {}
     console.log('  (IA dejó ataque abierto para humano — resuelto en harness)');
   }
-  E.endTurn(); E.beginTurn(0);
+  if (!E.getState().gameover) E.endTurn();
 }
 
 /* si la IA empieza, deja que juegue su turno primero */
-if (E.getState().currentPid !== 0) aiCycle();
+if (E.getState().currentPid !== 0) playAiTurn();
 
 /* el humano coloca su primer títere (con token del beginTurn) */
 var st0 = E.getState();
@@ -31,7 +40,7 @@ var g = st0.players[0].hand.filter(function (ix) { return C.cards[ix].type === '
 E.autoTakeover(0, g, st0.players[0].structure.uid);
 
 /* un ciclo más de IA para tener objetivos y tokens frescos */
-aiCycle();
+playAiTurn();
 
 var st = E.getState();
 function ctrl(pid) { var o = []; (function w(n) { if (n.cardId != null && !/-root$/.test(String(n.uid))) o.push(n); (n.children || []).forEach(w); })(st.players[pid].structure); return o; }
