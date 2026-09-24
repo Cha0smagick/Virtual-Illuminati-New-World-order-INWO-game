@@ -1,0 +1,83 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>INWO browser interaction smoke</title>
+<iframe id="game" src="../game/index.html" style="width:1px;height:1px;border:0"></iframe>
+<pre id="result">pending</pre>
+<script>
+const frame = document.getElementById('game');
+const result = document.getElementById('result');
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function finish(value) {
+  result.textContent = JSON.stringify(value);
+}
+
+frame.addEventListener('load', async () => {
+  await wait(500);
+  const check = {
+    loaded: false,
+    setupDialog: false,
+    startEnabled: false,
+    selected: 0,
+    playable: false,
+    tutorial: false,
+    helpEscape: false,
+    keyboardPlacement: false,
+    alert: ''
+  };
+  try {
+    const w = frame.contentWindow;
+    const d = frame.contentDocument;
+    check.loaded = !!(w && d);
+    w.alert = (message) => { check.alert = String(message || ''); };
+    const setup = d.getElementById('setupOv');
+    check.setupDialog = !!(setup && setup.getAttribute('role') === 'dialog');
+
+    const hotseat = d.getElementById('mHot');
+    if (hotseat) hotseat.click();
+    const first = d.querySelector('#grid0 .pickCard');
+    const firstLabel = first && first.getAttribute('aria-label');
+    if (first) first.click();
+    const second = Array.from(d.querySelectorAll('#grid1 .pickCard')).find((el) => el.getAttribute('aria-label') !== firstLabel);
+    if (second) second.click();
+    check.selected = d.querySelectorAll('.pickCard.picked').length;
+    const start = d.getElementById('startBtn');
+    check.startEnabled = !!(start && !start.disabled);
+    if (start) start.click();
+    await wait(100);
+
+    const tutorial = d.getElementById('howToOv');
+    const tutorialButton = d.getElementById('howToBtn');
+    check.tutorial = !!(tutorial && tutorialButton);
+    check.playable = check.tutorial && d.body.classList.contains('ingame');
+    if (tutorialButton) tutorialButton.click();
+    await wait(100);
+    check.playable = check.playable && d.querySelectorAll('#board .node').length > 0 && d.querySelectorAll('#handCards .handCard').length > 0;
+
+    const help = d.getElementById('helpBtn');
+    if (help) help.click();
+    await wait(50);
+    const openedHelp = !!d.getElementById('helpOv');
+    d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    check.helpEscape = openedHelp && !d.getElementById('helpOv');
+
+    const takeover = d.querySelector('[data-act="takeover"]');
+    if (takeover) takeover.click();
+    const group = Array.from(d.querySelectorAll('#handCards .handCard')).find((el) => /\bgroup\b/i.test(el.getAttribute('aria-label') || ''));
+    if (group) group.click();
+    await wait(50);
+    const slot = d.querySelector('.slot');
+    if (slot) {
+      slot.focus();
+      slot.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    }
+    check.keyboardPlacement = !!slot && !d.querySelector('.slot');
+    check.pass = check.loaded && check.setupDialog && check.startEnabled && check.selected === 2 && check.playable && check.helpEscape && check.keyboardPlacement && !check.alert;
+    finish(check);
+  } catch (error) {
+    check.pass = false;
+    check.error = error && error.message ? error.message : String(error);
+    finish(check);
+  }
+});
+</script>
