@@ -118,7 +118,7 @@
   function build() {
     for (var es in D) REV[es] = D[es].en;
   }
-  var lang = localStorage.getItem('inwo_lang') || 'en';
+  var lang = localStorage.getItem('inwo_lang') || 'es';
 
   /* reglas para mensajes del motor (fuente ES -> EN por patrones) */
   var LOG_RULES = [
@@ -167,6 +167,15 @@
       if (n !== t) el.textContent = n;
     }
   }
+  function setLang(l) {
+    if (l !== 'en' && l !== 'es') return;
+    lang = l;
+    try { localStorage.setItem('inwo_lang', l); } catch (e) {}
+    if (document.documentElement) document.documentElement.lang = l;
+    var button = document.getElementById('langBtn');
+    if (button) button.textContent = l === 'en' ? '🌐 EN' : '🌐 ES';
+    sweep(document);
+  }
   function toggleBtn() {
     var row = document.getElementById('hdrBtns');
     if (!row || document.getElementById('langBtn')) return;
@@ -175,20 +184,18 @@
     b.title = 'Language / Idioma';
     b.textContent = lang === 'en' ? '🌐 EN' : '🌐 ES';
     b.onclick = function () {
-      lang = lang === 'en' ? 'es' : 'en';
-      localStorage.setItem('inwo_lang', lang);
+      setLang(lang === 'en' ? 'es' : 'en');
       b.textContent = lang === 'en' ? '🌐 EN' : '🌐 ES';
-      sweep(document);
     };
     row.insertBefore(b, row.firstChild);
   }
   function boot() {
     build();
+    if (document.documentElement) document.documentElement.lang = lang;
     toggleBtn();
     sweep(document);
-    setInterval(function () { toggleBtn(); sweep(document); }, 600);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
-  window.I18N = { get lang() { return lang; }, setLang: function (l) { if (l === 'en' || l === 'es') { lang = l; try { localStorage.setItem('inwo_lang', l); } catch (e) {} sweep(document); } }, sweep: sweep, tr: tr };
+  window.I18N = { get lang() { return lang; }, setLang: setLang, sweep: sweep, tr: tr };
 })();

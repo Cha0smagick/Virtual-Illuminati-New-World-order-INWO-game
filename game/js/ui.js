@@ -123,32 +123,99 @@ function prompt(text, options) {
   return new Promise(function (resolve) {
     var ov = document.createElement('div');
     ov.className = 'overlay';
+    if (typeof ov.setAttribute === 'function') {
+      ov.setAttribute('role', 'dialog');
+      ov.setAttribute('aria-modal', 'true');
+    }
+    ov.tabIndex = -1;
     var b = document.createElement('div');
     b.className = 'box';
+    if (b.setAttribute) b.setAttribute('role', 'document');
     b.innerHTML = '<h3>' + text + '</h3>'; /* texto propio de la UI, permite negritas */
+    var heading = b.firstChild;
+    if (heading && heading.setAttribute) heading.id = 'promptTitle';
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close(null);
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      var focusable = typeof b.querySelectorAll === 'function' ? b.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])') : [];
+      if (!focusable.length) return;
+      var first = focusable[0], last = focusable[focusable.length - 1];
+      if (document.activeElement === ov) {
+        e.preventDefault();
+        if (typeof first.focus === 'function') first.focus();
+      } else if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        if (typeof last.focus === 'function') last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        if (typeof first.focus === 'function') first.focus();
+      }
+    }
+    function close(value) {
+      if (!ov.parentNode) return;
+      document.removeEventListener('keydown', onKey, true);
+      ov.remove();
+      resolve(value);
+    }
     (options || [{ label: 'OK', value: true }]).forEach(function (o) {
       var btn = document.createElement('button');
+      btn.type = 'button';
       btn.textContent = o.label;
-      btn.onclick = function () { ov.remove(); resolve(o.value); };
+      btn.onclick = function () { close(o.value); };
       b.appendChild(btn);
     });
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov) close(null);
+    });
+    document.addEventListener('keydown', onKey, true);
     ov.appendChild(b);
     $('overlays').appendChild(ov);
+    if (typeof ov.focus === 'function') ov.focus();
   });
 }
 
 function showCurtain(text, cb) {
   var ov = document.createElement('div');
   ov.className = 'overlay curtain';
+  if (typeof ov.setAttribute === 'function') {
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+  }
+  ov.tabIndex = -1;
   var b = document.createElement('div');
   b.className = 'box';
+  if(typeof b.setAttribute==='function'){
+    b.setAttribute('role', 'document');
+  }
   b.innerHTML = '<h2>' + esc(text) + '</h2>';
+  function close() {
+    if (!ov.parentNode) return;
+    document.removeEventListener('keydown', onKey, true);
+    ov.remove();
+    if (cb) cb();
+  }
+  function onKey(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
+    }
+  }
   var btn = document.createElement('button');
+  btn.type = 'button';
   btn.textContent = 'Continuar';
-  btn.onclick = function () { ov.remove(); if (cb) cb(); };
+  btn.onclick = close;
   b.appendChild(btn);
+  ov.addEventListener('click', function (e) {
+    if (e.target === ov) close();
+  });
+  document.addEventListener('keydown', onKey, true);
   ov.appendChild(b);
   $('overlays').appendChild(ov);
+  if (typeof btn.focus === 'function') btn.focus();
 }
 
 function showGameOver(msg, state) {
@@ -184,18 +251,45 @@ function showGameOver(msg, state) {
   }).join("");
   html += '<table class="gotable"><thead><tr><th>JUGADOR</th><th>TIPO</th><th>GRUPOS</th><th>META</th></tr></thead><tbody>' + rows + '</tbody></table>';
   b.innerHTML = html;
-  var x = document.createElement('span');
-  x.className = 'goclose'; x.textContent = '✕';
+  var x = document.createElement('button');
+  x.type = 'button';
+  x.className = 'goclose';
+  x.textContent = '✕';
   x.title = 'Cerrar y ver el campo final';
-  x.onclick = function () { ov.remove(); };
+  if(typeof x.setAttribute==='function'){
+    x.setAttribute('aria-label', 'Cerrar y ver el campo final');
+  }
+  function close() {
+    if (!ov.parentNode) return;
+    document.removeEventListener('keydown', onKey, true);
+    ov.remove();
+  }
+  function onKey(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
+    }
+  }
+  x.onclick = close;
   b.appendChild(x);
   var btn = document.createElement('button');
+  btn.type = 'button';
   btn.className = 'primary startBig';
   btn.textContent = 'Nueva partida';
   btn.onclick = function () { location.reload(); };
   b.appendChild(btn);
+  if (typeof ov.setAttribute === 'function') {
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+  }
+  ov.tabIndex = -1;
+  ov.addEventListener('click', function (e) {
+    if (e.target === ov) close();
+  });
+  document.addEventListener('keydown', onKey, true);
   ov.appendChild(b);
   $('overlays').appendChild(ov);
+  if (typeof btn.focus === 'function') btn.focus();
 }
 
 function uniqueIlluminati() {
@@ -215,6 +309,11 @@ function showSetupScreen(cfg) {
   var ov = document.createElement('div');
   ov.className = 'overlay setup';
   ov.id = 'setupOv';
+  if (typeof ov.setAttribute === 'function') {
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+  }
+  ov.tabIndex = -1;
 
   function draw() {
     var mode = (kinds[0] === 'ai' && kinds[1] === 'ai') ? 'ai-vs-ai' : (kinds[0] === 'human' && kinds[1] === 'human') ? 'hot-seat' : 'vs-ai';
@@ -225,12 +324,13 @@ function showSetupScreen(cfg) {
       '<div class="eye">👁</div>' +
       '<button id="langSetup" class="langpill" title="Language / Idioma">🌐 ' + (window.I18N && window.I18N.lang === 'es' ? 'ES' : 'EN') + '</button>' +
       '<h2><span class="t1">ILLUMINATI</span><span class="t2">New World Order</span></h2>' +
-      '<p class="setup-sub">Elige vuestras sociedades secretas · One Big Deck · Gana controlando <b>12 grupos</b></p>' +
+      '<p class="setup-sub">Elige vuestras sociedades secretas · One Big Deck · Cumple la meta que aparece en tu barra</p>' +
       '</div>' +
       '<div id="modeRow" class="seg">' +
       '<button id="mVs" class="' + (mode === 'vs-ai' ? 'on' : '') + '">🤖 Humano vs IA</button>' +
       '<button id="mHot" class="' + (mode === 'hot-seat' ? 'on' : '') + '">👥 Hot-seat (2 humanos)</button>' +
       '<button id="mAii" class="' + (mode === 'ai-vs-ai' ? 'on' : '') + '">🤖🤖 IA vs IA</button></div>' +
+      '<p id="setupError" class="setup-error" role="status" aria-live="polite"></p>' +
       '<div class="setup-cols">' +
       '<section class="setup-col"><h3><button id="kind0" class="kindbtn' + (kinds[0] === 'ai' ? ' ai' : '') + '" title="Click: switch HUMAN / AI">' + (kinds[0] === 'ai' ? '🤖 IA' : '👤 JUGADOR') + ' 1 <i>▼</i></button><em>' + (picks[0] ? ' ✓ ' + esc(nameOf(picks[0])) : '') + '</em></h3><div class="pickGrid" id="grid0"></div></section>' +
       '<section class="setup-col"><h3><button id="kind1" class="kindbtn' + (kinds[1] === 'ai' ? ' ai' : '') + '" title="Click: alternar entre HUMANO y IA">' + (kinds[1] === 'ai' ? '🤖 IA' : '👤 JUGADOR') + ' 2 <i>▼</i></button><em>' + (picks[1] ? ' ✓ ' + esc(nameOf(picks[1])) : '') + '</em></h3><div class="pickGrid" id="grid1"></div></section>' +
@@ -249,8 +349,15 @@ function showSetupScreen(cfg) {
     $('kind0').onclick = function () { kinds[0] = (kinds[0] === 'ai' ? 'human' : 'ai'); draw(); };
     $('kind1').onclick = function () { kinds[1] = (kinds[1] === 'ai' ? 'human' : 'ai'); draw(); };
     $('startBtn').onclick = function () {
-      if (!picks[0]) return alert('Jugador 1 debe elegir Illuminati');
-      if (!picks[1]) return alert(mode === 'vs-ai' ? 'Elige el Illuminati de la IA' : (mode === 'ai-vs-ai' ? 'Elige el Illuminati de cada IA' : 'Jugador 2 debe elegir Illuminati'));
+      var error = $('setupError');
+      function fail(message) {
+        if (!error) return;
+        error.textContent = message;
+        error.className = 'setup-error show';
+      }
+      if (!picks[0]) { fail('Jugador 1 debe elegir Illuminati.'); return; }
+      if (!picks[1]) { fail(mode === 'vs-ai' ? 'Elige el Illuminati de la IA.' : (mode === 'ai-vs-ai' ? 'Elige el Illuminati de cada IA.' : 'Jugador 2 debe elegir Illuminati.')); return; }
+      if (error) { error.textContent = ''; error.className = 'setup-error'; }
       ov.remove();
       cfg.onStart(mode, picks.slice());
     };
@@ -284,19 +391,28 @@ function showSetupScreen(cfg) {
     var g = $(gid);
     illu.forEach(function (it) {
       var b = baseName(it.id);
-      var chip = document.createElement('div');
+      var chip = document.createElement('button');
+      chip.type = 'button';
       chip.className = 'pickCard' + (picks[slot] === b ? ' picked' : '');
+      chip.setAttribute && chip.setAttribute('aria-pressed', picks[slot] === b ? 'true' : 'false');
+      chip.setAttribute && chip.setAttribute('aria-label', 'Elegir ' + it.name);
       var cc = C.byId[it.id] || C.cards.filter(function (x) { return x.id === it.id; })[0];
       chip.innerHTML = imgTag(cc, 'thumb') + '<span>' + esc(it.name) + '</span>' +
         '<span class="pst">⚡ Poder ' + (cc && cc.power != null ? cc.power : '?') + '</span>' +
         '<span class="tl">' + esc(docFor(b).tl || '') + '</span>';
       chip.onclick = function () {
         var other = slot === 0 ? 1 : 0;
-        if (picks[other] === b) return alert('Ese Illuminati ya está elegido');
+        if (picks[other] === b) {
+          var error = $('setupError');
+          if (error) { error.textContent = 'Ese Illuminati ya está elegido para el otro jugador.'; error.className = 'setup-error show'; }
+          return;
+        }
         picks[slot] = b; draw();
       };
       chip.onmouseenter = function () { showDetail(b); };
       chip.onmouseleave = function () { showDetail(null); };
+      chip.onfocus = function () { showDetail(b); };
+      chip.onblur = function () { showDetail(null); };
       g.appendChild(chip);
     });
   }
@@ -333,6 +449,7 @@ function render(state) {
   if (LG.length < engSeen) { engSeen = 0; LOGARR.length = 0; }
   while (engSeen < LG.length) { LOGARR.push(LG[engSeen]); engSeen++; }
   paintLog();
+  if (window.I18N && window.I18N.sweep) window.I18N.sweep(document);
 }
 
 function goalBars(st) {
@@ -400,7 +517,7 @@ function nodeHtml(nd, st, pid, depth) {
   var tok = (nd.tokens != null && nd.tokens > 0) ? '<span class="tok g">●' + nd.tokens + '</span>' : '';
   var arrows = Math.max(0, (depth === 0 ? 4 : 3) - kids.length);
   var isAtt = mode === 'target' && sel.data.attackerUid === nd.uid;
-  var h = '<div class="node' + cls + (isAtt ? ' selatt' : '') + '" data-uid="' + esc(nd.uid) + '">' +
+  var h = '<div class="node' + cls + (isAtt ? ' selatt' : '') + '" role="button" tabindex="0" aria-label="Carta: ' + esc(c.name) + '" data-uid="' + esc(nd.uid) + '">' +
     imgTag(c, 'thumb') + '<span class="nname">' + esc(c.name) + '</span>' +
     '<small>P' + (c.power == null ? '-' : c.power) + '/R' + (c.resistance == null ? '-' : c.resistance) + '</small>' + tok + badges;
   if (legalTxt) h += '<i class="dropTag">' + legalTxt + '</i>';
@@ -408,14 +525,18 @@ function nodeHtml(nd, st, pid, depth) {
   if (kids.length) {
     h += '<div class="kids' + (isRoot ? ' root' : '') + '">' + kids.map(function (ch) { return nodeHtml(ch, st, pid, depth + 1); }).join('') + '</div>';
   }
-  if (hostMode && open) h += '<div class="slot" data-uid="' + esc(nd.uid) + '">＋ flecha libre — CLIC para colocar aquí</div>';
+  if (hostMode && open) h += '<div class="slot" role="button" tabindex="0" aria-label="Colocar aquí bajo ' + esc(c.name) + '" data-uid="' + esc(nd.uid) + '">＋ flecha libre — CLIC o ENTER para colocar aquí</div>';
   h += '</div>';
   return h;
 }
 
 function chipMini(c, uid) {
   if (!c) return '';
-  return '<span class="cardChip"' + (uid ? ' data-uid="' + esc(uid) + '"' : '') + ' title="' + esc(c.name) + '">' + imgTag(c, 'thumb sm') + '</span>';
+  var label = 'Carta: ' + c.name;
+  if (uid) {
+    return '<button type="button" class="cardChip" data-uid="' + esc(uid) + '" aria-label="' + esc(label) + '" title="' + esc(c.name) + '">' + imgTag(c, 'thumb sm') + '</button>';
+  }
+  return '<span class="cardChip" title="' + esc(c.name) + '">' + imgTag(c, 'thumb sm') + '</span>';
 }
 
 function attackPanel(st) {
@@ -443,10 +564,11 @@ function attackPanel(st) {
     var hp = -1;
     for (var i = 0; i < st.players.length; i++) if (st.players[i].human) { hp = i; break; }
     if (hp >= 0) {
-      if (A.targetPid === hp && !A.selfDefended) html += '<button data-act="selfdef" title="Tu grupo defensor gasta su token: su Power cuenta DOBLE para resistir el golpe">🛡 Defiende tu grupo (Power ×2)</button>';
+      var isDefender = A.targetPid === hp;
+      if (isDefender && !A.selfDefended) html += '<button data-act="selfdef" title="Tu grupo defensor gasta su token: su Power cuenta DOBLE para resistir el golpe">🛡 Defiende tu grupo (Power ×2)</button>';
       if (A.pid !== hp && !supportedBy(st, hp)) html += '<button data-act="aid" title="Uno de tus grupos suma su Power al atacante">🤝 Ayudar (+Power)</button>' +
         '<button data-act="oppose" title="Uno de tus grupos resta su Power al atacante">✋ Oponerse (−Power)</button>';
-      html += '<button data-act="resolve" class="primary" title="Tira dos dados: si sale ≤ la fuerza del ataque, tiene éxito">🎲 RESOLVER ▶</button>';
+      if (A.pid === hp || isDefender) html += '<button data-act="resolve" class="primary" title="Tira dos dados: si sale ≤ la fuerza del ataque, tiene éxito">🎲 RESOLVER ▶</button>';
     }
   }
   html += '</div>';
@@ -490,9 +612,9 @@ function handBar(st) {
   });
   $('handCards').innerHTML = idxs.map(function (ix) {
     var c = cardOf(ix);
-    return '<div class="handCard' + (sel.data.handIdx === ix ? ' picked' : '') + '" data-idx="' + ix + '" title="' + esc(c.name) +
+    return '<button type="button" class="handCard' + (sel.data.handIdx === ix ? ' picked' : '') + '" data-idx="' + ix + '" aria-pressed="' + (sel.data.handIdx === ix ? 'true' : 'false') + '" aria-label="' + esc(c.name) + ', ' + esc(c.type) + ', Poder ' + (c.power == null ? 'desconocido' : c.power) + ', Resistencia ' + (c.resistance == null ? 'desconocida' : c.resistance) + '" title="' + esc(c.name) +
       '\nP:' + c.power + ' R:' + c.resistance + '\n' + esc((c.alignments || []).join(', ')) + '">' +
-      imgTag(c, 'thumb') + '<small>' + esc(c.name) + '</small></div>';
+      imgTag(c, 'thumb') + '<small>' + esc(c.name) + '</small></button>';
   }).join('');
   buildBtns(st, true);
 }
@@ -526,7 +648,7 @@ function buildBtns(st, myMain) {
     b.push('<span class="bgrp hsortbar"><b class="lbl">🗂 MANO</b>' +
       hs.map(function (o) { return '<button data-act="hsort" data-v="' + o[0] + '" class="' + (handSort === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') +
       '</span>');
-    b.push('<button data-act="endturn" class="primary endturn' + ((me.drewPlot && me.autoUsed) ? ' pulse' : '') + '" title="PASO FINAL - termina tu turno y pasa al siguiente jugador">5 · Terminar turno ▶</button>');
+    b.push('<button data-act="endturn" class="primary endturn' + (me.autoUsed ? '' : ' pulse') + '" title="PASO FINAL - termina tu turno y pasa al siguiente jugador">5 · Terminar turno ▶</button>');
   } else {
     b.push('<div class="aiwait">⏳ <b>TURNO DE LA IA...</b> esta tramando. Observa el registro</div>');
   }
@@ -567,7 +689,7 @@ function hint() {
   } else if (cur && !cur.autoUsed) {
     msg = '🎁 PASO CLAVE del turno: pulsa el botón Takeover (parpadea) → elige carta → colócala en un anillo verde. Es GRATIS y sin dados.';
   } else {
-    msg = 'Turno libre: ataca ⚔, juega Plots (clic en tu mano) o pasa turno. GANAS controlando 12 grupos (barras arriba).';
+    msg = 'Turno libre: ataca ⚔, juega Plots (haz clic o Enter en tu mano) o pasa turno. Cumple la meta de tu sociedad (barras arriba).';
   }
   var legend = '';
   if (sel.mode && sel.mode !== 'handPick') {
@@ -629,7 +751,10 @@ function handClick(ix) {
   var myMain = curState.phase === 'main' && curState.players[curState.currentPid].human;
   if (!myMain || !CB) return;
   if (curState.attack && !curState.attack.resolved && curState.attack.pid === curState.currentPid && c.type === 'plot') {
-    CB.onBoost(ix, false); return;
+    var kind = c.effect && c.effect.kind;
+    if (kind === 'boost10' || kind === 'boost10_attack') CB.onBoost(ix, false);
+    else log('ℹ Este Plot no es un +10. Solo los Plots de apoyo pueden aumentar este ataque.');
+    return;
   }
   if (sel.mode === 'handPick' && sel.data.for === 'resource') {
     clearSel();
@@ -736,6 +861,11 @@ function toggleHelp() {
   if (ex) { ex.remove(); return; }
   var ov = document.createElement('div');
   ov.className = 'overlay'; ov.id = 'helpOv';
+  if (typeof ov.setAttribute === 'function') {
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+  }
+  ov.tabIndex = -1;
   ov.innerHTML = '<div class="box ency"><h2>👁 ENCICLOPEDIA ILLUMINATI</h2>' +
     '<div class="tabs">' +
     '<button class="tabbtn on" data-tab="how">🎮 Cómo jugar</button>' +
@@ -749,20 +879,33 @@ function toggleHelp() {
     '<tr><td>4 · Extras</td><td>Cambia ★ Illuminati por cartas extra.</td></tr>' +
     '<tr><td>5 · Pasar</td><td>Termina tu turno.</td></tr>' +
     '<tr><td>Ataques</td><td>Fuerza = P − R ±4 alineamientos − defensa (+4 master, +10/+5 posición, ×2 autodefensa). Tira ≤ fuerza en 2d6; <b>11-12 fallan SIEMPRE</b>; fuerza &lt;2 ni tires.</td></tr>' +
-    '<tr><td>Victoria</td><td>12 grupos contando el tuyo, o tu meta especial (barras arriba).</td></tr>' +
+     '<tr><td>Victoria</td><td>Cumple la meta de tu sociedad; el Illuminati cuenta como grupo controlado.</td></tr>' +
     '</table></div>' +
     '<div class="tabpanel" id="tab-glo" style="display:none"><div class="ggrid">' +
     ['peaceful','violent','liberal','conservative','weird','straight','government','fanatic','criminal','corporate','media','huge','computer','magic','science','bank','plot','resource','group','personality','place','illuminati'].map(function(t){return '<div class="gitem">'+gspan(t)+'</div>';}).join('') +
     '</div></div>' +
     '<div class="tabpanel" id="tab-abo" style="display:none"><div class="about">' +
     '<p><b>Illuminati: New World Order</b> (INWO) es el juego de cartas coleccionables de <b>Steve Jackson Games</b> (1995), diseñado por Steve Jackson como sucesor del clásico de tablero <i>Illuminati</i> (1982). Eres una sociedad secreta: controlas grupos —gobiernos, medios, mafias— para dominar el mundo.</p>' +
-    '<p><b>¿Cómo funciona?</b> Cada grupo controlado suma poder hacia tu meta (normalmente 12 grupos). Atacas con tus grupos usando tokens ●, tiras dados y te apropias de estructuras enemigas completas… o las destruyes.</p>' +
+     '<p><b>¿Cómo funciona?</b> Cada grupo controlado suma poder hacia la meta de tu sociedad. Atacas con tus grupos usando tokens ●, tiras dados y te apropias de estructuras enemigas completas… o las destruyes.</p>' +
     '<h3>🕵️ LA LEYENDA URBANA</h3>' +
     '<p>Corre la leyenda de que «el gobierno americano prohibió el juego». Lo REAL es más extraño: el <b>1 de marzo de 1990</b> la <b>Secret Service</b> redó las oficinas de Steve Jackson Games («Operación Sundevil»), confiscó ordenadores y el manuscrito de GURPS Cyberpunk. El juego NUNCA fue prohibido — pero la redada, vista como censura, inspiró la fundación de la <b>EFF</b> (Electronic Frontier Foundation). La ironía eterna: la carta de la NSA del juego «predijo» el vigilismo masivo… años antes.</p>' +
     '<p class="muted">Juego original © Steve Jackson Games · sjgames.com/inwo — Esta implementación web: motor propio OBD v1.2, IA heurística, textos verbatim por OCR de las cartas originales.</p>' +
     '</div></div>' +
     '<button id="encyClose" class="primary">Cerrar</button></div>';
   $('overlays').appendChild(ov);
+  if (window.I18N && window.I18N.sweep) window.I18N.sweep(ov);
+  function closeHelp() {
+    if (!ov.parentNode) return;
+    document.removeEventListener('keydown', onHelpKey, true);
+    ov.remove();
+  }
+  function onHelpKey(e) {
+    if (e.key === 'Escape') { e.preventDefault(); closeHelp(); }
+  }
+  ov.addEventListener('click', function (e) {
+    if (e.target === ov) closeHelp();
+  });
+  document.addEventListener('keydown', onHelpKey, true);
   Array.prototype.forEach.call(ov.querySelectorAll('.tabbtn'), function (t) {
     t.onclick = function () {
       Array.prototype.forEach.call(ov.querySelectorAll('.tabbtn'), function (x) { x.classList.remove('on'); });
@@ -770,7 +913,11 @@ function toggleHelp() {
       ['how', 'glo', 'abo'].forEach(function (k) { $('tab-' + k).style.display = (k === t.getAttribute('data-tab')) ? '' : 'none'; });
     };
   });
-  $('encyClose').onclick = function () { ov.remove(); };
+  var closeBtn = $('encyClose');
+  if (closeBtn) {
+    closeBtn.onclick = closeHelp;
+    if (typeof closeBtn.focus === 'function') closeBtn.focus();
+  }
 }
 function bindEvents() {
   $('hdrBtns').addEventListener('click', function (ev) {
@@ -778,10 +925,19 @@ function bindEvents() {
     if (nb && nb.getAttribute('data-act') === 'newgame') location.reload();
   });
   $('board').addEventListener('click', function (ev) {
-    var nd = ev.target.closest('.node,.slot');
+    var nd = ev.target.closest('.node,.slot,.cardChip');
     var chip = ev.target.closest('.cardChip');
     var uid = nd ? nd.getAttribute('data-uid') : (chip ? chip.getAttribute('data-uid') : null);
     if (!uid || !CB || !sel.mode) { if (!uid) return; }
+    route(uid);
+  });
+  $('board').addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    var target = ev.target && ev.target.closest ? ev.target.closest('.node,.slot,.cardChip') : null;
+    if (!target || !target.getAttribute) return;
+    var uid = target.getAttribute('data-uid');
+    if (!uid || !CB || !sel.mode) return;
+    if (typeof ev.preventDefault === 'function') ev.preventDefault();
     route(uid);
   });
   $('actionBtns').addEventListener('click', function (ev) {
@@ -836,6 +992,11 @@ function showHowTo(cb) {
   var ov = document.createElement('div');
   ov.className = 'overlay';
   ov.id = 'howToOv';
+  if (typeof ov.setAttribute === 'function') {
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+  }
+  ov.tabIndex = -1;
   ov.innerHTML = '<div class="box howto">' +
     '<h2>🎮 CÓMO JUGAR — 4 PASOS y ya sabes jugar</h2>' +
     '<ol>' +
@@ -844,12 +1005,30 @@ function showHowTo(cb) {
     '<li><b>⚔ ATACAR (opcional)</b> — «Controlar» roba el grupo enemigo con todos sus títeres. «Destruir» lo elimina. El juego te guía: clic en tu atacante → clic en el objetivo verde → RESOLVER ▶ tira los dados.</li>' +
     '<li><b>✔ TERMINAR TURNO</b> — Cuando no quieras hacer más, pulsa el botón azul.</li>' +
     '</ol>' +
-    '<p class="goal">🏆 <b>GANAS controlando 12 grupos</b> (la tuya cuenta). Mira tu barra de progreso arriba en todo momento.</p>' +
+    '<p class="goal">🏆 <b>GANAS cumpliendo la meta de tu sociedad</b> (la tuya cuenta). Mira tu barra de progreso arriba en todo momento.</p>' +
     '<p class="muted">💡 Pasa el ratón por CUALQUIER carta para verla grande. El texto ℹ de abajo SIEMPRE te dice qué hacer ahora. La ? del menú tiene todas las reglas.</p>' +
     '<button id="howToBtn" class="primary bigbtn">¡ENTENDIDO, A JUGAR! ▶</button>' +
     '</div>';
   $('overlays').appendChild(ov);
-  $('howToBtn').onclick = function () { ov.remove(); if (cb) cb(); };
+  if (window.I18N && window.I18N.sweep) window.I18N.sweep(ov);
+  function closeHowTo() {
+    if (!ov.parentNode) return;
+    document.removeEventListener('keydown', onHowToKey, true);
+    ov.remove();
+    if (cb) cb();
+  }
+  function onHowToKey(e) {
+    if (e.key === 'Escape') { e.preventDefault(); closeHowTo(); }
+  }
+  ov.addEventListener('click', function (e) {
+    if (e.target === ov) closeHowTo();
+  });
+  document.addEventListener('keydown', onHowToKey, true);
+  var howToBtn = $('howToBtn');
+  if (howToBtn) {
+    howToBtn.onclick = closeHowTo;
+    if (typeof howToBtn.focus === 'function') howToBtn.focus();
+  }
 }
 
 function resetForNewGame() {

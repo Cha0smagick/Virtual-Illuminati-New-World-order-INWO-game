@@ -3,48 +3,46 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>INWO â€” Illuminati: New World Order</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Special+Elite&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=37">
+<title>INWO — Illuminati: New World Order</title>
+<meta name="description" content="Juego de cartas de sociedades secretas para controlar grupos y completar tu meta.">
+<link rel="stylesheet" href="css/style.css?v=38">
 </head>
 <body>
 <div id="app">
-  <header>
+  <header role="banner">
     <h1>INWO</h1>
     <div id="hdrInfo"></div>
-    <button id="helpBtn" title="Cómo jugar (reglas rápidas)">?</button>
+    <button id="helpBtn" type="button" aria-label="Cómo jugar (reglas rápidas)" title="Cómo jugar (reglas rápidas)">?</button>
     <div class="btnrow" id="hdrBtns"></div>
   </header>
-  <main>
+  <main aria-label="Tablero y registro de la partida">
     <div id="board"></div>
     <div id="logPanel">
       <h3>Registro</h3>
-      <div id="logLines"></div>
+      <div id="logLines" aria-live="polite" aria-label="Registro de jugadas"></div>
     </div>
   </main>
-  <div id="handBar">
+  <div id="handBar" aria-label="Acciones y cartas de tu mano">
     <div class="btnrow" id="actionBtns"></div>
     <div id="handCards"></div>
     <div id="actionHint"></div>
   </div>
 </div>
 <div id="cardPreview"></div>
-<div id="overlays"></div>
+<div id="overlays" aria-label="Diálogos y ayuda"></div>
 
-<script src="js/images.js?v=37"></script>
-<script src="js/cards.js?v=37"></script>
-<script src="js/cardtexts_data.js?v=37"></script>
-<script src="js/cardstats_known.js?v=37"></script>
-<script src="js/cardstats_fix.js?v=37"></script>
-<script src="js/statsfix.js?v=37"></script>
-<script src="js/texts.js?v=37"></script>
-<script src="js/engine.js?v=37"></script>
-<script src="js/ai.js?v=37"></script>
-<script src="js/ui.js?v=37"></script>
-<script src="js/app.js?v=37"></script>
-<script src="js/i18n.js?v=37"></script>
+<script src="js/images.js?v=38"></script>
+<script src="js/cards.js?v=38"></script>
+<script src="js/cardtexts_data.js?v=38"></script>
+<script src="js/cardstats_known.js?v=38"></script>
+<script src="js/cardstats_fix.js?v=38"></script>
+<script src="js/statsfix.js?v=38"></script>
+<script src="js/texts.js?v=38"></script>
+<script src="js/engine.js?v=38"></script>
+<script src="js/ai.js?v=38"></script>
+<script src="js/ui.js?v=38"></script>
+<script src="js/app.js?v=38"></script>
+<script src="js/i18n.js?v=38"></script>
 <script>window.addEventListener('load', function(){ window.App.start(); });</script>
 </body>
 </html>

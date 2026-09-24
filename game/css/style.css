@@ -239,7 +239,7 @@ main {
 .neutral .cardChip { width: 54px; }
 .cardChip {
   display: inline-block;
-  width: 54px; border-radius: 2px;
+  width: 54px; border-radius: 2px; padding: 0; font: inherit;
   border: 1px solid var(--hairline);
   transition: transform .12s;
 }
@@ -681,3 +681,39 @@ body:not(.ingame) #handBar { display: none !important; }
 }
 .goclose:hover { color: var(--red); }
 .ngbtn { margin-left: 10px; }
+
+/* ============ v25 — ACCESIBILIDAD Y MOVIMIENTO REDUCIDO ============ */
+:focus-visible {
+  outline: 3px solid var(--cyan);
+  outline-offset: 2px;
+}
+.node:focus-visible, .slot:focus-visible {
+  outline: 3px solid var(--cyan);
+  outline-offset: 2px;
+}
+button.handCard, button.pickCard {
+  appearance: none;
+  font: inherit;
+  text-align: center;
+}
+button.handCard { padding: 0; }
+.setup-error {
+  min-height: 1.25em;
+  margin: 2px auto 0;
+  max-width: 900px;
+  color: var(--red);
+  font-size: 13px;
+  text-align: center;
+}
+.setup-error.show {
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(229, 72, 77, .35);
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
