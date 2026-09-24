@@ -47,7 +47,7 @@
 | Área neutral | Fallo de control contra carta de la MANO rival → va al área neutral; cualquiera puede atacarla |
 | Privilegio | Declarable al anunciar (solo atacante y defensor actúan) |
 | Secretos | Solo Illuminati u otros Secret pueden atacar/apoyar/affectar grupos Secret |
-| Plots jugables | +10 (ataque o defensa), Attribute Freeze, Paralyze, Power Increase, Zap estructural, Asesinato (mata Personality permanente), Desastres (devastan Places), Goal cards (máx 1 en mano, se revelan), NWO (rojo/azul/amarillo, 1 por color, reemplazo descarta el anterior), genéricos |
+| Plots jugables | Solo familias con implementación verificada: +10 (ataque o defensa), Attribute Freeze, Paralyze, Power Increase, Zap estructural, Asesinato (mata Personality permanente), Desastres (devastan Places), Goal cards (máx 1 en mano, se revelan) y NWO (rojo/azul/amarillo, 1 por color, reemplazo descarta el anterior). Las cartas `unverified`/`ability_unverified` se bloquean antes de mutar el estado. |
 | Instantáneos | Power instantáneo − Power actual del objetivo, con defensa de cercanía |
 | Recursos | Takeover gratis o 1 acción c/u (máx 1/turno); ligadas al Illuminati o a un grupo; captura las mueve, destrucción las destruye |
 | Mano | ≤5 Plots fuera de tu turno (ocultas + expuestas); ilimitadas en tu turno |
@@ -105,31 +105,30 @@ Convención: los métodos lanzan `Error` con mensajes en español ante jugadas i
 
 ## 4. DATOS DE CARTAS (procedencia honesta)
 
-- **421 cartas** = 167 Groups + 18 Illuminati (9 × 2 versiones) + 236 Plots (incluye Resources dentro del mazo Group según OBD: 35 resources detectadas).
+- **421 cartas** = 167 Groups + 18 Illuminati (9 × 2 versiones) + 201 Plots + 35 Resources.
 - **Verificado (~33 grupos)**: stats y alineamientos exactos del log CMU (Texas 14/9, New York 7/8, CIA 6/5…).
 - **9 Illuminati completos**: poderes y metas especiales codificados (`effect.code`: bavarian/network/cthulhu/gnomes/discordian/bermuda/shangrila/adepts/ufos).
-- **Resto (~370)**: Power/Resistencia/alineamientos estimados con conocimiento del juego, marcados `"estimated": true` en cards.js. Los Plots sin efecto reconocido se juegan como **genéricos descartables** (el motor nunca se rompe). Para afinarlos: editar `gen_cards.js` (tablas VERIFIED/ILLN) y re-ejecutar `node gen_cards.js`.
+- **Resto**: Power/Resistencia/alineamientos estimados o pendientes, marcados en `cards.js`; el texto OCR se conserva como referencia, pero no se convierte en una regla verificada. Las cartas `unverified` o `ability_unverified` se bloquean antes de gastar tokens o modificar la mano. Para regenerar el dataset usa `npm run build:cards` (canónico: `gen_cards.js`).
 
 ## 5. IA OPONENTE
 
-Heurística determinista (`ai.js`): roba → takeover del mejor grupo (score=2×Power+Resistance) al host más profundo → intercambia acciones por Plots si le sobran (>2) → draw extra → juega 1 resource → fase de ataque: evalúa control (estimado ≥3 neutral / ≥4 estructura con flecha abierta) y destroy (≥5) sobre área neutral y rivales, ataca con el mejor atacante que tenga token, resuelve al instante; hasta 3 rondas de ataque. Pares de opuestos canónicos: peaceful-violent, liberal-conservative, weird-straight.
+Heurística determinista (`ai.js`): roba → takeover del mejor grupo (score=2×Power+Resistance) al host más profundo → intercambia acciones por Plots si le sobran (>2) → draw extra → juega solo Plot/Resource con `mechanicsStatus` `implemented` o `implemented-special` → fase de ataque: evalúa control (estimado ≥3 neutral / ≥4 estructura con flecha abierta) y destroy (≥5) sobre área neutral y rivales, ataca con el mejor atacante que tenga token, resuelve al instante; hasta 3 rondas de ataque. Las cartas bloqueadas se omiten; el filtro evita intentos inválidos, no reemplaza una implementación completa de reglas. Pares de opuestos canónicos: peaceful-violent, liberal-conservative, weird-straight.
 
 **Resultado del test headless**: partida completa AI-vs-AI termina con victoria legítima ("Meta básica cumplida 12/12") alrededor del turno 20.
 
 ## 6. LIMITACIONES CONOCIDAS
 
-1. Stats estimados (`estimated:true`) en ~370 cartas — jugables pero no canónicos.
-2. Plots no reconocidos se comportan como genéricos (sin texto especial activo).
-3. Reglas de comercio entre humanos simplificadas (dar cartas de la mano sí existe vía discard; trueques estructurados pendiente).
-4. Poderes de recursos son pasivos/genéricos salvo tokens "Action".
-5. Bermuda Triangle (reorganizar fin de turno) requiere usar moveGroup manualmente.
-6. No hay persistencia (guardar/partida) ni undo.
+1. Many Power/Resistance/alignment values remain estimates or OCR-derived reference data; they are not canonical tabletop values.
+2. OCR text is preserved for research, but `unverified`/`ability_unverified` cards are rejected before state mutation; legacy generic effects are blocked.
+3. Several canonical rules remain unresolved, including linked-resource capture, hand-target control, instant attacks, privilege, immunity, secrecy and UFO progress.
+4. The AI only selects cards whose `mechanicsStatus` is `implemented` or `implemented-special`; this is a safety filter, not a claim of complete AI rules.
+5. There is no persistence (save/load) or undo.
 
 ## 7. MANTENIMIENTO RÁPIDO
 
 | Quiero… | Haz… |
 |---|---|
-| Corregir stats de una carta | Editar tablas en `gen_cards.js` → `node gen_cards.js` |
+| Corregir stats de una carta | Editar tablas en `gen_cards.js` → `npm run build:cards` |
 | Cambiar una regla | `SPEC-RULES.md` es la fuente → implementar en `engine.js` |
 | Probar sin navegador | `node test_ai_vs_ai.js 60` (headless completo) |
 | Ver estado interno | `Engine._raw()` devuelve el estado vivo |
