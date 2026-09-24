@@ -1,28 +1,76 @@
-/* diag_attack.cjs — declara los ataques que elegiría la IA y vuelca previewStrength() */
+'use strict';
+
+/* diag_attack.cjs — imprime previews de ataques sin tragarse excepciones. */
 const path = require('path');
+const ROOT = path.join(__dirname, '..');
+const load = (name) => require(path.join(ROOT, 'game', 'js', name));
+
 global.window = {};
-const R = p => require(path.join('D:/Illuminati NWO/game/js', p));
-R('images.js'); R('cards.js'); R('cardtexts_data.js'); R('statsfix.js'); R('texts.js');
-R('engine.js'); R('ai.js');
-const C = global.window.INWO_CARDS, E = global.window.Engine;
-E.newGame([{ name: 'A', human: false }, { name: 'B', human: false }]);
-const av = E.availableIlluminati();
-E.setIlluminati(0, av[0].id); E.setIlluminati(1, av[1].id);
-E.startGame();
-let dumped = 0;
-for (let t = 0; t < 30 && dumped < 5; t++) {
-  const st = E.getState(); if (st.phase === 'gameover') break;
-  const pid = st.currentPid;
-  try { global.window.AI.takeTurn(E, pid); } catch (e) { console.log('AI ERR', e.message); }
-  let s2 = E.getState();
-  if (s2.attack && !s2.attack.resolved) {
-    const d = E.previewStrength();
-    function nm(uid) { let r = null; s2.players.forEach(p => (function w(n) { if (n.uid === uid) r = n.cardId; else (n.children || []).forEach(w); })(p.structure)); return r ? (C.cards[r] || C.byId[r] || {}).name : (s2.neutralArea.filter(n => n.uid === uid)[0] ? 'NEUTRAL:' + (C.cards[s2.neutralArea.filter(n => n.uid === uid)[0].cardId] || {}).name : '?'); }
-    console.log(`--- ATAQUE ${++dumped} (t${t}) ${d.total !== undefined ? '' : ''}`);
-    console.log(' atacante:', nm(s2.attack.attackerUid), '· objetivo:', s2.attack.neutralTarget ? nm(s2.attack.neutralTarget) : nm(s2.attack.targetUid), '· tipo:', s2.attack.type);
-    console.log(' det:', JSON.stringify({ base: d.base, leaderMod: d.leaderMod, defenseBase: d.defenseBase, defenseBonus: d.defenseBonus, posBonus: d.posBonus, selfDef: d.selfDef, aids: d.aids, opposes: d.opposes, boosts: d.boosts, total: d.total }));
-    console.log(' notes:', (d.notes || []).join(' | '));
+['images.js', 'cards.js', 'cardtexts_data.js', 'statsfix.js', 'texts.js', 'engine.js', 'ai.js'].forEach(load);
+const C = global.window.INWO_CARDS;
+const E = global.window.Engine;
+const AI = global.window.AI;
+if (!C || !E || !AI) throw new Error('No se pudieron cargar cards, engine o ai');
+
+function cardName(state, uid) {
+  if (!uid) return '?';
+  for (const player of state.players) {
+    let hit = null;
+    (function walk(node) {
+      if (hit) return;
+      if (node.uid === uid) hit = node.cardId;
+      (node.children || []).forEach(walk);
+    }(player.structure));
+    if (hit != null) return (C.cards[hit] || C.byId[hit] || {}).name || String(hit);
   }
-  try { E.resolveAttack(); } catch (e) {}
-  try { E.endTurn(); } catch (e) {}
+  const neutral = (state.neutralArea || []).find((entry) => entry.uid === uid);
+  if (neutral) return 'NEUTRAL:' + ((C.cards[neutral.cardId] || {}).name || neutral.cardId);
+  if (state.attack && state.attack.handTarget) return 'HAND:' + ((C.cards[state.attack.handTarget.idx] || {}).name || state.attack.handTarget.idx);
+  return '?';
 }
+
+let dumped = 0;
+const originalResolve = E.resolveAttack;
+E.resolveAttack = function (...args) {
+  const state = E.getState();
+  if (state.attack && !state.attack.resolved) {
+    const detail = E.previewStrength();
+    console.log(`--- ATAQUE ${++dumped} tipo=${state.attack.type} atacante=${cardName(state, state.attack.attackerUid)} objetivo=${cardName(state, state.attack.targetUid)}`);
+    console.log(JSON.stringify({
+      base: detail.base,
+      leaderMod: detail.leaderMod,
+      defenseBase: detail.defenseBase,
+      defenseBonus: detail.defenseBonus,
+      posBonus: detail.posBonus,
+      selfDef: detail.selfDef,
+      aids: detail.aids,
+      opposes: detail.opposes,
+      boosts: detail.boosts,
+      defBoosts: detail.defBoosts,
+      total: detail.total
+    }));
+    console.log('notes:', (detail.notes || []).join(' | '));
+  }
+  return originalResolve.apply(E, args);
+};
+
+const GAMES = 6;
+for (let game = 0; game < GAMES; game++) {
+  E.newGame([{ name: 'A', human: false }, { name: 'B', human: false }]);
+  const available = E.availableIlluminati();
+  E.setIlluminati(0, available[(game * 2) % available.length].id);
+  E.setIlluminati(1, available[(game * 2 + 1) % available.length].id);
+  E.startGame();
+  let turns = 0;
+  while (E.getState().phase !== 'gameover' && turns++ < 80) {
+    const state = E.getState();
+    if (state.phase !== 'main') throw new Error('fase inesperada: ' + state.phase);
+    AI.takeTurn(E, state.currentPid);
+    const afterAi = E.getState();
+    if (afterAi.attack && !afterAi.attack.resolved) E.resolveAttack();
+    if (E.getState().phase !== 'gameover') E.endTurn();
+  }
+}
+
+console.log('DIAG ATTACK OK · ataques inspeccionados:', dumped);
+if (!dumped) process.exitCode = 1;
