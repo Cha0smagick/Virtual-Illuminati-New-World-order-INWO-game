@@ -5,6 +5,9 @@ const ROOT = __dirname;
 const ctx = vm.createContext({ window: {} });
 vm.runInContext(fs.readFileSync(path.join(ROOT, 'game/js/images.js'), 'utf8'), ctx);
 const manifest = ctx.window.INWO_IMAGE_FILES;
+const ocrContext = vm.createContext({ window: {} });
+vm.runInContext(fs.readFileSync(path.join(ROOT, 'game/js/cardtexts_data.js'), 'utf8'), ocrContext);
+const OCR = ocrContext.window.INWO_OCR || {};
 const parsedRaw = JSON.parse(fs.readFileSync(path.join(ROOT, 'research/cards_parsed.json'), 'utf8'));
 const parsedArr = Array.isArray(parsedRaw) ? parsedRaw : (parsedRaw.cards || Object.values(parsedRaw)[0]);
 
@@ -82,15 +85,29 @@ function plotSub(name) {
   if (n.startsWith('newworldorder') || /(^| )nwo( |$)/.test(n)) return 'nwo';
   return null;
 }
+function ocrFor(name, id) {
+  return OCR[norm(name)] || OCR[norm(id)] || null;
+}
+function mechanicsStatus(card) {
+  const kind = card.effect && card.effect.kind ? card.effect.kind : 'sin-effect';
+  if (kind === 'plot_generic' || kind === 'resource_generic' || kind === 'unverified') return 'unverified';
+  if (kind === 'ability_unverified') return 'source-text-unmapped';
+  if (kind === 'illu_special') return card.implemented ? 'implemented-special' : 'pending-engine';
+  if (kind === 'assassination' || kind === 'disaster') return card.text ? 'source-text-unmapped' : 'pending-engine';
+  if (card.implemented) return 'implemented';
+  return card.text ? 'source-text-unmapped' : 'unverified';
+}
 const cards = [], seenIll = {};
 for (const m of manifest) {
   const mkey = norm(m.name);
   const key = mkey.replace(/12$/, '').replace(/[12]$/, ''); // strip version suffix for lookups
   let rec = { id: mkey, name: m.name, img: m.file };
   const off = offType[key];
+  const ocrText = ocrFor(m.name, mkey);
+  if (ocrText) rec.text = String(ocrText).trim();
+  rec.source = { image: m.file || null, officialType: off || null, ocr: !!ocrText };
   let estimated = true;
   if (off) {
-    estimated = false;
     switch (off) {
       case 'Grp.': rec.type='group'; rec.subtype='organization'; break;
       case 'Plc.': rec.type='group'; rec.subtype='place'; break;
@@ -109,16 +126,20 @@ for (const m of manifest) {
     rec.type = m.folder==='Groups' ? 'group':'plot'; rec.subtype = rec.type==='group'?'organization':plotSub(m.name);
   }
   // stats
-  const v = VERIFIED[key], il = ILLN[key];  if (rec.type === 'illuminati') {
+  const v = VERIFIED[key], il = ILLN[key];
+  if (rec.type === 'illuminati') {
     const src = il || { p:8, r:null, e:{kind:'illu_special',code:'generic'}, g:{type:'basic'}, t:'' };
     rec.power = src.p; rec.resistance = null; rec.alignments = [];
-    rec.effect = src.e; rec.goal = src.g; rec.text = src.t;
+    rec.effect = src.e; rec.goal = src.g; rec.text = src.t || rec.text || null;
     rec.implemented = !!il; rec.estimated = !il || seenIll[key] ? true : false;
     seenIll[key] = (seenIll[key]||0)+1;
   } else if (v) {
     rec.power=v[0]; rec.resistance=v[1]; rec.alignments=v[2];
-    rec.effect = rec.type==='resource' ? {kind:'resource_generic'} : null;
-    rec.implemented = true; rec.estimated = false;
+    rec.effect = rec.type==='resource'
+      ? {kind:'unverified', reason:'resource-text-pending-mapping'}
+      : (rec.text ? {kind:'ability_unverified', reason:'ability-pending-mapping'} : null);
+    rec.implemented = rec.type !== 'resource' && !rec.text;
+    rec.estimated = false;
   } else {
     rec.power=null; rec.resistance=null; rec.alignments=[];
     rec.effect =
@@ -126,11 +147,11 @@ for (const m of manifest) {
       rec.subtype==='disaster'?{kind:'disaster'}:
       rec.subtype==='goal'?{kind:'goal'}:
       rec.subtype==='nwo'?{kind:'nwo',color:'yellow'}:
-      rec.type==='resource'?{kind:'resource_generic'}:
-      {kind:'plot_generic'};
+      rec.type==='resource'?{kind:'unverified', reason:'resource-text-pending-mapping'}:
+      {kind:'unverified', reason:'plot-text-pending-mapping'};
     rec.implemented=false; rec.estimated=true;
-    if (rec.type==='group') rec.implemented=false; // playable but stats estimated
   }
+  rec.mechanicsStatus = mechanicsStatus(rec);
   // dedupe ids for duplicate image copies
   const dup = cards.find(c=>c.id===rec.id);
   if (dup) { rec.id = mkey+'-b'; }
