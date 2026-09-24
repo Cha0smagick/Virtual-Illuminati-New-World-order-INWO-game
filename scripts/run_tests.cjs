@@ -11,7 +11,8 @@ const tests = [
   'test_appflow.js',
   'test_flow.js',
   'test_respond.js',
-  'test_ui.js'
+  'test_ui.js',
+  'test_card_research_manifest.js'
 ];
 const failed = [];
 
