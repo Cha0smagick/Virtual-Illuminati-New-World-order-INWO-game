@@ -4,7 +4,17 @@
   "description": "",
   "main": "build_cards.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build:cards": "node gen_cards.js",
+    "test": "node scripts/run_tests.cjs",
+    "test:p0": "node test_p0_invariants.js",
+    "audit:mechanics": "node scripts/audit_mechanics.cjs",
+    "audit:mechanics:report": "node scripts/audit_mechanics.cjs --report-only",
+    "audit:stats": "node scripts/audit_stats.cjs",
+    "audit:stats:report": "node scripts/audit_stats.cjs --report-only",
+    "audit:usage": "node scripts/audit_usage.cjs",
+    "audit:syn": "node scripts/audit_syn.cjs",
+    "audit:syn:report": "node scripts/audit_syn.cjs --report-only",
+    "diag:attack": "node scripts/diag_attack.cjs"
   },
   "keywords": [],
   "author": "",
