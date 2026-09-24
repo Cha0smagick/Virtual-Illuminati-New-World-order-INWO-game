@@ -104,7 +104,12 @@ for (const m of manifest) {
   let rec = { id: mkey, name: m.name, img: m.file };
   const off = offType[key];
   const ocrText = ocrFor(m.name, mkey);
-  if (ocrText) rec.text = String(ocrText).trim();
+  if (ocrText) {
+    rec.ocrText = String(ocrText).trim();
+    rec.text = rec.ocrText;
+  } else {
+    rec.ocrText = null;
+  }
   rec.source = { image: m.file || null, officialType: off || null, ocr: !!ocrText };
   let estimated = true;
   if (off) {
