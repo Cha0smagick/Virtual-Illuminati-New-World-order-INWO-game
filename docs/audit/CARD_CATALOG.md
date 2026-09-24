@@ -7,11 +7,12 @@
 - [Lista oficial de Steve Jackson Games](https://www.sjgames.com/inwo/lists/ill.html): nombres, tipos, frecuencia y artista; no contiene Power/Resistance/efectos completos.
 - [Reglas del proyecto](game/SPEC-RULES.md): reglas OBD/WDH v1.2 usadas por el motor.
 - `game/js/cardtexts_data.js`: OCR local de los textos impresos; puede contener errores de lectura.
+- `research/audit_reports/card_research_manifest.json`: manifest por carta con estado, evidencia de Internet y fuentes; las menciones no implican implementación automática.
 - `game/js/cards.js`: datos runtime actuales; los campos estimados no se convierten en canónicos automáticamente.
 
 ## Regla de verificación
 
-Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no debe recibir una mecánica genérica. Su texto se conserva como evidencia y queda bloqueada para uso exacto hasta mapearla a una regla probada.
+Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una mecánica genérica. Su texto se conserva como evidencia y queda bloqueada para uso exacto hasta mapearla a una regla probada.
 
 ## Resumen
 
@@ -37,6 +38,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `ama` · runtime: `group` · oficial: `Grp.`
 - Power: 3 · Resistance: 4 · alineamientos: peaceful, conservative, science · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - A.M.A..png`
 
 > Texto fuente:
@@ -49,6 +51,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `algore` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Al Gore.png`
 
 > Texto fuente:
@@ -59,6 +62,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `americanautoduelassociation` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - American Autoduel Association.png`
 
 > Texto fuente:
@@ -69,6 +73,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `antinuclearactivists` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - Anti-Nuclear Activists.png`
 
 > Texto fuente:
@@ -81,6 +86,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `antiwaractivists` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Antiwar Activists.png`
 
 > Texto fuente:
@@ -92,6 +98,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `batf` · runtime: `group` · oficial: `Grp.`
 - Power: 3 · Resistance: 2 · alineamientos: violent, government · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - B.A.T.F..png`
 
 > Texto fuente:
@@ -105,6 +112,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `bankofengland` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Bank of England.png`
 
 > Texto fuente:
@@ -115,6 +123,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `bigmedia` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Big Media.png`
 
 > Texto fuente:
@@ -129,6 +138,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `billclinton` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Groups/INWO - Bill Clinton.png`
 
 > Texto fuente:
@@ -142,6 +152,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `bjorne` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Groups/INWO - Bjorne.png`
 
 > Texto fuente:
@@ -158,6 +169,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `blackactivists` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Black Activists.png`
 
 > Texto fuente:
@@ -169,6 +181,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `boysprouts` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Boy Sprouts.png`
 
 > Texto fuente:
@@ -181,6 +194,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `brazil` · runtime: `group` · oficial: `Plc.`
 - Power: 5 · Resistance: 3 · alineamientos: government, huge · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Brazil.png`
 
 > Texto fuente:
@@ -193,6 +207,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `cia` · runtime: `group` · oficial: `Grp.`
 - Power: 6 · Resistance: 5 · alineamientos: government, violent · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - C.I.A..png`
 
 > Texto fuente:
@@ -208,6 +223,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `cabletv` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Cable TV.png`
 
 > Texto fuente:
@@ -221,6 +237,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `california` · runtime: `group` · oficial: `Plc.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: no-text-pending; OCR missing; menciones oficiales 0
 - Imagen: `Groups/INWO - California.png`
 
 > Texto fuente:
@@ -231,6 +248,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `canada` · runtime: `group` · oficial: `Plc.`
 - Power: 3 · Resistance: 4 · alineamientos: peaceful, liberal, government, huge · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Canada.png`
 
 > Texto fuente:
@@ -242,6 +260,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `cattlemutilators` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Cattle Mutilators.png`
 
 > Texto fuente:
@@ -255,6 +274,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `centerfordiseasecontrol` · runtime: `group` · oficial: `Plc.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Center for Disease Control.png`
 
 > Texto fuente:
@@ -270,6 +290,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `cflaio` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - CFL-AIO.png`
 
 > Texto fuente:
@@ -283,6 +304,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `china` · runtime: `group` · oficial: `Plc.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 3
 - Imagen: `Groups/INWO - China.png`
 
 > Texto fuente:
@@ -298,6 +320,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `churchofelvis` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Church of Elvis.png`
 
 > Texto fuente:
@@ -310,6 +333,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `clonearrangers` · runtime: `group` · oficial: `Grp.`
 - Power: 6 · Resistance: 2 · alineamientos: violent, criminal · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Clone Arrangers.png`
 
 > Texto fuente:
@@ -324,6 +348,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `comicbooks` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Comic Books.png`
 
 > Texto fuente:
@@ -337,6 +362,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `congressionalwives` · runtime: `group` · oficial: `Grp.`
 - Power: 4 · Resistance: 4 · alineamientos: conservative, straight · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Congressional Wives.png`
 
 > Texto fuente:
@@ -348,6 +374,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `conspiracytheorists` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Conspiracy Theorists.png`
 
 > Texto fuente:
@@ -361,6 +388,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `countdracula` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - Count Dracula.png`
 
 > Texto fuente:
@@ -376,6 +404,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `cyclegangs` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Cycle Gangs.png`
 
 > Texto fuente:
@@ -388,6 +417,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `danquayle` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Dan Quayle.png`
 
 > Texto fuente:
@@ -402,6 +432,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `democrats` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Democrats.png`
 
 > Texto fuente:
@@ -414,6 +445,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `dentists` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Dentists.png`
 
 > Texto fuente:
@@ -427,6 +459,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `deprogrammers` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Deprogrammers.png`
 
 > Texto fuente:
@@ -440,6 +473,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `dinosaurpark` · runtime: `group` · oficial: `Plc.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Dinosaur Park.png`
 
 > Texto fuente:
@@ -454,6 +488,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `druids` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 7
 - Imagen: `Groups/INWO - Druids.png`
 
 > Texto fuente:
@@ -469,6 +504,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `ecoguerillas` · runtime: `group` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Eco-Guerillas.png`
 
 > Texto fuente:
@@ -481,6 +517,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `eff` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - EFF.png`
 
 > Texto fuente:
@@ -495,6 +532,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `eldersofzion` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Elders of Zion.png`
 
 > Texto fuente:
@@ -511,6 +549,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `elvis` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Elvis.png`
 
 > Texto fuente:
@@ -525,6 +564,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `emptyvee` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Empty Vee.png`
 
 > Texto fuente:
@@ -539,6 +579,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `england` · runtime: `group` · oficial: `Plc.`
 - Power: 6 · Resistance: 2 · alineamientos: government, huge · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - England.png`
 
 > Texto fuente:
@@ -551,6 +592,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `evilgeniusesforabettertomorrow` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 3
 - Imagen: `Groups/INWO - Evil Geniuses for a Better Tomorrow.png`
 
 > Texto fuente:
@@ -567,6 +609,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `fbi` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - F.B.I..png`
 
 > Texto fuente:
@@ -579,6 +622,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `fastfoodchains` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Fast Food Chains.png`
 
 > Texto fuente:
@@ -597,6 +641,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `federalreserve` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Federal Reserve.png`
 
 > Texto fuente:
@@ -609,6 +654,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `feminists` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Feminists.png`
 
 > Texto fuente:
@@ -623,6 +669,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `fidelcastro` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - Fidel Castro.png`
 
 > Texto fuente:
@@ -639,6 +686,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `fiendishfluoridators` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Fiendish Fluoridators.png`
 
 > Texto fuente:
@@ -650,6 +698,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `finland` · runtime: `group` · oficial: `Plc.`
 - Power: 6 · Resistance: 5 · alineamientos: liberal, government, computer · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Finland.png`
 
 > Texto fuente:
@@ -662,6 +711,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `flatearthers` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Flat Earthers.png`
 
 > Texto fuente:
@@ -677,6 +727,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `fnordmotorcompany` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Fnord Motor Company.png`
 
 > Texto fuente:
@@ -691,6 +742,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `france` · runtime: `group` · oficial: `Plc.`
 - Power: 3 · Resistance: 5 · alineamientos: liberal, government, huge · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - France.png`
 
 > Texto fuente:
@@ -703,6 +755,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `fraternalorders` · runtime: `group` · oficial: `Grp.`
 - Power: 5 · Resistance: 5 · alineamientos: conservative · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Fraternal Orders.png`
 
 > Texto fuente:
@@ -716,6 +769,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `fredbirchsociety` · runtime: `group` · oficial: `Grp.`
 - Power: 4 · Resistance: 4 · alineamientos: conservative, straight · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Fred Birch Society.png`
 
 > Texto fuente:
@@ -730,6 +784,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `gayactivists` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Gay Activists.png`
 
 > Texto fuente:
@@ -743,6 +798,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `georgebush` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - George Bush.png`
 
 > Texto fuente:
@@ -755,6 +811,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `germany` · runtime: `group` · oficial: `Plc.`
 - Power: 4 · Resistance: 3 · alineamientos: conservative, government, huge · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Germany.png`
 
 > Texto fuente:
@@ -770,6 +827,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `girliemagazines` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Girlie Magazines.png`
 
 > Texto fuente:
@@ -781,6 +839,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `goldfishfanciers` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Goldfish Fanciers.png`
 
 > Texto fuente:
@@ -795,6 +854,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `gordoremora` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Gordo Remora.png`
 
 > Texto fuente:
@@ -810,6 +870,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `gunlobby` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Gun Lobby.png`
 
 > Texto fuente:
@@ -825,6 +886,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `hackers` · runtime: `group` · oficial: `Grp.`
 - Power: 3 · Resistance: 2 · alineamientos: weird, fanatic · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Hackers.png`
 
 > Texto fuente:
@@ -837,6 +899,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `hawaii` · runtime: `group` · oficial: `Plc.`
 - Power: 0 · Resistance: 2 · alineamientos: — · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Hawaii.png`
 
 > Texto fuente:
@@ -849,6 +912,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `hillaryclinton` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Hillary Clinton.png`
 
 > Texto fuente:
@@ -860,6 +924,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `hollywood` · runtime: `group` · oficial: `Plc.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
 - Imagen: `Groups/INWO - Hollywood.png`
 
 > Texto fuente:
@@ -874,6 +939,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `irs` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - I.R.S..png`
 
 > Texto fuente:
@@ -887,6 +953,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `imeldamarcos` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Imelda Marcos.png`
 
 > Texto fuente:
@@ -901,6 +968,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `intellectuals` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Intellectuals.png`
 
 > Texto fuente:
@@ -914,6 +982,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `internationalcocainesmugglers` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - International Cocaine Smugglers.png`
 
 > Texto fuente:
@@ -927,6 +996,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `internationalcommunistconspiracy` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - International Communist Conspiracy.png`
 
 > Texto fuente:
@@ -941,6 +1011,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `internationalweatherorganization` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - International Weather Organization.png`
 
 > Texto fuente:
@@ -954,6 +1025,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `israel` · runtime: `group` · oficial: `Plc.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 6
 - Imagen: `Groups/INWO - Israel.png`
 
 > Texto fuente:
@@ -967,6 +1039,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `italy` · runtime: `group` · oficial: `Plc.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Groups/INWO - Italy.png`
 
 > Texto fuente:
@@ -978,6 +1051,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `japan` · runtime: `group` · oficial: `Plc.`
 - Power: 6 · Resistance: 4 · alineamientos: peaceful, government, computer · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Japan.png`
 
 > Texto fuente:
@@ -988,6 +1062,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `jimmyhoffa` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Jimmy Hoffa.png`
 
 > Texto fuente:
@@ -1003,6 +1078,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `joggers` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Joggers.png`
 
 > Texto fuente:
@@ -1013,6 +1089,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `junkmail` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Junk Mail.png`
 
 > Texto fuente:
@@ -1027,6 +1104,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `kkk` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 5
 - Imagen: `Groups/INWO - KKK.png`
 
 > Texto fuente:
@@ -1039,6 +1117,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `l4society` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - L-4 Society.png`
 
 > Texto fuente:
@@ -1052,6 +1131,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `lasvegas` · runtime: `group` · oficial: `Plc.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Las Vegas.png`
 
 > Texto fuente:
@@ -1064,6 +1144,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `lawyers` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 6
 - Imagen: `Groups/INWO - Lawyers.png`
 
 > Texto fuente:
@@ -1076,6 +1157,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `libertarians` · runtime: `group` · oficial: `Grp.`
 - Power: 4 · Resistance: 4 · alineamientos: fanatic · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Libertarians.png`
 
 > Texto fuente:
@@ -1090,6 +1172,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `liquorcompanies` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Liquor Companies.png`
 
 > Texto fuente:
@@ -1106,6 +1189,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `loansharks` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Loan Sharks.png`
 
 > Texto fuente:
@@ -1117,6 +1201,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `localpolicedepartments` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Local Police Departments.png`
 
 > Texto fuente:
@@ -1127,6 +1212,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `madisonavenue` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Madison Avenue.png`
 
 > Texto fuente:
@@ -1140,6 +1226,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `manuelnoriega` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Manuel Noriega.png`
 
 > Texto fuente:
@@ -1154,6 +1241,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `margaretthatcher` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: no-text-pending; OCR missing; menciones oficiales 0
 - Imagen: `Groups/INWO - Margaret Thatcher.png`
 
 > Texto fuente:
@@ -1164,6 +1252,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `mediasensation` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 5
 - Imagen: `Groups/INWO - Media Sensation.png`
 
 > Texto fuente:
@@ -1179,6 +1268,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `mi5` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - MI-5.png`
 
 > Texto fuente:
@@ -1193,6 +1283,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `moonbase` · runtime: `group` · oficial: `Plc.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
 - Imagen: `Groups/INWO - Moonbase.png`
 
 > Texto fuente:
@@ -1209,6 +1300,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `moonies` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Moonies.png`
 
 > Texto fuente:
@@ -1223,6 +1315,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `moralminority` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Moral Minority.png`
 
 > Texto fuente:
@@ -1234,6 +1327,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `mossad` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 1 · alineamientos: violent, government · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Mossad.png`
 
 > Texto fuente:
@@ -1247,6 +1341,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `multinationaloilcompanies` · runtime: `group` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Multinational Oil Companies.png`
 
 > Texto fuente:
@@ -1259,6 +1354,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `nsa` · runtime: `group` · oficial: `Grp.`
 - Power: 5 · Resistance: 2 · alineamientos: government, computer · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - N.S.A..png`
 
 > Texto fuente:
@@ -1274,6 +1370,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `nancyreagan` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Nancy Reagan.png`
 
 > Texto fuente:
@@ -1284,6 +1381,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `nasa` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - NASA.png`
 
 > Texto fuente:
@@ -1299,6 +1397,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `nato` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - NATO.png`
 
 > Texto fuente:
@@ -1310,6 +1409,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `nephewsofgod` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 1 · alineamientos: conservative, fanatic · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Nephews of God.png`
 
 > Texto fuente:
@@ -1324,6 +1424,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `newyork` · runtime: `group` · oficial: `Plc.`
 - Power: 7 · Resistance: 8 · alineamientos: government, violent, criminal · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - New York.png`
 
 > Texto fuente:
@@ -1335,6 +1436,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `ninjas` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Groups/INWO - Ninjas.png`
 
 > Texto fuente:
@@ -1349,6 +1451,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `nuclearpowercompanies` · runtime: `group` · oficial: `Grp.`
 - Power: 4 · Resistance: null · alineamientos: conservative, corporate, science · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Nuclear Power Companies.png`
 
 > Texto fuente:
@@ -1361,6 +1464,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `offshorebanks` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Offshore Banks.png`
 
 > Texto fuente:
@@ -1376,6 +1480,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `ollienorth` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: no-text-pending; OCR missing; menciones oficiales 0
 - Imagen: `Groups/INWO - Ollie North.png`
 
 > Texto fuente:
@@ -1386,6 +1491,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `opec` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 7
 - Imagen: `Groups/INWO - OPEC.png`
 
 > Texto fuente:
@@ -1401,6 +1507,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `orbitone` · runtime: `group` · oficial: `Plc.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 11
 - Imagen: `Groups/INWO - Orbit One.png`
 
 > Texto fuente:
@@ -1414,6 +1521,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `paranoids` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Paranoids.png`
 
 > Texto fuente:
@@ -1431,6 +1539,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `pentagon` · runtime: `group` · oficial: `Plc.`
 - Power: 6 · Resistance: 6 · alineamientos: government, violent, straight, conservative · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Pentagon.png`
 
 > Texto fuente:
@@ -1441,6 +1550,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `phonecompany` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Phone Company.png`
 
 > Texto fuente:
@@ -1460,6 +1570,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `phonephreaks` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
 - Imagen: `Groups/INWO - Phone Phreaks.png`
 
 > Texto fuente:
@@ -1476,6 +1587,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `pollsters` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Pollsters.png`
 
 > Texto fuente:
@@ -1491,6 +1603,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `postoffice` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Post Office.png`
 
 > Texto fuente:
@@ -1507,6 +1620,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `princecharles` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Prince Charles.png`
 
 > Texto fuente:
@@ -1524,6 +1638,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `princessdi` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Princess Di.png`
 
 > Texto fuente:
@@ -1538,6 +1653,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `professionalsports` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Professional Sports.png`
 
 > Texto fuente:
@@ -1550,6 +1666,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `psychiatrists` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Psychiatrists.png`
 
 > Texto fuente:
@@ -1565,6 +1682,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `punkrockers` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Punk Rockers.png`
 
 > Texto fuente:
@@ -1578,6 +1696,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `pyramidmarketingschemes` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
 - Imagen: `Groups/INWO - Pyramid Marketing Schemes.png`
 
 > Texto fuente:
@@ -1588,6 +1707,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `recordingindustry` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Recording Industry.png`
 
 > Texto fuente:
@@ -1599,6 +1719,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `redcross` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Red Cross.png`
 
 > Texto fuente:
@@ -1616,6 +1737,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `reformedchurchofsatan` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Reformed Church of Satan.png`
 
 > Texto fuente:
@@ -1630,6 +1752,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `religiousreich` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Religious Reich.png`
 
 > Texto fuente:
@@ -1643,6 +1766,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `republicans` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Republicans.png`
 
 > Texto fuente:
@@ -1658,6 +1782,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `rifkinites` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Rifkinites.png`
 
 > Texto fuente:
@@ -1673,6 +1798,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `robotseamonsters` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Robot Sea Monsters.png`
 
 > Texto fuente:
@@ -1685,6 +1811,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `ronaldreagan` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Ronald Reagan.png`
 
 > Texto fuente:
@@ -1699,6 +1826,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `rosicrucians` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Rosicrucians.png`
 
 > Texto fuente:
@@ -1714,6 +1842,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `rossperot` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Ross Perot.png`
 
 > Texto fuente:
@@ -1728,6 +1857,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `russia` · runtime: `group` · oficial: `Plc.`
 - Power: 4 · Resistance: 4 · alineamientos: violent, government, huge · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Russia.png`
 
 > Texto fuente:
@@ -1743,6 +1873,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `smof` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - S.M.O.F..png`
 
 > Texto fuente:
@@ -1758,6 +1889,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `saddamhussein` · runtime: `group` · oficial: `Per.`
 - Power: 5 · Resistance: 4 · alineamientos: government, violent · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Saddam Hussein.png`
 
 > Texto fuente:
@@ -1772,6 +1904,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `saturdaymorningcartoons` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Saturday Morning Cartoons.png`
 
 > Texto fuente:
@@ -1786,6 +1919,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `savingsandloans` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Savings and Loans.png`
 
 > Texto fuente:
@@ -1801,6 +1935,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `sciencefictionfans` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Science Fiction Fans.png`
 
 > Texto fuente:
@@ -1813,6 +1948,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `secretservice` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Secret Service.png`
 
 > Texto fuente:
@@ -1826,6 +1962,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `secularhumanists` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Secular Humanists.png`
 
 > Texto fuente:
@@ -1838,6 +1975,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `semiconsciousliberationarmy` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
 - Imagen: `Groups/INWO - Semiconscious Liberation Army.png`
 
 > Texto fuente:
@@ -1848,6 +1986,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `siliconvalley` · runtime: `group` · oficial: `Plc.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
 - Imagen: `Groups/INWO - Silicon Valley.png`
 
 > Texto fuente:
@@ -1860,6 +1999,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `societyforcreativeanarchism` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Society for Creative Anarchism.png`
 
 > Texto fuente:
@@ -1873,6 +2013,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `southamericannazis` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - South American Nazis.png`
 
 > Texto fuente:
@@ -1884,6 +2025,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `stonehenge` · runtime: `group` · oficial: `Plc.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 7
 - Imagen: `Groups/INWO - Stonehenge.png`
 
 > Texto fuente:
@@ -1894,6 +2036,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `subliminals` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Subliminals.png`
 
 > Texto fuente:
@@ -1906,6 +2049,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `supremecourt` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Supreme Court.png`
 
 > Texto fuente:
@@ -1917,6 +2061,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `survivalists` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Survivalists.png`
 
 > Texto fuente:
@@ -1930,6 +2075,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `switzerland` · runtime: `group` · oficial: `Plc.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 5
 - Imagen: `Groups/INWO - Switzerland.png`
 
 > Texto fuente:
@@ -1944,6 +2090,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `tabloids` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Tabloids.png`
 
 > Texto fuente:
@@ -1959,6 +2106,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `telephonepsychics` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Telephone Psychics.png`
 
 > Texto fuente:
@@ -1969,6 +2117,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `templars` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - Templars.png`
 
 > Texto fuente:
@@ -1982,6 +2131,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `texas` · runtime: `group` · oficial: `Plc.`
 - Power: 14 · Resistance: 9 · alineamientos: government, violent, conservative, huge · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Texas.png`
 
 > Texto fuente:
@@ -2000,6 +2150,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `thegreatpyramid` · runtime: `group` · oficial: `Plc.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - The Great Pyramid.png`
 
 > Texto fuente:
@@ -2016,6 +2167,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `themafia` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
 - Imagen: `Groups/INWO - The Mafia.png`
 
 > Texto fuente:
@@ -2027,6 +2179,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `themeninblack` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - The Men in Black.png`
 
 > Texto fuente:
@@ -2041,6 +2194,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `tobaccocompanies` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Tobacco Companies.png`
 
 > Texto fuente:
@@ -2053,6 +2207,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `tradingcardgames` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Groups/INWO - Trading Card Games.png`
 
 > Texto fuente:
@@ -2068,6 +2223,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `trekkies` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Trekkies.png`
 
 > Texto fuente:
@@ -2080,6 +2236,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `triliberalcommission` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - Triliberal Commission.png`
 
 > Texto fuente:
@@ -2093,6 +2250,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `tvpreachers` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 3
 - Imagen: `Groups/INWO - TV Preachers.png`
 
 > Texto fuente:
@@ -2107,6 +2265,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `undergroundnewspapers` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Underground Newspapers.png`
 
 > Texto fuente:
@@ -2119,6 +2278,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `unitednations` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - United Nations.png`
 
 > Texto fuente:
@@ -2129,6 +2289,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `urbangangs` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Urban Gangs.png`
 
 > Texto fuente:
@@ -2140,6 +2301,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `vampires` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 5
 - Imagen: `Groups/INWO - Vampires.png`
 
 > Texto fuente:
@@ -2156,6 +2318,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `vaticancity` · runtime: `group` · oficial: `Plc.`
 - Power: 4 · Resistance: 4 · alineamientos: peaceful, conservative · estimado: no
 - Mecánica: `sin-effect` · estado: **implemented** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Vatican City.png`
 
 > Texto fuente:
@@ -2166,6 +2329,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `videogames` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Groups/INWO - Video Games.png`
 
 > Texto fuente:
@@ -2178,6 +2342,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `voudonistas` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Voudonistas.png`
 
 > Texto fuente:
@@ -2192,6 +2357,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `witch` · runtime: `group` · oficial: `Grp.`
 - Power: 3 · Resistance: 3 · alineamientos: weird, violent, fanatic, magic · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - W.I.T.C.H..png`
 
 > Texto fuente:
@@ -2204,6 +2370,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `wallstreet` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 11
 - Imagen: `Groups/INWO - Wall Street.png`
 
 > Texto fuente:
@@ -2217,6 +2384,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `wargamers` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: null · alineamientos: weird · estimado: no
 - Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Wargamers.png`
 
 > Texto fuente:
@@ -2229,6 +2397,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `adeptsofhermes1` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 8 · Resistance: null · alineamientos: — · estimado: no
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Adepts of Hermes 1.png`
 
 > Texto fuente:
@@ -2239,6 +2408,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `adeptsofhermes2` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 8 · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Adepts of Hermes 2.png`
 
 > Texto fuente:
@@ -2249,6 +2419,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `bavarianilluminati1` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 10 · Resistance: null · alineamientos: — · estimado: no
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Bavarian Illuminati 1.png`
 
 > Texto fuente:
@@ -2259,6 +2430,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `bavarianilluminati2` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 10 · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Bavarian Illuminati 2.png`
 
 > Texto fuente:
@@ -2269,6 +2441,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `bermudatriangle1` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 8 · Resistance: null · alineamientos: — · estimado: no
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Bermuda Triangle 1.png`
 
 > Texto fuente:
@@ -2279,6 +2452,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `bermudatriangle2` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 8 · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Bermuda Triangle 2.png`
 
 > Texto fuente:
@@ -2289,6 +2463,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `discordiansociety1` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 8 · Resistance: null · alineamientos: — · estimado: no
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Discordian Society 1.png`
 
 > Texto fuente:
@@ -2299,6 +2474,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `discordiansociety2` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 8 · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Discordian Society 2.png`
 
 > Texto fuente:
@@ -2309,6 +2485,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `gnomesofzurich1` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 8 · Resistance: null · alineamientos: — · estimado: no
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Gnomes of Zurich 1.png`
 
 > Texto fuente:
@@ -2319,6 +2496,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `gnomesofzurich2` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 8 · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Gnomes of Zurich 2.png`
 
 > Texto fuente:
@@ -2329,6 +2507,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `servantsofcthulhu1` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 9 · Resistance: null · alineamientos: — · estimado: no
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Servants of Cthulhu 1.png`
 
 > Texto fuente:
@@ -2339,6 +2518,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `servantsofcthulhu2` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 9 · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Servants of Cthulhu 2.png`
 
 > Texto fuente:
@@ -2349,6 +2529,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `shangrila1` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 8 · Resistance: null · alineamientos: — · estimado: no
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Shangri-La 1.png`
 
 > Texto fuente:
@@ -2359,6 +2540,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `shangrila2` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 8 · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Shangri-La 2.png`
 
 > Texto fuente:
@@ -2369,6 +2551,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `thenetwork1` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 8 · Resistance: null · alineamientos: — · estimado: no
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - The Network 1.png`
 
 > Texto fuente:
@@ -2379,6 +2562,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `thenetwork2` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 8 · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - The Network 2.png`
 
 > Texto fuente:
@@ -2389,6 +2573,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `ufos1` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 8 · Resistance: null · alineamientos: — · estimado: no
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - UFOs 1.png`
 
 > Texto fuente:
@@ -2399,6 +2584,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `ufos2` · runtime: `illuminati` · oficial: `Ill.`
 - Power: 8 · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - UFOs 2.png`
 
 > Texto fuente:
@@ -2409,6 +2595,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `18andahalfminutegap` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - 18 and a Half Minute Gap.png`
 
 > Texto fuente:
@@ -2424,6 +2611,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `athousandpointsoflight` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - A Thousand Points of Light.png`
 
 > Texto fuente:
@@ -2438,6 +2626,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `agentinplace` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Agent in Place.png`
 
 > Texto fuente:
@@ -2452,6 +2641,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `airmagic` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Air Magic.png`
 
 > Texto fuente:
@@ -2469,6 +2659,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `albinoalligators` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 10
 - Imagen: `Plots/INWO - Albino Alligators.png`
 
 > Texto fuente:
@@ -2483,6 +2674,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `alternategoals` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Alternate Goals.png`
 
 > Texto fuente:
@@ -2494,6 +2686,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `anofferyoucantrefuse` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - An Offer You Can_t Refuse.png`
 
 > Texto fuente:
@@ -2508,6 +2701,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `andstaydead` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - And STAY Dead!.png`
 
 > Texto fuente:
@@ -2523,6 +2717,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `angelsfeather` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Angel_s Feather.png`
 
 > Texto fuente:
@@ -2538,6 +2733,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `angst` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Angst.png`
 
 > Texto fuente:
@@ -2556,6 +2752,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `annualconvention` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Annual Convention.png`
 
 > Texto fuente:
@@ -2575,6 +2772,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `arewehavingfunyet` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Are We Having Fun Yet.png`
 
 > Texto fuente:
@@ -2592,6 +2790,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `arkofthecovenant` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Ark of the Covenant.png`
 
 > Texto fuente:
@@ -2611,6 +2810,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `assertivenesstraining` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 10
 - Imagen: `Plots/INWO - Assertiveness Training.png`
 
 > Texto fuente:
@@ -2628,6 +2828,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `atomicmonster` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Atomic Monster.png`
 
 > Texto fuente:
@@ -2643,6 +2844,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `backlash` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Backlash.png`
 
 > Texto fuente:
@@ -2659,6 +2861,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `bankmerger` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 10
 - Imagen: `Plots/INWO - Bank Merger.png`
 
 > Texto fuente:
@@ -2674,6 +2877,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `benefitconcert` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Benefit Concert.png`
 
 > Texto fuente:
@@ -2689,6 +2893,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `bigfoot` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Bigfoot.png`
 
 > Texto fuente:
@@ -2702,6 +2907,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `biggerbusiness` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Bigger Business.png`
 
 > Texto fuente:
@@ -2714,6 +2920,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `bimboateleven` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
 - Imagen: `Plots/INWO - Bimbo at Eleven.png`
 
 > Texto fuente:
@@ -2731,6 +2938,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `blitzkrieg` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Blitzkrieg.png`
 
 > Texto fuente:
@@ -2743,6 +2951,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `bloodtoiltearsandsweat` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Blood, Toil, Tears and Sweat.png`
 
 > Texto fuente:
@@ -2757,6 +2966,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `bodyguard` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Bodyguard.png`
 
 > Texto fuente:
@@ -2773,6 +2983,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `bookofkells` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Book of Kells.png`
 
 > Texto fuente:
@@ -2790,6 +3001,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `botchedcontact` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Botched Contact.png`
 
 > Texto fuente:
@@ -2804,6 +3016,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `bribery` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 5
 - Imagen: `Plots/INWO - Bribery.png`
 
 > Texto fuente:
@@ -2821,6 +3034,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `carbomb` · runtime: `plot` · oficial: `Ass.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `assassination` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Car Bomb.png`
 
 > Texto fuente:
@@ -2834,6 +3048,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `celebrityspokesman` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Celebrity Spokesman.png`
 
 > Texto fuente:
@@ -2849,6 +3064,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `censorship` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Censorship.png`
 
 > Texto fuente:
@@ -2863,6 +3079,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `centerforweirdstudies` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Center for Weird Studies.png`
 
 > Texto fuente:
@@ -2881,6 +3098,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `charismaticleader` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Charismatic Leader.png`
 
 > Texto fuente:
@@ -2899,6 +3117,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `chickenineverypot` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Chicken in Every Pot.png`
 
 > Texto fuente:
@@ -2911,6 +3130,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `citizenshipaward` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Citizenship Award.png`
 
 > Texto fuente:
@@ -2928,6 +3148,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `clipperchip` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 8
 - Imagen: `Plots/INWO - Clipper Chip.png`
 
 > Texto fuente:
@@ -2944,6 +3165,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `clone` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Clone.png`
 
 > Texto fuente:
@@ -2960,6 +3182,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `coldfusion` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Cold Fusion.png`
 
 > Texto fuente:
@@ -2975,6 +3198,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `combineddisasters` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 6
 - Imagen: `Plots/INWO - Combined Disasters.png`
 
 > Texto fuente:
@@ -2989,6 +3213,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `commitment` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Commitment.png`
 
 > Texto fuente:
@@ -3005,6 +3230,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `computersecurity` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Computer Security.png`
 
 > Texto fuente:
@@ -3021,6 +3247,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `computervirus` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Computer Virus.png`
 
 > Texto fuente:
@@ -3036,6 +3263,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `corruption` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Corruption.png`
 
 > Texto fuente:
@@ -3050,6 +3278,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `counterrevolution` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Counter-Revolution.png`
 
 > Texto fuente:
@@ -3068,6 +3297,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `counterspell` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Counterspell.png`
 
 > Texto fuente:
@@ -3085,6 +3315,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `coverofdarkness` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Cover of Darkness.png`
 
 > Texto fuente:
@@ -3100,6 +3331,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `coverup` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Cover-Up.png`
 
 > Texto fuente:
@@ -3116,6 +3348,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `criminaloverlords` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Criminal Overlords.png`
 
 > Texto fuente:
@@ -3127,6 +3360,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `cropcircles` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Crop Circles.png`
 
 > Texto fuente:
@@ -3150,6 +3384,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `crystalskull` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Crystal Skull.png`
 
 > Texto fuente:
@@ -3167,6 +3402,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `currencyspeculation` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Currency Speculation.png`
 
 > Texto fuente:
@@ -3177,6 +3413,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `cyborgsoldiers` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Cyborg Soldiers.png`
 
 > Texto fuente:
@@ -3189,6 +3426,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `deasilengine` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Deasil Engine.png`
 
 > Texto fuente:
@@ -3203,6 +3441,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `deathmask` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Death Mask.png`
 
 > Texto fuente:
@@ -3220,6 +3459,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `deepagent` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Deep Agent.png`
 
 > Texto fuente:
@@ -3234,6 +3474,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `dictatorship` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Dictatorship.png`
 
 > Texto fuente:
@@ -3248,6 +3489,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `dollarsfordecency` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 5
 - Imagen: `Plots/INWO - Dollars for Decency.png`
 
 > Texto fuente:
@@ -3263,6 +3505,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `dontforgettosmashthestate` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Don_t Forget to Smash the State.png`
 
 > Texto fuente:
@@ -3278,6 +3521,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `doublecross` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Double-Cross.png`
 
 > Texto fuente:
@@ -3292,6 +3536,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `earlywarning` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Early Warning.png`
 
 > Texto fuente:
@@ -3303,6 +3548,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `earthmagic` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Earth Magic.png`
 
 > Texto fuente:
@@ -3315,6 +3561,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `earthquakeprojector` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Earthquake Projector.png`
 
 > Texto fuente:
@@ -3326,6 +3573,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `earthquake` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Earthquake.png`
 
 > Texto fuente:
@@ -3340,6 +3588,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `eattherich` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Eat the Rich!.png`
 
 > Texto fuente:
@@ -3358,6 +3607,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `eliza` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 11
 - Imagen: `Plots/INWO - Eliza.png`
 
 > Texto fuente:
@@ -3372,6 +3622,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `embezzlement` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Embezzlement.png`
 
 > Texto fuente:
@@ -3387,6 +3638,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `emergencypowers` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Emergency Powers.png`
 
 > Texto fuente:
@@ -3404,6 +3656,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `energycrisis` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Energy Crisis.png`
 
 > Texto fuente:
@@ -3416,6 +3669,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `epidemic` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Epidemic.png`
 
 > Texto fuente:
@@ -3430,6 +3684,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `exposed` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Exposed!.png`
 
 > Texto fuente:
@@ -3446,6 +3701,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `factionfight` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Faction Fight.png`
 
 > Texto fuente:
@@ -3459,6 +3715,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `fearandloathing` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Fear and Loathing.png`
 
 > Texto fuente:
@@ -3471,6 +3728,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `flowerpower` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Flower Power.png`
 
 > Texto fuente:
@@ -3486,6 +3744,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `flyingsaucer` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 7
 - Imagen: `Plots/INWO - Flying Saucer.png`
 
 > Texto fuente:
@@ -3505,6 +3764,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `fnord` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Fnord!.png`
 
 > Texto fuente:
@@ -3541,6 +3801,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `foiled` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Foiled!.png`
 
 > Texto fuente:
@@ -3554,6 +3815,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `forgery` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 5
 - Imagen: `Plots/INWO - Forgery.png`
 
 > Texto fuente:
@@ -3569,6 +3831,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `fratricide` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
 - Imagen: `Plots/INWO - Fratricide.png`
 
 > Texto fuente:
@@ -3586,6 +3849,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `freakingthemundanes` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 3
 - Imagen: `Plots/INWO - Freaking the Mundanes.png`
 
 > Texto fuente:
@@ -3601,6 +3865,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `fullmoon` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 8
 - Imagen: `Plots/INWO - Full Moon.png`
 
 > Texto fuente:
@@ -3617,6 +3882,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `fundiemoney` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Fundie Money.png`
 
 > Texto fuente:
@@ -3634,6 +3900,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `gangwar` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Gang War.png`
 
 > Texto fuente:
@@ -3649,6 +3916,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `georgethejanitor` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - George the Janitor.png`
 
 > Texto fuente:
@@ -3664,6 +3932,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `giantkudzu` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Giant Kudzu.png`
 
 > Texto fuente:
@@ -3681,6 +3950,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `goodpolls` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Good Polls.png`
 
 > Texto fuente:
@@ -3692,6 +3962,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `grassrootssupport` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Grassroots Support.png`
 
 > Texto fuente:
@@ -3708,6 +3979,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `gremlins` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Gremlins.png`
 
 > Texto fuente:
@@ -3723,6 +3995,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `guncontrol` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Gun Control.png`
 
 > Texto fuente:
@@ -3734,6 +4007,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `haileris` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
 - Imagen: `Plots/INWO - Hail Eris!.png`
 
 > Texto fuente:
@@ -3746,6 +4020,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `hallucinations` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Hallucinations.png`
 
 > Texto fuente:
@@ -3759,6 +4034,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `hammerofthor` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Hammer of Thor.png`
 
 > Texto fuente:
@@ -3772,6 +4048,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `harmonicavirgins` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Harmonica Virgins.png`
 
 > Texto fuente:
@@ -3787,6 +4064,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `hattrick` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 3
 - Imagen: `Plots/INWO - Hat Trick.png`
 
 > Texto fuente:
@@ -3801,6 +4079,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `headinajar` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Head in a Jar.png`
 
 > Texto fuente:
@@ -3818,6 +4097,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `hex` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Hex.png`
 
 > Texto fuente:
@@ -3833,6 +4113,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `hiddencity` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Hidden City.png`
 
 > Texto fuente:
@@ -3848,6 +4129,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `hiddeninfluence` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Hidden Influence.png`
 
 > Texto fuente:
@@ -3862,6 +4144,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `hitandrun` · runtime: `plot` · oficial: `Ass.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `assassination` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Hit and Run.png`
 
 > Texto fuente:
@@ -3875,6 +4158,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `hitlersbrain` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Hitler_s Brain.png`
 
 > Texto fuente:
@@ -3890,6 +4174,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `hoax` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 7
 - Imagen: `Plots/INWO - Hoax.png`
 
 > Texto fuente:
@@ -3906,6 +4191,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `hurricane` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Hurricane.png`
 
 > Texto fuente:
@@ -3919,6 +4205,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `ilied` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 7
 - Imagen: `Plots/INWO - I Lied.png`
 
 > Texto fuente:
@@ -3934,6 +4221,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `immortalityserum` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Immortality Serum.png`
 
 > Texto fuente:
@@ -3954,6 +4242,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `imposter` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Imposter.png`
 
 > Texto fuente:
@@ -3970,6 +4259,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `infobahn` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Infobahn.png`
 
 > Texto fuente:
@@ -3985,6 +4275,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `interference` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Interference.png`
 
 > Texto fuente:
@@ -3999,6 +4290,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `jakeday` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Jake Day.png`
 
 > Texto fuente:
@@ -4016,6 +4308,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `jihad` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Jihad.png`
 
 > Texto fuente:
@@ -4031,6 +4324,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `justsayno` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Just Say No.png`
 
 > Texto fuente:
@@ -4046,6 +4340,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `ketchupisavegetable` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Ketchup is a Vegetable.png`
 
 > Texto fuente:
@@ -4060,6 +4355,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `killforpeace` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Kill for Peace.png`
 
 > Texto fuente:
@@ -4073,6 +4369,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `kinderandgentler` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Kinder and Gentler.png`
 
 > Texto fuente:
@@ -4092,6 +4389,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `lawandorder` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Law and Order.png`
 
 > Texto fuente:
@@ -4105,6 +4403,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `letthemeatcake` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Let Them Eat Cake!.png`
 
 > Texto fuente:
@@ -4119,6 +4418,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `letsgetorganized` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Let_s Get Organized.png`
 
 > Texto fuente:
@@ -4137,6 +4437,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `letsgetreallyorganized` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Let_s Get REALLY Organized.png`
 
 > Texto fuente:
@@ -4154,6 +4455,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `letsyouandhimfight` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Let_s You and Him Fight.png`
 
 > Texto fuente:
@@ -4173,6 +4475,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `liberalagenda` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Liberal Agenda.png`
 
 > Texto fuente:
@@ -4190,6 +4493,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `lochnessmonster` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Loch Ness Monster.png`
 
 > Texto fuente:
@@ -4203,6 +4507,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `logicbomb` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Logic Bomb.png`
 
 > Texto fuente:
@@ -4217,6 +4522,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `marchonwashington` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 7
 - Imagen: `Plots/INWO - March on Washington.png`
 
 > Texto fuente:
@@ -4233,6 +4539,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `marketmanipulation` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Market Manipulation.png`
 
 > Texto fuente:
@@ -4252,6 +4559,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `martiallaw` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Martial Law.png`
 
 > Texto fuente:
@@ -4267,6 +4575,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `martyrs` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Martyrs.png`
 
 > Texto fuente:
@@ -4284,6 +4593,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `massmurder` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Mass Murder.png`
 
 > Texto fuente:
@@ -4302,6 +4612,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `mediablitz` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Media Blitz.png`
 
 > Texto fuente:
@@ -4320,6 +4631,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `mediaconnections` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Media Connections.png`
 
 > Texto fuente:
@@ -4335,6 +4647,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `mercenaries` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Mercenaries.png`
 
 > Texto fuente:
@@ -4347,6 +4660,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `messiah` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
 - Imagen: `Plots/INWO - Messiah.png`
 
 > Texto fuente:
@@ -4363,6 +4677,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `meteorstrike` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Meteor Strike.png`
 
 > Texto fuente:
@@ -4376,6 +4691,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `midasmill` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Midas Mill.png`
 
 > Texto fuente:
@@ -4391,6 +4707,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `militaryindustrialcomplex` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Military-Industrial Complex.png`
 
 > Texto fuente:
@@ -4403,6 +4720,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `miracledietplan` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Miracle Diet Plan.png`
 
 > Texto fuente:
@@ -4421,6 +4739,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `mistakenidentity` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Mistaken Identity.png`
 
 > Texto fuente:
@@ -4436,6 +4755,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `mobinfluence` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Mob Influence.png`
 
 > Texto fuente:
@@ -4452,6 +4772,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `monopoly` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Monopoly.png`
 
 > Texto fuente:
@@ -4467,6 +4788,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `mothersmarch` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Mothers_ March.png`
 
 > Texto fuente:
@@ -4481,6 +4803,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `murphyslaw` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Murphy_s Law.png`
 
 > Texto fuente:
@@ -4495,6 +4818,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `mutualbetrayal` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Mutual Betrayal.png`
 
 > Texto fuente:
@@ -4511,6 +4835,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `nationalization` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Nationalization.png`
 
 > Texto fuente:
@@ -4528,6 +4853,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `necronomicon` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 5
 - Imagen: `Plots/INWO - Necronomicon.png`
 
 > Texto fuente:
@@ -4542,6 +4868,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `neversurrender` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Never Surrender.png`
 
 > Texto fuente:
@@ -4558,6 +4885,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `newblood` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - New Blood.png`
 
 > Texto fuente:
@@ -4573,6 +4901,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `newfederalbudget` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - New Federal Budget.png`
 
 > Texto fuente:
@@ -4588,6 +4917,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `niceideaitsminenow` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Nice Idea. It_s Mine Now..png`
 
 > Texto fuente:
@@ -4603,6 +4933,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `nobelpeaceprize` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 3
 - Imagen: `Plots/INWO - Nobel Peace Prize.png`
 
 > Texto fuente:
@@ -4619,6 +4950,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `nuclearaccident` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Nuclear Accident.png`
 
 > Texto fuente:
@@ -4635,6 +4967,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `opportunityknocks` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Opportunity Knocks.png`
 
 > Texto fuente:
@@ -4653,6 +4986,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `orbitalmindcontrollasers` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Orbital Mind Control Lasers.png`
 
 > Texto fuente:
@@ -4669,6 +5003,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `payoff` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Payoff.png`
 
 > Texto fuente:
@@ -4682,6 +5017,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `peaceinourtime` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Peace in Our Time.png`
 
 > Texto fuente:
@@ -4697,6 +5033,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `perpetualmotionmachine` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 3
 - Imagen: `Plots/INWO - Perpetual Motion Machine.png`
 
 > Texto fuente:
@@ -4711,6 +5048,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `plagueofdemons` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Plague of Demons.png`
 
 > Texto fuente:
@@ -4729,6 +5067,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `pledgedrive` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Pledge Drive.png`
 
 > Texto fuente:
@@ -4744,6 +5083,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `poison` · runtime: `plot` · oficial: `Ass.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `assassination` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Poison.png`
 
 > Texto fuente:
@@ -4758,6 +5098,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `politicalcorrectness` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Political Correctness.png`
 
 > Texto fuente:
@@ -4772,6 +5113,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `powercorrupts` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Power Corrupts.png`
 
 > Texto fuente:
@@ -4788,6 +5130,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `powerforitsownsake` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Power for its Own Sake.png`
 
 > Texto fuente:
@@ -4798,6 +5141,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `powergrab` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
 - Imagen: `Plots/INWO - Power Grab.png`
 
 > Texto fuente:
@@ -4812,6 +5156,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `powertothepeople` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Power to the People.png`
 
 > Texto fuente:
@@ -4826,6 +5171,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `principiadiscordia` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Principia Discordia.png`
 
 > Texto fuente:
@@ -4841,6 +5187,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `privatization` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Privatization.png`
 
 > Texto fuente:
@@ -4861,6 +5208,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `privilegedattack` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Privileged Attack.png`
 
 > Texto fuente:
@@ -4876,6 +5224,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `pulitzerprize` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Pulitzer Prize.png`
 
 > Texto fuente:
@@ -4891,6 +5240,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `purge` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Purge.png`
 
 > Texto fuente:
@@ -4909,6 +5259,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `rainoffrogs` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Rain of Frogs.png`
 
 > Texto fuente:
@@ -4924,6 +5275,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `reachout` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Reach Out . . ..png`
 
 > Texto fuente:
@@ -4940,6 +5292,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `readmylips` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Read My Lips.png`
 
 > Texto fuente:
@@ -4954,6 +5307,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `redscare` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Red Scare.png`
 
 > Texto fuente:
@@ -4969,6 +5323,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `reload` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Reload!.png`
 
 > Texto fuente:
@@ -4984,6 +5339,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `reorganization` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Reorganization.png`
 
 > Texto fuente:
@@ -4997,6 +5353,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `resistanceisuseless` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Resistance is Useless!.png`
 
 > Texto fuente:
@@ -5014,6 +5371,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `revolution` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Revolution!.png`
 
 > Texto fuente:
@@ -5028,6 +5386,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `rewritinghistory` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Rewriting History.png`
 
 > Texto fuente:
@@ -5045,6 +5404,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `rogueboomer` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Rogue Boomer.png`
 
 > Texto fuente:
@@ -5058,6 +5418,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `sabotage` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Sabotage.png`
 
 > Texto fuente:
@@ -5074,6 +5435,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `savethewhales` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Save the Whales.png`
 
 > Texto fuente:
@@ -5091,6 +5453,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `savingsloanscam` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Savings & Loan Scam.png`
 
 > Texto fuente:
@@ -5102,6 +5465,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `scandal` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Scandal.png`
 
 > Texto fuente:
@@ -5118,6 +5482,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `secretsmanwasnotmeanttoknow` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Secrets Man Was Not Meant to Know.png`
 
 > Texto fuente:
@@ -5135,6 +5500,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `seizethetime` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Seize the Time!.png`
 
 > Texto fuente:
@@ -5153,6 +5519,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `selfesteem` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Self-Esteem.png`
 
 > Texto fuente:
@@ -5168,6 +5535,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `senateinvestigatingcommittee` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Senate Investigating Committee.png`
 
 > Texto fuente:
@@ -5187,6 +5555,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `shroudofturin` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Shroud of Turin.png`
 
 > Texto fuente:
@@ -5204,6 +5573,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `slushfund` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Slush Fund.png`
 
 > Texto fuente:
@@ -5219,6 +5589,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `sniper` · runtime: `plot` · oficial: `Ass.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `assassination` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Sniper.png`
 
 > Texto fuente:
@@ -5232,6 +5603,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `solidarity` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Solidarity.png`
 
 > Texto fuente:
@@ -5245,6 +5617,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `soulburner` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Soulburner.png`
 
 > Texto fuente:
@@ -5261,6 +5634,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `spasmofviolence` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Spasm of Violence.png`
 
 > Texto fuente:
@@ -5277,6 +5651,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `spearoflonginus` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 5
 - Imagen: `Plots/INWO - Spear of Longinus.png`
 
 > Texto fuente:
@@ -5291,6 +5666,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `stealingtheplans` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Stealing the Plans.png`
 
 > Texto fuente:
@@ -5305,6 +5681,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `stocksplit` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Stock Split.png`
 
 > Texto fuente:
@@ -5320,6 +5697,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `straightenup` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Straighten Up.png`
 
 > Texto fuente:
@@ -5337,6 +5715,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `suckeddryandcastaside` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
 - Imagen: `Plots/INWO - Sucked Dry and Cast Aside!.png`
 
 > Texto fuente:
@@ -5348,6 +5727,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `suicidesquad` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Suicide Squad.png`
 
 > Texto fuente:
@@ -5365,6 +5745,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `sweepingreforms` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Sweeping Reforms.png`
 
 > Texto fuente:
@@ -5380,6 +5761,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `sweepstakesprize` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Sweepstakes Prize.png`
 
 > Texto fuente:
@@ -5397,6 +5779,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `swissbankaccount` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Swiss Bank Account.png`
 
 > Texto fuente:
@@ -5408,6 +5791,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `talismanofahrimanes` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Talisman of Ahrimanes.png`
 
 > Texto fuente:
@@ -5426,6 +5810,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `taxbreaks` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Tax Breaks.png`
 
 > Texto fuente:
@@ -5444,6 +5829,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `taxreform` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Tax Reform.png`
 
 > Texto fuente:
@@ -5460,6 +5846,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `terroristnuke` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Terrorist Nuke.png`
 
 > Texto fuente:
@@ -5475,6 +5862,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `theauditorfromhell` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Auditor from Hell.png`
 
 > Texto fuente:
@@ -5491,6 +5879,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `thebigscore` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - The Big Score.png`
 
 > Texto fuente:
@@ -5506,6 +5895,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `thebigsellout` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Big Sellout.png`
 
 > Texto fuente:
@@ -5524,6 +5914,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `thebronzehead` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Bronze Head.png`
 
 > Texto fuente:
@@ -5539,6 +5930,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `thecorporatemasters` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Corporate Masters.png`
 
 > Texto fuente:
@@ -5550,6 +5942,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `thefirstthingwedoletskillallthelawyers` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The First Thing We Do, Let_s Kill All The Lawyers.png`
 
 > Texto fuente:
@@ -5565,6 +5958,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `thefroggod` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Frog God.png`
 
 > Texto fuente:
@@ -5582,6 +5976,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `thehandofmadness` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Hand of Madness.png`
 
 > Texto fuente:
@@ -5594,6 +5989,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `theholygrail` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Holy Grail.png`
 
 > Texto fuente:
@@ -5612,6 +6008,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `theinternetworm` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Internet Worm.png`
 
 > Texto fuente:
@@ -5630,6 +6027,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `thelibraryatalexandria` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Library at Alexandria.png`
 
 > Texto fuente:
@@ -5646,6 +6044,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `theoregoncrud` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - The Oregon Crud.png`
 
 > Texto fuente:
@@ -5660,6 +6059,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `thesecondbullet` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Second Bullet.png`
 
 > Texto fuente:
@@ -5674,6 +6074,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `thestarsareright` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Stars are Right.png`
 
 > Texto fuente:
@@ -5688,6 +6089,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `theweaklink` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Weak Link.png`
 
 > Texto fuente:
@@ -5705,6 +6107,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `theweirdturnpro` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Weird Turn Pro.png`
 
 > Texto fuente:
@@ -5722,6 +6125,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `tidalwave` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Tidal Wave.png`
 
 > Texto fuente:
@@ -5736,6 +6140,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `timewarp` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Time Warp.png`
 
 > Texto fuente:
@@ -5749,6 +6154,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `tornado` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Tornado.png`
 
 > Texto fuente:
@@ -5762,6 +6168,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `unlucky13` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Unlucky 13.png`
 
 > Texto fuente:
@@ -5775,6 +6182,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `unmasked` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Unmasked!.png`
 
 > Texto fuente:
@@ -5792,6 +6200,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `upagainstthewall` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Up Against the Wall.png`
 
 > Texto fuente:
@@ -5804,6 +6213,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `upheaval` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 7
 - Imagen: `Plots/INWO - Upheaval!.png`
 
 > Texto fuente:
@@ -5820,6 +6230,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `volcano` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Volcano.png`
 
 > Texto fuente:
@@ -5833,6 +6244,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `volunteeraid` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Volunteer Aid.png`
 
 > Texto fuente:
@@ -5844,6 +6256,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `voodooeconomics` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Voodoo Economics.png`
 
 > Texto fuente:
@@ -5860,6 +6273,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `vultures` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Vultures.png`
 
 > Texto fuente:
@@ -5875,6 +6289,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `warehouse23` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 9
 - Imagen: `Plots/INWO - Warehouse 23.png`
 
 > Texto fuente:
@@ -5896,6 +6311,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `weathersatellite` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 3
 - Imagen: `Plots/INWO - Weather Satellite.png`
 
 > Texto fuente:
@@ -5912,6 +6328,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `whisperingcampaign` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Whispering Campaign.png`
 
 > Texto fuente:
@@ -5930,6 +6347,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `witheringcurse` · runtime: `plot` · oficial: `Ass.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `assassination` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Withering Curse.png`
 
 > Texto fuente:
@@ -5944,6 +6362,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `worldcupvictory` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - World Cup Victory.png`
 
 > Texto fuente:
@@ -5959,6 +6378,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `worldhunger` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - World Hunger.png`
 
 > Texto fuente:
@@ -5976,6 +6396,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `worldwarthree` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - World War Three.png`
 
 > Texto fuente:
@@ -5992,6 +6413,7 @@ Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no deb
 - ID: `xanadu` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Xanadu.png`
 
 > Texto fuente:

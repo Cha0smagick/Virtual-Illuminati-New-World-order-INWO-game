@@ -18,6 +18,9 @@ const cards = loadGlobal('game/js/cards.js', 'INWO_CARDS').cards;
 const ocr = loadGlobal('game/js/cardtexts_data.js', 'INWO_OCR') || {};
 const parsed = JSON.parse(fs.readFileSync(path.join(ROOT, 'research', 'cards_parsed.json'), 'utf8'));
 const parsedRecords = Array.isArray(parsed) ? parsed : (parsed.cards || Object.values(parsed)[0]);
+const researchPath = path.join(ROOT, 'research', 'audit_reports', 'card_research_manifest.json');
+const research = fs.existsSync(researchPath) ? JSON.parse(fs.readFileSync(researchPath, 'utf8')) : { cards: [] };
+const researchById = new Map((research.cards || []).map((entry) => [entry.id, entry]));
 
 const normalize = (value) => String(value || '')
   .replace(/\([^)]*\)/g, '')
@@ -96,8 +99,10 @@ const catalog = cards.map((card) => {
       runtime: 'game/js/cards.js',
       ocr: sourceText ? 'game/js/cardtexts_data.js' : null,
       officialList: 'research/cards_parsed.json (SJG official list mirror)',
-      rules: 'game/SPEC-RULES.md'
-    }
+      rules: 'game/SPEC-RULES.md',
+      researchManifest: 'research/audit_reports/card_research_manifest.json'
+    },
+    research: researchById.get(card.id) || null
   };
 });
 
@@ -132,11 +137,12 @@ const lines = [
   '- [Lista oficial de Steve Jackson Games](https://www.sjgames.com/inwo/lists/ill.html): nombres, tipos, frecuencia y artista; no contiene Power/Resistance/efectos completos.',
   '- [Reglas del proyecto](game/SPEC-RULES.md): reglas OBD/WDH v1.2 usadas por el motor.',
   '- `game/js/cardtexts_data.js`: OCR local de los textos impresos; puede contener errores de lectura.',
+  '- `research/audit_reports/card_research_manifest.json`: manifest por carta con estado, evidencia de Internet y fuentes; las menciones no implican implementación automática.',
   '- `game/js/cards.js`: datos runtime actuales; los campos estimados no se convierten en canónicos automáticamente.',
   '',
   '## Regla de verificación',
   '',
-  'Una carta con estado `blocked-unverified-family` o `source-text-unmapped` no debe recibir una mecánica genérica. Su texto se conserva como evidencia y queda bloqueada para uso exacto hasta mapearla a una regla probada.',
+  'Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una mecánica genérica. Su texto se conserva como evidencia y queda bloqueada para uso exacto hasta mapearla a una regla probada.',
   '',
   '## Resumen',
   '',
@@ -165,6 +171,7 @@ for (const card of catalog) {
     `- ID: \`${card.id}\` · runtime: \`${card.type}\` · oficial: \`${card.officialType || 'no encontrado'}\``,
     `- Power: ${stats.power == null ? 'null' : stats.power} · Resistance: ${stats.resistance == null ? 'null' : stats.resistance} · alineamientos: ${stats.alignments.length ? stats.alignments.join(', ') : '—'} · estimado: ${stats.estimated ? 'sí' : 'no'}`,
     `- Mecánica: \`${card.mechanics.kind}\` · estado: **${card.mechanics.status}** · implementada: ${card.mechanics.implemented ? 'sí' : 'no'}`,
+    `- Investigación Internet: ${card.research ? `${card.research.researchStatus}; OCR ${card.research.ocr.status}; menciones oficiales ${card.research.officialMentions.length}` : 'sin manifest (carta ya verificada o pendiente de regenerar)'}`,
     `- Imagen: ${card.image ? `\`${card.image}\`` : '—'}`,
     '',
     '> Texto fuente:',
