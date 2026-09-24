@@ -52,11 +52,26 @@ st = E.endTurn();
 // exchange tokens for plot if possible
 try { E.exchangeForPlot(st.currentPid, { illum: true }); console.log('ok - exchangeForPlot'); } catch (e) { console.log('exchange skipped:', e.message); }
 
-// play a plot generically from hand
+// unverified plot text must fail fast without spending resources
 var cur2 = st.currentPid;
-var pIdx = st.players[cur2].hand.find(function (ix) { return window.INWO_CARDS.cards[ix].type === 'plot'; });
+var pIdx = st.players[cur2].hand.find(function (ix) {
+  var c = window.INWO_CARDS.cards[ix];
+  return c.type === 'plot' && c.mechanicsStatus === 'unverified';
+});
+assert(pIdx != null, 'unverified plot fixture available');
 if (pIdx != null) {
-  try { E.playPlot(cur2, pIdx); console.log('ok - playPlot generic'); } catch (e) { console.log('playPlot err:', e.message); }
+  var beforeTokens = st.players[cur2].illumTokens;
+  var beforeHand = st.players[cur2].hand.length;
+  var beforeDiscard = st.deckCounts.plotDiscard;
+  var rejected = false;
+  try { E.playPlot(cur2, pIdx); } catch (e) {
+    rejected = /no tiene una mecánica verificada|mecánica no implementada/.test(e.message);
+    assert(rejected, 'unverified plot is rejected with clear error');
+  }
+  assert(rejected, 'unverified plot was not played');
+  assert(st.players[cur2].illumTokens === beforeTokens, 'rejected plot does not spend action token');
+  assert(st.players[cur2].hand.length === beforeHand, 'rejected plot stays in hand');
+  assert(st.deckCounts.plotDiscard === beforeDiscard, 'rejected plot is not discarded');
 }
 
 // run several full rounds AI-style to shake out crashes

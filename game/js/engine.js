@@ -17,7 +17,7 @@ function roll2d6(){return d6()+d6();}
 function clone(o){return JSON.parse(JSON.stringify(o));}
 var OPPOSITES={'peaceful':'violent','violent':'peaceful','liberal':'conservative','conservative':'liberal','weird':'straight','straight':'weird'};
 function isOpposite(a,b){return !!a&&!!b&&OPPOSITES[a]===b;}
-function shareAlign(A,B){if(!A||!B)return false;for(var i=0;i<A.length;i++){if(B.indexOf(A[i])>=0)return true;}return true&&false;}
+function shareAlign(A,B){return shares(A,B);}
 function shares(A,B){if(!A||!B)return false;for(var i=0;i<A.length;i++){if(B.indexOf(A[i])>=0)return true;}return false;}
 function log(msg){S.log.push({t:S.turn,p:S.currentPid,msg:msg});if(S.log.length>500)S.log.splice(0,S.log.length-500);}
 
@@ -40,7 +40,6 @@ function findNode(uid){
   for(var p=0;p<S.players.length;p++){
     var r=findInTree(S.players[p].structure,uid);if(r)return r;
   }
-  for(var k=0;k<S.neutralArea.length;k++){if(S.neutralArea[k].uid===uid)return null;/*neutral handled apart*/}
   return null;
 }
 function findOwnerPid(uid){
@@ -92,7 +91,7 @@ function alignsOf(cardObj){return (cardObj&&cardObj.alignments)?cardObj.alignmen
 E.newGame=function(configs){
   configs=configs||[];
   S={
-    phase:'setup',turn:0,round:1,currentPid:-1,
+      phase:'setup',turn:0,round:1,currentPid:-1,turnCompleted:false,
     players:[],groupDeck:[],plotDeck:[],groupDiscard:[],plotDiscard:[],
     neutralArea:[],attack:null,log:[],uidCounter:100,winner:null,
     config:{goalCount:(configs.goalCount||12),ufoTargets:[]},
@@ -212,6 +211,8 @@ E.availableIlluminati=function(){
   return out;
 };
 E.setIlluminati=function(pid,cardRef){
+  if(S.phase!=='setup')throw new Error('No se puede cambiar el Illuminati con la partida iniciada');
+  if(!S.players[pid])throw new Error('Jugador inválido');
   var ic=card(cardRef);
   if(!ic||ic.type!=='illuminati')throw new Error('No es un Illuminati: '+cardRef);
   for(var p=0;p<S.players.length;p++){
@@ -227,6 +228,7 @@ E.setIlluminati=function(pid,cardRef){
 E.allIlluminatiSet=function(){return S.players.every(function(pl){return !!pl.illumId;});};
 
 E.startGame=function(){
+  if(S.phase!=='setup')throw new Error('La partida ya está iniciada');
   if(!E.allIlluminatiSet())throw new Error('Faltan Illuminati por elegir');
   /* deal hands: 3 plots + 10 groups (OBD) */
   S.players.forEach(function(pl){
@@ -242,14 +244,18 @@ E.startGame=function(){
     S.config.ufoTargets=picks;
   }
   /* high roll starts */
-  var rolls=[],best=-1,bestP=0;
+  var rolls=[],best=-1,bestP=0,attempts=0;
   do{
     rolls=[];
     for(var p=0;p<S.players.length;p++){rolls[p]=roll2d6();if(rolls[p]>best){best=rolls[p];bestP=p;}}
-  }while(rolls.filter(function(r){return r===best;}).length>1);
+    attempts++;
+  }while(rolls.filter(function(r){return r===best;}).length>1&&attempts<100);
+  if(rolls.filter(function(r){return r===best;}).length>1){
+    log('Empate repetido al iniciar; se resuelve por orden de jugador');
+  }
   S.lastRoll={rolls:rolls,first:bestP};
   log('Tirada inicial: '+rolls.join(', ')+' — empieza '+S.players[bestP].name);
-  S.phase='main';S.currentPid=bestP;S.turn=1;
+  S.phase='begin';S.currentPid=bestP;S.turn=0;S.turnCompleted=false;
   E.beginTurn(bestP,true);
   return clone(publicState());
 };
@@ -267,12 +273,15 @@ function checkElimination(){
 }
 
 E.beginTurn=function(pid,isFirst){
-  var pl=S.players[pid];
   if(S.phase==='gameover')return publicState();
+  if(!S.players[pid])throw new Error('Jugador inválido');
+  if(S.phase==='main'&&S.currentPid===pid)return publicState();
+  if(S.phase!=='begin')throw new Error('No se puede iniciar un turno fuera de la transición');
+  var pl=S.players[pid];
   S.phase='begin';
   S.currentPid=pid;
   S.turn++;
-  pl.turnsCompleted++;
+  S.turnCompleted=false;
   pl.flags.autoTakeover=false;
   pl.flags.plotDrawn=false;
   pl.flags.groupDrawn=false;
@@ -292,14 +301,13 @@ E.beginTurn=function(pid,isFirst){
     var c=card(nd.cardId);
     if(curPower(nd)===0&&!(c.power===0))return; /* reduced to 0 => no tokens; printed-0 ok */
     if(nd.tokens==null)nd.tokens=0;
-    nd.tokens++;
+    if(nd.tokens<1)nd.tokens=1;
   });
   /* resources whose text mentions Action get a token */
   pl.resources.forEach(function(r){
     var c=card(r.cardId);
-    if(c&&/\baction\b/i.test(c.text||''))r.tokens=(r.tokens||0)+1;
+    if(c&&/\baction\b/i.test(c.text||'')&&((r.tokens||0)<1))r.tokens=1;
   });
-  checkElimination();
   log('— Turno de '+pl.name+' (+'+tokGain+' acción Illuminati) —');
   S.phase='main';
   return publicState();
@@ -314,35 +322,51 @@ E.drawPlot=function(pid){
   requireOwnMain(pid);
   var pl=S.players[pid];
   if(pl.flags.plotDrawn)throw new Error('Ya robaste tu carta de Plot este turno');
-  pl.flags.plotDrawn=true;
   var ix=drawFrom(S.plotDeck,S.plotDiscard,'plots');
   if(ix==null)throw new Error('No quedan Plot cards');
-  S.players[pid].hand.push(ix);
+  pl.flags.plotDrawn=true;
+  pl.hand.push(ix);
   return {idx:ix,card:C.cards[ix]};
 };
 E.drawGroup=function(pid){
   requireOwnMain(pid);
-  var pl2=S.players[pid];
-  if(pl2.flags.groupDrawn)throw new Error('Ya robaste tu carta de Grupo este turno');
-  pl2.flags.groupDrawn=true;
+  var pl=S.players[pid];
+  if(pl.flags.groupDrawn)throw new Error('Ya robaste tu carta de Grupo este turno');
   var ix=drawFrom(S.groupDeck,S.groupDiscard,'grupos');
   if(ix==null)throw new Error('No quedan Group cards');
-  S.players[pid].hand.push(ix);
+  pl.flags.groupDrawn=true;
+  pl.hand.push(ix);
   return {idx:ix,card:C.cards[ix]};
 };
 E.exchangeForPlot=function(pid,payment){
+  requireOwnMain(pid);
   var pl=S.players[pid];
-  if(payment&&payment.illum){
-    if(pl.illumTokens<1)throw new Error('Sin acciones Illuminati para intercambiar');
-    pl.illumTokens--;
-  }else if(payment&&payment.groupUids&&payment.groupUids.length===2){
-    payment.groupUids.forEach(function(u){spendGroupToken(pid,u);});
-  }else throw new Error('Pago inválido (1 acción Illuminati o 2 tokens de grupo)');
-  var ix=drawFrom(S.plotDeck,S.plotDiscard,'plots');
-  if(ix==null)throw new Error('No quedan Plot cards');
-  pl.hand.push(ix);
-  log(pl.name+' intercambia tokens por una carta de Plot');
-  return {idx:ix};
+  var spentIllum=false;
+  var spentGroups=[];
+  try{
+    if(payment&&payment.illum){
+      if(pl.illumTokens<1)throw new Error('Sin acciones Illuminati para intercambiar');
+      pl.illumTokens--;
+      spentIllum=true;
+    }else if(payment&&Array.isArray(payment.groupUids)&&payment.groupUids.length===2){
+      payment.groupUids.forEach(function(u){
+        spendGroupToken(pid,u);
+        spentGroups.push(u);
+      });
+    }else throw new Error('Pago inválido (1 acción Illuminati o 2 tokens de grupo)');
+    var ix=drawFrom(S.plotDeck,S.plotDiscard,'plots');
+    if(ix==null)throw new Error('No quedan Plot cards');
+    pl.hand.push(ix);
+    log(pl.name+' intercambia tokens por una carta de Plot');
+    return {idx:ix};
+  }catch(err){
+    if(spentIllum)pl.illumTokens++;
+    spentGroups.forEach(function(uid){
+      var node=findNode(uid);
+      if(node)node.tokens++;
+    });
+    throw err;
+  }
 };
 function requireOwnMain(pid){
   if(S.phase!=='main')throw new Error('Fuera de la fase principal');
@@ -384,6 +408,13 @@ E.autoTakeover=function(pid,handIdx,parentUid){
   return publicState();
 };
 
+function rejectUnverifiedCard(c){
+  var kind=c&&c.effect&&c.effect.kind;
+  if(!kind||kind==='unverified'||kind==='ability_unverified'||kind==='plot_generic'||kind==='resource_generic'||kind==='generic'){
+    throw new Error('La carta "'+(c&&c.name||'desconocida')+'" no tiene una mecánica verificada; no puede jugarse todavía.');
+  }
+}
+
 E.playResource=function(pid,handIdx,linkedToUid){
   requireOwnMain(pid);
   var pl=S.players[pid];
@@ -391,6 +422,7 @@ E.playResource=function(pid,handIdx,linkedToUid){
   if(pl.illumTokens<1)throw new Error('Sin acciones Illuminati');
   var c=card(handIdx);
   if(!c||c.type!=='resource')throw new Error('No es un Resource');
+  rejectUnverifiedCard(c);
   pl.illumTokens--;pl.usedResourceThisTurn=true;
   removeFromHand(pl,handIdx);
   var link=linkedToUid||pl.illumId;
@@ -403,8 +435,10 @@ E.extraGroupDraw=function(pid){
   var pl=S.players[pid];
   if(pl.usedExtraDrawThisTurn)throw new Error('Robo extra de grupo ya usado este turno');
   if(pl.illumTokens<1)throw new Error('Sin acciones Illuminati');
-  pl.illumTokens--;pl.usedExtraDrawThisTurn=true;
-  return E.drawGroup(pid);
+  var drawn=E.drawGroup(pid);
+  pl.illumTokens--;
+  pl.usedExtraDrawThisTurn=true;
+  return drawn;
 };
 function removeFromHand(pl,idx){
   var i=pl.hand.indexOf(idx);
@@ -428,6 +462,7 @@ E.declareAttack=function(pid,type,target){
   requireOwnMain(pid);
   if(S.attack)throw new Error('Ya hay un ataque en curso');
   if(type!=='control'&&type!=='destroy')throw new Error('Tipo de ataque inválido');
+  if(!target||typeof target!=='object')throw new Error('Objetivo de ataque inválido');
   twoPlayerGuard(pid);
   var pl=S.players[pid];
   var attackerUid=target.attackerUid;
@@ -436,41 +471,52 @@ E.declareAttack=function(pid,type,target){
   if(findOwnerPid(attackerUid)!==pid)throw new Error('El atacante no te pertenece');
   if(att.paralyzed||att.zapped||att.devastated)throw new Error('Atacante no puede actuar');
   var attCard=card(att.cardId);
-  /* spend attacker token */
-  spendGroupToken(pid,attackerUid);
+  if(!attCard)throw new Error('Atacante sin carta válida');
 
   var A={id:'a'+(S.uidCounter++),pid:pid,type:type,
     attackerUid:attackerUid,aids:[],opposes:[],privilege:false,
     boosts:[],defBoosts:[],selfDefended:false,resolved:false};
+  var tn='';
 
   if(isNeutralUid(target.uid)){
+    var na=S.neutralArea.filter(function(n){return n.uid===target.uid;})[0];
+    if(!na)throw new Error('Objetivo neutral inexistente: '+target.uid);
+    var neutralCard=card(na.cardId);
+    if(!neutralCard)throw new Error('La carta neutral no tiene datos válidos');
     A.neutralTarget=target.uid;
+    tn=neutralCard.name;
   }else{
     var tgt=findNode(target.uid);
     var handOwner=-1;
     if(tgt){
       var tCard=card(tgt.cardId);
+      if(!tCard)throw new Error('El grupo objetivo no tiene datos válidos');
       if(tCard.type==='illuminati')throw new Error('Los Illuminati no pueden ser atacados');
       var owner=findOwnerPid(target.uid);
+      if(owner<0)throw new Error('El objetivo no tiene propietario');
       if(type==='control'&&owner===pid)throw new Error('No puedes tomar control de tu propio grupo');
       if(owner!==pid&&pl.immuneFrom[owner]&&(pl.immuneFrom[owner].indexOf?pl.immuneFrom[owner].indexOf(target.uid):-1)>=0)
         throw new Error('Tu ataque anterior contra '+S.players[owner].name+' falló: inmune el resto del turno');
-      A.targetPid=owner;A.targetUid=target.uid;
+      A.targetPid=owner;A.targetUid=target.uid;tn=tCard.name;
     }else{
       /* attack a card in a rival's HAND (attack-to-control only) */
       if(type!=='control')throw new Error('Solo control se lanza contra cartas de la mano');
+      if(typeof target.handIdx!=='number'||target.handIdx<0||!C.cards[target.handIdx])
+        throw new Error('Carta de mano no encontrada');
       for(var q=0;q<S.players.length;q++){
         if(q!==pid&&S.players[q].hand.indexOf(target.handIdx)>=0){handOwner=q;break;}
       }
       if(handOwner<0)throw new Error('Carta de mano no encontrada');
       A.handTarget={idx:target.handIdx,owner:handOwner};
+      tn=C.cards[target.handIdx].name;
     }
   }
-  if(type==='control'&&!A.handTarget){
-    if(openArrows(pid).length<1)throw new Error('Necesitas al menos una flecha libre para atacar a controlar');
-  }
+  if(type==='control'&&!A.handTarget&&openArrows(pid).length<1)
+    throw new Error('Necesitas al menos una flecha libre para atacar a controlar');
+
+  /* Only spend the attacker token after every target validation has passed. */
+  spendGroupToken(pid,attackerUid);
   S.attack=A;
-  var tn=A.handTarget?C.cards[A.handTarget.idx].name:(card(findNode(A.neutralTarget||A.targetUid).cardId)||{}).name;
   log(pl.name+' declara ataque a '+type+' con '+attCard.name+' contra '+(tn||'?'));
   return publicState();
 };
@@ -485,9 +531,11 @@ E.togglePrivilege=function(){
 E.addSupport=function(pid,entry){
   if(!S.attack||S.attack.resolved)throw new Error('Sin ataque activo');
   var A=S.attack;
+  if(!entry||typeof entry!=='object')throw new Error('Apoyo inválido');
   if(entry.selfDefend){
-    if(pid!==A.targetPid)throw new Error('Solo el defensor se autoprotege');
+    if(pid!==A.targetPid||!A.targetUid)throw new Error('Solo un defensor de un grupo en juego puede autoprotegerse');
     var nd=findNode(A.targetUid);
+    if(!nd)throw new Error('El grupo defensor ya no está en juego');
     if(nd.tokens==null||nd.tokens<1)throw new Error('Defensor sin Action token');
     nd.tokens--;A.selfDefended=true;
     return publicState();
@@ -498,6 +546,7 @@ E.addSupport=function(pid,entry){
   if(findOwnerPid(entry.uid)!==pid)throw new Error('El grupo no te pertenece');
   if(sup.tokens==null||sup.tokens<1)throw new Error('Sin Action token');
   var sc=card(sup.cardId);
+  if(!sc)throw new Error('El grupo de apoyo no tiene datos válidos');
   var tNode=A.targetUid?findNode(A.targetUid):null;
   var tCard=tNode?card(tNode.cardId):(A.handTarget?C.cards[A.handTarget.idx]:null);
   if(!tCard)throw new Error('Objetivo no encontrado');
@@ -516,11 +565,18 @@ E.addSupport=function(pid,entry){
 };
 E.addBoost=function(pid,idx,toDefense){
   if(!S.attack||S.attack.resolved)throw new Error('Sin ataque activo');
+  if(pid!==S.attack.pid)throw new Error('Solo el atacante puede usar esta carta');
   var pl=S.players[pid];var i=pl.hand.indexOf(idx);
   if(i<0)throw new Error('No tienes esa carta');
+  var c=C.cards[idx];
+  if(!c||c.type!=='plot')throw new Error('Solo una carta Plot puede(boost)');
+  var kind=c.effect&&c.effect.kind;
+  if(kind!=='boost10'&&kind!=='boost10_attack')
+    throw new Error('Esta carta no tiene efecto de boost válido');
+  if(kind==='boost10_attack'&&toDefense)throw new Error('Este boost solo mejora el ataque');
   pl.hand.splice(i,1);S.plotDiscard.push(idx);
-  (toDefense?S.attack.defBoosts:S.attack.boosts).push({name:C.cards[idx].name,v:10});
-  log((toDefense?'Defensa +10':'Ataque +10')+' jugada ('+C.cards[idx].name+')');
+  (toDefense?S.attack.defBoosts:S.attack.boosts).push({name:c.name,v:10});
+  log((toDefense?'Defensa +10':'Ataque +10')+' jugada ('+c.name+')');
   return publicState();
 };
 
@@ -528,16 +584,22 @@ E.addBoost=function(pid,idx,toDefense){
 E.previewStrength=function(){return computeStrength(false);};
 function computeStrength(resolveMode){
   var A=S.attack;
+  if(!A)throw new Error('Sin ataque activo');
   var att=findNode(A.attackerUid);
+  if(!att)throw new Error('Atacante inexistente');
   var attCard=card(att.cardId);
+  if(!attCard)throw new Error('Carta del atacante inexistente');
   var tNode=A.targetUid?findNode(A.targetUid):null;
   var neutralIdx=null;
   if(A.neutralTarget){
     var na=S.neutralArea.filter(function(n){return n.uid===A.neutralTarget;})[0];
+    if(!na)throw new Error('Objetivo neutral inexistente');
     neutralIdx=na.cardId;tNode={cardId:na.cardId,tokens:0};
   }
+  if(A.targetUid&&!tNode)throw new Error('Objetivo inexistente');
   var tCard=tNode?card(tNode.cardId):(A.handTarget?C.cards[A.handTarget.idx]:null);
-  var det={base:0,leaderMod:0,defenseBase:0,defenseBonus:0,selfDef:0,posBonus:0,aids:0,opposes:0,boosts:0,cthulhu:0,total:0,notes:[]};
+  if(!tCard)throw new Error('Carta objetivo inexistente');
+  var det={base:0,leaderMod:0,defenseBase:0,defenseBonus:0,defBoosts:0,selfDef:0,posBonus:0,aids:0,opposes:0,boosts:0,cthulhu:0,total:0,notes:[]};
 
   var attAligns=alignsOf(attCard),tgtAligns=alignsOf(tCard);
   if(A.type==='control'){
@@ -555,16 +617,16 @@ function computeStrength(resolveMode){
       if(mc){
         var mal=alignsOf(mc),shared=[];
         tgtAligns.forEach(function(a){if(mal.indexOf(a)>=0)shared.push(a);});
-        if(!(mc.effect&&mc.effect.code==='discordian'&&shared.length&&shared.every(function(a){return a==='fanatic';}))||true){
+        if(!(mc.effect&&mc.effect.code==='discordian'&&shared.length&&shared.every(function(a){return a==='fanatic';}))){
           shared.forEach(function(a){
-            if(!(a==='fanatic'&&alignsOf(attCard).indexOf('fanatic')>=0))det.defenseBonus+=4;
+            if(!(a==='fanatic'&&attAligns.indexOf('fanatic')>=0))det.defenseBonus+=4;
             else det.notes.push('Fanático vs Fanático: sin bonus maestro');
           });
         }
       }
     }
-    det.posBonus=A.neutralTarget?0:positionBonus(A.targetPid,A.targetUid);
-    if(A.selfDefended){det.selfDef=2*curPower(tNode);}
+    det.posBonus=(!A.neutralTarget&&!A.handTarget&&A.targetPid!=null&&A.targetUid)?positionBonus(A.targetPid,A.targetUid):0;
+    if(A.selfDefended&&tNode)det.selfDef=2*curPower(tNode);
     /* Discordian structure immunity vs straight/government attackers */
     if(A.targetPid!=null){
       var mc2=illuCard(A.targetPid);
@@ -579,8 +641,8 @@ function computeStrength(resolveMode){
       if(tgtAligns.indexOf(attAligns[k])>=0)det.leaderMod-=4;
       else{for(var m=0;m<tgtAligns.length;m++)if(isOpposite(attAligns[k],tgtAligns[m]))det.leaderMod+=4;}
     }
-    if(A.targetPid!=null)det.posBonus=positionBonus(A.targetPid,A.targetUid);
-    if(A.selfDefended)det.selfDef=2*curPower(tNode);
+    if(!A.neutralTarget&&!A.handTarget&&A.targetPid!=null&&A.targetUid)det.posBonus=positionBonus(A.targetPid,A.targetUid);
+    if(A.selfDefended&&tNode)det.selfDef=2*curPower(tNode);
     var ac=illuCard(A.pid);
     if(ac&&ac.effect&&ac.effect.code==='cthulhu'){det.cthulhu=4;}
     if(neutralIdx!=null){det.posBonus=0;}
@@ -588,10 +650,11 @@ function computeStrength(resolveMode){
   A.aids.forEach(function(a){det.aids+=a.power;});
   A.opposes.forEach(function(o){det.opposes+=o.power;});
   A.boosts.forEach(function(b){det.boosts+=b.v;});
-  ['base','leaderMod','defenseBase','defenseBonus','posBonus','selfDef','aids','opposes','boosts','cthulhu'].forEach(function(k){
+  A.defBoosts.forEach(function(b){det.defBoosts+=b.v;});
+  ['base','leaderMod','defenseBase','defenseBonus','defBoosts','posBonus','selfDef','aids','opposes','boosts','cthulhu'].forEach(function(k){
     if(!isFinite(det[k])){try{console.warn('INWO: campo NaN en fuerza →',k);}catch(e){}det[k]=0;}
   });
-  var total=det.base+det.leaderMod-det.defenseBase-det.defenseBonus-det.posBonus-det.selfDef+det.aids-det.opposes+det.boosts+det.cthulhu;
+  var total=det.base+det.leaderMod-det.defenseBase-det.defenseBonus-det.defBoosts-det.posBonus-det.selfDef+det.aids-det.opposes+det.boosts+det.cthulhu;
   if(!isFinite(total)){try{console.warn('INWO: fuerza total NaN → forzada a 0',det);}catch(e){}total=0;}
   det.total=total;
   return det;
@@ -708,18 +771,21 @@ E.moveGroup=function(pid,uid,newParentUid,payWith){
   if(!node)throw new Error('Grupo inexistente');
   if(node.paralyzed)throw new Error('Paralizado no puede moverse');
   var oldOwner=findOwnerPid(uid);
+  if(oldOwner!==pid)throw new Error('Solo puedes mover grupos de tu propia estructura');
   var oldParent=findNodeThatHas(S.players[oldOwner].structure,uid);
   var np=findNode(newParentUid);
-  if(!np||!isOpenArrow(np))throw new Error('Destino sin flecha libre');
+  if(!np||findOwnerPid(newParentUid)!==pid)throw new Error('El destino debe pertenecer a tu estructura');
+  if(findInTree(node,newParentUid))throw new Error('No puedes mover un grupo dentro de sí mismo');
+  if(!isOpenArrow(np))throw new Error('Destino sin flecha libre');
   var payers=[uid,oldParent.uid,newParentUid];
-  var paid=false;
   if(payers.indexOf(payWith)<0&&payWith!=='illum')throw new Error('Pago inválido (grupo movido/maestro viejo/nuevo o acción Illuminati)');
   if(payWith==='illum'){
-    if(S.players[oldOwner].illumTokens<1)throw new Error('Sin acciones Illuminati');
-    S.players[oldOwner].illumTokens--;paid=true;
-  }else{spendGroupToken(oldOwner===pid?pid:oldOwner,payWith);paid=true;}
+    if(S.players[pid].illumTokens<1)throw new Error('Sin acciones Illuminati');
+    S.players[pid].illumTokens--;
+  }else{
+    spendGroupToken(pid,payWith);
+  }
   detach(oldParent,uid);
-  if(payWith==='illum'&&oldOwner===pid){} else {}
   np.children.push(node);
   log(S.players[pid].name+' mueve '+card(node.cardId).name+' a nueva posición');
   return publicState();
@@ -733,6 +799,7 @@ E.playPlot=function(pid,handIdx,targetUid){
   if(i<0)throw new Error('Carta no está en tu mano');
   var c=C.cards[handIdx];
   if(c.type!=='plot')throw new Error('No es una Plot card');
+  rejectUnverifiedCard(c);
   var eff=c.effect||{kind:'generic'};
   var consumed=true;
   switch(eff.kind){
@@ -789,8 +856,7 @@ E.playPlot=function(pid,handIdx,targetUid){
       pl.exposedPlots.push(handIdx);consumed=false;
       log('NWO en juego: '+c.name+' ('+(eff.color||'?')+')');break;}
     default:{
-      log(pl.name+' juega '+c.name+' (efecto genérico, se descarta)');
-      S.plotDiscard.push(handIdx);consumed=false;
+      throw new Error('La carta "'+c.name+'" tiene una mecánica no implementada.');
     }
   }
   if(consumed)pl.hand.splice(i,1);
@@ -846,20 +912,35 @@ E.giveResourceTo=function(ownerPid,toPid,resUid){
 
 /* ================= end of turn & victory ================= */
 E.endTurn=function(){
+  if(S.phase==='gameover')return publicState();
+  if(S.phase!=='main')throw new Error('No se puede terminar un turno fuera de la fase principal');
+  if(S.turnCompleted)throw new Error('Este turno ya fue terminado');
+  if(S.attack)throw new Error('No se puede terminar el turno con un ataque sin resolver');
   var pid=S.currentPid;
   var pl=S.players[pid];
-  /* off-turn hand limit: max 5 plots at end of own turn */
+  if(!pl)throw new Error('No hay jugador activo');
   var plotsInHand=pl.hand.filter(function(ix){return C.cards[ix].type==='plot';});
-  if(plotsInHand.length>5){
-    plotsInHand.slice(5).forEach(function(ix){
-      removeFromHand(pl,ix);S.plotDiscard.push(ix);
-      log('Límite de mano: '+C.cards[ix].name+' descartada (máx 5 Plots)');
-    });
+  var exposed=pl.exposedPlots||[];
+  var excess=plotsInHand.length+exposed.length-5;
+  while(excess>0&&plotsInHand.length){
+    var handIx=plotsInHand.shift();
+    removeFromHand(pl,handIx);S.plotDiscard.push(handIx);
+    log('Límite de mano: '+C.cards[handIx].name+' descartada (máx 5 Plots)');
+    excess--;
   }
-  /* zap removal by spending illum action is manual; clear nothing automatic */
+  while(excess>0&&pl.exposedPlots.length){
+    var exposedIx=pl.exposedPlots.shift();
+    S.plotDiscard.push(exposedIx);
+    log('Límite de mano: '+C.cards[exposedIx].name+' descartada (máx 5 Plots)');
+    excess--;
+  }
+  S.turnCompleted=true;
+  pl.turnsCompleted++;
+  checkElimination();
   checkVictory();
   if(S.phase==='gameover')return publicState();
   var next=(pid+1)%S.players.length;
+  S.phase='begin';
   E.beginTurn(next);
   return publicState();
 };
@@ -901,7 +982,8 @@ function goalMetFor(p){
 }
 
 function checkVictory(){
-  if(S.turn<2)return; /* no wins round 1 */
+  if(S.phase==='gameover')return;
+  if(S.turn<S.players.length+1)return; /* no wins during the first round */
   var met=[];
   for(var p=0;p<S.players.length;p++){
     if(S.players[p].eliminated)continue;
