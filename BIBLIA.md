@@ -84,6 +84,7 @@ D:\Illuminati NWO\
 ├── librarian_result.txt       investigación web: digest A.1–A.15 + stats verificadas
 ├── research\                  artefactos: cards_parsed.json (412 cartas SJG),
 │                              inwo-rules-12.txt/pdf, log CMU, listados
+├── research/audit_reports\    manifest y catalogo de investigacion por carta
 └── test_*.js                  harness headless Node (engine, AI-vs-AI, UI stub)
 ```
 
@@ -108,7 +109,7 @@ Convención: los métodos lanzan `Error` con mensajes en español ante jugadas i
 - **421 cartas** = 167 Groups + 18 Illuminati (9 × 2 versiones) + 201 Plots + 35 Resources.
 - **Verificado (~33 grupos)**: stats y alineamientos exactos del log CMU (Texas 14/9, New York 7/8, CIA 6/5…).
 - **9 Illuminati completos**: poderes y metas especiales codificados (`effect.code`: bavarian/network/cthulhu/gnomes/discordian/bermuda/shangrila/adepts/ufos).
-- **Resto**: Power/Resistencia/alineamientos estimados o pendientes, marcados en `cards.js`; el texto OCR se conserva como referencia, pero no se convierte en una regla verificada. Las cartas `unverified` o `ability_unverified` se bloquean antes de gastar tokens o modificar la mano. Para regenerar el dataset usa `npm run build:cards` (canónico: `gen_cards.js`).
+- **Resto**: Power/Resistencia/alineamientos estimados o pendientes, marcados en `cards.js`; el texto OCR se conserva como referencia, pero no se convierte en una regla verificada. Las cartas `unverified` o `ability_unverified` se bloquean antes de gastar tokens o modificar la mano. El manifiesto `research/audit_reports/card_research_manifest.json` registra para las 356 cartas pendientes el OCR, los metadatos oficiales, las menciones de FAQ/errata, la fuente y el estado de cada campo; regenéralo con `npm run research:cards`. Para regenerar el dataset usa `npm run build:cards` (canónico: `gen_cards.js`).
 
 ## 5. IA OPONENTE
 

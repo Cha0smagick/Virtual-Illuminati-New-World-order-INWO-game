@@ -69,15 +69,18 @@ Then **Settings → Pages → Deploy from branch → `main` / root**. The game g
 ├── Groups/ · Illuminati/ · Plots/        # original card scans (assets)
 ├── scripts/                  # OCR pipeline + audits (mechanics, usage, synergies)
 ├── scripts/run_tests.cjs      # suite runner used by npm test
+├── research/audit_reports/    # generated catalog, research manifest and reports
 ├── test_p0_invariants.js      # strict P0 regression fixtures
-├── tests: test_flow · test_engine · test_ai_vs_ai · test_appflow · test_respond · test_ui
+├── tests: test_flow · test_engine · test_ai_vs_ai · test_appflow · test_respond · test_ui · test_card_research_manifest
 ├── SINERGIAS.md              # card-interaction audit report
 └── BIBLIA.md                 # deep technical bible (ES)
 ```
 
 ## 🧪 Verified by machines
 
-- `npm test` runs seven headless suites, including strict P0 invariants, lifecycle, response and UI smoke tests
+- `npm test` runs eight headless suites, including strict P0 invariants, lifecycle, response, UI and card-research manifest checks
+- `npm run research:cards` rebuilds the 356-card Internet research manifest with OCR, official metadata, FAQ/errata mentions, field-level status and provenance
+- `npm run build:cards` regenerates the canonical runtime dataset; `scripts/build_card_catalog.cjs` refreshes the human-readable catalog
 - `npm run audit:mechanics` validates observed 2d6 totals, execution errors and NaN state, and exits non-zero on failures
 - AI-vs-AI simulations are smoke tests, not proof of complete rules or balanced AI
 - DOM-flow smoke tests use a minimal stub; Chrome headless smoke is still required for visual/keyboard verification
