@@ -117,14 +117,16 @@ function openArrows(st, pid, nd) {
   var cap = isRootNode(nd) ? 4 : 3;
   return cap - (nd.children || []).length;
 }
-/* Plots "genéricos" reutilizables como +10 en combate */
+/* Only source-backed implemented +10 combat plots are safe to replay. */
 function sparePlotIdx(st, pid) {
   var h = st.players[pid].hand;
   for (var i = 0; i < h.length; i++) {
     var c = card(h[i]);
     if (!c || c.type !== 'plot') continue;
     var k = c.effect && c.effect.kind;
-    if (!k || k === 'generic' || k === 'boost10' || k === 'plot_generic') return h[i];
+    if (c.mechanicsStatus === 'implemented' || c.mechanicsStatus === 'implemented-special') {
+      if (k === 'boost10') return h[i];
+    }
   }
   return null;
 }
@@ -159,6 +161,7 @@ function playBestResource(E, st, pid) {
   for (var i = 0; i < h.length; i++) {
     var c = card(h[i]);
     if (!c || c.type !== 'resource') continue;
+    if (c.mechanicsStatus !== 'implemented' && c.mechanicsStatus !== 'implemented-special') continue;
     var t = tx(h[i]);
     var s = 2;
     if (hasRe(t, /\+\d+\s*(to|on|for)?\s*(any|all)?\s*(control|attack|destroy)/)) s += 5;
@@ -229,6 +232,7 @@ function playUsefulPlots(E, st, pid) {
       var c = card(h[i]);
       if (!c || c.type !== 'plot') continue;
       var t = tx(h[i]), k = (c.effect || {}).kind;
+      if (c.mechanicsStatus !== 'implemented' && c.mechanicsStatus !== 'implemented-special') continue;
       try {
         if (k === 'paralyze' || k === 'freeze' || hasRe(t, /paraly[sz]e|attribute freeze/)) {
           var tn = strongestEnemyNode(s2, pid, 6);

@@ -21,17 +21,14 @@ try {
   while (turns < MAX_TURNS) {
     const st = E.getState();
     if (st.phase === 'gameover') { console.log('GAMEOVER at turn', turns, 'winner=', st.winner); break; }
+    if (st.phase !== 'main') throw new Error('AI smoke reached an unexpected phase: ' + st.phase);
     const pid = st.currentPid;
-    try {
-      if (st.phase === 'begin' || !st.players[pid]) E.beginTurn(pid);
-      else E.beginTurn(pid);
-    } catch (e1) {
-      // maybe already began this turn; ignore only if message says so
-      if (!/ya|already/i.test(String(e1.message))) throw e1;
-    }
     window.AI.takeTurn(E, pid);
-    E.endTurn(pid);
-    E.checkVictory();
+    const afterAi = E.getState();
+    if (afterAi.attack && !afterAi.attack.resolved) {
+      throw new Error('AI left an unresolved attack in an AI-vs-AI game');
+    }
+    if (afterAi.phase !== 'gameover') E.endTurn();
     turns++;
     if (turns % 10 === 0) {
       const s2 = E.getState();
