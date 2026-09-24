@@ -1,0 +1,320 @@
+=== ESTADÍSTICAS DE CARTAS ===
+runtime groups: 167
+OCR agree: 0
+OCR corrections: 166
+OCR missing: 1
+CMU verified matches: 0
+CMU discrepancies: 27
+runtime power null: 138
+runtime resistance null: 140
+
+CMU DISCREPANCIES:
+A.M.A.: runtime/OCR 5/5 vs CMU 3/4
+B.A.T.F.: runtime/OCR 4/4 vs CMU 3/2
+Brazil: runtime/OCR 2/2 vs CMU 5/3
+C.I.A.: runtime/OCR 5/5 vs CMU 6/5
+Canada: runtime/OCR 3/3 vs CMU 3/4
+Congressional Wives: runtime/OCR 8/8 vs CMU 4/4
+England: runtime/OCR 6/6 vs CMU 6/2
+Finland: runtime/OCR 2/2 vs CMU 6/5
+France: runtime/OCR 8/8 vs CMU 3/5
+Fraternal Orders: runtime/OCR 2/2 vs CMU 5/5
+Germany: runtime/OCR 4/4 vs CMU 4/3
+Hackers: runtime/OCR 3/3 vs CMU 3/2
+Hawaii: runtime/OCR 10/10 vs CMU 0/2
+Japan: runtime/OCR 4/4 vs CMU 6/4
+Libertarians: runtime/OCR 5/5 vs CMU 4/4
+Mossad: runtime/OCR 3/3 vs CMU 2/1
+N.S.A.: runtime/OCR 4/4 vs CMU 5/2
+Nephews of God: runtime/OCR 2/2 vs CMU 1/1
+New York: runtime/OCR 1/1 vs CMU 7/8
+Nuclear Power Companies: runtime/OCR 7/7 vs CMU 4/null
+Pentagon: runtime/OCR 4/4 vs CMU 6/6
+Russia: runtime/OCR 2/2 vs CMU 4/4
+Saddam Hussein: runtime/OCR 1/1 vs CMU 5/4
+Texas: runtime/OCR 4/4 vs CMU 14/9
+Vatican City: runtime/OCR 3/3 vs CMU 4/4
+W.I.T.C.H.: runtime/OCR 2/2 vs CMU 3/3
+Wargamers: runtime/OCR 2/2 vs CMU 1/null
+
+POWER NULL:
+Al Gore
+American Autoduel Association
+Anti-Nuclear Activists
+Antiwar Activists
+Bank of England
+Big Media
+Bill Clinton
+Bjorne
+Black Activists
+Boy Sprouts
+Cable TV
+California
+Cattle Mutilators
+Center for Disease Control
+CFL-AIO
+China
+Church of Elvis
+Comic Books
+Conspiracy Theorists
+Count Dracula
+Cycle Gangs
+Dan Quayle
+Democrats
+Dentists
+Deprogrammers
+Dinosaur Park
+Druids
+Eco-Guerillas
+EFF
+Elders of Zion
+Elvis
+Empty Vee
+Evil Geniuses for a Better Tomorrow
+F.B.I.
+Fast Food Chains
+Federal Reserve
+Feminists
+Fidel Castro
+Fiendish Fluoridators
+Flat Earthers
+Fnord Motor Company
+Gay Activists
+George Bush
+Girlie Magazines
+Goldfish Fanciers
+Gordo Remora
+Gun Lobby
+Hillary Clinton
+Hollywood
+I.R.S.
+Imelda Marcos
+Intellectuals
+International Cocaine Smugglers
+International Communist Conspiracy
+International Weather Organization
+Israel
+Italy
+Jimmy Hoffa
+Joggers
+Junk Mail
+KKK
+L-4 Society
+Las Vegas
+Lawyers
+Liquor Companies
+Loan Sharks
+Local Police Departments
+Madison Avenue
+Manuel Noriega
+Margaret Thatcher
+Media Sensation
+MI-5
+Moonbase
+Moonies
+Moral Minority
+Multinational Oil Companies
+Nancy Reagan
+NASA
+NATO
+Ninjas
+Offshore Banks
+Ollie North
+OPEC
+Orbit One
+Paranoids
+Phone Company
+Phone Phreaks
+Pollsters
+Post Office
+Prince Charles
+Princess Di
+Professional Sports
+Psychiatrists
+Punk Rockers
+Pyramid Marketing Schemes
+Recording Industry
+Red Cross
+Reformed Church of Satan
+Religious Reich
+Republicans
+Rifkinites
+Robot Sea Monsters
+Ronald Reagan
+Rosicrucians
+Ross Perot
+S.M.O.F.
+Saturday Morning Cartoons
+Savings and Loans
+Science Fiction Fans
+Secret Service
+Secular Humanists
+Semiconscious Liberation Army
+Silicon Valley
+Society for Creative Anarchism
+South American Nazis
+Stonehenge
+Subliminals
+Supreme Court
+Survivalists
+Switzerland
+Tabloids
+Telephone Psychics
+Templars
+The Great Pyramid
+The Mafia
+The Men in Black
+Tobacco Companies
+Trading Card Games
+Trekkies
+Triliberal Commission
+TV Preachers
+Underground Newspapers
+United Nations
+Urban Gangs
+Vampires
+Video Games
+Voudonistas
+Wall Street
+
+RESISTANCE NULL:
+Al Gore
+American Autoduel Association
+Anti-Nuclear Activists
+Antiwar Activists
+Bank of England
+Big Media
+Bill Clinton
+Bjorne
+Black Activists
+Boy Sprouts
+Cable TV
+California
+Cattle Mutilators
+Center for Disease Control
+CFL-AIO
+China
+Church of Elvis
+Comic Books
+Conspiracy Theorists
+Count Dracula
+Cycle Gangs
+Dan Quayle
+Democrats
+Dentists
+Deprogrammers
+Dinosaur Park
+Druids
+Eco-Guerillas
+EFF
+Elders of Zion
+Elvis
+Empty Vee
+Evil Geniuses for a Better Tomorrow
+F.B.I.
+Fast Food Chains
+Federal Reserve
+Feminists
+Fidel Castro
+Fiendish Fluoridators
+Flat Earthers
+Fnord Motor Company
+Gay Activists
+George Bush
+Girlie Magazines
+Goldfish Fanciers
+Gordo Remora
+Gun Lobby
+Hillary Clinton
+Hollywood
+I.R.S.
+Imelda Marcos
+Intellectuals
+International Cocaine Smugglers
+International Communist Conspiracy
+International Weather Organization
+Israel
+Italy
+Jimmy Hoffa
+Joggers
+Junk Mail
+KKK
+L-4 Society
+Las Vegas
+Lawyers
+Liquor Companies
+Loan Sharks
+Local Police Departments
+Madison Avenue
+Manuel Noriega
+Margaret Thatcher
+Media Sensation
+MI-5
+Moonbase
+Moonies
+Moral Minority
+Multinational Oil Companies
+Nancy Reagan
+NASA
+NATO
+Ninjas
+Nuclear Power Companies
+Offshore Banks
+Ollie North
+OPEC
+Orbit One
+Paranoids
+Phone Company
+Phone Phreaks
+Pollsters
+Post Office
+Prince Charles
+Princess Di
+Professional Sports
+Psychiatrists
+Punk Rockers
+Pyramid Marketing Schemes
+Recording Industry
+Red Cross
+Reformed Church of Satan
+Religious Reich
+Republicans
+Rifkinites
+Robot Sea Monsters
+Ronald Reagan
+Rosicrucians
+Ross Perot
+S.M.O.F.
+Saturday Morning Cartoons
+Savings and Loans
+Science Fiction Fans
+Secret Service
+Secular Humanists
+Semiconscious Liberation Army
+Silicon Valley
+Society for Creative Anarchism
+South American Nazis
+Stonehenge
+Subliminals
+Supreme Court
+Survivalists
+Switzerland
+Tabloids
+Telephone Psychics
+Templars
+The Great Pyramid
+The Mafia
+The Men in Black
+Tobacco Companies
+Trading Card Games
+Trekkies
+Triliberal Commission
+TV Preachers
+Underground Newspapers
+United Nations
+Urban Gangs
+Vampires
+Video Games
+Voudonistas
+Wall Street
+Wargamers
