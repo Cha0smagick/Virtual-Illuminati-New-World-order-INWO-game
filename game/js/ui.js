@@ -980,11 +980,44 @@ function init(cb) {
   PV = $('cardPreview');
   var hb = $('helpBtn');
   if (hb) hb.onclick = toggleHelp;
+  /* Preview flotante.
+     ANTES: un `mouseover` de documento sin deduplicar. mouseover dispara en
+     CADA transicion de elemento bajo el cursor (y varias veces al moverse
+     dentro de una carta, que tiene <img> y <small> hijos), asi que se llamaba
+     pvSet/hidePreview decenas de veces por segundo. Peor: pvSet ejecutaba
+     writeCardInfo() ANTES del early-return `lastCix === v`, re-escribiendo
+     infoBar().innerHTML aunque la carta no hubiera cambiado; y hidePreview()
+     llamaba resetInfoBar() (otro innerHTML) para CUALQUIER elemento que no
+     fuera [data-cix] => reconstruccion de DOM en cada pixel de raton. Con las
+     cartas parpadeando bajo el cursor, el elemento bajo el cursor cambiaba sin
+     parar y ese bucle se retroalimentaba.
+     AHORA: se deduplica por cix (solo al cambiar de carta) y el reposicionado
+     se limita a uno por frame con requestAnimationFrame. pvSet/hidePreview no
+     tienen ningun otro punto de llamada, asi que esta deduplicacion es segura. */
+  var hoverCix = null;
   document.addEventListener('mouseover', function (ev) {
     var t = ev.target && ev.target.closest ? ev.target.closest('[data-cix]') : null;
-    if (t) pvSet(t.getAttribute('data-cix')); else hidePreview();
+    var cix = t ? t.getAttribute('data-cix') : null;
+    if (cix === hoverCix) return;
+    hoverCix = cix;
+    if (cix != null) pvSet(cix); else hidePreview();
   });
-  document.addEventListener('mousemove', movePreview);
+  // Al salir de la ventana no llega mouseover, asi que el estado se queda
+  // pegado y el preview se queda congelado visible.
+  document.addEventListener('mouseout', function (ev) {
+    if (ev.relatedTarget == null && hoverCix != null) { hoverCix = null; hidePreview(); }
+  });
+  // Un solo reposicionado por frame en vez de uno por evento mousemove.
+  var mvQueued = false, mvEv = null;
+  document.addEventListener('mousemove', function (ev) {
+    mvEv = ev;
+    if (mvQueued) return;
+    mvQueued = true;
+    requestAnimationFrame(function () {
+      mvQueued = false;
+      if (mvEv) movePreview(mvEv);
+    });
+  });
 }
 
 /* ---------- TUTORIAL A PRUEBA DE TODO ---------- */

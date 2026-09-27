@@ -559,12 +559,18 @@ function runAttackResume(E, st, pid) {
   var humansLeft = 0;
   (st.players || []).forEach(function (p, qi) { if (p.human && qi !== pid) humansLeft++; });
   if (humansLeft > 0) return;
-  try { E.resolveAttack(); } catch (e) {}
+  try { E.resolveAttack(); }
+  catch (e) { if (window.console) console.error('[INWO] AI: fallo al resolver el ataque: ' + (e && e.message ? e.message : e), e); throw e; }
 }
 
+/* Errors are RE-THROWN on purpose. app.js already wraps every AI call in a
+   try/catch that logs '⚠ IA: ...' (runAI) or '⚠ IA reacción: ...'
+   (scheduleResponses). Swallowing them here made that logging dead code and let
+   the turn advance as if the AI had played normally. Rethrowing lets app.js
+   report the failure and hand control back to the human. */
 window.AI = {
-  takeTurn: function (E, pid) { try { takeTurn(E, pid); } catch (e) {} },
-  respond: function (E, pid) { try { respondInternal(E, pid); } catch (e) {} },
+  takeTurn: function (E, pid) { takeTurn(E, pid); },
+  respond: function (E, pid) { respondInternal(E, pid); },
   _internal: { respondInternal: respondInternal, takeTurn: takeTurn }
 };
 })();

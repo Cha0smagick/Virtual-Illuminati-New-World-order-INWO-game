@@ -108,7 +108,15 @@ button {
 button:hover:not(:disabled) {
   border-color: var(--gold);
   background: rgba(255, 176, 58, .12);
-  transform: translateY(-1px);
+  /* SIN transform. Este selector tiene especificidad (0,2,1) — id 0, clase/pseudo-clase 2
+     (`:hover` + `:disabled` dentro de `:not`), elemento 1 — y por tanto GANA a
+     `.cardChip:hover` (0,2,0) y a `.pickCard:hover` (0,2,0). Con un
+     `translateY(-1px)` aqui, el hover de esas dos clases quedaba anulado y TODOS
+     los botones del juego heredaban un lift de 1px, que es exactamente el patron
+     que provoca el parpadeo (el elemento se sale de debajo del cursor, se pierde
+     :hover, la transicion lo devuelve => bucle). El "lift" se comunica con borde +
+     fondo + sombra; cada componente que quiera escalar lo define en su regla
+     :hover, que ya es mas especifica. */
   box-shadow: 0 3px 12px rgba(255, 176, 58, .15);
 }
 button:disabled { opacity: .38; cursor: not-allowed; filter: grayscale(.5); }
@@ -244,14 +252,20 @@ main {
   transition: transform .12s;
 }
 .cardChip img { width: 100%; height: auto; border-radius: 2px; }
-.cardChip:hover { transform: translateY(-2px); border-color: var(--gold); }
+/* Mismo bug que .handCard: translateY(-2px) saca la ficha de debajo del cursor
+   y oscila. scale() solo => nunca se pierde el hover. */
+.cardChip:hover { transform: scale(1.06); border-color: var(--gold); }
 .neutral .cardChip.pickT { outline: 2px dashed var(--red); animation: pickGlowR 1s infinite alternate; }
 
 .expRow, .resRow { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .resRow .cardChip, .expRow .cardChip { width: 44px; }
 
-/* Rotación Illuminati (PNG verticales con arte horizontal) */
-img[src*="Illuminati/"] { transform: rotate(90deg) scale(.735); }
+/* Las 421 imagenes de carta son 818x1111 (retrato) y estan YAderechas.
+   Antes se rotaban las de Illuminati/ con `transform: rotate(90deg) scale(.735)`,
+   lo que dejaba ~30px de espacio muerto arriba y abajo, dejaba la caja de layout
+   desalineada de los pixeles visibles (=> el hit-test del hover se desincroniza y
+   las cartas "parpadean") y ademas se colaba en #cardPreview y .dbig.
+   NO reintroducir rotaciones: el arte siempre es retrato. */
 
 /* Tamaños de miniatura por contexto */
 img.thumb { width: 88px; height: auto; }
@@ -270,17 +284,52 @@ img.sm { width: 46px; height: auto; }
   box-shadow: 0 -6px 26px rgba(0, 0, 0, .6);
 }
 #actionBtns { order: 2; flex: 0 1 34%; min-width: 300px; max-height: 240px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
-#handCards { order: 1; flex: 1 1 60%; min-width: 320px; max-height: 240px; overflow-y: auto; display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; border-right: 1px solid var(--hairline); padding-right: 12px; }
+/* padding-top: 4px — #handCards tiene overflow-y:auto, que recorta a sus hijos.
+   Sin este margen, la carta sobre la que se hace hover (scale 1.05 => ~2.4px de
+   desbordamiento por arriba) se recortaba en el borde superior del contenedor. */
+#handCards { order: 1; flex: 1 1 60%; min-width: 320px; max-height: 240px; overflow-y: auto; display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; border-right: 1px solid var(--hairline); padding: 4px 12px 4px 4px; }
 #actionHint { order: 3; flex-basis: 100%; }
 #handCards .handCard {
+  /* position/z-index viven en la regla base, NO solo en :hover.
+     Antes eran solo-hover: el elemento pasaba de position:static (sin stacking
+     context, z-index inerte) a position:relative al entrar, y ese flip de
+     stacking context en cada entrada/salida era la 2a fuente de parpadeo. */
+  position: relative; z-index: 1;
   width: 96px; flex: none; cursor: pointer;
   border: 1px solid var(--hairline); border-radius: 3px;
   background: rgba(0, 0, 0, .3);
   transition: transform .12s, border-color .15s, box-shadow .15s;
 }
 #handCards .handCard img { width: 100%; height: auto; border-radius: 3px 3px 0 0; }
-#handCards .handCard:hover { transform: translateY(-6px) scale(1.04); border-color: var(--gold); box-shadow: 0 10px 24px rgba(255, 176, 58, .25); z-index: 5; position: relative; }
-#handCards .handCard:active { transform: scale(.94); }
+/* SOLO scale, nunca translateY. Un translateY(-6px) saca la carta de debajo del
+   cursor cuando este esta a <=6px del borde inferior: se pierde :hover, la
+   transicion de 120ms la devuelve, el cursor vuelve a estar encima => bucle
+   infinito de 120ms que el ojo lee como parpadeo. scale() solo CRECE la caja,
+   asi que cualquier punto dentro de la caja original sigue dentro: imposible que
+   se pierda el hover. El "lift" se comunica con sombra + borde, no moviendo el hit-box. */
+#handCards .handCard:hover,
+#handCards .handCard:focus-visible {
+  transform: scale(1.05);
+  border-color: var(--gold);
+  box-shadow: 0 10px 24px rgba(255, 176, 58, .25);
+  z-index: 6;
+}
+#handCards .handCard:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+/* :active reemplaza el transform del hover (misma propiedad) => composicion
+   explicita, sin salto: baja a .96 y vuelve a 1.05 al soltar. */
+#handCards .handCard:active { transform: scale(.96); z-index: 6; }
+/* Faltaba por completo: ui.js anade la clase `picked` al seleccionar, pero no
+   habia ninguna regla .handCard.picked => la seleccion no daba ninguna senal
+   visual (solo cambiaba aria-pressed). */
+#handCards .handCard.picked {
+  border-color: var(--gold);
+  background: rgba(255, 176, 58, .08);
+  box-shadow: 0 0 0 2px var(--gold), 0 0 18px rgba(255, 176, 58, .4);
+}
+#handCards .handCard.picked:hover,
+#handCards .handCard.picked:focus-visible {
+  box-shadow: 0 0 0 2px var(--gold), 0 10px 24px rgba(255, 176, 58, .3);
+}
 
 .bgrp {
   display: flex; flex-wrap: wrap; gap: 6px; align-items: center; width: 100%;
@@ -471,7 +520,10 @@ img.sm { width: 46px; height: auto; }
 }
 .setup-col h3 em { font-style: normal; color: var(--green); font-family: var(--f-type); font-size: 12px; letter-spacing: .04em; }
 .pickGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 9px; }
+/* position/z-index en la base => contexto de apilamiento estable (mismo motivo que
+   .handCard). */
 .pickCard {
+  position: relative; z-index: 1;
   cursor: pointer; text-align: center;
   border: 1px solid var(--hairline); border-radius: 4px;
   padding: 7px 5px 8px;
@@ -482,7 +534,10 @@ img.sm { width: 46px; height: auto; }
 .pickCard span { display: block; font-size: 11px; color: var(--bone); margin-top: 4px; }
 .pickCard .pst { font-family: var(--f-type); font-size: 10px; color: var(--cyan); }
 .pickCard .tl { font-size: 10px; color: var(--muted); }
-.pickCard:hover { transform: translateY(-3px); border-color: var(--cyan); box-shadow: 0 8px 22px rgba(53, 196, 217, .18); }
+/* scale, no translateY: las 54 cartas del setup tienen el mismo bucle de
+   oscilacion que tenia la mano. */
+.pickCard:hover { transform: scale(1.04); border-color: var(--cyan); box-shadow: 0 8px 22px rgba(53, 196, 217, .18); z-index: 6; }
+.pickCard:active { transform: scale(.98); z-index: 6; }
 .pickCard.picked { border: 2px solid var(--gold); box-shadow: 0 0 20px rgba(255, 176, 58, .35); background: rgba(255, 176, 58, .07); }
 .startBig { font-size: 19px; padding: 13px 42px; margin-top: 18px; letter-spacing: .1em; font-family: var(--f-disp); font-weight: 700; }
 .setup-tip { margin-top: 12px; font-size: 13px; }

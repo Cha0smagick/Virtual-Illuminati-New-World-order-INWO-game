@@ -31,6 +31,22 @@ function humanPid() {
   return -1;
 }
 
+/* The player who is allowed to SUPPORT the attack under way.
+   Must NOT be the attacker: engine.addSupport rejects pid===A.pid and rejects a
+   group the pid does not own. In hot-seat (2 humans) humanPid() always returns 0,
+   so when player 1 attacked, player 0's own groups could never be used to aid or
+   oppose, and self-defend was impossible. This mirrors stepResp()'s iteration:
+   first human that is not the attacker. */
+function responderPid() {
+  var st = E.getState();
+  var A = st.attack;
+  for (var i = 0; i < st.players.length; i++) {
+    if (A && i === A.pid) continue;
+    if (st.players[i].human) return i;
+  }
+  return -1;
+}
+
 var CB = {
   onDrawPlot: function () { E.drawPlot(E.getState().currentPid); after('Robas una carta de Plot'); },
   onDrawGroup: function () { E.drawGroup(E.getState().currentPid); after('Robas una carta de Grupo'); },
@@ -48,11 +64,11 @@ var CB = {
       var ns = d.notes || [];
       if (ns.length) log('   En n\u00FAmeros: ' + ns.join(' \u00B7 '));
       log('   \u{1F4A1}\u00BFDudas? El bot\u00F3n \u00AB+10\u00BB refuerza tu ataque antes de tirar.');
-    } catch (e) {}
+    } catch (e) { log('⚠ No se pudo calcular la fuerza del ataque: ' + e.message); }
     after('Ataque declarado (' + type + ')');
   },
-  onSupport: function (entry) { E.addSupport(humanPid(), entry); after(entry.oppose ? 'Te opones' : 'Ayudas al ataque'); },
-  onSelfDefend: function () { E.addSupport(humanPid(), { selfDefend: true }); after('Defensa propia (Power×2)'); },
+  onSupport: function (entry) { E.addSupport(responderPid(), entry); after(entry.oppose ? 'Te opones' : 'Ayudas al ataque'); },
+  onSelfDefend: function () { E.addSupport(responderPid(), { selfDefend: true }); after('Defensa propia (Power×2)'); },
   onResolveAttack: function () {
     E.resolveAttack();
     var lr = null; try { lr = E.getState().lastResultText; } catch (e) {}
@@ -128,6 +144,10 @@ function scheduleResponses() {
   }
 }
 function resumeAfterAttack() {
+  /* Any AI respond-timer queued by scheduleResponses() is now obsolete: the
+     attack is over. It used to survive and fire later against an unrelated game
+     state, injecting a support for a player who was no longer defending. */
+  if (respTimer != null) { clearTimeout(respTimer); respTimer = null; }
   var st = refresh();
   if (checkOver(st)) return;
   if (aiPending != null) {
@@ -169,6 +189,7 @@ function countHumans(st) { return st.players.filter(function (p) { return p.huma
 
 function needsHuman(st) {
   var A = st.attack;
+  if (!A) return false;
   for (var q = 0; q < st.players.length; q++) if (q !== A.pid && st.players[q].human) return true;
   return false;
 }
@@ -196,7 +217,7 @@ function finishAITurn(pid) {
   try {
     var st = E.getState();
     if (st.phase === 'gameover') { checkOver(refresh()); return; }
-    if (st.attack && !st.attack.resolved) { try { E.resolveAttack(); } catch (e) {} }
+    if (st.attack && !st.attack.resolved) { try { E.resolveAttack(); } catch (e) { log('⚠ IA no pudo resolver el ataque: ' + e.message); } }
     /* E.endTurn avanza y hace beginTurn del siguiente él mismo */
     E.endTurn();
     afterAdvance();

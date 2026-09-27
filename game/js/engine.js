@@ -686,6 +686,7 @@ function applyAttackResult(A,det,resultText){
   var pid=A.pid;
   if(A.neutralTarget){
     var naI=S.neutralArea.findIndex(function(n){return n.uid===A.neutralTarget;});
+    if(naI<0){S.attack=null;log('El objetivo en el ÁREA NEUTRAL ya no está disponible — ataque cancelado');return;}
     var na=S.neutralArea[naI];
     if(success&&A.type==='control'){
       S.neutralArea.splice(naI,1);
@@ -711,7 +712,7 @@ function applyAttackResult(A,det,resultText){
     S.attack=null;return;
   }
   var tNode=findNode(A.targetUid);
-  if(!tNode){S.attack=null;return;}
+  if(!tNode){S.attack=null;log('El grupo objetivo ya no existe (fue movido o destruido) — ataque cancelado');return;}
   var owner=A.targetPid;
   if(success&&A.type==='control'){
     var parent=findNodeThatHas(S.players[owner].structure,A.targetUid);
@@ -756,8 +757,12 @@ function destroyGroup(byPid,targetUid){
     if(r.linkedTo===targetUid){S.groupDiscard.push(r.cardId);log('Recurso linkeado destruido');return false;}
     return true;
   });
-  /* puppets lose tokens, return to owner's HAND */
+  /* puppets lose tokens, return to owner's HAND.
+     subtreeList() includes the node itself (walk visits the root first), so the
+     destroyed group must be skipped here: it already went to groupDiscard above
+     and re-adding it to the hand would duplicate the card. */
   subtreeList(node).forEach(function(nd){
+    if(nd===node)return;
     nd.tokens=0;
     S.players[owner].hand.push(nd.cardId);
   });
@@ -778,6 +783,25 @@ E.moveGroup=function(pid,uid,newParentUid,payWith){
   if(findInTree(node,newParentUid))throw new Error('No puedes mover un grupo dentro de sí mismo');
   if(!isOpenArrow(np))throw new Error('Destino sin flecha libre');
   var payers=[uid,oldParent.uid,newParentUid];
+  /* payWith is optional. When omitted (which is what the UI does) resolve a legal
+     payer automatically instead of throwing: SPEC-RULES says moving a Group "cuesta
+     1 acción" (an Illuminati action), so Illuminati tokens win; otherwise fall back
+     to a group Action token, preferring the moved group itself. An explicit
+     payWith is still validated strictly. */
+  if(payWith===undefined||payWith===null){
+    if(S.players[pid].illumTokens>=1)payWith='illum';
+    else{
+      /* pick a payer that ACTUALLY holds a token, in preference order */
+      var cand=[uid,newParentUid,oldParent.uid], found=null;
+      for(var ci=0;ci<cand.length;ci++){
+        if(cand.indexOf(cand[ci])!==ci)continue;
+        var cn=findNode(cand[ci]);
+        if(cn&&cn.tokens>=1){found=cand[ci];break;}
+      }
+      if(found)payWith=found;
+      else throw new Error('Mover un grupo cuesta 1 acción Illuminati o 1 Action token: no tienes ninguna disponible');
+    }
+  }
   if(payers.indexOf(payWith)<0&&payWith!=='illum')throw new Error('Pago inválido (grupo movido/maestro viejo/nuevo o acción Illuminati)');
   if(payWith==='illum'){
     if(S.players[pid].illumTokens<1)throw new Error('Sin acciones Illuminati');
