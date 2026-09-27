@@ -919,7 +919,23 @@ function toggleHelp() {
     if (typeof closeBtn.focus === 'function') closeBtn.focus();
   }
 }
+/* App.start() llama UI.init(CB) en CADA arranque de partida, y init() llamaba
+   bindEvents() sin guard. Todos los listeners de aqui son DELEGADOS sobre nodos
+   estaticos de index.html (#hdrBtns, #board, #actionBtns, #handCards) que nunca
+   se reemplazan: solo se reescribe su innerHTML. Asi que sin este flag, cada
+   partida nueva anadia una COPIA mas de cada listener y un solo click ejecutaba
+   el handler N veces. Medido en navegador: un unico click en "Terminar turno"
+   llamaba Engine.endTurn() 2 veces (curBefore 0 y luego 1) desde el MISMO stack
+   ui.js:965 -> app.js:79 -> app.js:174, con lo que el turno de la IA se creaba y
+   se cerraba al instante sin jugar nunca (luego la IA receive "No es tu turno").
+   Los handlers leen la variable de modulo CB, que init() reasigna, asi que un
+   unico conjunto de listeners siempre usa los callbacks mas recientes. */
+var evBound = false;
+var hoverCix = null;   /* estado de hover del preview, sobrevive a init() */
+
 function bindEvents() {
+  if (evBound) return;   /* ya delegamos: NUNCA duplicar */
+  evBound = true;
   $('hdrBtns').addEventListener('click', function (ev) {
     var nb = ev.target.closest ? ev.target.closest('button') : null;
     if (nb && nb.getAttribute('data-act') === 'newgame') location.reload();
@@ -994,7 +1010,8 @@ function init(cb) {
      AHORA: se deduplica por cix (solo al cambiar de carta) y el reposicionado
      se limita a uno por frame con requestAnimationFrame. pvSet/hidePreview no
      tienen ningun otro punto de llamada, asi que esta deduplicacion es segura. */
-  var hoverCix = null;
+  hoverCix = null;              /* partida nueva: el hover anterior no aplica */
+  if (evBound) return;          /* listeners de preview ya puestos: no duplicarlos */
   document.addEventListener('mouseover', function (ev) {
     var t = ev.target && ev.target.closest ? ev.target.closest('[data-cix]') : null;
     var cix = t ? t.getAttribute('data-cix') : null;

@@ -274,21 +274,59 @@ img.sm { width: 46px; height: auto; }
 
 
 /* ---------- BARRA DE MANO + ACCIONES ---------- */
+/* REGLA DE ORO DE ESTA BARRA: la ALTURA de #handBar debe ser CONSTANTE.
+   #cardInfo se inyecta como PRIMER HIJO de #handBar (ui.js infoBar()) y antes
+   escribia ahí el texto completo de la carta, de altura arbitraria. Como
+   #handBar es un flex-wrap y las cartas viven DENTRO de él, cada hover cambiaba
+   la altura de la barra => #handCards se redimensionaba y las cartas se movian
+   bajo el cursor => otro mouseover => otro texto de otra altura => bucle
+   infinito. Ese era el parpadeo real (y el "las cartas quieren acomodarse").
+   REGLA: nada dentro de la barra puede depender del contenido variable. */
 #handBar {
   position: sticky; bottom: 0; z-index: 40;
-  display: flex; flex-wrap: wrap;
-  gap: 10px; align-items: flex-start;
+  /* GRID, no flex-wrap. Un flex con wrap puede re-venir a_lineas segun el
+     contenido: eso fue lo que movia las cartas bajo el cursor. Con named areas
+     la topologia es fija y NADA puede reubicarse por contenido variable. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  grid-template-areas: "info info" "cards btns" "hint hint";
+  gap: 8px 10px; align-items: start;
   padding: 10px 18px 12px;
   background: linear-gradient(180deg, #10173a, #0a0f24);
   border-top: 2px solid var(--gold);
   box-shadow: 0 -6px 26px rgba(0, 0, 0, .6);
 }
-#actionBtns { order: 2; flex: 0 1 34%; min-width: 300px; max-height: 240px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
+
+/* #cardInfo: fila propia, ALTURA FIJA, scroll interno. Su contenido puede
+   cambiar libremente sin tocar la altura de la barra. */
+#cardInfo {
+  grid-area: info;
+  box-sizing: border-box;
+  height: 56px; min-height: 56px; max-height: 56px;
+  overflow-y: auto; overflow-x: hidden;
+  overscroll-behavior: contain;
+  margin: 0; padding: 6px 10px;
+  border: 1px solid var(--hairline); border-radius: 3px;
+  background: rgba(0, 0, 0, .28);
+  font-size: 12.5px; line-height: 1.35;
+}
+/* scrollbar-gutter: stable — evita que aparezca/-desaparezca la barra de scroll
+   y con ella el ancho útil, lo que re-envuelve las cartas y las desplaza. */
+#actionBtns {
+  grid-area: btns; width: auto;
+  max-height: 240px; overflow-y: auto; scrollbar-gutter: stable;
+  display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start;
+}
 /* padding-top: 4px — #handCards tiene overflow-y:auto, que recorta a sus hijos.
    Sin este margen, la carta sobre la que se hace hover (scale 1.05 => ~2.4px de
    desbordamiento por arriba) se recortaba en el borde superior del contenedor. */
-#handCards { order: 1; flex: 1 1 60%; min-width: 320px; max-height: 240px; overflow-y: auto; display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; border-right: 1px solid var(--hairline); padding: 4px 12px 4px 4px; }
-#actionHint { order: 3; flex-basis: 100%; }
+#handCards {
+  grid-area: cards; min-width: 0;
+  max-height: 240px; overflow-y: auto; scrollbar-gutter: stable;
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start;
+  border-right: 1px solid var(--hairline); padding: 4px 12px 4px 4px;
+}
+#actionHint { grid-area: hint; }
 #handCards .handCard {
   /* position/z-index viven en la regla base, NO solo en :hover.
      Antes eran solo-hover: el elemento pasaba de position:static (sin stacking
@@ -357,16 +395,17 @@ img.sm { width: 46px; height: auto; }
 .hicon { color: var(--gold); font-style: normal; }
 .canc { color: var(--red); font-style: normal; }
 
-/* Barra de info al pasar el ratón */
+/* Barra de info al pasar el ratón.
+   Solo TIPOGRAFIA y color: la caja (alto fijo, overflow, flex-basis) está
+   definida arriba, junto al resto de la barra. Antes esta regla traía su propio
+   `max-height: 84px` sin `height`, y al competir con la de arriba dejaba la
+   altura variable — que es justo lo que movía las cartas bajo el cursor. */
 #cardInfo {
-  font-size: 13px;
   color: var(--bone);
   background: rgba(7, 11, 26, .92);
   border: 1px solid var(--hairline);
   border-left: 3px solid var(--cyan);
   border-radius: 3px;
-  padding: 7px 12px;
-  max-height: 84px; overflow-y: auto;
 }
 .ci-meta { color: var(--cyan); font-family: var(--f-type); font-size: 11.5px; letter-spacing: .06em; }
 .ci-text { color: #cfd6ef; margin-top: 3px; line-height: 1.35; }
@@ -669,7 +708,16 @@ img.sm { width: 46px; height: auto; }
   #board .panel:last-of-type { grid-area: p2; }
   .neutral { grid-area: neutral; }
   #handBar { position: static; }
-  #handCards, #actionBtns { max-height: none; flex-basis: 100%; border-right: none; }
+  /* En pantallas estrechas cada zona ocupa su propia fila. Como #handBar ahora es
+     GRID con named areas, basta con re-declarar areas y columnas: los antiguos
+     `flex:...`serian inertes. */
+  #handBar {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "info" "cards" "btns" "hint";
+  }
+  #handCards, #actionBtns { max-height: none; border-right: none; }
+  #actionBtns { width: auto; }
+  #cardInfo { height: 52px; min-height: 52px; max-height: 52px; }
   .stamp { right: -30px; font-size: 11px; }
   .langpill { top: 0; right: 0; }
 }
