@@ -260,12 +260,23 @@ main {
 .expRow, .resRow { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .resRow .cardChip, .expRow .cardChip { width: 44px; }
 
-/* Las 421 imagenes de carta son 818x1111 (retrato) y estan YAderechas.
-   Antes se rotaban las de Illuminati/ con `transform: rotate(90deg) scale(.735)`,
-   lo que dejaba ~30px de espacio muerto arriba y abajo, dejaba la caja de layout
-   desalineada de los pixeles visibles (=> el hit-test del hover se desincroniza y
-   las cartas "parpadean") y ademas se colaba en #cardPreview y .dbig.
-   NO reintroducir rotaciones: el arte siempre es retrato. */
+/* CORRECCION (2026-09-26): los 18 PNG de Illuminati/ SI estan escaneados
+   girados 90°. Verificado decodificando los pixeles: se compara la desviacion
+   tipica de la media de FILAS (texto horizontal) contra la de COLUMNAS.
+   Los 18 Illuminati dan r<0.98 (0.535-0.980), los 167 Groups dan r>1.05
+   (control: Air Magic 1.256, A.M.A. 1.646) y los 236 Plots forman una
+   distribucion continua sin corte bimodal, asi que NO son escaneados
+   girados: tienen arte vertical alta.
+   => la regla de rotacion del desarrollador original era CORRECTA.
+   NOTA: un volcado ASCII de luminancia NO puede distinguir esto, porque una
+   carta girada tambien muestra bandas de texto. Ese fue el error de analisis.
+
+   Se ACOTA a los contextos de miniatura: en #cardPreview y .dbig la imagen ya
+   se muestra a 170px y girarla con scale(.735) la descuadra (por eso el
+   override de abajo, que gana por especificidad). */
+img[src*="Illuminati/"] { transform: rotate(90deg) scale(.735); }
+#cardPreview img[src*="Illuminati/"],
+img.dbig[src*="Illuminati/"] { transform: none; }
 
 /* Tamaños de miniatura por contexto */
 img.thumb { width: 88px; height: auto; }
