@@ -10,8 +10,17 @@ vm.runInContext(fs.readFileSync(path.join(ROOT, 'game/js/cardtexts_data.js'), 'u
 const OCR = ocrContext.window.INWO_OCR || {};
 const parsedRaw = JSON.parse(fs.readFileSync(path.join(ROOT, 'research/cards_parsed.json'), 'utf8'));
 const parsedArr = Array.isArray(parsedRaw) ? parsedRaw : (parsedRaw.cards || Object.values(parsedRaw)[0]);
+const mergePath = path.join(ROOT, 'research/audit_reports/card_data_merge.json');
+const mergeRaw = fs.existsSync(mergePath) ? JSON.parse(fs.readFileSync(mergePath, 'utf8')) : { cards: {} };
 
 const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+const mergeCards = {};
+for (const row of Object.values(mergeRaw.cards || {})) {
+  if (!row || (!row.id && !row.name)) continue;
+  const rowKey = norm(row.id || row.name);
+  mergeCards[rowKey] = row;
+  if (row.name) mergeCards[norm(row.name)] = row;
+}
 // name-key -> official type from SJG list
 const offType = {};
 for (const r of parsedArr) {
@@ -60,21 +69,216 @@ const V = {
 const VERIFIED = {}; for (const k in V) VERIFIED[norm(k)] = V[k];
 
 // ---- Illuminati (official B.4) ----
+/* ---------------------------------------------------------------------------
+   ILLUMINATI — Poder y metas leídos VERBATIM de las 18 cartas de
+   `Illuminati/INWO - <Nombre> 1.png` (ver research/audit_reports/
+   illuminati_transcription.json.md). La tabla anterior venía de un placeholder
+   p=8 en 5 de 9 y de metas inventadas; las cartas mandan.
+
+   Esquema de `e` (efecto en juego) y `g` (meta especial), que consumirá
+   engine.js en la Fase 2:
+     e.keepOnFailedControl  — si pierdes un Control contra un Grupo tuyo, no lo
+                              pierdes: vuelve a tu mano.
+     e.bonus                — {targetAlign|targetAttr|anyDestroy, control, destroy}
+                              REGLA OFICIAL: "+N on any attempt" aplica solo a
+                              TUS ataques, nunca al ayudar/oponer.
+     e.privilegedPerTurn    — nº de ataques *privileged* por turno.
+     e.organizeAtEndOfTurn — reorganizar la estructura libremente.
+     e.plotHandLimit        — máximo de Plots en mano (5 por defecto).
+     e.drawPlotAtStart      — Plots que robas al empezar el turno.
+     e.drawPlotOnDestroy    — robar un Plot al destruir.
+     e.defenseBonus         — {anyAttack:+N}EXTRA al defender.
+     e.destroyOnly          — {aligns:[...], allowRivalIlluminati:bool}
+                             NINGÚN otro Grupo puede ser destruido por ti.
+     e.immuneToAligns       — estructura inmune a esos alineamientos.
+     e.actionTokens         — tokens de acción por turno.
+     e.tokensNotSameAttack  — los 2 tokens no pueden usarse en el mismo ataque.
+     e.twice                — marca impresa «•TWICE•».
+--------------------------------------------------------------------------- */
 const ILL = {
-  'Bavarian Illuminati': {p:10,r:null,e:{kind:'illu_special',code:'bavarian'},g:{type:'basic'},t:'Once per turn may declare one attack Privileged. Power 10.'},
-  'The Network': {p:8,r:null,e:{kind:'illu_special',code:'network'},g:{type:'basic',doubleAttr:'computer'},t:'Draw two Plot cards at start of each turn. Computer groups count double toward your Basic Goal.'},
-  'Servants of Cthulhu': {p:9,r:null,e:{kind:'illu_special',code:'cthulhu'},g:{type:'destroy',count:8},t:'+4 on all your attacks to destroy (not instant). GOAL: destroy 8 groups.'},
-  'Gnomes of Zurich': {p:8,r:null,e:{kind:'illu_special',code:'gnomes'},g:{type:'basic',doubleAttr:'corporate'},t:'+4 to control any Bank group. Corporate groups count double toward your Basic Goal.'},
-  'Discordian Society': {p:8,r:null,e:{kind:'illu_special',code:'discordian'},g:{type:'basic',doubleAttr:'weird'},t:'Your entire power structure is immune to Straight AND Government groups. Weird groups count double toward your Basic Goal.'},
-  'Bermuda Triangle': {p:8,r:null,e:{kind:'illu_special',code:'bermuda'},g:{type:'basic'},t:'At end of your turn you may reorganize your power structure freely.'},
-  'Shangri-La': {p:8,r:null,e:{kind:'illu_special',code:'shangrila'},g:{type:'peaceful_power',total:30},t:'+5 defense against Instant Attacks on your groups. You may never attack to destroy a non-Violent group. GOAL: control Peaceful groups with total printed Power of 30.'},
-  'Adepts of Hermes': {p:8,r:null,e:{kind:'illu_special',code:'adepts'},g:{type:'basic'},t:'When an attempt to control one of your uncontrolled Groups fails, or you fail to control a Group from your hand, you keep it instead of discarding it.'},
-  'The UFOs': {p:8,r:null,e:{kind:'illu_special',code:'ufos'},g:{type:'pick3'},t:'You get TWO Illuminati action tokens per turn. GOAL: secretly pick 3 non-Illuminati groups when game starts; control all 3 to win.'},
+  'Adepts of Hermes': {
+    p:7, r:null,
+    e:{kind:'illu_special',code:'adepts',
+       keepOnFailedControl:true,
+       bonus:{targetAttr:'magic',control:6,destroy:6}},
+    g:{type:'basic',magicResourceCountsAsGroup:true},
+    t:'If you fail an Attack to Control against a Group from your own hand, you do not lose the group . . . just return the card to your hand. The Adepts of Hermes have a +6 on any attempt to control or destroy a Magic group. GOAL: Each Magic Resource you control counts as one group toward the Basic Goal.'
+  },
+  'Bavarian Illuminati': {
+    p:10, r:null,
+    e:{kind:'illu_special',code:'bavarian',privilegedPerTurn:1},
+    g:{type:'power_total',total:50},
+    t:'Each turn, you may declare one of your attacks privileged. GOAL: Control a total Power of 50 or more, counting Bavaria\'s own Power.'
+  },
+  'Bermuda Triangle': {
+    p:8, r:null,
+    e:{kind:'illu_special',code:'bermuda',organizeAtEndOfTurn:true},
+    g:{type:'power_total',total:35,needEachAlign:true},
+    t:'You may reorganize your groups freely at the end of your turn. GOAL: Control a total Power of at least 35, counting Bermuda\'s own Power, and at least one group of each alignment. A group with more than one alignment counts for all its alignments.'
+  },
+  'Discordian Society': {
+    p:7, r:null,
+    e:{kind:'illu_special',code:'discordian',
+       bonus:{targetAlign:'weird',control:4},
+       immuneToAligns:['government','straight']},
+    g:{type:'basic',double:{align:'weird',powerAtLeast:3}},
+    t:'You have a +4 on any attempt to control Weird groups. Your power structure is immune to attacks from Government or Straight groups, and to all special abilities of these groups. GOAL: Any Weird group with a Power of 3 or more counts double toward your total number of groups controlled.'
+  },
+  'Gnomes of Zurich': {
+    p:9, r:null,
+    e:{kind:'illu_special',code:'gnomes',plotHandLimit:6,
+       bonus:{targetAlign:'corporate',targetAttr:'bank',control:4}},
+    g:{type:'basic',double:{align:'corporate',attr:'bank',powerAtLeast:4}},
+    t:'You may hold 6 Plot cards in your hand, rather than the usual 5. You have a +4 on any attempt to control Corporate groups or Banks. GOAL: Any Corporate group or Bank with a Power of 4 or more counts double toward your total number of groups controlled.'
+  },
+  'Servants of Cthulhu': {
+    p:9, r:null,
+    e:{kind:'illu_special',code:'cthulhu',
+       bonus:{anyDestroy:4,includesInstant:true},
+       drawPlotOnDestroy:true},
+    g:{type:'destroy_reduce',reducePerDestroy:1,winAt:8},
+    t:'You have a +4 on any attempt to destroy, even with Disasters and Assassinations. Draw a Plot card whenever you destroy a group! GOAL: For every group you destroy, reduce by 1 the number of groups you need to control in order to win. You may also count rival Illuminati which you destroy by removing their last group. If you destroy 8 groups, you win, regardless of how many you control!'
+  },
+  'Shangri-La': {
+    p:7, r:null,
+    e:{kind:'illu_special',code:'shangrila',
+       defenseBonus:{anyAttack:5},
+       destroyOnly:{aligns:['violent'],allowRivalIlluminati:true}},
+    g:{type:'peaceful_power_in_play',total:30,sharedVictory:true},
+    t:'Any group in your Power Structure has an extra +5 to defend against any attack. You cannot destroy any groups except Violent ones and rival Illuminati. GOAL: Have Peaceful groups with a total Power of 30 in play, regardless of who controls them! If this happens, all Shangri-La players share the victory.'
+  },
+  'The Network': {
+    p:8, r:null,
+    e:{kind:'illu_special',code:'network',drawPlotAtStart:2},
+    g:{type:'basic',double:{attr:'computer',powerAtLeast:3}},
+    t:'You start your turn by drawing two Plot cards, rather than one. GOAL: Any Computer group with a Power of 3 or more counts double toward your total number of groups controlled.'
+  },
+  'The UFOs': {
+    p:6, r:null,
+    e:{kind:'illu_special',code:'ufos',actionTokens:2,tokensNotSameAttack:true,twice:true},
+    g:{type:'goal_cards',max:3},
+    t:'The UFOs have two actions per turn — they get two tokens! These may not be used in the same attack. GOAL: The UFOs can have up to 3 different Goal cards in play, and win with any of them.'
+  },
 };
 const ILLN = {}; for (const k in ILL) { ILLN[norm(k)] = ILL[k]; } ILLN['ufos'] = ILL['The UFOs'];
 
-// Known Goal card names (victory-plot family)
-const GOALS = new Set(['criminaloverlords','fratricide','haileris','thefourthreich','thenewworldorder','militaryindustrialcomplex','peaceinourtime','reconstructionafterrevolution','worldwariii']);
+/* ------------------------------------------------------------------ *
+ * Goal cards (victory-plot family)
+ * FIX 2026-09-26: these 4 names never had a PNG, so they were dead
+ * entries and research/cards_parsed.json contains no Goal card at all
+ * (its type labels are only Plot/Grp./Ill./Per./Res./Dis./Plc./Ass.).
+ * That is why every Goal card fell through the switch(off) default
+ * branch and was typed subtype:null. Names below are the 7 Goal cards
+ * that actually exist as PNGs, verified against window.INWO_IMAGE_FILES
+ * (421 entries, 0 missing on disk).  `worldwariii` was a typo.
+ * ------------------------------------------------------------------ */
+const GOALS = new Set(['criminaloverlords','fratricide','haileris',
+  'militaryindustrialcomplex','peaceinourtime','worldwarthree','alternategoals']);
+
+/* ------------------------------------------------------------------ *
+ * ALIGNMENTS vs ATTRIBUTES
+ * The card face has TWO bottom fields. Alignments sit bottom-left and
+ * come from the official TEN (rulebook: "There are ten different
+ * alignments. They are shown at the bottom left of Group cards.").
+ * Attributes sit bottom-right in italic: "Certain 'attributes,' in
+ * italic, may appear at the bottom right of a Group card... For
+ * instance, Computer is an attribute. A card that affects 'all Computer
+ * Groups' affects only those Groups with Computer in the lower right."
+ * cards.js was collapsing both into one c.alignments array, so an
+ * "all Computer groups" mechanic would also hit Government groups.
+ * Measured over all 421 cards this split partitions perfectly; the only
+ * tag that is neither an alignment nor a known attribute is `green`,
+ * which appears on exactly 2 cards (druids, joggers) and is OCR garbage.
+ * ------------------------------------------------------------------ */
+const ALIGNMENTS10 = new Set(['government','corporate','liberal','conservative',
+  'peaceful','violent','straight','weird','criminal','fanatic']);
+const ATTRIBUTES = new Set(['computer','magic','science','coastal','huge',
+  'bank','illusion','outworld']);   // bank/illusion/outworld: printed as attributes on some cards
+const JUNK_TAGS = new Set(['green']);
+
+/* ------------------------------------------------------------------ *
+ * PLOT_FX — the 18 transcribed Disasters/Assassinations, verbatim.
+ * Source: research/audit_reports/plot_transcription.md (read off the
+ * card faces with look_at, one image per call).
+ *
+ * Rules shape (identical on all 13 Disasters):
+ *   "This is an Instant Attack to Destroy any <selector>. It does not
+ *    require an action. Its Power is <p> against <a>, <p> against <b>.
+ *    If the attack succeeds, the target is Devastated. If the die roll
+ *    succeeds by more than <N>, the target is completely destroyed!"
+ *
+ * Two independent axes that must NOT be conflated:
+ *   - `instant:false` => NOT an Instant Attack: the target player's
+ *     groups may interfere or aid the victim. (epidemic, giantkudzu)
+ *     This is unrelated to costing an action.
+ *   - `destroyMargin:null` => the card "cannot actually destroy"; it can
+ *     only leave the target Devastated. (epidemic, hurricane)
+ *
+ * `power` entries are tried in order and the first match wins, so
+ * specific selectors must come before general ones.
+ * ------------------------------------------------------------------ */
+const PLOT_FX = {
+  /* --- 13 DISASTERS: every one targets a Place --- */
+  'atomicmonster': { kind:'disaster', target:'place', requireAttr:'coastal', instant:true, destroyMargin:6,
+    power:[
+      { ifNames:['japan','california'], value:24 },
+      { ifAttr:'huge', value:16 },
+      { value:20 } ],
+    altUse:{ kind:'destroy_bonus', targetNames:['robotseamonsters','nuclearpowercompanies'], bonus:10 },
+    t:'*Disaster!* This is an Instant Attack to Destroy any *Coastal* Place. It does not require an action. Its Power is 16 against a *Huge* Place, 20 against any other Place, but 24 against Japan or California. If the attack succeeds, the target is *Devastated*. If it succeeds by more than 6, the target is destroyed. Or play at any time to give +10 to any attack to destroy the Robot Sea Monsters or the Nuclear Power Companies!' },
+  'earthquake': { kind:'disaster', target:'place', instant:true, destroyMargin:5,
+    power:[{ ifAttr:'huge', value:12 }, { value:16 }],
+    t:'*Disaster!* This is an Instant Attack to Destroy any Place. It does not require an action. Its Power is 12 against a *Huge* Place, 16 against any other Place. If the attack succeeds, the target is *Devostated*. If the die roll succeeds by more than 5, the target is destroyed!' },
+  'epidemic': { kind:'disaster', target:'place', instant:false, destroyMargin:null, power:[{ value:14 }],
+    t:'*Disaster!* This is an Attack to Destroy any Place. It does not require an action. Its Power is 14. Groups may interfere to aid the victim. It cannot actually destroy the Place.' },
+  'hurricane': { kind:'disaster', target:'place', requireAttr:'coastal', instant:true, destroyMargin:null,
+    power:[{ ifAttr:'huge', value:16 }, { value:20 }],
+    t:'*Disaster!* This is an Instant Attack to Destroy any *Coastal* Place. It does not require an action. Its Power is 16 against a *Huge* Place, 20 against any other Place. If the attack succeeds, the target is *Devastated*. It cannot actually destroy it.' },
+  'meteorstrike': { kind:'disaster', target:'place', instant:true, destroyMargin:4, power:[{ value:16 }],
+    t:'*Disaster!* This is an Instant Attack to Destroy any Place. It does not require an action. Its Power is 16. If the attack succeeds, the target is *Devastated*. If the die roll succeeds by more than 4, the target is destroyed!' },
+  'nuclearaccident': { kind:'disaster', target:'place', instant:true, destroyMargin:4,
+    power:[{ ifAttr:'huge', value:14 }, { value:18 }],
+    onPlay:{ stripActionFromNames:['nuclearpowercompanies'] },
+    t:'*Disaster!* This is an Instant Attack to Destroy any Place. It does not require an action. Its Power is 14 against a *Huge* Place, 18 against any other Place. If the attack succeeds, the target is *Devastated*. If the die roll succeeds by more than 4, the target is destroyed. The Nuclear Power Companies lose their action token when this card is played on any Place.' },
+  'plagueofdemons': { kind:'disaster', target:'place', rejectAttr:'huge', instant:true, destroyMargin:5,
+    requireActionFromAttr:'magic', addSummonerPower:true, power:[{ value:10 }],
+    altUse:{ kind:'destroy_bonus', targetAttr:'magic', bonus:10 },
+    border:'May Require Magic Action',
+    t:'*Disaster!* This is an Instant Attack to Destroy any Place that is not *Huge*. It does not require an action. You must spend an action from a *Magic* group. Its Power is 10, plus the Power of the *Magic* group whose action you spend. If the attack succeeds, the target is *Devastated*. If the die roll succeeds by more than 5, the target is destroyed. Or play at any time to give +10 to any attack to destroy a *Magic* group.' },
+  'giantkudzu': { kind:'disaster', target:'place', instant:false, destroyMargin:6, victimMayBeAided:true,
+    power:[{ ifAttr:'coastal', value:30 }, { value:24 }],
+    t:'*Disaster!* This is an Attack to Destroy any Place. Its Power is 30 against a *Coastal* Place, 24 against any other Place. *Any* group can use its action to aid the victim, but not the Giant Kudzu. If the attack succeeds, the target is *Devastated*. If the die roll succeeds by more than 6, the target is destroyed.' },
+  'rainoffrogs': { kind:'disaster', target:'place', instant:true, destroyMargin:6,
+    addPerRivalNamed:['froggod'], per:4, power:[{ value:10 }],
+    t:'*Disaster!* This is as an Instant Attack to Destroy any Place. It does not require an action. Its Power is 10, plus 4 for each Frog God the target player has in play. If the attack succeeds, the target is *Devastated*. If the die roll succeeds by more than 6, the target is destroyed.' },
+  'theoregoncrud': { kind:'disaster', target:'place', rejectAttr:'huge', instant:true, destroyMargin:5, power:[{ value:10 }],
+    t:'*Disaster!* This is an Instant Attack to Destroy any Place that is not *Huge*. It does not require an action. Its Power is 10. If the attack succeeds, the target is *Devastated*. If the die roll succeeds by more than 5, the target is destroyed!' },
+  'tidalwave': { kind:'disaster', target:'place', requireAttr:'coastal', instant:true, destroyMargin:10,
+    power:[{ ifAttr:'huge', value:20 }, { value:24 }],
+    t:'*Disaster!* This is an Instant Attack to Destroy any *Coastal* Place. It does not require an action. Its Power is 20 against a *Huge* Place, 24 against any other Place. If the attack succeeds, the target is *Devastated*. If the die roll succeeds by more than 10, the target is destroyed!' },
+  'tornado': { kind:'disaster', target:'place', rejectAttr:'huge', instant:true, destroyMargin:4, power:[{ value:12 }],
+    t:'*Disaster!* This is an Instant Attack to Destroy any Place that is not *Huge*. It does not require an action. Its Power is 12. If the attack succeeds, the target is *Devastated*. If the die roll succeeds by more than 4, the target is destroyed!' },
+  'volcano': { kind:'disaster', target:'place', rejectAttr:'huge', instant:true, destroyMargin:3, power:[{ value:14 }],
+    t:'*Disaster!* This is an Instant Attack to Destroy any Place that is not *Huge*. It does not require an action. Its Power is 14. If the attack succeeds, the target is *Devastated*. If the die roll succeeds by more than 3, the target is destroyed!' },
+
+  /* --- 5 ASSASSINATIONS: every one targets a Personality --- */
+  'carbomb': { kind:'assassination', target:'personality', instant:true, power:[{ value:8 }],
+    mayAddPowerFromAligns:['violent','criminal'],
+    t:'*Assassination!* This is an Instant Attack to Destroy any Personality, at any time. It does not require an action. Its Power is 8. One *Violent* or *Criminal* group may use its action to add its Power to this attack.' },
+  'hitandrun': { kind:'assassination', target:'personality', instant:true, power:[{ value:10 }],
+    mayAddPowerFromAligns:['fanatic'],
+    t:'*Assassination!* This is an Instant Attack to Destroy any Personality, at any time. It does not require an action. Its Power is 10. One *Fanatic* group may use its action to add its Power to this attack.' },
+  'poison': { kind:'assassination', target:'personality', instant:true, power:[{ value:8 }],
+    mayAddPowerFromAligns:['criminal','magic'], magicOnlyIfCasterHasMagic:true,
+    t:'*Assassination!* This is an Instant Attack to Destroy any Personality, at any time. It does not require an action. Its Power is 8. One *Criminal* or *Magic* group may use its action to add its Power to this attack. This card is only *Magic* if used by a *Magic* group.' },
+  'sniper': { kind:'assassination', target:'personality', instant:true, power:[{ value:10 }],
+    mayAddPowerFromAligns:['government'],
+    t:'*Assassination!* This is an Instant Attack to Destroy any Personality, at any time. It does not require an action. Its Power is 10. One *Government* group may use its action to add its Power to this attack.' },
+  'witheringcurse': { kind:'assassination', target:'personality', instant:true, power:[{ value:10 }],
+    mayAddPowerFromAligns:['magic'], attackIsMagic:true,
+    t:'*Assassination!* This is an Instant Attack to Destroy any Personality, at any time. It does not require an action. Its Power is 10. One *Magic* group may use its action to add its Power to this attack. This attack is *Magic*.' },
+};
+const PLOT_FXN = {}; for (const k in PLOT_FX) { PLOT_FXN[norm(k)] = PLOT_FX[k]; }
 
 function baseFromFolder(m) {
   if (m.folder === 'Illuminati') return { type: 'illuminati', subtype: null };
@@ -88,8 +292,124 @@ function plotSub(name) {
 function ocrFor(name, id) {
   return OCR[norm(name)] || OCR[norm(id)] || null;
 }
+function mergeFor(name, id) {
+  return mergeCards[norm(name)] || mergeCards[norm(id)] || null;
+}
+function mergeValue(row, field) {
+  const entry = row && row[field];
+  if (!entry || typeof entry !== 'object') return undefined;
+  if (field === 'alignments') return Array.isArray(entry.values) ? entry.values : undefined;
+  return Number.isInteger(entry.value) ? entry.value : undefined;
+}
+function statProvenance(row, field, currentValue) {
+  if (!row) return null;
+  const conflict = row.conflicts && row.conflicts[field];
+  if (conflict) {
+    return {
+      status: 'secondary-conflict-not-overwritten',
+      confidence: 'medium',
+      source: row.source || null,
+      raw: conflict.raw || null,
+      value: currentValue === undefined ? null : currentValue,
+      conflict: {
+        runtime: conflict.runtime === undefined ? null : conflict.runtime,
+        secondary: conflict.secondary === undefined ? null : conflict.secondary,
+        reason: conflict.reason || 'secondary-conflict-not-overwritten'
+      }
+    };
+  }
+  const entry = row[field];
+  if (!entry || typeof entry !== 'object') return null;
+  const result = {
+    status: entry.status || 'secondary',
+    confidence: entry.confidence || 'medium',
+    source: row.source || null,
+    raw: entry.raw === undefined ? null : entry.raw,
+    value: currentValue === undefined ? null : currentValue
+  };
+  if (Array.isArray(entry.values)) result.values = entry.values.slice();
+  return result;
+}
+function applySecondaryStats(rec) {
+  const row = mergeFor(rec.name, rec.id);
+  if (!row) return;
+  const filled = [];
+  if (rec.power == null) {
+    const value = mergeValue(row, 'power');
+    if (value !== undefined) { rec.power = value; filled.push('power'); }
+  }
+  if (rec.resistance == null) {
+    const value = mergeValue(row, 'resistance');
+    if (value !== undefined) { rec.resistance = value; filled.push('resistance'); }
+  }
+  if (!rec.alignments || rec.alignments.length === 0) {
+    const value = mergeValue(row, 'alignments');
+    if (value !== undefined) { rec.alignments = value; filled.push('alignments'); }
+  }
+  rec.source.secondary = { status: row.sourceStatus || 'secondary', action: row.action || null, source: row.source || null };
+  if (row.referenceText) rec.referenceText = row.referenceText;
+  const provenance = {};
+  for (const field of ['power', 'resistance', 'alignments']) {
+    const entry = statProvenance(row, field, rec[field]);
+    if (entry) provenance[field] = entry;
+  }
+  if (Object.keys(provenance).length) {
+    rec.statProvenance = provenance;
+    const conflictFields = Object.entries(provenance)
+      .filter(([, entry]) => entry.status === 'secondary-conflict-not-overwritten')
+      .map(([field]) => field);
+    const confirmedFields = Object.entries(provenance)
+      .filter(([, entry]) => entry.status === 'runtime-confirmed-secondary')
+      .map(([field]) => field);
+    rec.statEvidence = {
+      fields: Object.keys(provenance),
+      filled,
+      confirmed: confirmedFields,
+      conflicts: conflictFields,
+      source: row.source || null,
+      action: row.action || null
+    };
+    rec.statConfidence = 'medium';
+    if (filled.length) {
+      rec.estimated = true;
+      rec.statSource = 'secondary';
+    } else if (conflictFields.length) {
+      rec.statSource = 'secondary-conflict';
+    } else if (confirmedFields.length) {
+      rec.statSource = 'runtime-confirmed-secondary';
+    }
+  }
+  if (row.conflicts) rec.statConflicts = row.conflicts;
+}
+/* Split the merged tag list into the two distinct card-face fields:
+ *   rec.alignments -> the official TEN (bottom-left)
+ *   rec.attributes -> the italic attributes (bottom-right)
+ *   rec.junkTags    -> OCR garbage, kept for evidence but not a tag
+ * Anything reading "all Computer groups" or "all Coastal places" must
+ * consult rec.attributes, never rec.alignments. Before this split the
+ * two were merged, so such a mechanic would also hit Government groups.
+ * See the ALIGNMENTS10/ATTRIBUTES comment above for the rulebook quote. */
+function splitAlignments(rec) {
+  const src = Array.isArray(rec.alignments) ? rec.alignments : [];
+  const al = [], at = [], junk = [];
+  for (const raw of src) {
+    const t = String(raw).toLowerCase();
+    if (ALIGNMENTS10.has(t)) { if (al.indexOf(t) < 0) al.push(t); }
+    else if (ATTRIBUTES.has(t)) { if (at.indexOf(t) < 0) at.push(t); }
+    else if (JUNK_TAGS.has(t)) junk.push(t);
+    else at.push(t);           // unknown tag: treat as attribute, not alignment
+  }
+  rec.alignments = al;
+  rec.attributes = at;
+  if (junk.length) rec.junkTags = junk;
+}
 function mechanicsStatus(card) {
   const kind = card.effect && card.effect.kind ? card.effect.kind : 'sin-effect';
+  /* Transcribed off the card face: the printed rules are captured
+   * verbatim, but engine.js does not consume these parameters yet.
+   * Deliberately a distinct status so "data complete" is never
+   * mistaken for "implemented in the engine". */
+  if (card.verifiedMechanic) return 'implemented-pending-engine';
   if (kind === 'plot_generic' || kind === 'resource_generic' || kind === 'unverified') return 'unverified';
   if (kind === 'ability_unverified') return 'source-text-unmapped';
   if (kind === 'illu_special') return card.implemented ? 'implemented-special' : 'pending-engine';
@@ -128,7 +448,9 @@ for (const m of manifest) {
   } else if (m.folder === 'Illuminati') {
     rec.type='illuminati'; rec.subtype=null;
   } else {
-    rec.type = m.folder==='Groups' ? 'group':'plot'; rec.subtype = rec.type==='group'?'organization':plotSub(m.name);
+    rec.type = m.folder==='Groups' ? 'group':'plot';
+    if (rec.type==='group') rec.subtype='organization';
+    else rec.subtype = GOALS.has(key) ? 'goal' : plotSub(m.name);
   }
   // stats
   const v = VERIFIED[key], il = ILLN[key];
@@ -156,6 +478,20 @@ for (const m of manifest) {
       {kind:'unverified', reason:'plot-text-pending-mapping'};
     rec.implemented=false; rec.estimated=true;
   }
+  /* Transcribed Plot mechanics override the generic placeholders above.
+   * Source of truth: research/audit_reports/plot_transcription.md, read
+   * verbatim off the card faces. These 18 cards are the only ones whose
+   * printed rules have been confirmed word-for-word, so they are the only
+   * ones that may claim implemented:true. */
+  const pfx = PLOT_FXN[key];
+  if (pfx) {
+    rec.effect = pfx;
+    rec.subtype = pfx.kind;
+    rec.verifiedMechanic = true;
+    if (pfx.t) rec.text = pfx.t;
+  }
+  applySecondaryStats(rec);
+  splitAlignments(rec);
   rec.mechanicsStatus = mechanicsStatus(rec);
   // dedupe ids for duplicate image copies
   const dup = cards.find(c=>c.id===rec.id);

@@ -1,0 +1,351 @@
+ considered to be a Magic attack (some targets are                  If rivals use cards or actions to interfere, but you call
+ immune to Magic attacks, and others can only be                 off your attack before it’s committed, they get their cards
+ affected by Magic attacks.)                                     or actions back.
+   Unique: A Unique Resource is a one-of-a-kind item.               If you call off an attack on a card from your hand,
+ Once a Unique Resource is brought into play, no further         return it to your hand.
+ copies of that Resource may be played. If a Unique
+   Note that if an attack requires a Plot card (see Instant       Aiding or Opposing Attacks
+Attacks, p. 11) then you cannot call it off, because you             Groups other than the attacker can participate in an
+played the Plot card at the moment you declared the               attack, either to aid (add the Group’s Power to the attack)
+attack.                                                           or oppose (add the Group’s Power to the defense). The
+No Duplicates in the Same Attack!                                 aiding or opposing Group must spend an Action token,
+   A Group that has two or more Action tokens may not             but does not need to have an open control arrow.
+use more than one in the same attack unless it’s                     The target of the attack may spend an Action token to
+defending itself.                                                 oppose the attack. The Power of an action spent by a
+   No player may use duplicates of the same Plot card in          Group to defend itself is doubled. If the action’s Power is
+a single attack, or to defend against a single attack, even       already doubled, it is tripled instead; if it’s already
+if the duplicate Plot cards are used to help two different        tripled, it is quadrupled instead; and so on. If the target
+Groups.                                                           has more than one token, it can spend them all, and each
+   If an action or Plot is canceled (see p. 15), then it is       one gets the bonus!
+treated as if it never happened — you may replace it with            The attacker and defender can have their other Groups
+a duplicate if you have one available.                            aid or oppose the attack (usually, the attacker will want
+                                                                  to aid and the defender will want to oppose... but you can
+Attack to Control
+                                                                  do the opposite if for some reason you want to). Players
+   This is an attempt to take over a Group from your own
+                                                                  other than the attacker and defender can interfere in the
+hand... or to steal a Group from a rival.
+                                                                  attack by aiding or opposing it — unless the attack is
+   To make an Attack to Control, your attacking Group             Privileged (see p. 11). Time for some wheeling and
+must spend an Action token and have at least one control          dealing!
+arrow open (no puppet there, and no other Group in the
+                                                                     Alignment is important for determining which Groups
+space where a puppet would go). If a Group has no open
+                                                                  can aid or oppose an attack. A Group can aid an Attack
+control arrow, it cannot try to control another Group.
+                                                                  to Control if it has at least one alignment identical to the
+   The strength of the attack is the attacker’s Power             target. A Group can oppose an Attack to Control (that is,
+minus the defender’s Resistance. You must roll that               defend the target) if it has at least one alignment
+number or less on two dice. So roll low!                          identical to the target, or if it is the target’s master or
+   If you attack a Group from your own hand, you must             puppet. As noted above, the target may defend itself, and
+still roll to control it, and other players may try to            gets a bonus when doing so.
+interfere.                                                           However, aiding and opposing Groups do not get
+   Example: If a Group with a Power of 6 attacks a                alignment bonuses and penalties. Those apply only to the
+Group with a Resistance of 2, the attack strength is 4. If        Group that is leading the attack.
+the attacking Group has a Power of 10, the attack                    Example: Russia (Power 4, Violent, Government)
+strength is 8 — a much easier number to roll at or below          makes an attack to control W.I.T.C.H. (Resistance 6,
+on two dice.                                                      Fanatic, Weird, Violent). This attack has a +4 bonus
+Automatic Failure                                                 because the attacker and defender are both Violent. The
+   A roll of 11 or 12 always means the attack failed, no          attack strength is 4 – 6 + 4, or 2... not likely to succeed.
+matter how high the strength of the attack was.                      However, the Pentagon (Power 6, Straight, Violent,
+Alignments                                                        Government), the Semiconscious Liberation Army
+   The alignments of the attacking and defending Groups           (Power 1, Weird, Liberal, Violent, Criminal), and the
+are very important. Identical alignments make control             American Autoduel Association (Power 1, Violent,
+easier; opposed alignments make it harder.                        Weird) aid the attack. This raises the strength of the
+   If the attacking and defending Groups have any                 attack to 2 + 6 + 1 + 1, or 10.
+identical alignments, the attack strength gets a +4 bonus            The aiding Groups do not get bonuses or penalties for
+for each one. If they have any opposite alignments, the           alignment. It does not matter that the Pentagon has an
+attack strength gets a –4 penalty for each one.                   alignment opposed to W.I.T.C.H. (Straight vs. Weird) or
+(Remember, any two Fanatic Groups are opposite to                 that the American Autoduel Association and
+each other!)                                                      Semiconscious Liberation Army each have two matching
+   Example: A Weird Fanatic Group is trying to control a          alignments with W.I.T.C.H. (Violent, Weird). All that
+Straight Fanatic Group. There are two sets of opposite            matters is that each aiding Group has at least one
+alignments, so the attack has a –8 penalty! Maybe this            alignment in common with the target.
+attack is a bad idea...                                           Global Power
+Attributes                                                           Some Groups have a second Power number — Global
+   These words (in italics, in the bottom right corner) are       Power. For instance, if a Group’s power is 5/3, the 3 is
+not the same as alignments. They don’t affect an attack           its Global Power. This represents power that crosses all
+unless a card specifically says they do.                          ideological boundaries... real power.
+   If a Group’s alignments don’t let it use its normal           alignment identical to the target, and Groups with Global
+Power to aid or oppose an attack, it can still use its           Power may oppose the attack.
+Global Power. Thus, Groups with Global Power are                 Resolving the Attack
+more flexible.                                                      The strength or an attack can go back and forth several
+   Example: The Clone Arrangers are a Violent Criminal           times as players use actions, Plots, and special abilities
+Group with Power 6/2. It can aid or oppose an attack to          — an attack is declared, the defender opposes it, the
+control another Violent or Criminal Group with its 6             attacker aids it, a third player interferes to help the
+Power. It can aid or oppose an attack to control any other       defender, a fourth player interferes to help the attacker,
+Group with its 2 Global Power.                                   and so on... The final strength of the attack is not settled
+   Plots and special abilities that change a Group’s Power       until no player is able or willing to do anything else to
+do not affect its Global Power unless they specifically          change it.
+say so. A Group can never have Global Power higher                  At that point, the attacker rolls two dice, and the attack
+than its regular Power — if its regular Power is                 succeeds if the roll is less than or equal to the attack
+decreased below its Global Power, its Global Power is            strength. If the final attack strength is less than 2, the
+temporarily decreased to equal its regular Power.                attack always fails — you don’t even get to roll the dice
+Using Plots and Abilities in Attacks                             (and thus can’t use any Plots or special abilities to
+   Many Plots and special abilities provide attack and           control the die roll).
+defense bonuses, or otherwise affect the progress of an             Note: In all INWO calculations, changes to a specific
+attack. Some of them can only be used by the attacking           value come first, then multiplication or division, then
+or defending player; others can be used by any player            addition or subtraction.
+who chooses to interfere in the attack. Read the cards.             Multipliers are not cumulative; use only the single
+   Note: An “any attempt” attack bonus applies when one          largest multiplier and ignore the rest.
+of your Groups makes an attack, not when you help                   Example:
+some other player in one of his attacks.                             Japan (Power 6, Government, Peaceful) makes an
+Resistance to Control                                             attack to control the B.A.T.F. (Resistance 2,
+   Each Group (except Illuminati, which cannot be                 Government, Violent). The attacker uses two +10 Plots
+attacked) has a Resistance to control. Subtract this from         (Martial Law and Martyrs) to boost Japan’s Power for
+the attacker’s Power in any attack, as described above.           the attack and spends actions from the N.S.A. (Power 5,
+   Controlling Alignment: A Group is more loyal if it             Government) and Canada (Power 3, Peaceful, Liberal,
+agrees with its masters’ ideals. A Group gets +4 to its           Government) to aid the attack. The total Power behind
+Resistance for every alignment that is the same as that of        the attack is 6 + 10 +10 + 5 + 3, or 34.
+its master (except Fanatic — remember, one Fanatic is                The B.A.T.F. is a puppet of the Mafia (Criminal,
+the opposite of another Fanatic). Opposing alignments             Violent), which is a puppet of the Illuminati. Thus, the
+don’t matter.                                                     B.A.T.F. has one alignment in common with its master
+   Power Structure Position: Groups already in play               (+4 bonus) and is one Group away from the Illuminati
+become harder to attack if they’re near the center of the         (+5 bonus). This gives it a defense of 2 + 4 + 5, or 11.
+Power Structure. A Group that is directly controlled by              The attack strength is 34 – 11, or 23. The attacker and
+the Illuminati gets a +10 defensive bonus! If it is one           target are both Government (+4 bonus), but one is
+Group away, it gets a +5 defensive bonus. If it’s farther         Peaceful and the other is Violent (–4 penalty). These
+away, it gets no bonus.                                           effects cancel out, leaving the attack strength at 23.
+                                                                     The defender links the Plot card Commitment (which
+                                                                  increases the target’s Resistance to 8) to the B.A.T.F.
+              +5      +10                 +0                      and plays the New World Order card Solidarity (which
+                                                                  doubles the Resistance of all Groups). The target’s
+                                                                  defense is now 25 (change Resistance to 8, double it,
+            +10                 +10       +5                      then add the +4 and +5 bonuses). The attack strength is
+                                                                  now 34 – 25, or 9.
+                        +0      +5
+                                                                     The defender spends the B.A.T.F.’s action to oppose
+                                                                  the attack. The B.A.T.F. has a Power of 3, and it gets
+                                                                  doubled Power from the Necronomicon linked to it and
+   Special Abilities: Some Groups have special abilities          +2 Power from the Clipper Chip the owner has in play.
+(shown on the card) that help protect them against                Because the action is being spent in self-defense, the
+attacks.                                                          doubling is increased to a tripling. The action has a
+   Opposing Power: As explained above, the target, the            Power of 11 (Power 3, triple it, add the +2 bonus). The
+target’s master, the target’s puppet(s), Groups with an           attack strength is now 9 – 11, or –2. The attacker will
+ not even roll the dice unless the attack strength is           Attack to Destroy
+ increased to at least 2.                                              You may also attack to destroy any Group in play
+    A third player decides to interfere in favor of the             except an Illuminati... even one of your own Groups.
+ attack, and uses the Plot card Are We Having Fun Yet?              You may not destroy a Group from your hand — the
+ to cancel the B.A.T.F.’s action. This action is now used           target has to be in play. An Attack to Destroy works like
+ up without any effect, so the attack strength is back at 9.        an Attack to Control, except:
+    A fourth player decides to interfere in favor of the               (1) Instead of rolling “Power minus Resistance,” roll
+ defense, and opposes the attack with an action from the            “Power minus Power.” That is, the target defends with
+ Hackers (Power 3/2, Weird, Fanatic). Since the Hackers             its Power rather than its Resistance. Its closeness to the
+ don’t have any alignments in common with the                       Illuminati still counts for defense, unless you’re
+ B.A.T.F., they use their Global Power. The attack                  destroying one of your own Groups. The target’s
+ strength is now 9 – 2, or 7.                                       common alignments with its master do not help — those
+    The defender now spends an action from the                      increase Resistance, which is not used in this attack!
+ Wargamers (Power 1, Weird), which is a puppet of the                  (2) You may try to destroy a Group in your own Power
+ B.A.T.F. (and thus eligible to oppose the attack even              Structure. The target does not get a defense bonus for
+ though it has no common alignments or Global Power).               closeness to the Illuminati in this case. However, no
+ The attack strength is now 7 – 1, or 6.                            Group may attack itself, or aid an attack on itself!
+    Everybody agrees that they aren’t going to do                      (3) Unlike Groups destroy each other more easily. The
+ anything else to affect the attack strength, so the                strength of an Attack to Destroy gets a +4 bonus for each
+ attacker rolls the dice. If he rolls 6 or less on two dice,        opposite alignment, and a –4 penalty for each identical
+ the attack succeeds; if not, it fails.                             alignment.
+Whoops!                                                                (4) To aid an Attack to Destroy, a Group must have at
+   If you forget to declare a bonus during an attack,               least one alignment opposite to the target. To oppose an
+whether it’s for attack or defense, you lose it. When the           Attack to Destroy uses the same rules as opposing an
+dice are rolled, it’s over.                                         Attack to Control. (That is, a Group may oppose if it has
+   If you deliberately “forget” to declare a bonus and a            at least one alignment identical to the target, or if it is the
+rival points it out, you must include it. However, you              target’s master or puppet. The target may defend itself,
+can’t be required to use a bonus that requires you to pay           and gets the same bonus as it does against an Attack to
+a cost (actions, discards, etc).                                    Control.)
+Results of an Attack to Control                                        A Group with Global Power may use it to aid or
+   If Your Attack Failed: If the target belonged to another         oppose regardless of alignments.
+player, it stays where it was.                                         (5) A Group does not need an open control arrow to
+   If it came from your own hand, you may try again if              make an Attack to Destroy.
+you have any actions left. However, if you have not                    (6) If your attack succeeds, the target is permanently
+succeeded by the end of your turn, your agents are                  removed from play. Put the target Group card in your
+revealed and eliminated — you must discard that Group               own personal “destroyed pile.” Since many Goals
+card! (This is a reason to have two cards for the same              depend on destroying Groups, you must keep track of
+Group... it can give you a second chance.)                          which player destroyed each Group. If some Plot or
+   If Your Attack Succeeded: The target is captured!                special ability says that a destroyed Group no longer
+Place it in your Power Structure with its incoming                  counts as destroyed, remove its card from the destroyed
+control arrow touching any outgoing control arrow of the            pile.
+Group that attacked it.                                                (7) A destroyed Group’s puppets (and their puppets,
+   If the target controlled any puppets, they are also              etc) are not destroyed — they lose their Action tokens
+captured! When placed in your Power Structure, they                 and go back to the hand of the player who controlled the
+should keep the same position, relative to their master,            destroyed Group.
+that they had originally. If that makes some cards              Hidden Agents
+overlap, you may rearrange any new cards that overlap,                 If a card in your hand duplicates a Group that someone
+as long as each one keeps the same master. New Groups               already controls, it represents hidden agents within that
+that still cannot fit must be discarded!                            Group. You may play your “agents” card any time the
+   Note: A newly-captured Group does not get an Action              Group is attacked (either to control or to destroy).
+token. Any tokens it had before the attack are removed.                Only one “agents” card can be used in any one attack.
+It cannot get an action that turn unless a card specifically        The owner of the real Group cannot play an “agents”
+gives one to a newly-captured Group. (However, Groups               card. Once used, the duplicate card is discarded, whether
+brought into play by automatic takeover do get an Action            the attack succeeds or fails.
+token on the same turn — automatic takeovers happen
+before Action token placement.)
+  Playing an "agents" card to aid an attack gives it a +10         Another player controls the IRS, a Government Group
+bonus. Playing an “agents” card to oppose an attack                that allows him to “tax” Plot cards from a rival’s Plot
+gives it a –6 penalty.                                             deck. Because of Discordia’s immunity, the IRS can’t
+  If a rival plays a Group card from his hand as an                attack Discordia’s Groups, can’t aid attacks on them, and
+automatic takeover, your “agents” card won’t help you...           can’t use its special ability against the Discordian
+yet. The automatic takeover is not an attack.                      player’s Plot deck. However, when the Discordian player
+  However, if a rival tries an Attack to Control against a         makes an attack (to control a Group from his hand, or
+Group from his own hand, you can use an “agents” card              against another player), the IRS can interfere normally.
+to defend the Group, giving a –6 to his takeover attempt.         Secret Groups
+On the other hand, it might be better to let him bring the            Groups with the Attribute Secret are unknown to the
+Group into play... and use your agents to take it (and its         public, or considered myths, or just not understood.
+puppets) away from him later!                                         Most Groups cannot attack Secret Groups, aid or
+Limits on Attacks                                                  oppose attacks on Secret Groups, aid attacks made by
+Privileged Attacks                                                 Secret Groups, or use their special abilities to affect
+   An attacker may prevent rivals from interfering with            Secret Groups. Special abilities that provide attack
+an attack by declaring it Privileged, using a Plot card or         bonuses, penalties, or immunities do not apply when a
+special ability. The attacker must announce “Privilege!”           Secret Group attacks or is attacked. The exceptions are:
+when first declaring the attack.                                       • Illuminati Groups and other Secret Groups interact
+   No player other than the attacker and the defender can           with Secret Groups normally.
+interfere in a Privileged Attack. If the attacker is trying            • Resources affect Secret Groups normally, unless the
+to control a Group from his own hand, nobody else can               Resource is linked to a non-Secret Group.
+interfere with that attack. No other player can use                    • Some Groups have special abilities that specifically
+actions, Plots or special abilities on behalf of either side,       address Secret Groups. Follow the instructions on the
+even to cancel the attack. No other player can give or              card.
+trade cards to either side until the attack is over.                   • A Secret Group’s master and puppets may defend
+   However, anyone may use a Plot or special ability to             that Secret Group against attacks and use their special
+negate the Privileged status of the attack, turning it into         abilities to affect it. They may aid that Secret Group’s
+an ordinary free-for-all. If Privilege is negated, it cannot        attacks if they are otherwise eligible to do so (i.e. they
+be regained on that attack.                                         have the required alignments or Global Power).
+   After a Privileged Attack is over, other players may                • Plots may affect Secret Groups, even if an action
+use Plots or special abilities that affect the die roll — this      from a non-Secret Group is used to power the Plot —
+is not interfering with the attack itself.                          again, Plots are ultimately directed by the Illuminati
+                                                                    themselves...
+Immunity
+   Some special abilities make a Group immune to                  Instant Attacks
+certain other Groups. Those Groups cannot attack the                  Some cards allow a special Attack to Destroy, called
+immune Group, cannot aid any attack on the immune                  an Instant Attack. Examples include Assassinations and
+Group, and cannot affect the immune Group with any                 (most) Disasters.
+special ability.                                                      An attack launched by playing a Plot card can be made
+   If your entire Power Structure is immune to                     at any time (unless the card says otherwise) — it is not
+something, all your Groups, all your Resources, your               limited to the Main Phase of your turn! For instance, you
+hand, your decks, and your discard pile are immune!                may use an Assassination or Disaster to thwart a rival’s
+   Immunity doesn’t work the other way, however. If an             victory attempt by taking out one of his Groups...
+attacker is immune to a certain Group, that Group can                 The strength of an Instant Attack is the Power of the
+still defend against it or interfere with its attack.              attack minus the Power of the target Group at the
+   Immunity does not protect against a Plot card, even if          moment the attack is declared. The target gets its usual
+a Group to which you are immune provided an action to              defense bonus for closeness to its Illuminati (see
+power it. (Plots are directed by the Illuminati themselves,        Resistance to Control, p. 9) unless the target’s owner
+not lowly pawns...)                                                launched the Instant Attack. Other modifiers to attack or
+   You can never be immune to something you yourself               defense do not apply unless they specifically mention
+control — for example, if you control a Group that is              Instant Attacks, Assassinations, or Disasters (however, a
+immune to Magic attacks, you cannot trigger the                    Plot or ability that completely forbids an attack will also
+immunity by throwing one of your own Magic                         prevent an Instant Attack).
+Resources into the attack.                                            Groups cannot spend actions to make, aid, or oppose
+   Example: The Discordian Society’s entire Power                  Instant Attacks unless a card specifically permits it.
+Structure is immune to Straight and Government Groups.             When a Group is allowed to use its action in an Instant
+Attack, cards that affect the Power of that action (such as          count toward victory while the Place remains
++10 Plots) may be used with the action.                              Devastated.
+   Instant Attacks may not be combined unless a card                   You may move a Group out from under the Devastated
+specifically permits it.                                             Place (see Moving Groups, p. 12) to free it from these
+   The target of an Instant Attack may not spend any                 effects. You may move a Group to an arm of your Power
+Action tokens, even to defend itself, until the attack is            Structure afflicted by Devastation, if you really want to,
+resolved.                                                            but the moved Group will then lose any Action tokens
+   An Instant Attack may be canceled by certain Plots                and cease to count toward victory.
+and special abilities — in that case, the Instant attack               While a Place is Devastated, its Power is halved
+never happened!                                                      (round down) against any Attack to Destroy. Being
+   Example:                                                          Devastated again, while already Devastated, has no
+   A Car Bomb (Power 8) is launched against Gordo                    further effect.
+Remora. Gordo was linked to Self-Esteem before the                     Relief restores a Devastated Place to normal. The Place
+attack (which gives him a Power of 6), and is one Group              (and its puppets, and their puppets, etc.) will once again
+away from his Illuminati (+5 bonus), for a total defense             count toward victory and be able to get Action tokens.
+of 11. However, the Car Bomb allows one Violent or                     To give Relief, spend actions with a total Power three
+Criminal Group to add its Power — the attacker spends                times the printed Power of the Devastated Place. These
+the Mafia’s action (Power 6) with New Blood (+10                     actions can be spent at any time by one or more players,
+bonus for a Violent Group) to add 16 Power to his                    as long as they are all spent at the same time.
+attack, for a total of 24. The strength of the attack is 24 –                         MOVING GROUPS
+11, or 13. It looks bad for Gordo...
+                                                                       During the Main Phase of your turn, you may change
+   Gordo’s owner has Political Correctness (all Liberal
+                                                                     your Power Structure by moving your Groups. You may
+Groups get +3 Power) and Benefit Concert (+10 bonus
+                                                                     move any Group you control to any open control arrow
+for a Liberal Group) in his hand. Unfortunately, neither
+                                                                     on any Group in play. Any puppets of the Group being
+of them help — they’re too late to affect Gordo’s Power
+                                                                     moved, and their puppets, and so on, move with it, each
+at the moment of the Car Bomb attack, and neither one
+                                                                     keeping the same position relative to its master.
+specifically mentions Instant Attacks or Assassinations.
+Fortunately, he also has a Hoax, which he uses to cancel               Moving a Group costs one Action token. This may be
+the Car Bomb.                                                        from the Group being moved, or its former master, or its
+                                                                     new master, or your Illuminati! It’s your choice.
+Assassinations                                                         You may give a Group to another player, if both
+   An Assassination allows an Instant Attack to Destroy a            players agree, during the Main Phase of either player’s
+Personality.                                                         turn. This also costs an action (from the Group, its old
+   A Personality destroyed by an Assassination is killed,            master, its new master, or either player’s Illuminati).
+and may only be saved or returned to play by cards that                Groups in your Power Structure may never overlap. If
+specifically say that they restore killed or assassinated            moving a Group would cause some of its puppets (or
+Personalities. A normal Attack to Destroy can strip a                their puppets, etc.) to overlap, any of them may be
+Personality of power and influence, but not kill it; a               moved to different control arrows, as long as each keeps
+Personality destroyed by a normal attack can be returned             the same master. Any Group that cannot be prevented
+to play the same way as any other destroyed Group.                   from overlapping is lost. It and its puppets go back to the
+Disasters                                                            hand of the player who controlled it before the move.
+   A Disaster allows an attack (usually, but not always,
+an Instant) to destroy a Place.
+                                                                                     GIFTS AND TRADES
+   Disasters can cause Devastation — see below. Some                    Cards in your hand, including exposed Plots, may be
+Disasters can completely destroy their targets, if the die           traded or given away at any time, except immediately
+roll on the attack is good enough.                                   after an attempt to look at or steal from your hand or in
+   The target of a Disaster always loses one Action token,           the middle of a multiple-card draw. You may not give or
+if it had any, as soon as the Disaster card is played. It            trade cards to a participant in a Privileged Attack (p. 11).
+gets the Action token back if the Disaster is canceled                  Cards from your hand must go into the hand of the
+(because the canceled Disaster never happened).                      player who gets them.
+                                                                        You may not give away undrawn cards from your
+Devastation and Relief
+                                                                     decks!
+   When a target is Devastated, put a special marker on
+                                                                        Cards in your Power Structure may be moved to
+it. Remove its Action token(s), if it has any left, and
+                                                                     another player’s Power Structure (see Moving Groups,
+those of its puppets, their puppets, and so on down the
+                                                                     p. 12).
+line. These Groups cannot get Action tokens and do not
+                                                                        You may give away a Resource if you haven’t used it
+                                                                     yet during the turn. The Resource is linked to the
+recipient’s Illuminati; he may relink it during the Main        that “trumps” other types and can be speed-played. Be
+Phase of his turn.                                              courteous.
+  A trade is just an exchange of gifts. If two players             The only time that speed of play matters is when cards
+agree to a trade, the deal is binding if they make the          doing the same thing (or mutually exclusive things) are
+exchange immediately. A deal is not binding if it               played at the same time — for instance, if two players
+involves a promise of something in the future.                  both play Vultures to grab the same card. In that case, the
+  Example: If you say, “If you give me the Boy Sprouts          first one played is the one that works. If they’re really
+now, I’ll give you a Plot card,” and the other player gives     simultaneous, roll two dice. The high roll wins... and
+you the Boy Sprouts, you must give him a Plot. But if           Plots and special abilities that affect die rolls may be
+you say, “If you give me the Boy Sprouts now, I’ll give         used!
+you a Plot card next turn,” and he hands them over, you            Note that saying you might play a card, or making a
+can break your promise next turn if you want!                   threat, is not the same as playing the card. For instance,
+                                                                if A plays an Instant Attack, it’s too late for B to respond
+                         TIMING                                 by boosting the Power of the target. But if A threatens to
+   In general, cards take effect in the order they are          play an Instant Attack, B may pre-emptively play a card
+played. Later cards modify earlier ones.                        that boosts the Power of the target. When in doubt, B
+   For instance, it could happen that a player announces        should ask “Are you doing it, or just threatening?” A can
+an attack with Group A; then a rival uses Resource B to         then put up or shut up.
+change Group A in a way that makes the attack
+impossible; then another rival plays Plot C to destroy                             EVIL SCHEMES
+Resource B, so that Group A’s attack continues.                 New World Order Cards
+   Thus, you can use a Plot or special ability to make a           New World Order cards are a special kind of Plot card.
+rival’s just-announced action unsuccessful, or even             They can be played at any time except during an Instant
+illegal (see Cancellations, Illegal Actions, and Other          or Privileged Attack. When a NWO card is played, it
+Surprises, p. 15). But you can never announce a play that       goes to the center of the table and affects all players.
+is illegal at the moment it is made, even if the play (if          A NWO card represents a basic shift in the world
+allowed) would render itself legal.                             power balance. For instance, in 1985, Communism was a
+   Example: The Discordian Society is immune to all             fundamental force. A decade later, it was on the fringes
+Government Groups. The Discordian player uses his               — a new world order arose!
+Illuminati action to power a Plot that changes the                 If there is any potential ambiguity in the effect of a
+Nuclear Power Companies’ alignment from Corporate to            combination of NWO cards, assess the NWO cards one
+Government. Can the NPCs use their special ability to           at a time in the order they were played.
+cancel that action, preserving their Corporate status? No!         Once a NWO is played, it stays in force until removed
+The moment they became Government, they became                  in one of two ways:
+unable to use their special ability on Discordia — they             • Using a Plot or special ability that negates it, or
+can’t “step back in time” and make themselves eligible
+                                                                    • Playing another NWO card of the same color. There
+to cancel the Discordian action.
+                                                                 are three colors: red, blue and yellow. Only one NWO
+   If an action is canceled, its effects are also canceled.      card of each color can be in play. If a NWO card is in
+(Example: If a Disaster is canceled, the target gets its lost    play, and another one of the same color is played, the
+Action token back.) You can’t cancel an action after its         earlier one is discarded. Thus, there can never be more
+effects have become irreversible. (Example: If someone           than three NWO cards in effect at once!
+looks at your hand, it’s too late to cancel the Plot or
+                                                                   A card can be played to replace an identical NWO.
+ability that let him do it — he’ll still know what he saw.)
