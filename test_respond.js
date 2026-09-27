@@ -34,13 +34,49 @@ function playAiTurn() {
 /* si la IA empieza, deja que juegue su turno primero */
 if (E.getState().currentPid !== 0) playAiTurn();
 
-/* el humano coloca su primer títere (con token del beginTurn) */
-var st0 = E.getState();
-var g = st0.players[0].hand.filter(function (ix) { return C.cards[ix].type === 'group'; })[0];
-E.autoTakeover(0, g, st0.players[0].structure.uid);
+/* --- Montaje del escenario ---------------------------------------------
+   Dos trampas que hacían que este test abortara con "sin piezas":
+   1) twoPlayerGuard: nadie ataca hasta que AMBOS completan un turno.
+   2) los grupos PERDEN su Action token al terminar el turno, así que la
+      pieza del humano debe colocarse EN SU TURNO, después de que la IA
+      haya jugado. Colocarla antes y luego dejar pasar un turno la deja
+      sin token otra vez. */
+function nodesOf(pid) {
+  var out = [];
+  (function w(n) { if (n.cardId != null && !/-root$/.test(String(n.uid))) out.push(n); (n.children || []).forEach(w); })(E.getState().players[pid].structure);
+  return out;
+}
+function hasToken(pid) { return nodesOf(pid).some(function (n) { return (n.tokens || 0) >= 1; }); }
+function takeOne(pid) {
+  var s = E.getState();
+  var gh = s.players[pid].hand.filter(function (ix) { return C.cards[ix] && C.cards[ix].type === 'group'; })[0];
+  if (gh == null) { try { E.drawGroup(pid); } catch (e) { return false; } return takeOne(pid); }
+  try { E.autoTakeover(pid, gh, s.players[pid].structure.uid); return true; } catch (e) { return false; }
+}
 
-/* un ciclo más de IA para tener objetivos y tokens frescos */
-playAiTurn();
+var tries = 0;
+/* twoPlayerGuard: nadie ataca hasta que AMBOS jugadores completan un turno */
+var guard = 0;
+while (guard++ < 12) {
+  var gs = E.getState();
+  if (gs.phase !== 'main') break;
+  if (gs.players[0].turnsCompleted >= 1 && gs.players[1].turnsCompleted >= 1) break;
+  if (gs.currentPid === 1 && nodesOf(1).length) { try { window.AI.takeTurn(E, 1); } catch (e) {} }
+  E.endTurn();
+}
+while (tries++ < 24) {
+  var s = E.getState();
+  if (s.phase !== 'main') break;
+  if (s.currentPid === 0) {
+    if (hasToken(0)) break;                 /* humano con atacante: listo */
+    if (!takeOne(0)) { E.endTurn(); }        /* sin mano: roba y reintenta */
+    continue;
+  }
+  /* turno de la IA: que juegue de verdad para tener piezas que atacar */
+  if (nodesOf(1).length) { window.AI.takeTurn(E, 1); }
+  else if (!takeOne(1)) { /* la IA no puede; que Robe la mano el jugador */ }
+  E.endTurn();
+}
 
 var st = E.getState();
 function ctrl(pid) { var o = []; (function w(n) { if (n.cardId != null && !/-root$/.test(String(n.uid))) o.push(n); (n.children || []).forEach(w); })(st.players[pid].structure); return o; }
