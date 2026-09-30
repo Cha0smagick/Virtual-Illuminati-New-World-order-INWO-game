@@ -25,7 +25,7 @@
 
 ### Cómo ganar
 - **Meta básica**: controlar 12 grupos contando tu Illuminati (partida de 2: jamás menos de 12).
-- **Metas especiales de Illuminati**: Cthulhu (destruir 8 grupos), Shangri-La (30+ Power Peaceful total), UFOs (controlar tus 3 grupos secretos elegidos al inicio).
+- **Metas especiales de Illuminati**: Cthulhu (destruir 8 grupos), Shangri-La (30+ Power Peaceful total), UFOs (tener cartas Goal en juego; se revelan al declarar victoria).
 - **Eliminación**: tras completar el tercer turno, un Illuminati sin ningún títere queda eliminado; eliminar a todos los rivales = victoria.
 - Las metas se comprueban al final de cada turno desde el turno 2 (nadie gana antes); los grupos Computer/Corporate/Weird cuentan doble con Network/Gnomes/Discordian respectivamente (máx 3 grupos dobles).
 

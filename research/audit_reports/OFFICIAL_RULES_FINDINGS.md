@@ -222,8 +222,23 @@ This is `twoPlayerGuard` (engine.js:457). It is CORRECT, and the exception
 > your own Illuminati, or by meeting the objectives on a Goal card. Or, of course,
 > by destroying all of your foes!"
 
-Confirms: Goal cards are a real mechanic (currently ZERO in the deck) and the
-UFOs Illuminati goal ("up to 3 different Goal cards in play") depends on them.
+Confirms: Goal cards are a real mechanic and the UFOs Illuminati goal ("up to 3
+different Goal cards in play") depends on them.
+
+**CORRECTION 2026-09-30 (P1-010).** An earlier version of this line said the deck
+contains "currently ZERO" Goal cards. That was wrong. There are exactly **7** cards
+with `effect.kind === 'goal'`, matching the official list: *Alternate Goals* (190),
+*Criminal Overlords* (231), *Fratricide* (261), *Hail Eris!* (272),
+*Military-Industrial Complex* (315), *Peace in Our Time* (334) and
+*World War Three* (419). Three of them are win conditions (Criminal Overlords,
+Fratricide, Hail Eris!) and four are permanent modifiers (Alternate Goals,
+Military-Industrial Complex, Peace in Our Time, World War Three); the modifiers are
+declared `pending-engine` rather than simulated.
+
+A Goal card is a **type of Plot card** (`inwo_rules_extracted.txt:979-991`), a player
+may hold at most one (`inwo_rules_extracted.txt:938-944`), and it is **revealed, not
+played**, during a victory attempt; if the attempt fails it returns to hand exposed
+(`librarian_result.txt:2186`). See section 24 of `docs/audit/INWO_SURGICAL_AUDIT.md`.
 
 ## 12. Control arrows
 > "Illuminati cards have four outgoing control arrows. Each of these can be used
