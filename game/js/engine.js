@@ -94,7 +94,7 @@ E.newGame=function(configs){
       phase:'setup',turn:0,round:1,currentPid:-1,turnCompleted:false,
     players:[],groupDeck:[],plotDeck:[],groupDiscard:[],plotDiscard:[],
     neutralArea:[],attack:null,log:[],uidCounter:100,winner:null,
-    config:{goalCount:(configs.goalCount||12),ufoTargets:[]},
+    config:{goalCount:(configs.goalCount||12)},
     lastRoll:null
   };
   for(var i=0;i<C.cards.length;i++){
@@ -110,7 +110,7 @@ E.newGame=function(configs){
       illumId:null,illumTokens:0,
       usedResourceThisTurn:false,usedExtraDrawThisTurn:false,
       hand:[],structure:{uid:'p'+p+'-root',cardId:null,children:[]},
-      resources:[],exposedPlots:[],discards:[],destroyedByMe:[],
+      resources:[],exposedPlots:[],discards:[],destroyedByMe:[],destroyedIlluminati:[],
       turnsCompleted:0,immuneFrom:{},pickedSecrets:[],flags:{autoTakeover:false}
     });
   }
@@ -157,38 +157,203 @@ function victoryStatus(){
   for(var p=0;p<S.players.length;p++){
     var pl=S.players[p];var ic=illuCard(p);if(!ic)continue;
     var st={pid:p,name:pl.name,goal:goalText(ic),progress:{}};
-    st.progress.groups=countControlled(pl)+'/'+S.config.goalCount;
-    if(ic.effect&&ic.effect.code==='cthulhu')st.progress.destroyed=pl.destroyedByMe.length+'/8';
-    if(ic.effect&&ic.effect.code==='shangrila')st.progress.peacefulPower=sumPeacefulPower(pl)+'/30';
-    if(ic.effect&&ic.effect.code==='ufos'){st.progress.pick3=ufoProgress(p);}
+    var g=ic.goal||{type:'basic'};
+    st.progress.groups=countControlled(pl)+'/'+effectiveGoalCount(p);
+    if(g.type==='destroy_reduce')st.progress.destroyed=pl.destroyedByMe.length+'/'+(g.winAt||8);
+    if(g.type==='peaceful_power_in_play')st.progress.peacefulPower=sumPeacefulPower(pl)+'/'+(g.total||30);
+    if(g.type==='power_total')st.progress.powerTotal=sumTotalPower(pl)+'/'+(g.total||0);
+    if(g.type==='goal_cards')st.progress.pick3=ufoProgress(p);
+    if(g.magicResourceCountsAsGroup)st.progress.magicResources=magicResourceGroups(pl);
     out.push(st);
   }
   return out;
 }
-function sumPeacefulPower(pl){
-  var tot=0;walk(pl.structure,function(nd){
+/* P1-009: la meta de Shangri-La cuenta los grupos pacíficos "in play,
+   regardless of who controls them" (texto oficial), así que se suman TODAS las
+   estructuras y el área neutral, no sólo la del jugador evaluado. */
+function sumPeacefulPower(){
+  var tot=0;
+  function take(nd){
     if(nd.cardId==null)return;var c=card(nd.cardId);
     if(!nd.paralyzed&&c.alignments&&c.alignments.indexOf('peaceful')>=0&&(typeof c.power==='number'))tot+=c.power;
+  }
+  for(var i=0;i<S.players.length;i++)walk(S.players[i].structure,take);
+  (S.neutralArea||[]).forEach(take);
+  return tot;
+}
+/* ==== P1-010 — CORRECCION DE LA META UFOs (P0: la meta estaba mal transcrita) ====
+   La version anterior elegia 3 GRUPOS AL AZAR en startGame() y la meta exigia
+   controlarlos. Eso no coincide con ninguna fuente:
+     - Carta UFOs: "GOAL: The UFOs can have up to 3 different Goal cards in play,
+       and win with any of them."
+     - inwo_rules_extracted.txt:979-991 -> "Goal Cards: These are a type of Plot
+       card". Las Goal cards son PLOTS, no grupos secretos.
+     - inwo_rules_extracted.txt:938-944 -> "No player may have more than one Goal
+       card in his hand"; si robas una excedente debes descartar; si un Plot queda
+       expuesto y tienes demasiadas Goal cards, se descarta.
+     - librarian_result.txt:2186 -> la Goal se REVELA (no se juega) al declarar
+       victoria; si el intento falla vuelve a la mano EXPESTA.
+   Ademas la meta de los UFOs "no se puede combinar con goal cards" (VFAQ:1354),
+   lo que reconcilia las dos frases: la meta de los UFOs ES revelar una Goal card.
+   Y el dataset si contiene las Goal cards oficiales (7 cartas effect.kind='goal'). */
+function isGoalCardIdx(ix){
+  var c=C.cards[ix];
+  return !!(c&&c.type==='plot'&&c.effect&&c.effect.kind==='goal');
+}
+function goalCardsIn(pl){return (pl.hand||[]).filter(isGoalCardIdx);}
+/* Limite de Goal cards en mano. El dato oficial es "one", con una excepcion
+   explicita: Alternate Goals ("You may possess two Goal cards"). */
+function goalHandLimitOf(pl){
+  var two=goalCardsIn(pl).some(function(ix){return C.cards[ix].name==='Alternate Goals';});
+  return two?2:1;
+}
+function ufoProgress(pid){
+  var pl=S.players[pid];if(!pl)return '0/3';
+  var ic=illuCard(pid);
+  var max=(ic&&ic.goal&&ic.goal.max)?ic.goal.max:3;
+  return goalCardsIn(pl).length+'/'+max;
+}
+/* P1-010: conteo de grupos con un doble declarado (usado por las Goal cards que
+   sustituyen la meta basica). Maximo 3 dobles por carta, igual que las metas. */
+function basicWithDouble(pl,dbl,label){
+  var n=0,doubled=0,seen={};
+  walk(pl.structure,function(nd){
+    if(nd.cardId==null||nd.paralyzed)return;var g=card(nd.cardId);n++;
+    if(doubleQualifies(g,dbl)&&doubled<3&&!seen[g.id]){seen[g.id]=1;doubled++;n++;}
+  });
+  var goal=S.config.goalCount;
+  return {met:n>=goal,count:n,goal:goal,how:label+': '+n+'/'+goal+' grupos'};
+}
+/* P1-010: objetivos de las 7 Goal cards del mazo. El texto impreso es la
+   autoridad (se cita en cada rama); no se inventa ninguna mecanica. "Alternate
+   Goals", "Military-Industrial Complex", "Peace in Our Time" y "World War
+   Three" NO son condiciones de victoria sino modificadores permanentes del
+   juego en curso: declararlas no puede evaluarse todavia, asi que se declaran
+   explicitamente como no implementadas en vez de fingir una victoria. */
+function goalCardObjective(ix,pid){
+  var c=C.cards[ix];var pl=S.players[pid];var name=c?c.name:'';
+  if(name==='Criminal Overlords'){
+    /* "Any group that is both Violent and Criminal counts double toward your
+       total number of groups" */
+    var n=0,dbl=0,seen={};
+    walk(pl.structure,function(nd){
+      if(nd.cardId==null||nd.paralyzed)return;var g=card(nd.cardId);n++;
+      var a=g.alignments||[];
+      if(a.indexOf('violent')>=0&&a.indexOf('criminal')>=0&&dbl<3&&!seen[g.id]){seen[g.id]=1;dbl++;n++;}
+    });
+    var goal=S.config.goalCount;
+    return {met:n>=goal,count:n,goal:goal,
+            how:'Criminal Overlords: '+n+'/'+goal+' grupos (Violent y Criminal cuentan doble)'};
+  }
+  if(name==='Hail Eris!'){
+    /* "Any Weird group with a power of 3 or more counts double toward your total
+       number of groups" */
+    return basicWithDouble(pl,{align:'weird',powerAtLeast:3},'Hail Eris!');
+  }
+  if(name==='Fratricide'){
+    /* "Destroy two other Illuminati groups!" — para destruir un Illuminati hay que
+       quitarle su ultimo titere (texto impreso). */
+    var downed=(pl.destroyedIlluminati||[]).length;
+    return {met:downed>=2,count:downed,goal:2,
+            how:'Fratricide: '+downed+'/2 Illuminati rivales destruidos'};
+  }
+  return {implemented:false,
+          reason:'"'+name+'" no es una condicion de victoria: es un modificador permanente del juego en curso, todavia no implementado'};
+}
+/* Las 10 ideologías canónicas del World Domination Handbook. Se declaran de
+   forma explícita (no derivadas del dataset) porque una meta que dependa de
+   "cubrir todas las alineaciones" debe ser estable aunque una transcripción
+   venga incompleta: un objetivo imposible por datos ausentes es peor que un
+   objetivo declaradamente no evaluable. */
+var CANON_ALIGNMENTS=['conservative','corporate','criminal','fanatic','government','liberal','peaceful','straight','violent','weird'];
+
+/*    P1-008: goalText() solo probaba tipos de meta que NO existen en el dataset
+   (destroy / peaceful_power / pick3), por lo que la UI mostraba "Meta básica"
+   para los 9 Illuminati. Ahora cada tipo declarado en cards.js tiene texto. */
+function goalText(ic){
+  var g=ic.goal;
+  var baseGoal=(S&&S.config)?S.config.goalCount:12;
+  if(!g)return 'Controlar '+baseGoal+' grupos';
+  switch(g.type){
+    case 'power_total':
+      return 'Poder total de tus grupos ≥ '+g.total+(g.needEachAlign?' y al menos un grupo de cada una de las 10 ideologías':'');
+    case 'destroy_reduce':
+      return 'Meta de '+g.winAt+' grupos; cada grupo que destruyas reduce en '+(g.reducePerDestroy||1)+' la cantidad de grupos que debes controlar (o destruye '+g.winAt+' directamente)';
+    case 'peaceful_power_in_play':
+      return 'Poder pacífico en juego ≥ '+g.total;
+    case 'goal_cards':
+      /* P1-010: antes decia "Controlar tus N grupos especiales", que era la meta
+         inventada. La carta dice "up to 3 different Goal cards in play". */
+      return 'Tener cartas Goal en juego (hasta '+g.max+'); ganas al revelar cualquiera de ellas';
+    case 'basic':
+    default:
+      var t='Controlar '+baseGoal+' grupos';
+      if(g.double){
+        if(g.double.attr)t+='; un grupo con el atributo '+g.double.attr+' cuenta doble';
+        else if(g.double.align)t+='; un grupo '+g.double.align+' cuenta doble';
+        if(g.double.powerAtLeast!=null)t+=' (Poder ≥ '+g.double.powerAtLeast+')';
+      }
+      if(g.magicResourceCountsAsGroup)t+='; tus recursos Mágicos cuentan como grupos';
+      return t;
+  }
+}
+function alignsCovered(pl){
+  var set={};
+  walk(pl.structure,function(nd){
+    if(nd.cardId==null)return;var c=card(nd.cardId);
+    (c.alignments||[]).forEach(function(a){set[a]=true;});
+  });
+  return set;
+}
+function sumTotalPower(pl){
+  var tot=0;
+  walk(pl.structure,function(nd){
+    if(nd.cardId==null||nd.paralyzed)return;var c=card(nd.cardId);
+    if(typeof c.power==='number')tot+=c.power;
   });
   return tot;
 }
-function ufoProgress(pid){
-  var tg=S.config.ufoTargets||[];
-  var have=tg.filter(function(cid){return controlsGroup(pid,cid);}).length;
-  return have+'/'+tg.length;
+function magicResourceGroups(pl){
+  var n=0;
+  (pl.resources||[]).forEach(function(r){
+    var c=card(r.cardId);if(!c)return;
+    var a=attrList(c);
+    for(var i=0;i<a.length;i++){
+      if(String(a[i]).toLowerCase()==='magic'){n++;return;}
+    }
+  });
+  return n;
 }
-function controlsGroup(pid,cardIdRef){
-  var found=false;
-  walk(S.players[pid].structure,function(nd){if(nd.cardId===cardIdRef)found=true;});
-  return found;
+/* P1-009: misma corrección AND→OR que en bonusTargetMatches. El texto de los
+   Gnomes de Zurich dice "Any Corporate group OR Bank with a Power of 4 or more
+   counts double" y el dato es {align:'corporate',attr:'bank',powerAtLeast:4}:
+   con AND ningún grupo del dataset cumpliría los dos a la vez (nadie tiene
+   atributo bank) y el doble quedaría muerto. El texto de la carta manda: si el
+   dato declara LAS DOS condiciones se evalúan con OR; powerAtLeast siempre
+   además (así lo dicen todas las cartas). */
+function doubleQualifies(c,dbl){
+  if(!dbl)return false;
+  var hasAlign=!!dbl.align,hasAttr=!!dbl.attr;
+  if(hasAlign||hasAttr){
+    var al=c.alignments||[],byAlign=hasAlign&&al.indexOf(dbl.align)>=0;
+    var byAttr=false;
+    if(hasAttr){
+      var at=attrList(c);
+      for(var i=0;i<at.length;i++){
+        if(String(at[i]).toLowerCase()===String(dbl.attr).toLowerCase()){byAttr=true;break;}
+      }
+    }
+    var ok=hasAlign&&hasAttr?(byAlign||byAttr):(byAlign||byAttr);
+    if(!ok)return false;
+  }
+  if(dbl.powerAtLeast!=null){if(typeof c.power!=='number'||c.power<dbl.powerAtLeast)return false;}
+  return true;
 }
-function goalText(ic){
-  var g=ic.goal;
-  if(!g)return 'Meta básica';
-  if(g.type==='destroy')return 'Destruir '+g.count+' grupos';
-  if(g.type==='peaceful_power')return 'Poder pacífico total '+g.total;
-  if(g.type==='pick3')return 'Controlar tus 3 grupos elegidos';
-  return 'Meta básica'+(g.doubleAttr?' ('+g.doubleAttr+' cuenta doble)':'');
+function effectiveGoalCount(p){
+  var pl=S.players[p];var ic=illuCard(p);
+  var g=(ic&&ic.goal&&ic.goal.type==='destroy_reduce')?ic.goal:null;
+  if(!g)return S.config.goalCount;
+  return Math.max(1,S.config.goalCount-pl.destroyedByMe.length*(g.reducePerDestroy||1));
 }
 
 E.getState=function(){return publicState();};
@@ -235,14 +400,22 @@ E.startGame=function(){
     for(var i=0;i<3;i++)pl.hand.push(S.plotDeck.pop());
     for(var j=0;j<10;j++)pl.hand.push(S.groupDeck.pop());
   });
-  var hasUfos=false;
-  S.players.forEach(function(pl,q){var c=illuCard(q);if(c&&c.effect&&c.effect.code==='ufos')hasUfos=true;});
-  if(hasUfos){
-    var pool=C.cards.filter(function(c){return c.type==='group';});
-    var picks=[];
-    while(picks.length<3){var g=pool[Math.floor(Math.random()*pool.length)];if(picks.indexOf(g.id)<0)picks.push(g.id);}
-    S.config.ufoTargets=picks;
-  }
+  /* P1-010: se elimino el sorteo de 3 "grupos especiales" para los UFOs. Las
+     Goal cards son un tipo de PLOT (inwo_rules_extracted.txt:979) y se reparten
+     del mazo de Plots como cualquier otra carta; su limite (1 por jugador, 2 con
+     Alternate Goals) se aplica al final del turno. */
+  /* P1-010: el reparto inicial tambien puede entregar 2 Goal cards, lo que
+     dejaria un estado ilegal ("No player may have more than one Goal card in his
+     hand"). Se descarta el exceso antes de empezar. */
+  S.players.forEach(function(pl){
+    var lim=goalHandLimitOf(pl);
+    var held=goalCardsIn(pl);
+    while(held.length>lim){
+      var gx=held.shift();
+      removeFromHand(pl,gx);S.plotDiscard.push(gx);
+      log('Reparto inicial: '+card(gx).name+' descartada (máx '+lim+' Goal cards)');
+    }
+  });
   /* high roll starts */
   var rolls=[],best=-1,bestP=0,attempts=0;
   do{
@@ -308,6 +481,24 @@ E.beginTurn=function(pid,isFirst){
     var c=card(r.cardId);
     if(c&&/\baction\b/i.test(c.text||'')&&((r.tokens||0)<1))r.tokens=1;
   });
+  /* P1-009: The Network — "You start your turn by drawing two Plot cards,
+     rather than one." Se hace aquí (no como acción del jugador) porque es
+     parte del inicio del turno, y se respeta el límite de Plots en mano de la
+     facción (plotHandLimitOf: Gnomes de Zurich admite 6). */
+  var autoDraw=illuEff(pid).drawPlotAtStart;
+  if(autoDraw){
+    var lim=plotHandLimitOf(pid);
+    var got=0;
+    for(var d=0;d<autoDraw;d++){
+      var plotsHeld=pl.hand.filter(function(ix){return C.cards[ix]&&C.cards[ix].type==='plot';}).length
+        +pl.exposedPlots.length;
+      if(plotsHeld>=lim)break;
+      var dix=drawFrom(S.plotDeck,S.plotDiscard,'plots');
+      if(dix==null)break;
+      pl.hand.push(dix);got++;
+    }
+    if(got>0)log(pl.name+' roba '+got+' Plot cards al inicio del turno (The Network)');
+  }
   log('— Turno de '+pl.name+' (+'+tokGain+' acción Illuminati) —');
   S.phase='main';
   return publicState();
@@ -498,6 +689,11 @@ E.declareAttack=function(pid,type,target){
       if(owner!==pid&&pl.immuneFrom[owner]&&(pl.immuneFrom[owner].indexOf?pl.immuneFrom[owner].indexOf(target.uid):-1)>=0)
         throw new Error('Tu ataque anterior contra '+S.players[owner].name+' falló: inmune el resto del turno');
       A.targetPid=owner;A.targetUid=target.uid;tn=tCard.name;
+      /* P1-009: la Discordian Society es INMUNE a los ataques de grupos Government
+         y Straight. Antes sólo se anotaba una nota en el desglose (la inmunidad no
+         se ejecutaba). Ahora es una acción ilegal. */
+      if(discordianBlocks(owner,attCard))
+        throw new Error('La estructura Discordian es inmune a atacantes Straight/Government');
     }else{
       /* attack a card in a rival's HAND (attack-to-control only) */
       if(type!=='control')throw new Error('Solo control se lanza contra cartas de la mano');
@@ -580,6 +776,58 @@ E.addBoost=function(pid,idx,toDefense){
   return publicState();
 };
 
+/* ---------------- P1-009: poderes especiales de las facciones Illuminati -------------
+   Los 18 Illuminati declaran `effect.kind==='illu_special'`; el bloque
+   siguiente centraliza la lectura de esos campos para que ninguna otra función
+   tenga que conocer la forma exacta del dato. Nada aquí inventa reglas: cada
+   helper traduce un campo que YA existe en cards.js. */
+function illuEff(pid){var ic=illuCard(pid);return (ic&&ic.effect)?ic.effect:{};}
+/* ¿El bonus {targetAlign,targetAttr} del Illuminati aplica a este objetivo?
+   OJO: cuando el dato declara LAS DOS condiciones hay que aplicar OR, no AND.
+   Los Gnomes de Zurich dicen "+4 on any attempt to control Corporate groups
+   OR Banks" y su effect trae {targetAlign:'corporate', targetAttr:'bank'}: con
+   AND ningún grupo del dataset cumpliría ambos a la vez (nadie tiene atributo
+   bank) y el bonus quedaría muerto. El texto de la carta es la autoridad. */
+function bonusTargetMatches(b,tCard){
+  if(!b||!tCard)return false;
+  if(!b.targetAlign&&!b.targetAttr)return false;
+  if(b.targetAlign&&tCard.alignments&&tCard.alignments.indexOf(b.targetAlign)>=0)return true;
+  if(b.targetAttr&&hasAttr(tCard,b.targetAttr))return true;
+  return false;
+}
+/* Bonus de ataque del Illuminati del atacante: control o destroy. */
+function illuAttackBonus(pid,type,tCard){
+  var b=illuEff(pid).bonus;if(!b)return 0;
+  if(b.anyDestroy)return (type==='destroy')?(b.anyDestroy||0):0;
+  if(!bonusTargetMatches(b,tCard))return 0;
+  return (type==='destroy')?((b.destroy||b.anyDestroy||0)):(b.control||0);
+}
+/* Shangri-La: +5 a defender CUALQUIER ataque recibido. */
+function illuDefenseBonus(defPid){
+  var db=illuEff(defPid).defenseBonus;
+  return (db&&typeof db.anyAttack==='number')?db.anyAttack:0;
+}
+/* Discordian Society: inmune a atacantes Government/Straight. */
+function discordianBlocks(defPid,attCard){
+  var list=illuEff(defPid).immuneToAligns;
+  if(!list||!list.length||!attCard||!attCard.alignments)return false;
+  for(var i=0;i<list.length;i++)if(attCard.alignments.indexOf(list[i])>=0)return true;
+  return false;
+}
+/* Shangri-La: sólo se puede destruir a Violence o al Illuminati rival. */
+function shangriLaBlocksDestroy(defPid,node){
+  var d=illuEff(defPid).destroyOnly;
+  if(!d||!node)return false;
+  if(node===S.players[defPid].structure)return !d.allowRivalIlluminati;
+  var c=card(node.cardId);
+  return !(c&&c.alignments&&c.alignments.indexOf('violent')>=0);
+}
+/* Gnomes of Zurich: 6 Plots en mano en lugar de 5. */
+function plotHandLimitOf(pid){
+  var e=illuEff(pid);
+  return (typeof e.plotHandLimit==='number')?e.plotHandLimit:5;
+}
+
 /* ---------------- strength calc ---------------- */
 E.previewStrength=function(){return computeStrength(false);};
 function computeStrength(resolveMode){
@@ -609,6 +857,11 @@ function computeStrength(resolveMode){
       else{var isOpp=false;for(var j=0;j<tgtAligns.length;j++)if(isOpposite(attAligns[i],tgtAligns[j]))isOpp=true;
         if(isOpp)det.leaderMod-=4;}
     }
+    /* P1-009: bonus del Illuminati atacante (Discordian +4 a Weird, Gnomes +4 a
+       Corporate/Bank, Adepts +6 a Magic). Se suma en leaderMod para no alterar la
+       fórmula de total que las pruebas verifican. */
+    var ibCtl=illuAttackBonus(A.pid,'control',tCard);
+    if(ibCtl){det.leaderMod+=ibCtl;det.notes.push('Bonus del Illuminati atacante: +'+ibCtl);}
     var R=(typeof tCard.resistance==='number')?tCard.resistance:5;
     det.defenseBase=R;
     /* master-shared alignments +4 each (skip fanatic-vs-fanatic master) */
@@ -627,14 +880,9 @@ function computeStrength(resolveMode){
     }
     det.posBonus=(!A.neutralTarget&&!A.handTarget&&A.targetPid!=null&&A.targetUid)?positionBonus(A.targetPid,A.targetUid):0;
     if(A.selfDefended&&tNode)det.selfDef=2*curPower(tNode);
-    /* Discordian structure immunity vs straight/government attackers */
-    if(A.targetPid!=null){
-      var mc2=illuCard(A.targetPid);
-      if(mc2&&mc2.effect&&mc2.effect.code==='discordian'){
-        if(attAligns.indexOf('straight')>=0||attAligns.indexOf('government')>=0)
-          det.notes.push('INMUNE: Discordian bloquea atacantes Straight/Government');
-      }
-    }
+    /* P1-009: la inmunidad Discordian ya NO se reporta aquí como nota; se hace
+       cumplir en declareAttack (ataque normal) y en resolvePlotInstantAttack /
+       instantAttack (ataques instantáneos), que no pasan por esta función. */
   }else{ /* destroy */
     det.base=curPower(att);
     for(var k=0;k<attAligns.length;k++){
@@ -643,9 +891,17 @@ function computeStrength(resolveMode){
     }
     if(!A.neutralTarget&&!A.handTarget&&A.targetPid!=null&&A.targetUid)det.posBonus=positionBonus(A.targetPid,A.targetUid);
     if(A.selfDefended&&tNode)det.selfDef=2*curPower(tNode);
-    var ac=illuCard(A.pid);
-    if(ac&&ac.effect&&ac.effect.code==='cthulhu'){det.cthulhu=4;}
+    /* P1-009: Servants of Cthulhu +4 a cualquier destroy (el campo cthulhu ya
+       participa en la fórmula de total). Se generaliza el antiguo caso
+       hard-coded 'cthulhu' para que el bonus llegue por el dato, no por el id. */
+    var ibDst=illuAttackBonus(A.pid,'destroy',tCard);
+    if(ibDst){det.cthulhu+=ibDst;det.notes.push('Bonus del Illuminati atacante (destroy): +'+ibDst);}
     if(neutralIdx!=null){det.posBonus=0;}
+  }
+  /* P1-009: Shangri-La concede +5 a defender CUALQUIER ataque (texto oficial). */
+  if(A.targetPid!=null){
+    var db=illuDefenseBonus(A.targetPid);
+    if(db){det.defBoosts+=db;det.notes.push('Defensa del Illuminati (Shangri-La): +'+db);}
   }
   A.aids.forEach(function(a){det.aids+=a.power;});
   A.opposes.forEach(function(o){det.opposes+=o.power;});
@@ -748,7 +1004,15 @@ function destroyGroup(byPid,targetUid){
   var owner=findOwnerPid(targetUid);
   var root=S.players[owner].structure;
   var parent=findNodeThatHas(root,targetUid);
-  var node=detach(parent,targetUid);
+  var node=findNode(targetUid);
+  /* P1-009: Shangri-La — "You cannot destroy any groups except Violent ones and
+     rival Illuminati." El bloqueo se evalúa ANTES de detach() para que un veto no
+     deje la estructura a medio desmontar. */
+  if(shangriLaBlocksDestroy(owner,node)){
+    log('BLOQUEO Shangri-La: '+S.players[owner].name+' no puede destruir '+card(node.cardId).name+' (sólo grupos Violent y Illuminati rivales)');
+    return false;
+  }
+  node=detach(parent,targetUid);
   var c=card(node.cardId);
   S.players[byPid].destroyedByMe.push(node.cardId);
   S.groupDiscard.push(node.cardId);
@@ -766,7 +1030,27 @@ function destroyGroup(byPid,targetUid){
     nd.tokens=0;
     S.players[owner].hand.push(nd.cardId);
   });
+  /* P1-010: "To destroy an Illuminati, you must remove its last puppet" — asi se
+     contabiliza la meta Fratricide, que exige destruir dos Illuminati rivales. */
+  if(S.players[owner].structure.children.length===0){
+    var rec=S.players[byPid].destroyedIlluminati;
+    if(rec.indexOf(owner)<0){
+      rec.push(owner);
+      log('Illuminati de '+S.players[owner].name+' destruido (ya no tiene títeres)');
+    }
+  }
   log('DESTRUIDO: '+c.name+' (por '+S.players[byPid].name+'). Títeres vuelven a la mano de '+S.players[owner].name);
+  /* P1-009: Servants of Cthulhu — "Draw a Plot card whenever you destroy a
+     group!" El robo de Plot es interno (no consume la acción del turno), así que
+     se replica el mismo drawFrom() que usa drawPlot() sin tocar flags.plotDrawn. */
+  if(illuEff(byPid).drawPlotOnDestroy){
+    var px=drawFrom(S.plotDeck,S.plotDiscard,'plots');
+    if(px!=null){
+      S.players[byPid].hand.push(px);
+      log(card(px).name+' robada por Cthulhu al destruir '+c.name);
+    }
+  }
+  return true;
 }
 
 /* ---------------- move group ---------------- */
@@ -815,17 +1099,225 @@ E.moveGroup=function(pid,uid,newParentUid,payWith){
   return publicState();
 };
 
-/* ================= PLOT CARDS ================= */
-E.playPlot=function(pid,handIdx,targetUid){
+/* P1-009: Bermuda Triangle — "You may reorganize your groups freely at the end
+   of your turn." Es una reorganization GRATUITA: reutiliza detach()+push() de
+   moveGroup pero sin exigir acción (no hay token que gastar) y sin exigir que el
+   destino conserve una flecha libre más allá de lo razonable. Se modela como una
+   lista de movimientos atómicos: si uno falla, los anteriores ya aplicados se
+   conservan (el estado nunca queda a medio desmontar porque detach() se llama
+   sólo tras validar TODOS los movimientos). */
+E.organize=function(pid,moves){
   requireOwnMain(pid);
+  if(!illuEff(pid).organizeAtEndOfTurn)
+    throw new Error('Tu facción no puede reorganizar la estructura');
+  if(!Array.isArray(moves)||!moves.length)throw new Error('Indica al menos un movimiento');
+  /* validar TODO antes de tocar nada */
+  moves.forEach(function(mv){
+    var node=findNode(mv.uid);
+    if(!node)throw new Error('Grupo inexistente: '+mv.uid);
+    if(findOwnerPid(mv.uid)!==pid)throw new Error('Sólo puedes reorganizar tus propios grupos');
+    if(node.paralyzed)throw new Error('Un grupo paralizado no puede moverse');
+    var np=findNode(mv.newParentUid);
+    if(!np)throw new Error('Destino inexistente');
+    if(findOwnerPid(mv.newParentUid)!==pid)throw new Error('El destino debe estar en tu estructura');
+    if(isCyclic(mv.uid,mv.newParentUid))throw new Error('No puedes mover un grupo dentro de sí mismo');
+    if(depthUnder(mv.newParentUid)+subtreeList(node).length>MAX_DEPTH)throw new Error('La reorganización excede la profundidad máxima');
+  });
+  moves.forEach(function(mv){
+    var node=findNode(mv.uid);
+    var oldParent=findNodeThatHas(S.players[pid].structure,mv.uid);
+    var np=findNode(mv.newParentUid);
+    detach(oldParent,mv.uid);
+    np.children.push(node);
+  });
+  log(S.players[pid].name+' reorganiza su estructura ('+moves.length+' movimiento/s)');
+  return publicState();
+};
+/* Un movimiento es cíclico si el destino está dentro del subárbol que se mueve. */
+function isCyclic(uid,newParentUid){
+  if(uid===newParentUid)return true;
+  var found=false;
+  var node=findNode(uid);
+  if(node)subtreeList(node).forEach(function(nd){if(nd.uid===newParentUid)found=true;});
+  return found;
+}
+/* Profundidad disponible por debajo de un nodo (0 = el propio nodo). */
+function depthUnder(uid){
+  var best=0;
+  walk(findNode(uid),function(nd){var d=depthOf(findNode(uid),nd.uid);if(d>best)best=d;});
+  return best;
+}
+var MAX_DEPTH=10;
+
+/* ================= PLOT INSTANT ATTACKS (P1-007) =================
+   Assassination y Disaster NO son efectos automáticos: el texto dice
+   "This is an Instant Attack to Destroy any Personality/Place ... Its Power is N".
+   Se tiran 2d6, se compara el Poder del Plot contra el Poder actual del objetivo
+   (más defensa, posición y apoyos) y sólo devasta/destruye si el ataque tiene éxito. */
+function attrList(c){
+  var a=c&&c.attributes;
+  if(!a)return [];
+  if(Array.isArray(a))return a;
+  return String(a).split(/[,;/|]/).map(function(s){return s.trim();}).filter(Boolean);
+}
+function hasAttr(c,attr){
+  if(!attr)return false;
+  var t=String(attr).toLowerCase();
+  return attrList(c).some(function(a){return String(a).toLowerCase()===t;});
+}
+function hasAnyAlign(c,list){
+  if(!Array.isArray(list)||!list.length)return false;
+  var al=c&&c.alignments||[];
+  return al.some(function(a){return list.indexOf(a)>=0;});
+}
+/* El array `power` del Plot ordena entradas; la última sin condición es el default. */
+function plotPowerFor(eff,tc,fallback){
+  var list=(eff&&Array.isArray(eff.power)&&eff.power.length)?eff.power:null;
+  if(!list)return fallback;
+  for(var i=0;i<list.length;i++){
+    var e=list[i]||{};
+    var okAttr=!e.ifAttr||hasAttr(tc,e.ifAttr);
+    var okName=!e.ifNames||(e.ifNames.indexOf(tc.name)>=0);
+    if(okAttr&&okName&&typeof e.value==='number')return e.value;
+  }
+  for(var j=list.length-1;j>=0;j--){
+    if(typeof (list[j]||{}).value==='number')return list[j].value;
+  }
+  return fallback;
+}
+/* Primer grupo jugable de una estructura (tokens > 0, no paralizado/zapeado/devastado). */
+function firstUsableAid(pid,filter){
+  if(pid<0||pid>=S.players.length)return null;
+  var root=S.players[pid].structure;
+  var found=null;
+  walk(root,function(n){
+    if(found||n===root)return;
+    if(!n.tokens||n.paralyzed||n.zapped||n.devastated||n.actionStripped)return;
+    var c=card(n.cardId);
+    if(!c)return;
+    if(!filter||filter(c,n))found=n;
+  });
+  return found;
+}
+/* Resuelve un Instant Attack de Plot. Devuelve un resultado trazable. */
+function resolvePlotInstantAttack(pid,pc,tUid,opts){
+  opts=opts||{};
+  var eff=pc.effect||{};
+  var nd=findNode(tUid);
+  if(!nd)throw new Error('Objetivo inexistente');
+  var tc=card(nd.cardId);
+  if(eff.target&&tc.subtype!==eff.target)
+    throw new Error(pc.name+' solo se usa sobre '+(eff.target==='place'?'Lugares (Place)':'Personalities (Personality)'));
+  if(eff.requireAttr&&!hasAttr(tc,eff.requireAttr))
+    throw new Error(pc.name+' requiere un objetivo con el atributo '+eff.requireAttr);
+  if(eff.rejectAttr&&hasAttr(tc,eff.rejectAttr))
+    throw new Error(pc.name+' no afecta objetivos con el atributo '+eff.rejectAttr);
+
+  var power=plotPowerFor(eff,tc,10);
+  var notes=[];
+  /* P1-009: Servants of Cthulhu — "+4 on any attempt to destroy, EVEN WITH
+     DISASTERS AND ASSASSINATIONS" (efecto.anyDestroy, incluye instant:true), y
+     Adepts of Hermes — "+6 on any attempt to control or destroy a Magic group".
+     Los Instant Attacks NO pasan por computeStrength(), así que el bonus se
+     aplica aquí directamente sobre el Poder del Plot. */
+  var ibPlot=illuAttackBonus(pid,'destroy',tc);
+  if(ibPlot){power+=ibPlot;notes.push('+'+ibPlot+' por '+illuCard(pid).name);}
+
+  if(eff.requireActionFromAttr){
+    var an=opts.aidUid?findNode(opts.aidUid):null;
+    if(opts.aidUid&&(!an||findOwnerPid(opts.aidUid)!==pid))
+      throw new Error('El grupo que aporta la acción debe ser tuyo');
+    if(!an)an=firstUsableAid(pid,function(c){return hasAttr(c,eff.requireActionFromAttr);});
+    if(!an)throw new Error(pc.name+' necesita un grupo tuyo con acción de tipo '+eff.requireActionFromAttr);
+    var ac=card(an.cardId);
+    spendGroupToken(pid,an.uid);
+    if(eff.addSummonerPower){var ap=curPower(an);power+=ap;notes.push('+'+ap+' de '+ac.name);}
+    else notes.push('acción de '+ac.name+' usada');
+  }else if(eff.mayAddPowerFromAligns){
+    var mn=opts.aidUid?findNode(opts.aidUid):null;
+    if(opts.aidUid&&(!mn||findOwnerPid(opts.aidUid)!==pid))
+      throw new Error('El grupo que aporta la acción debe ser tuyo');
+    if(!mn)mn=firstUsableAid(pid,function(c){return hasAnyAlign(c,eff.mayAddPowerFromAligns);});
+    if(mn){spendGroupToken(pid,mn.uid);var mp=curPower(mn);power+=mp;notes.push('+'+mp+' de '+card(mn.cardId).name);}
+  }
+
+  var victim=findOwnerPid(tUid);
+  var defPower=curPower(nd);
+  if(eff.victimMayBeAided&&victim>=0){
+    var vn=firstUsableAid(victim,null);
+    if(vn){spendGroupToken(victim,vn.uid);var vp=curPower(vn);defPower+=vp;notes.push(card(vn.cardId).name+' se defiende (+'+vp+')');}
+  }
+  /* P1-009: Shangri-La — "+5 to defend against ANY attack". Los Instant Attacks
+     también cuentan como ataque. */
+  var sdb=victim>=0?illuDefenseBonus(victim):0;
+  if(sdb){defPower+=sdb;notes.push('+'+sdb+' de defensa de '+illuCard(victim).name);}
+
+  var pos=(victim>=0)?positionBonus(victim,tUid):0;
+  var str=power-defPower-pos;
+  var res={strength:str,power:power,defense:defPower,target:tc.name,plot:pc.name};
+  if(str<2){
+    res.ok=false;res.reason='fallo automático';
+    log(pc.name+': ataque instantáneo contra '+tc.name+' falla automáticamente ('+str+')');
+    return res;
+  }
+  var r=roll2d6();
+  res.roll=r;
+  if(r===11||r===12){res.ok=false;res.reason='FALLO automático (11-12 siempre fallan)';}
+  else if(r<=str){res.ok=true;res.margin=str-r;}
+  else{res.ok=false;res.reason='fallo';}
+  if(!res.ok){log(pc.name+' falla contra '+tc.name+' ('+res.reason+')');return res;}
+
+  nd.devastated=true;nd.tokens=0;
+  subtreeList(nd).forEach(function(n){n.devastated=true;n.tokens=0;});
+  log(pc.name+' devasta '+tc.name+(notes.length?' ('+notes.join(', ')+')':''));
+
+  if(eff.onPlay&&Array.isArray(eff.onPlay.stripActionFromNames)&&victim>=0){
+    var vroot=S.players[victim].structure;
+    walk(vroot,function(n){
+      if(n===vroot)return;
+      var nc=card(n.cardId);
+      if(!nc)return;
+      if(eff.onPlay.stripActionFromNames.indexOf(nc.name)>=0){
+        n.actionStripped=true;n.tokens=0;
+        log(nc.name+' pierde su acción para el resto del turno');
+      }
+    });
+  }
+
+  var need=(eff.destroyMargin==null)?(eff.kind==='assassination'?0:null):eff.destroyMargin;
+  if(need!=null&&res.margin>need){
+    res.destroyed=true;
+    destroyGroup(pid,tUid);
+    log((eff.kind==='assassination'?'ASESINATO: ':'DESTRUCCIÓN: ')+tc.name+' (margen '+res.margin+'>'+need+')');
+  }else{
+    res.destroyed=false;
+    if(need!=null)log('Margen '+res.margin+' ≤ '+need+': solo devastado, no destruido');
+    else log(pc.name+' devasta pero nunca destruye (destroyMargin nulo)');
+  }
+  return res;
+}
+
+/* ================= PLOT CARDS ================= */
+E.playPlot=function(pid,handIdx,targetUid,opts){
+  opts=opts||{};
+  var c0=C.cards[handIdx];
+  var eff0=(c0&&c0.effect)||{kind:'generic'};
+  var instant=(eff0.kind==='assassination'||eff0.kind==='disaster');
+  if(instant){
+    if(S.phase==='setup')throw new Error('No se pueden jugar Plot cards durante la preparación');
+    if(S.phase==='gameover')throw new Error('La partida ha terminado');
+  }else{
+    requireOwnMain(pid);
+  }
   var pl=S.players[pid];
   var i=pl.hand.indexOf(handIdx);
   if(i<0)throw new Error('Carta no está en tu mano');
-  var c=C.cards[handIdx];
+  var c=c0;
   if(c.type!=='plot')throw new Error('No es una Plot card');
   rejectUnverifiedCard(c);
   var eff=c.effect||{kind:'generic'};
   var consumed=true;
+  var lastResult=null;
   switch(eff.kind){
     case 'boost10':{
       var A=S.attack;
@@ -851,23 +1343,16 @@ E.playPlot=function(pid,handIdx,targetUid){
           log('ZAP sobre toda la estructura de '+S.players[q].name);break;}
       }
       break;}
-    case 'assassination':{
-      var nd3=findNode(targetUid);
-      if(!nd3)throw new Error('Solo se asesina un grupo en juego');
-      var tc=card(nd3.cardId);
-      if(tc.subtype!=='personality')throw new Error('Asesinato solo contra Personalities');
-      destroyGroup(pid,targetUid);
-      log('ASESINATO consumado: '+tc.name+' muere permanentemente');break;}
+    case 'assassination':
     case 'disaster':{
-      var nd4=findNode(targetUid);
-      if(!nd4)throw new Error('Objetivo inexistente');
-      var dc=card(nd4.cardId);
-      nd4.devastated=true;nd4.tokens=0;
-      subtreeList(nd4).forEach(function(n){n.devastated=true;n.tokens=0;});
-      log('DESASTRE ('+c.name+') devasta '+dc.name+' y su subárbol');break;}
+      if(!targetUid)throw new Error(eff.kind==='assassination'?'Elige una Personality objetivo':'Elige un Place objetivo');
+      lastResult=resolvePlotInstantAttack(pid,c,targetUid,opts);
+      break;}
     case 'goal':{
-      pl.exposedPlots.push(handIdx);consumed=false;
-      log(pl.name+' expone la meta: '+c.name);break;}
+      /* P1-010: una Goal card NO se juega. Las reglas dicen que se REVELA al
+         declarar victoria (inwo_rules_extracted.txt:979-991 y
+         librarian_result.txt:2186). El camino correcto es declareGoalVictory. */
+      throw new Error('"'+c.name+'" es una Goal card: no se juega, se revela al declarar victoria');}
     case 'nwo':{
       /* one per color max — replace old same-color */
       pl.exposedPlots=pl.exposedPlots.filter(function(ix){
@@ -885,25 +1370,45 @@ E.playPlot=function(pid,handIdx,targetUid){
   }
   if(consumed)pl.hand.splice(i,1);
   else pl.hand.splice(i,1);
-  return publicState();
+  var out=publicState();
+  if(lastResult)out.lastPlotResult=lastResult;
+  return out;
 };
 
-/* Instant attack from plot power (assassinations/disasters use this too when direct) */
-E.instantAttack=function(pid,power,targetUid){
+/* Instant attack de Potencia genérica. Comparte la semántica de dados con los
+   Instant Attacks de Plot: <2 falla siempre y 11-12 siempre fallan. */
+E.instantAttack=function(pid,power,targetUid,opts){
   if(S.phase==='gameover')return publicState();
+  opts=opts||{};
   var nd=findNode(targetUid);
   if(!nd)throw new Error('Objetivo inexistente');
-  var owner=findOwnerPid(targetUid);
   var tc=card(nd.cardId);
-  var str=power-curPower(nd);
+  if(opts.targetSubtype&&tc.subtype!==opts.targetSubtype)
+    throw new Error('Este ataque solo alcanza a '+opts.targetSubtype);
+  var owner=findOwnerPid(targetUid);
+  /* P1-009: los poderes especiales de la facción atacante/defensa también aplican
+     a los Instant Attacks genéricos (no pasan por computeStrength). */
+  var iaB=illuAttackBonus(pid,'destroy',tc);
+  var idB=owner>=0?illuDefenseBonus(owner):0;
+  var defP=curPower(nd)+(Number(opts.extraDefense)||0)+idB;
   var pos=(owner>=0)?positionBonus(owner,targetUid):0;
-  str-=pos;
-  var resTxt;
-  if(str<2)resTxt='fallo automático';
-  else{var r=roll2d6();resTxt=(r<=str)?'ÉXITO':'fallo';}
-  if(resTxt==='ÉXITO'){destroyGroup(pid,targetUid);}
-  else log('Ataque instantáneo falló contra '+tc.name);
-  return publicState();
+  var str=(Number(power)||0)+(Number(opts.extraPower)||0)+iaB-defP-pos;
+  var res={strength:str,target:tc.name};
+  if(iaB)res.illuBonus=iaB;
+  if(str<2){
+    res.ok=false;res.reason='fallo automático';
+  }else{
+    var r=roll2d6();
+    res.roll=r;
+    if(r===11||r===12){res.ok=false;res.reason='FALLO automático (11-12 siempre fallan)';}
+    else if(r<=str){res.ok=true;res.margin=str-r;}
+    else{res.ok=false;res.reason='fallo';}
+  }
+  if(res.ok){destroyGroup(pid,targetUid);log('ATAQUE INSTANTÁNEO: '+tc.name+' destruido (margen '+res.margin+')');}
+  else log('Ataque instantáneo falló contra '+tc.name+' ('+res.reason+')');
+  var out=publicState();
+  out.lastPlotResult=res;
+  return out;
 };
 
 /* ================= hand management ================= */
@@ -945,18 +1450,32 @@ E.endTurn=function(){
   if(!pl)throw new Error('No hay jugador activo');
   var plotsInHand=pl.hand.filter(function(ix){return C.cards[ix].type==='plot';});
   var exposed=pl.exposedPlots||[];
-  var excess=plotsInHand.length+exposed.length-5;
+  /* P1-009: el límite de Plots en mano depende de la facción — Gnomes of Zurich
+     declara plotHandLimit:6 ("You may hold 6 Plot cards in your hand, rather
+     than the usual 5"). */
+  var plotLimit=plotHandLimitOf(pid);
+  var excess=plotsInHand.length+exposed.length-plotLimit;
   while(excess>0&&plotsInHand.length){
     var handIx=plotsInHand.shift();
     removeFromHand(pl,handIx);S.plotDiscard.push(handIx);
-    log('Límite de mano: '+C.cards[handIx].name+' descartada (máx 5 Plots)');
+    log('Límite de mano: '+C.cards[handIx].name+' descartada (máx '+plotLimit+' Plots)');
     excess--;
   }
   while(excess>0&&pl.exposedPlots.length){
     var exposedIx=pl.exposedPlots.shift();
     S.plotDiscard.push(exposedIx);
-    log('Límite de mano: '+C.cards[exposedIx].name+' descartada (máx 5 Plots)');
+    log('Límite de mano: '+C.cards[exposedIx].name+' descartada (máx '+plotLimit+' Plots)');
     excess--;
+  }
+  /* P1-010: "No player may have more than one Goal card in his hand" — 2 si
+     Alternate Goals esta en mano. Se descarta el exceso antes de terminar el
+     turno para que nunca exista un estado imposible al empezar el siguiente. */
+  var gLimit=goalHandLimitOf(pl);
+  var gHeld=goalCardsIn(pl);
+  while(gHeld.length>gLimit){
+    var gx=gHeld.shift();
+    removeFromHand(pl,gx);S.plotDiscard.push(gx);
+    log('Límite de Goal cards: '+C.cards[gx].name+' descartada (máx '+gLimit+')');
   }
   S.turnCompleted=true;
   pl.turnsCompleted++;
@@ -969,39 +1488,63 @@ E.endTurn=function(){
   return publicState();
 };
 
+/* P1-008: goalMetFor() evaluaba los goals contra el `effect.code` y con umbrales
+   escritos a mano (8, 30), ignorando por completo el objeto `goal` que trae cada
+   carta en cards.js. Ahora la evaluación se deduce del dato: power_total,
+   destroy_reduce, peaceful_power_in_play, goal_cards y basic con double
+   (align/attr/powerAtLeast) + magicResourceCountsAsGroup. */
 function goalMetFor(p){
   var pl=S.players[p];var ic=illuCard(p);
   if(!ic)return {met:false};
-  var eff=ic.effect||{};
+  var g=ic.goal||{type:'basic'};
   /* elimination win */
   var rivalsAlive=S.players.some(function(o,i){return i!==p&&!o.eliminated;});
   if(!rivalsAlive)return {met:true,how:'Todos los rivales eliminados'};
-  if(eff.code==='cthulhu'&&pl.destroyedByMe.length>=8)
-    return {met:true,how:'Servants of Cthulhu: 8 grupos destruidos'};
-  if(eff.code==='shangrila'&&sumPeacefulPower(pl)>=30)
-    return {met:true,how:'Shangri-La: poder pacífico ≥30'};
-  if(eff.code==='ufos'){
-    var tg=S.config.ufoTargets||[];
-    if(tg.length===3&&tg.every(function(cid){return controlsGroup(p,cid);}))
-      return {met:true,how:'UFOs: los 3 grupos secretos controlados'};
+
+  /* --- metas especializadas declaradas en el dato --- */
+  if(g.type==='destroy_reduce'){
+    var needD=g.winAt||8;
+    if(pl.destroyedByMe.length>=needD)
+      return {met:true,how:ic.name+': '+pl.destroyedByMe.length+' grupos destruidos (meta '+needD+')'};
+    /* si no, cae a la meta básica con meta reducida por cada destrucción */
+  }else
+  if(g.type==='peaceful_power_in_play'){
+    var pp=sumPeacefulPower(pl),needP=g.total||30;
+    if(pp>=needP)return {met:true,how:ic.name+': poder pacífico en juego '+pp+'/'+needP};
+    return {met:false,count:pp,goal:needP};
+  }else
+  if(g.type==='goal_cards'){
+    /* P1-010: la meta ya NO se cumple solo por tener cartas Goal en mano. Las
+       reglas dicen que la Goal card se REVELA al declarar victoria y que el
+       intento puede fallar (si falla vuelve a la mano, expuesta). Ganar exige
+       E.declareGoalVictory(pid,handIdx), que valida el objetivo de la carta. */
+    var held=goalCardsIn(pl).length;
+    var ufoMax=g.max||3;
+    return {met:false,count:held,goal:ufoMax,countLabel:held+'/'+ufoMax,
+            howToWin:'Revela una carta Goal con E.declareGoalVictory'};
+  }else
+  if(g.type==='power_total'){
+    var tot=sumTotalPower(pl),needT=g.total||0,missing=[];
+    if(g.needEachAlign){var set=alignsCovered(pl);missing=CANON_ALIGNMENTS.filter(function(a){return !set[a];});}
+    if(tot>=needT&&missing.length===0)
+      return {met:true,how:ic.name+': poder total '+tot+'/'+needT+(g.needEachAlign?' con todas las ideologías cubiertas':'')};
+    return {met:false,count:tot,goal:needT,missingAlignments:missing};
   }
-  /* basic goal with doubling */
-  var doubles={};var icEff=ic.goal||{};
-  var attr=null;
-  if(ic.goal&&ic.goal.doubleAttr)attr=ic.goal.doubleAttr;
-  else if(eff.code==='network')attr='computer';
-  else if(eff.code==='gnomes')attr='corporate';
-  else if(eff.code==='discordian')attr='weird';
-  var count=0,doubledNames=[];
+
+  /* --- meta básica (12 grupos) con el doble declarado en el dato --- */
+  var doubles={},doubledNames=[],count=0;
   walk(pl.structure,function(nd){
     if(nd.cardId==null||nd.paralyzed)return;
     var c=card(nd.cardId);count++;
-    if(attr&&c.alignments&&(c.alignments.indexOf(attr)>=0)&&Object.keys(doubles).length<3&&!doubles[c.id]){
+    if(doubleQualifies(c,g.double)&&Object.keys(doubles).length<3&&!doubles[c.id]){
       doubles[c.id]=true;count++;doubledNames.push(c.name);
     }
   });
-  var goal=S.config.goalCount;
-  if(count>=goal)return {met:true,how:'Meta básica cumplida ('+count+'/'+goal+(doubledNames.length?' con dobles: '+doubledNames.join(', '):'')+')'};
+  var magicGroups=g.magicResourceCountsAsGroup?magicResourceGroups(pl):0;
+  count+=magicGroups;
+  var goal=effectiveGoalCount(p);
+  if(count>=goal)
+    return {met:true,how:ic.name+': meta cumplida ('+count+'/'+goal+(doubledNames.length?' con dobles: '+doubledNames.join(', '):'')+(magicGroups?' + '+magicGroups+' recurso(s) Mágico(s)':'')+')'};
   return {met:false,count:count,goal:goal};
 }
 
@@ -1032,6 +1575,35 @@ function checkVictory(){
 }
 E.checkVictory=function(){checkVictory();return publicState();};
 E.goalStatus=function(p){return goalMetFor(p);};
+/* P1-010: revelar una Goal card para declarar victoria. Las reglas la describen
+   como REVELADA, no jugada: si el intento falla la carta vuelve a la mano y queda
+   EXPUESTA (librarian_result.txt:2186). No consume la accion del turno porque es
+   una declaracion de victoria, no un uso de carta. */
+E.declareGoalVictory=function(pid,handIdx){
+  if(S.phase==='gameover')return publicState();
+  var pl=S.players[pid];if(!pl)throw new Error('No hay jugador');
+  if(pl.hand.indexOf(handIdx)<0)throw new Error('No tienes esa carta en la mano');
+  var c=C.cards[handIdx];
+  if(!isGoalCardIdx(handIdx))
+    throw new Error('"'+c.name+'" no es una Goal card (una Goal card es un Plot con efecto "goal")');
+  var res=goalCardObjective(handIdx,pid);
+  if(res.implemented===false)throw new Error(res.reason);
+  removeFromHand(pl,handIdx);
+  if(res.met){
+    pl.exposedPlots.push(handIdx);
+    S.winner={pids:[pid],how:'Goal card '+c.name+': '+(res.how||'objetivo cumplido'),name:pl.name};
+    S.phase='gameover';
+    log('¡VICTORIA de '+pl.name+'! Goal card revelada: '+c.name+' — '+(res.how||'objetivo cumplido'));
+    return publicState();
+  }
+  pl.hand.push(handIdx);
+  pl.goalCardsExposed=pl.goalCardsExposed||[];
+  if(pl.goalCardsExposed.indexOf(c.id)<0)pl.goalCardsExposed.push(c.id);
+  log(pl.name+' revela '+c.name+' pero el objetivo NO se cumple ('+(res.count||0)+'/'+(res.goal||0)+'); la carta vuelve a la mano expuesta');
+  var out=publicState();
+  out.lastGoalAttempt={card:c.name,met:false,count:res.count||0,goal:res.goal||0,exposed:true};
+  return out;
+};
 E.illumDrawGroup=E.extraGroupDraw;
 E.addAid=E.addSupport;
 
