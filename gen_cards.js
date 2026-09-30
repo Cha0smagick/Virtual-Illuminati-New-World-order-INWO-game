@@ -12,6 +12,15 @@ const parsedRaw = JSON.parse(fs.readFileSync(path.join(ROOT, 'research/cards_par
 const parsedArr = Array.isArray(parsedRaw) ? parsedRaw : (parsedRaw.cards || Object.values(parsedRaw)[0]);
 const mergePath = path.join(ROOT, 'research/audit_reports/card_data_merge.json');
 const mergeRaw = fs.existsSync(mergePath) ? JSON.parse(fs.readFileSync(mergePath, 'utf8')) : { cards: {} };
+// SEGUNDA FUENTE DE ATRIBUTOS (P2-DATA-01): transcripción secundaria del
+// documento archivado de Scribd. El OCR local no contiene las palabras de
+// atributo en 52 cartas (p.ej. "Coastal" nunca aparece en el texto reconocido
+// de Japan), así que el único camino para recuperar el vocabulario oficial es
+// fusionar los atributos que sí trae esa fuente. Sigue el mismo patrón que
+// card_data_merge.json: índice por nombre normalizado + unión, nunca reemplazo.
+const scribdPath = path.join(ROOT, 'research/audit_reports/scribd_card_text.json');
+const scribdRaw = fs.existsSync(scribdPath) ? JSON.parse(fs.readFileSync(scribdPath, 'utf8')) : { cards: [] };
+const scribdArr = Array.isArray(scribdRaw) ? scribdRaw : (scribdRaw.cards || []);
 
 const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
 const mergeCards = {};
@@ -20,6 +29,11 @@ for (const row of Object.values(mergeRaw.cards || {})) {
   const rowKey = norm(row.id || row.name);
   mergeCards[rowKey] = row;
   if (row.name) mergeCards[norm(row.name)] = row;
+}
+const scribdCards = {};
+for (const row of scribdArr) {
+  if (!row || !row.name) continue;
+  scribdCards[norm(row.name)] = row;
 }
 // name-key -> official type from SJG list
 const offType = {};
@@ -186,15 +200,21 @@ const GOALS = new Set(['criminaloverlords','fratricide','haileris',
  * Groups' affects only those Groups with Computer in the lower right."
  * cards.js was collapsing both into one c.alignments array, so an
  * "all Computer groups" mechanic would also hit Government groups.
- * Measured over all 421 cards this split partitions perfectly; the only
- * tag that is neither an alignment nor a known attribute is `green`,
- * which appears on exactly 2 cards (druids, joggers) and is OCR garbage.
+ * Measured over all 421 cards this split partitions perfectly.
+ * P2-DATA-01: `green` figuraba aqui como basura de OCR porque solo aparecia en
+ * 2 cartas (druids, joggers). La transcripcion secundaria (scribd) demuestra
+ * que `green` es un atributo REAL en 6 cartas (Al Gore, Anti-Nuclear
+ * Activists, California, Canada, Prince Charles, Underground Newspapers), asi
+ * que salio de JUNK_TAGS. El vocabulario oficial completo son 9 terminos:
+ * computer, magic, science, coastal, huge, bank, media, secret, green.
  * ------------------------------------------------------------------ */
 const ALIGNMENTS10 = new Set(['government','corporate','liberal','conservative',
   'peaceful','violent','straight','weird','criminal','fanatic']);
 const ATTRIBUTES = new Set(['computer','magic','science','coastal','huge',
-  'bank','illusion','outworld']);   // bank/illusion/outworld: printed as attributes on some cards
-const JUNK_TAGS = new Set(['green']);
+  'bank','media','secret','green','illusion','outworld']);
+// bank/illusion/outworld: printed as attributes on some cards.
+// media/secret/green added in P2-DATA-01 from the secondary transcription.
+const JUNK_TAGS = new Set();   // P2-DATA-01: `green` salio de aqui (es atributo real)
 
 /* ------------------------------------------------------------------ *
  * PLOT_FX — the 18 transcribed Disasters/Assassinations, verbatim.
@@ -403,6 +423,30 @@ function splitAlignments(rec) {
   rec.attributes = at;
   if (junk.length) rec.junkTags = junk;
 }
+
+/* P2-DATA-01: union de los atributos de la transcripcion secundaria.
+ * El OCR local no trae la palabra del atributo en 52 cartas (p.ej. Japan
+ * menciona "Coastal" en la carta impresa pero el OCR no lo capta), y ampliar
+ * la lista blanca no alcanza: el dato no esta en el texto de entrada. Se
+ * fusiona por UNION (nunca reemplazo) porque la fuente secundaria tiene menos
+ * entradas que el dataset (137 grupos) y además duplica valores ("media"
+ * aparece como ["media","media"]). Solo se aceptan los 9 terminos oficiales;
+ * cualquier otra cosa se descarta para no inventar vocabulario. */
+function applySecondaryAttributes(rec) {
+  const row = scribdCards[norm(rec.name)];
+  if (!row) return;
+  const src = Array.isArray(row.attributes) ? row.attributes
+    : String(row.attributeText || '').split(/[,;/|]/);
+  const added = [];
+  for (const raw of src) {
+    const t = String(raw).trim().toLowerCase();
+    if (!t || !ATTRIBUTES.has(t)) continue;
+    if (rec.attributes.indexOf(t) < 0) { rec.attributes.push(t); added.push(t); }
+  }
+  if (added.length) rec.attributesSource = 'secondary';
+  // El texto secundario tambien conserva la etiqueta cruda como evidencia.
+  if (row.attributeText && !rec.attributeText) rec.attributeText = row.attributeText;
+}
 function mechanicsStatus(card) {
   const kind = card.effect && card.effect.kind ? card.effect.kind : 'sin-effect';
   /* Transcribed off the card face: the printed rules are captured
@@ -492,6 +536,7 @@ for (const m of manifest) {
   }
   applySecondaryStats(rec);
   splitAlignments(rec);
+  applySecondaryAttributes(rec);
   rec.mechanicsStatus = mechanicsStatus(rec);
   // dedupe ids for duplicate image copies
   const dup = cards.find(c=>c.id===rec.id);
