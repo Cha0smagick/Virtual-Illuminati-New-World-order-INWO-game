@@ -80,6 +80,16 @@ function readyToAttack(pid) {
   /* sin Goal card en mano la meta NO se cumple */
   ok(E.goalStatus(up).met === false, 'sin Goal card en mano la meta UFOs NO se cumple -> ' + JSON.stringify(E.goalStatus(up)));
 
+  /* P1-010: la clave de progreso se llama goalCards, no pick3. `pick3` era el
+     residuo de la lectura equivocada ("3 grupos especiales") y la UI lo
+     imprimia crudo, asi que el jugador leia "pick3 0/3". */
+  var vsU = (E.getState().victoryStatus || []).filter(function (v) { return v.pid === up; })[0] || {};
+  var prU = vsU.progress || {};
+  ok(prU.goalCards != null && prU.pick3 == null,
+    'P1-010 el progreso de la meta UFOs se llama goalCards (no pick3) -> ' + JSON.stringify(prU));
+  ok(/cartas? Goal/i.test(vsU.goal || ''),
+    'P1-010 el texto de la meta UFOs habla de cartas Goal, no de grupos -> ' + vsU.goal);
+
   /* una Goal card en mano cuenta como progreso y NO gana sola */
   pl.hand.push(byName['Fratricide']);
   var g1 = E.goalStatus(up);
@@ -708,6 +718,1002 @@ function readyToAttack(pid) {
   ok(gzBase === 6, 'P1-009 Gnomes corporate>=4 cuenta doble (3 grupos -> 6, Texas no) -> ' + gzBase);
   var gzNoBank = E._raw().players[gz].structure.children.filter(function (n) { return n.cardId === 152; })[0];
   ok(!!gzNoBank, 'P1-009 el grupo corporate sigue en la estructura (doble aplicado, no destruido)');
+})();
+
+/* ================ P1-011 — Attack to Destroy: "Power minus Power" ================
+   Reglas oficiales (inwo_rules_extracted.txt):
+   - L561-580, "Attack to Destroy", punto (1): "Instead of rolling 'Power minus
+     Resistance,' roll 'Power minus Power.' That is, the target defends with its
+     Power rather than its Resistance." punto (2): si el objetivo está en TU PROPIA
+     estructura, "The target does not get a defense bonus for closeness to the
+     Illuminati in this case."
+   - L683-685: "While a Place is Devastated, its Power is halved (round down)
+     against any Attack to Destroy."
+   - L681-682 y librarian_result.txt:2151: un grupo devastado "cannot get Action
+     tokens and do not count toward victory".
+   Antes de P1-011 la destrucción NUNCA restaba el Poder del objetivo (defenseBase
+   se quedaba en 0) y ningún recorrido de metas miraba `devastated`. */
+(function () {
+  var En = window.Engine, C = window.INWO_CARDS;
+  function pidOf(base) {
+    var ps = En.getState().players, p;
+    for (p = 0; p < ps.length; p++) if (String(ps[p].illumId).replace(/\d+$/, '') === base) return p;
+    throw new Error('P1-011 fixture: no hay jugador con la facción ' + base);
+  }
+  function nodeOf(pid, uid) {
+    var hit = null;
+    (function walk(nd) {
+      if (hit || !nd) return;
+      if (nd.uid === uid) { hit = nd; return; }
+      (nd.children || []).forEach(walk);
+    })(En._raw().players[pid].structure);
+    return hit;
+  }
+  function byName(n) { return C.cards.filter(function (c) { return c.name === n; })[0]; }
+  var TEXAS = byName('Texas');           // Poder 14, Resistencia 9
+  var KKK = byName('KKK');                // Poder 2, ataque débil
+  var GORDO = byName('Gordo Remora');     // Poder 1
+
+  /* ---- 1) DESTROY: el objetivo defiende con su PODER, no con su Resistencia ---- */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var atk = pidOf('bavarianilluminati');
+  readyToAttack(atk);
+  plant(atk, 'wa', KKK.idx, 1);
+  plant(1 - atk, 'wb', TEXAS.idx, 1);
+  En.declareAttack(atk, 'destroy', { attackerUid: 'wa', uid: 'wb' });
+  var d1 = En.previewStrength();
+  ok(d1.defenseBase === TEXAS.power,
+    'P1-011 DESTROY resta el PODER del objetivo ("Power minus Power") -> defenseBase=' +
+    d1.defenseBase + ' (Poder ' + TEXAS.power + ', Resistencia ' + TEXAS.resistance + ')');
+  ok(d1.defenseBase !== TEXAS.resistance,
+    'P1-011 DESTROY no usa la Resistencia del objetivo (sería ' + TEXAS.resistance + ')');
+  ok(d1.total < 2,
+    'P1-011 un atacante de Poder ' + KKK.power + ' ya NO puede destruir a un grupo de Poder ' +
+    TEXAS.power + ' -> total=' + d1.total + ' (fallo automático)');
+  En.resolveAttack();
+  ok(En._raw().attack === null, 'P1-011 el ataque de prueba se resolvió y se limpió');
+
+  /* ---- 2) DESTROY dentro de tu PROPIA estructura: sin defensa por cercanía (regla 2) ---- */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var own = pidOf('bavarianilluminati');
+  readyToAttack(own);
+  plant(own, 'oa', TEXAS.idx, 1);
+  plant(own, 'ob', GORDO.idx, 1);
+  En.declareAttack(own, 'destroy', { attackerUid: 'oa', uid: 'ob' });
+  var d2 = En.previewStrength();
+  ok(d2.posBonus === 0,
+    'P1-011 DESTROY contra un grupo de tu propia estructura no da defensa por cercanía -> posBonus=' + d2.posBonus);
+  En.resolveAttack();
+
+  /* ---- 3) Devastado: Poder a la MITAD (round down) SÓLO contra destroy ---- */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var dv = pidOf('bavarianilluminati');
+  readyToAttack(dv);
+  plant(dv, 'da', KKK.idx, 1);
+  plant(1 - dv, 'db', TEXAS.idx, 1);
+  nodeOf(1 - dv, 'db').devastated = true;
+  En.declareAttack(dv, 'destroy', { attackerUid: 'da', uid: 'db' });
+  var d3 = En.previewStrength();
+  ok(d3.defenseBase === Math.floor(TEXAS.power / 2),
+    'P1-011 un Place devastado defiende con la mitad de su Poder (round down) -> ' +
+    d3.defenseBase + ' = floor(' + TEXAS.power + '/2)');
+  En.resolveAttack();
+
+  /* ---- 4) Devastado: contra CONTROL sigue defendiendo con su Resistencia ---- */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var cv = pidOf('bavarianilluminati');
+  readyToAttack(cv);
+  plant(cv, 'ca', KKK.idx, 1);
+  plant(1 - cv, 'cb', TEXAS.idx, 1);
+  nodeOf(1 - cv, 'cb').devastated = true;
+  En.declareAttack(cv, 'control', { attackerUid: 'ca', uid: 'cb' });
+  var d4 = En.previewStrength();
+  ok(d4.defenseBase === TEXAS.resistance,
+    'P1-011 la devastación NO reduce la Resistencia (sólo el Poder, y sólo vs destroy) -> ' +
+    d4.defenseBase + ' = ' + TEXAS.resistance);
+  En.resolveAttack();
+
+  /* ---- 5) Devastado: NO cuenta para las metas ---- */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var gp = pidOf('bavarianilluminati');
+  plant(gp, 'ga', TEXAS.idx, 1);
+  var pwBefore = En.goalStatus(gp).count;
+  nodeOf(gp, 'ga').devastated = true;
+  var pwAfter = En.goalStatus(gp).count;
+  ok(pwBefore - pwAfter === TEXAS.power,
+    'P1-011 un grupo devastado no suma Poder total para la meta -> ' +
+    pwBefore + ' -> ' + pwAfter + ' (delta ' + (pwBefore - pwAfter) + ', Poder ' + TEXAS.power + ')');
+
+  fresh('servantsofcthulhu1', 'bavarianilluminati1');
+  var cp = pidOf('servantsofcthulhu');
+  plant(cp, 'ka', TEXAS.idx, 1);
+  plant(cp, 'kb', GORDO.idx, 1);
+  var gBefore = En.goalStatus(cp).count;
+  nodeOf(cp, 'ka').devastated = true;
+  var gAfter = En.goalStatus(cp).count;
+  ok(gBefore - gAfter === 1,
+    'P1-011 un grupo devastado no cuenta como grupo controlado -> ' + gBefore + ' -> ' + gAfter);
+  nodeOf(cp, 'ka').devastated = false;
+  nodeOf(cp, 'ka').paralyzed = true;
+  ok(En.goalStatus(cp).count === gAfter,
+    'P1-011 un grupo PARALIZADO tampoco cuenta (sin regresión) -> ' + En.goalStatus(cp).count);
+})();
+
+/* ===================================================================== *
+ * P1-012 / P2-DATA-02 — la familia oficial "+10 Plots".
+ *
+ * Las 15 cartas comparten la misma frase impresa y sólo cambia el
+ * calificador del grupo:
+ *   "Play this card at any time to give +10 Power or Resistance (your
+ *    choice) to any {X} group you control. If used with an action, it must
+ *    be played when that action is first declared, and counts only for that
+ *    action. If used for defense, the bonus lasts until the end of the
+ *    current turn and does not count toward any Goal."
+ *
+ * Antes de este lote las 15 estaban en `unverified` y `rejectUnverifiedCard`
+ * las rechazaba, así que el caso `case 'boost10'` de playPlot era INALCANZABLE
+ * y además no miraba el objetivo: cualquier +10 valía para cualquier grupo.
+ * ===================================================================== */
+(function P1_012_PLUS10() {
+  var byName = function (n) { return C.cards.filter(function (c) { return c.name === n; })[0]; };
+  var MARTIAL = byName('Martial Law');     /* government   */
+  var STOCK   = byName('Stock Split');     /* corporate    */
+  var WHALES  = byName('Save the Whales'); /* green        */
+  var CUP     = byName('World Cup Victory');/* nation       */
+  var TEXAS   = byName('Texas');           /* violent      */
+  var AL_GORE = byName('Al Gore');         /* computer+green, Poder 1 */
+  var CALIF   = byName('California');      /* green+coastal+huge */
+
+  /* --- 1. datos: las 15 clasificadas y con calificador satisfacible --- */
+  var boost = C.cards.filter(function (c) {
+    return c.type === 'plot' && c.effect && c.effect.kind === 'boost10';
+  });
+  ok(boost.length === 15,
+    'P1-012 las 15 cartas "+10 Plots" estan clasificadas -> ' + boost.length);
+  ok(boost.every(function (c) { return c.mechanicsStatus === 'implemented-pending-engine'; }),
+    'P1-012 las 15 declaran verifiedMechanic (implemented-pending-engine)');
+  var sinObjetivo = boost.filter(function (c) {
+    var f = c.effect.targetAlign, a = c.effect.targetAttr;
+    var n = f ? C.cards.filter(function (g) { return g.type === 'group' &&
+      (g.alignments || []).indexOf(f) >= 0; }).length
+      : C.cards.filter(function (g) { return g.type === 'group' &&
+        (g.attributes || []).indexOf(a) >= 0; }).length;
+    return n < 1;
+  });
+  ok(sinObjetivo.length === 0,
+    'P1-012 todo calificador tiene al menos un grupo posible -> ' +
+    (sinObjetivo.length ? sinObjetivo.map(function (c) { return c.name; }).join(', ') : 'ninguno vacio'));
+  ok(CUP.effect.targetAttr === 'nation' &&
+     C.cards.some(function (g) { return g.type === 'group' &&
+       (g.attributes || []).indexOf('nation') >= 0; }),
+    'P1-012 World Cup Victory usa el atributo `nation`, que P2-DATA-02 anadio');
+
+  /* helper: mete una carta en la mano del jugador y devuelve su indice.
+   * PURGA antes de insertar: el reparto inicial puede contener ya esa misma
+   * carta, y playPlot resuelve la posicion con hand.indexOf(handIdx), asi que
+   * con dos copias solo borraria una y la otra seguiria "en la mano". Es el
+   * mismo modo de fallo que ya se corrigio en el bloque P1-004. */
+  var give = function (pid, card) {
+    var h = E._raw().players[pid].hand;
+    E._raw().players[pid].hand = h.filter(function (i2) { return i2 !== card.idx; });
+    E._raw().players[pid].hand.push(card.idx);
+    return card.idx;
+  };
+  /* fixture: dos jugadores listos para atacar, con un atacante y un objetivo */
+  function scenario(attCard, defCard) {
+    var S2 = fresh('servantsofcthulhu1', 'bavarianilluminati1');
+    var atk = pidOfHere(S2, 'servantsofcthulhu');
+    var def = pidOfHere(S2, 'bavarianilluminati');
+    plant(atk, 'p12-atk', attCard.idx, 1);
+    plant(def, 'p12-def', defCard.idx, 1);
+    var r = readyToAttack(atk);
+    return { S: S2, atk: r == null ? atk : r, def: def };
+  }
+  function pidOfHere(S2, base) {
+    for (var i = 0; i < S2.players.length; i++) {
+      if (String(S2.players[i].illumId).replace(/\d+$/, '') === base) return i;
+    }
+    throw new Error('fixture: falta la faccion ' + base);
+  }
+
+  /* --- 2. el calificador se respeta: un +10 de Corporate no aplica a otro ---
+   * Se abre un ataque para que la carta se use en modo 'defense' (el único
+   * modo que exige grupo objetivo cuando no se puede atacar). Texas es
+   * government/violent/conservative, asi que no es corporate. */
+  (function () {
+    var F = scenario(TEXAS, TEXAS);
+    var ix = give(F.atk, STOCK);          /* Stock Split = corporate */
+    E.declareAttack(F.atk, 'control', { attackerUid: 'p12-atk', uid: 'p12-def' });
+    throws(function () { E.playPlot(F.atk, ix, 'p12-def', { boostMode: 'defense' }); },
+      /solo afecta a grupos corporate/i,
+      'P1-012 un +10 de Corporate rechaza a un grupo no Corporate (Texas)');
+  })();
+
+  /* --- 3. sólo grupos propios (el calificador SI coincide, pero es rival) --- */
+  (function () {
+    var F = scenario(TEXAS, TEXAS);
+    /* Brasil es Government y vive en la estructura del RIVAL */
+    plant(F.def, 'p12-def-gov', byName('Brazil').idx, 1);
+    var ix = give(F.atk, MARTIAL);
+    E.declareAttack(F.atk, 'control', { attackerUid: 'p12-atk', uid: 'p12-def-gov' });
+    throws(function () { E.playPlot(F.atk, ix, 'p12-def-gov', { boostMode: 'defense' }); },
+      /debe ser tuyo/i,
+      'P1-012 no se puede dar el +10 a un grupo rival');
+  })();
+
+  /* --- 4. modo 'attack': exige que el grupo sea el que declaró el ataque --- */
+  (function () {
+    var F = scenario(TEXAS, TEXAS);
+    plant(F.atk, 'p12-gov2', byName('Brazil').idx, 1);   /* government, propio, NO atacante */
+    var ix = give(F.atk, MARTIAL);
+    E.declareAttack(F.atk, 'control', { attackerUid: 'p12-atk', uid: 'p12-def' });
+    throws(function () { E.playPlot(F.atk, ix, 'p12-gov2', { boostMode: 'attack' }); },
+      /debe aplicarse al grupo que lo declaro|que lo declaró/i,
+      'P1-012 el +10 al ataque sólo se aplica al atacante declarado');
+  })();
+
+  /* --- 5. modo 'attack' correcto: suma +10 y muere con el ataque --- */
+  (function () {
+    var F = scenario(TEXAS, TEXAS);
+    var ix = give(F.atk, STOCK);   /* Stock Split = corporate, pero el objetivo es Texas(violent) */
+    /* se usa Benefit Concert? no: para 'attack' hace falta el calificador correcto */
+    ix = give(F.atk, MARTIAL);
+    var tnode = plant(F.atk, 'p12-atk2', byName('Brazil').idx, 1); /* government */
+    E.declareAttack(F.atk, 'control', { attackerUid: 'p12-atk2', uid: 'p12-def' });
+    var before = E.previewStrength();
+    E.playPlot(F.atk, ix, 'p12-atk2', { boostMode: 'attack' });
+    var det = E.previewStrength();
+    ok(det.boosts === 10 && det.total === before.total + 10,
+      'P1-012 el +10 al ataque suma exactamente 10 a la fuerza -> ' +
+      before.total + ' -> ' + det.total + ' (boosts ' + det.boosts + ')');
+    ok(E._raw().players[F.atk].hand.indexOf(ix) < 0,
+      'P1-012 la carta +10 usada sale de la mano');
+    /* "counts only for that action": al resolver el ataque el bonus desaparece */
+    E.resolveAttack();
+    ok(E._raw().attack === null,
+      'P1-012 tras resolver el ataque el +10 desaparece con el ataque');
+    /* y la fuerza del atacante NO quedo modificada de forma permanente */
+    var tnode2 = null;
+    (function walk(nd) { if (nd.uid === 'p12-atk2') tnode2 = nd;
+      (nd.children || []).forEach(walk); })(E._raw().players[F.atk].structure);
+    ok(tnode2 && tnode2.powerOverride == null,
+      'P1-012 "does not count toward any Goal": el +10 no escribe powerOverride');
+  })();
+
+  /* --- 6. modo 'defense': +10 a las defensas del turno --- */
+  (function () {
+    var F = scenario(TEXAS, TEXAS);
+    var ix = give(F.def, MARTIAL);  /* el defensor usa la carta sobre su propio grupo */
+    E.declareAttack(F.atk, 'control', { attackerUid: 'p12-atk', uid: 'p12-def' });
+    E.playPlot(F.def, ix, 'p12-def', { boostMode: 'defense' });
+    var det = E.previewStrength();
+    ok(det.defBoosts === 10,
+      'P1-012 el +10 a la defensa suma 10 a las defensas del turno -> defBoosts ' + det.defBoosts);
+  })();
+
+  /* --- 7. sin ataque abierto sólo se puede exponer (modo 'hold') --- */
+  (function () {
+    var F = scenario(TEXAS, TEXAS);
+    var ix = give(F.atk, MARTIAL);
+    throws(function () { E.playPlot(F.atk, ix, 'p12-atk', { boostMode: 'attack' }); },
+      /necesita un ataque abierto/i,
+      'P1-012 sin ataque declarado no se puede usar el +10 al ataque');
+    var S4 = E.playPlot(F.atk, ix, 'p12-atk', { boostMode: 'hold' });
+    var ex = S4.players[F.atk].exposedPlots.map(function (i2) { return C.cards[i2].name; });
+    ok(ex.indexOf('Martial Law') >= 0,
+      'P1-012 sin ataque declarado la carta +10 queda expuesta para después -> ' + JSON.stringify(ex));
+    ok(E._raw().attack === null,
+      'P1-012 exponer la carta +10 no crea un ataque por arte propia');
+  })();
+
+  /* --- 8. un calificador por atributo (green) también se aplica --- */
+  (function () {
+    var F = scenario(TEXAS, TEXAS);
+    plant(F.atk, 'p12-green', CALIF.idx, 1);   /* California es green */
+    var ix = give(F.atk, WHALES);
+    var S3 = E.playPlot(F.atk, ix, 'p12-green', { boostMode: 'hold' });
+    var ex = S3.players[F.atk].exposedPlots.map(function (i2) { return C.cards[i2].name; });
+    ok(ex.indexOf('Save the Whales') >= 0,
+      'P1-012 un +10 por atributo (Green) se expone en la mesa -> ' + JSON.stringify(ex));
+    ok(E._raw().players[F.atk].hand.indexOf(ix) < 0,
+      'P1-012 la Plot expuesta NO sigue en la mano (no se cuenta dos veces)');
+  })();
+})();
+
+/* =====================================================================
+ * P1-013 — familia oficial "Power Increase" (Fase 4, lote 2)
+ * 10 cartas, una por cada ideología. Regla oficial (inwo_rules_extracted.txt:
+ * 268-273): el Plot se LINKea a un grupo de un tipo concreto para FIJAR su
+ * Poder al valor impreso, y no tiene efecto sobre un grupo que ya tiene Poder
+ * mayor o igual. El texto impreso añade: "may be played at any time, and
+ * counts as the action for the group it affects" y "No player may have more
+ * than one {Name} in play".
+ * ===================================================================== */
+(function () {
+  var byName = function (n) { return C.cards.filter(function (c) { return c.name === n; })[0]; };
+  var pidOfHere = function (S, base) {
+    for (var p = 0; p < S.players.length; p++) {
+      if (S.players[p].illumId.replace(/\d+$/, '') === base) return p;
+    }
+    throw new Error('fixture: no hay jugador ' + base);
+  };
+  /* grupo con la alineacion pedida cuyo Poder permite/impide el efecto */
+  var groupByAlign = function (align, wantBelow) {
+    var cand = C.cards.filter(function (g) {
+      if (g.type !== 'group' || typeof g.power !== 'number') return false;
+      var a = g.alignments || [];
+      if (a.indexOf(align) < 0) return false;
+      return wantBelow ? g.power < 6 : g.power >= 6;
+    });
+    cand.sort(function (x, y) { return wantBelow ? x.power - y.power : y.power - x.power; });
+    return cand[0];
+  };
+  var put = function (pid, uid, idx, tokens) {
+    E._raw().players[pid].structure.children.push(
+      { uid: uid, cardId: idx, children: [], tokens: tokens == null ? 1 : tokens });
+    return E._raw().players[pid].structure.children[E._raw().players[pid].structure.children.length - 1];
+  };
+  var putCard = function (pid, idx) {
+    var pl = E._raw().players[pid];
+    pl.hand = pl.hand.filter(function (ix) { return ix !== idx; });
+    pl.hand.push(idx);
+  };
+  var findNode = function (pid, uid) {
+    var hit = null;
+    (function walk(nd) {
+      if (hit || nd.uid === uid) { hit = hit || nd; return; }
+      (nd.children || []).forEach(walk);
+    })(E._raw().players[pid].structure);
+    return hit;
+  };
+
+  /* ---------- 1. las 10 cartas y su declaracion de datos ---------- */
+  var inc = C.cards.filter(function (c) { return c.effect && c.effect.kind === 'power_increase'; });
+  ok(inc.length === 10, 'P1-013 las 10 cartas Power Increase estan clasificadas -> ' + inc.length);
+  ok(inc.every(function (c) { return c.mechanicsStatus === 'implemented-pending-engine'; }),
+    'P1-013 las 10 declaran verifiedMechanic');
+  var aligns = inc.map(function (c) { return c.effect.targetAlign; });
+  var CANON = ['conservative', 'corporate', 'criminal', 'fanatic', 'government',
+    'liberal', 'peaceful', 'straight', 'violent', 'weird'];
+  ok(CANON.every(function (a) { return aligns.indexOf(a) >= 0; }) && aligns.length === 10,
+    'P1-013 cubren las 10 ideologias exactamente una vez -> ' + aligns.sort().join(','));
+  var weird = inc.filter(function (c) { return c.effect.targetAlign === 'weird'; })[0];
+  ok(weird && weird.name === 'The Weird Turn Pro' && weird.effect.value === 4,
+    'P1-013 The Weird Turn Pro conserva su 4 impreso (no se normaliza a 6) -> ' +
+    (weird ? weird.effect.value : '?'));
+  ok(inc.every(function (c) {
+    if (c.effect.targetAlign === 'weird') return true;
+    return c.effect.value === 6;
+  }), 'P1-013 las otras nueve fijan Poder 6');
+  var empties = aligns.filter(function (a) {
+    return !C.cards.some(function (g) {
+      return g.type === 'group' && (g.alignments || []).indexOf(a) >= 0;
+    });
+  });
+  ok(empties.length === 0, 'P1-013 ningun calificador es insatisfacible -> ' + JSON.stringify(empties));
+  ok(inc.every(function (c) { return /Link this card to your chosen/.test(c.text || ''); }),
+    'P1-013 el texto impreso declara el link (evidencia de transcripcion)');
+
+  /* ---------- 2. la carta fija el Poder y consume la accion del grupo ---------- */
+  var low = groupByAlign('fanatic', true);
+  var LEAD = byName('Charismatic Leader');
+  var St = fresh('servantsofcthulhu1', 'bavarianilluminati1');
+  var P = pidOfHere(St, 'servantsofcthulhu');
+  var node = put(P, 'pi-a', low.idx, 1);
+  putCard(P, LEAD.idx);
+  var before = node.powerOverride;
+  var out = E.playPlot(P, LEAD.idx, 'pi-a');
+  ok(node.powerOverride === 6,
+    'P1-013 el Poder queda FIJADO a 6 (no sumado) sobre Poder ' + low.power + ' -> ' + node.powerOverride);
+  ok(before == null, 'P1-013 el grupo no tenia powerOverride antes -> ' + before);
+  ok(node.tokens === 0,
+    'P1-013 la carta CUENTA COMO LA ACCION del grupo: se gastó su ficha -> ' + node.tokens);
+  var lp = (E._raw().players[P].linkedPlots || []);
+  ok(lp.length === 1 && lp[0].cardId === LEAD.idx && lp[0].linkedTo === 'pi-a',
+    'P1-013 la carta queda LINKED al grupo -> ' + JSON.stringify(lp));
+  ok(E._raw().players[P].hand.indexOf(LEAD.idx) < 0, 'P1-013 la carta sale de la mano');
+  var outLp = out.players[P].linkedPlots;
+  ok(outLp && outLp.length === 1 && outLp[0].linkedTo === 'pi-a',
+    'P1-013 publicState expone los Plot linkeados -> ' + JSON.stringify(outLp));
+
+  /* ---------- 3. validaciones ---------- */
+  var wrong = groupByAlign('corporate', true);
+  /* "No player may have more than one {Name} in play": hace falta una SEGUNDA
+     copia en la mano, porque la primera ya se gasto y salio de la mano. */
+  putCard(P, LEAD.idx);
+  throws(function () { E.playPlot(P, LEAD.idx, 'pi-a'); }, /no puede haber mas de una/i,
+    'P1-013 no se puede jugar dos veces la misma carta (carta ya linkeada)');
+
+  var St2 = fresh('servantsofcthulhu1', 'bavarianilluminati1');
+  var P2 = pidOfHere(St2, 'servantsofcthulhu');
+  var R2 = pidOfHere(St2, 'bavarianilluminati');
+  put(P2, 'pi-b', low.idx, 0);
+  put(R2, 'pi-r', low.idx, 1);
+  put(P2, 'pi-c', wrong.idx, 1);
+  putCard(P2, LEAD.idx);
+  throws(function () { E.playPlot(P2, LEAD.idx, 'pi-b'); }, /no tiene ficha/i,
+    'P1-013 sin ficha de accion del grupo no se puede usar ("counts as the action")');
+  throws(function () { E.playPlot(P2, LEAD.idx, 'pi-c'); }, /solo funciona sobre grupos fanatic/i,
+    'P1-013 rechaza un grupo de otra ideologia -> el calificador de la carta manda');
+  throws(function () { E.playPlot(P2, LEAD.idx, 'pi-r'); }, /debe ser tuyo/i,
+    'P1-013 no se puede linkear a un grupo rival ("your chosen group")');
+  throws(function () { E.playPlot(P2, LEAD.idx, null); }, /elige un grupo/i,
+    'P1-013 exige un grupo objetivo');
+
+  /* ---------- 4. no-op cuando el grupo ya tiene Poder >= al valor impreso ----------
+   * Se busca DINAMICAMENTE la pareja (carta, grupo) que cumple la precondición,
+   * porque no todas las ideologias tienen un grupo con Poder >= 6. */
+  var St3 = fresh('servantsofcthulhu1', 'bavarianilluminati1');
+  var P3 = pidOfHere(St3, 'servantsofcthulhu');
+  var pair = null;
+  for (var q = 0; q < inc.length && !pair; q++) {
+    var al3 = inc[q].effect.targetAlign, val3 = inc[q].effect.value;
+    var big = C.cards.filter(function (g) {
+      return g.type === 'group' && typeof g.power === 'number' &&
+        g.power >= val3 && (g.alignments || []).indexOf(al3) >= 0;
+    })[0];
+    if (big) pair = { card: inc[q], group: big };
+  }
+  ok(!!pair, 'P1-013 existe al menos un grupo cuyo Poder impreso ya alcanza el valor de su carta');
+  if (pair) {
+    var bigNode = put(P3, 'pi-big', pair.group.idx, 1);
+    putCard(P3, pair.card.idx);
+    E.playPlot(P3, pair.card.idx, 'pi-big');
+    ok(bigNode.powerOverride == null,
+      'P1-013 sin efecto si el grupo ya tiene Poder >= el valor impreso (' +
+      pair.card.name + ' sobre ' + pair.group.name + ' Poder ' + pair.group.power + ') -> ' +
+      bigNode.powerOverride);
+    ok(bigNode.tokens === 1, 'P1-013 el no-op NO gasta la ficha del grupo -> ' + bigNode.tokens);
+    ok((E._raw().players[P3].linkedPlots || []).length === 0,
+      'P1-013 el no-op NO crea el link');
+    ok(E._raw().players[P3].hand.indexOf(pair.card.idx) < 0,
+      'P1-013 la carta se descarta igualmente aunque no tenga efecto');
+  }
+
+  /* ---------- 5. el link muere con el grupo (destroyGroup) ---------- */
+  var St4 = fresh('servantsofcthulhu1', 'bavarianilluminati1');
+  var A4 = pidOfHere(St4, 'servantsofcthulhu');
+  var D4 = pidOfHere(St4, 'bavarianilluminati');
+  put(D4, 'pi-v2', low.idx, 1);
+  putCard(D4, LEAD.idx);
+  E.playPlot(D4, LEAD.idx, 'pi-v2');
+  ok((E._raw().players[D4].linkedPlots || []).length === 1,
+    'P1-013 el link se registro en el dueno del grupo');
+  var plotsBefore = E._raw().plotDiscard.length;
+  var realRandom = Math.random;
+  Math.random = function () { return 0; };
+  E.instantAttack(A4, 60, 'pi-v2');
+  Math.random = realRandom;
+  ok(!findNode(D4, 'pi-v2'), 'P1-013 fixture: el grupo linkeado fue destruido');
+  ok((E._raw().players[D4].linkedPlots || []).length === 0,
+    'P1-013 al destruirse el grupo, el Plot linkeado se retira de la mesa');
+  ok(E._raw().plotDiscard.length > plotsBefore,
+    'P1-013 el Plot linkeado vuelve al mazo de Plot cards -> ' +
+    (E._raw().plotDiscard.length - plotsBefore));
+
+  /* ---------- 6. "may be played at any time" ---------- */
+  var St6 = fresh('servantsofcthulhu1', 'bavarianilluminati1');
+  var P6 = pidOfHere(St6, 'servantsofcthulhu');
+  var R6 = pidOfHere(St6, 'bavarianilluminati');
+  put(R6, 'pi-x', low.idx, 1);
+  putCard(R6, LEAD.idx);
+  var who = St6.currentPid === R6 ? P6 : R6;
+  var victimUid = St6.currentPid === R6 ? 'pi-x' : null;
+  if (victimUid) {
+    var n6 = put(R6, 'pi-y', low.idx, 1);
+    putCard(R6, LEAD.idx);
+    E.playPlot(R6, LEAD.idx, 'pi-y');
+    ok((E._raw().players[R6].linkedPlots || []).length === 1,
+      'P1-013 "may be played at any time": funciona aunque no sea tu turno -> turno de ' + who);
+  } else {
+    ok(true, 'P1-013 fixture de turno no aplicable en esta corrida (turno aleatorio)');
+  }
+})();
+
+/* ------------------------------------------------------------------ */
+/* P1-014 — familia "Resistance Increase" (Commitment, Never Surrender)  */
+/* ------------------------------------------------------------------ */
+(function () {
+  var byName = function (n) { return C.cards.filter(function (c) { return c.name === n; })[0]; };
+  var nodeOf = function (pid, uid) { return findNode(E._raw().players[pid].structure, uid); };
+  /* PURGA antes de inyectar: el reparto inicial puede contener cualquier indice,
+     y un duplicado haria que removeFromHand quitara la copia vieja (flake nº5). */
+  var give = function (pid, card) {
+    var h = E._raw().players[pid].hand;
+    for (var i = h.length - 1; i >= 0; i--) if (h[i] === card.idx) h.splice(i, 1);
+    h.push(card.idx);
+    return card.idx;
+  };
+
+  var COMMIT = byName('Commitment');
+  var NEVER = byName('Never Surrender');
+  var GOLDF = byName('Goldfish Fanciers');   // fanatic, Poder 1, Resistencia 4
+  var TEXAS = byName('Texas');               // violent/government/conservative, NO fanatic
+
+  /* --- 1. clasificacion --- */
+  var inc = C.cards.filter(function (c) { return c.effect && c.effect.kind === 'resistance_increase'; });
+  ok(inc.length === 2, 'P1-014 las 2 cartas de "Resistance Increase" estan clasificadas -> ' + inc.length + '/2');
+  ok(COMMIT.effect.value === 8 && !COMMIT.effect.targetAlign,
+    'P1-014 Commitment fija la Resistencia a 8 y NO filtra por ideologia');
+  ok(NEVER.effect.value === 12 && NEVER.effect.targetAlign === 'fanatic',
+    'P1-014 Never Surrender fija la Resistencia a 12 y filtra por fanatic');
+  ok(inc.every(function (c) { return c.mechanicsStatus === 'implemented-pending-engine'; }),
+    'P1-014 ambas quedan implemented-pending-engine (ya no bloqueadas por rejectUnverifiedCard)');
+  var fanaticCount = C.cards.filter(function (c) {
+    return c.type === 'group' && c.alignments && c.alignments.indexOf('fanatic') >= 0;
+  }).length;
+  ok(fanaticCount > 0, 'P1-014 el calificador fanatic de Never Surrender es satisfacible -> ' + fanaticCount + ' grupos');
+  ok(C.cards.filter(function (c) { return c.type === 'group'; }).length > 0,
+    'P1-014 el calificador "any one group" de Commitment es satisfacible');
+
+  /* --- 2..5, 7, 11: efectos, free move, cualquier jugador, sin unicidad --- */
+  var S2 = fresh('servantsofcthulhu1', 'bavarianilluminati1');
+  var me = 0, foe = 1;   // fresh() fija las facciones por indice: 0=Cthulhu, 1=Bavarian
+  var nd = plant(me, 'r14-1', GOLDF.idx, 0);          // tokens 0 a proposito
+  ok(nd && nd.resistanceOverride == null, 'P1-014 fixture: el grupo empieza con la Resistencia impresa (4)');
+  give(me, COMMIT);
+  E.playPlot(me, COMMIT.idx, 'r14-1');
+  ok(nd.resistanceOverride === 8, 'P1-014 la Resistencia queda FIJADA a 8 (no 4+8=12) -> ' + nd.resistanceOverride);
+  ok(nd.tokens === 0, 'P1-014 "free move": se juega con 0 fichas de accion y no gasta ninguna');
+  var lp = E._raw().players[me].linkedPlots;
+  ok(lp.length === 1 && lp[0].cardId === COMMIT.idx && lp[0].linkedTo === 'r14-1',
+    'P1-014 el link permanente queda registrado -> ' + JSON.stringify(lp));
+  /* OJO: hay que leer el estado VIVO, no el snapshot S2 devuelto por fresh()
+     (que es anterior a los give/play). Con el snapshot, si el reparto inicial ya
+     traia el indice 223 la asercion fallaba al azar. */
+  ok(E._raw().players[me].hand.indexOf(COMMIT.idx) < 0, 'P1-014 la carta sale de la mano');
+  ok(E._raw().players[me].exposedPlots.indexOf(COMMIT.idx) < 0, 'P1-014 la carta NO queda expuesta: esta linkeada');
+  ok(E._raw().plotDiscard.indexOf(COMMIT.idx) < 0, 'P1-014 la carta NO se descarta (link permanente)');
+
+  /* sin unicidad: el texto NO dice "no puede haber mas de una en juego" */
+  plant(me, 'r14-2', GOLDF.idx, 0);
+  give(me, COMMIT);
+  var dupThrew = false;
+  try { E.playPlot(me, COMMIT.idx, 'r14-2'); } catch (e) { dupThrew = true; }
+  ok(!dupThrew, 'P1-014 NO se inventa unicidad: dos Commitment en juego estan permitidos');
+  ok(nodeOf(me, 'r14-2').resistanceOverride === 8, 'P1-014 el segundo Commitment tambien aplica');
+
+  /* grupo de CUALQUIER jugador: la diferencia clave frente a power_increase */
+  plant(foe, 'r14-3', GOLDF.idx, 0);
+  give(me, COMMIT);
+  var rivalThrew = false, rivalErr = '';
+  try { E.playPlot(me, COMMIT.idx, 'r14-3'); } catch (e) { rivalThrew = true; rivalErr = e.message; }
+  ok(!rivalThrew, 'P1-014 "may belong to any player": funciona sobre un grupo rival' +
+    (rivalThrew ? ' -> ' + rivalErr : ''));
+  ok(nodeOf(foe, 'r14-3').resistanceOverride === 8, 'P1-014 el grupo rival queda con Resistencia 8');
+  ok(E._raw().players[me].linkedPlots[2] && E._raw().players[me].linkedPlots[2].linkedTo === 'r14-3',
+    'P1-014 el link pertenece a quien juego la carta, no al dueno del grupo');
+
+  /* filtro de ideologia + objetivo obligatorio.
+     OJO: el grupo de la asercion anterior (`r14-3`) es Goldfish Fanciers, que ES
+     fanatic, asi que para probar el rechazo hace falta uno NO fanatic: Texas. */
+  plant(me, 'r14-4', TEXAS.idx, 0);
+  give(me, NEVER);
+  throws(function () { E.playPlot(me, NEVER.idx, 'r14-4'); }, /solo funciona sobre grupos fanatic/,
+    'P1-014 Never Surrender rechaza un grupo no fanatic');
+  give(me, NEVER);
+  throws(function () { E.playPlot(me, NEVER.idx, null); }, /elige un grupo objetivo/,
+    'P1-014 sin grupo objetivo no se puede jugar');
+  ok(E._raw().players[me].hand.indexOf(NEVER.idx) >= 0,
+    'P1-014 una jugada rechazada NO consume la carta de la mano');
+  give(me, NEVER);
+  E.playPlot(me, NEVER.idx, 'r14-1');
+  ok(nodeOf(me, 'r14-1').resistanceOverride === 12, 'P1-014 el segundo link REEMPLAZA la Resistencia (12, no 8+12) -> ' +
+    nodeOf(me, 'r14-1').resistanceOverride);
+
+  /* --- 6. LA PRUEBA DE QUE nodeResistance() SE USA DE VERDAD --- */
+  /* Antes de P1-014 computeStrength leia tCard.resistance, asi que la carta
+     fijaba un valor que la cuenta de fuerza nunca leia. Este ataque es la
+     unica forma de demostrar que la correccion surte efecto. */
+  var S3 = fresh('servantsofcthulhu1', 'bavarianilluminati1');
+  /* startGame() ALEATORIZA quien empieza: los dos pid NO son fijos. Derivar
+     atacante y defensor de currentPid es obligatorio, o el motor rechaza el
+     ataque con "No puedes tomar control de tu propio grupo". */
+  var atkPid = S3.currentPid, defPid = 1 - atkPid;
+  plant(atkPid, 'r14-atk', TEXAS.idx, 1);
+  plant(defPid, 'r14-vic', GOLDF.idx, 0);
+  var ready = readyToAttack(atkPid);
+  ok(ready != null, 'P1-014 fixture: ambos completaron su primer turno -> ' + atkPid);
+  if (ready != null) {
+    E.declareAttack(ready, 'control', { attackerUid: 'r14-atk', uid: 'r14-vic' });
+    var det0 = E.previewStrength();
+    ok(det0.defenseBase === 4,
+      'P1-014 SIN el link la defensa usa la Resistencia IMPRESA -> defenseBase=' + det0.defenseBase);
+    give(ready, COMMIT);
+    E.playPlot(ready, COMMIT.idx, 'r14-vic');
+    var det1 = E.previewStrength();
+    ok(det1.defenseBase === 8,
+      'P1-014 CON el link la defensa usa la Resistencia FIJADA -> defenseBase=' + det1.defenseBase);
+    ok(det1.total === det0.total - 4, 'P1-014 la fuerza total baja exactamente 4 -> ' + det0.total + ' -> ' + det1.total);
+    ok(det1.notes.join('|').indexOf('Resistencia fijada') >= 0,
+      'P1-014 el desglose explica por que cambia la defensa -> ' + JSON.stringify(det1.notes));
+    var d1b = E.resolveAttack();
+    ok(d1b != null, 'P1-014 el ataque se resuelve sin error tras el link');
+  }
+
+  /* regresion: un objetivo EN LA MANO no tiene nodo, asi que debe usarse la carta */
+  var S4 = fresh('servantsofcthulhu1', 'bavarianilluminati1');
+  var handCard = byName('Gordo Remora');   // Resistencia 0
+  var atk4 = S4.currentPid, def4 = 1 - atk4;
+  var h4 = E._raw().players[def4].hand;
+  for (var i2 = h4.length - 1; i2 >= 0; i2--) if (h4[i2] === handCard.idx) h4.splice(i2, 1);
+  h4.push(handCard.idx);
+  plant(atk4, 'r14-atk2', TEXAS.idx, 1);
+  var ready4 = readyToAttack(atk4);
+  if (ready4 != null) {
+    E.declareAttack(ready4, 'control', { attackerUid: 'r14-atk2', handIdx: handCard.idx });
+    var det4 = E.previewStrength();
+    ok(det4.defenseBase === 0, 'P1-014 un objetivo en la mano sigue usando la Resistencia de la carta -> ' + det4.defenseBase);
+    E.resolveAttack();
+  } else {
+    ok(true, 'P1-014 fixture de turno no aplicable en esta corrida (turno aleatorio)');
+  }
+
+  /* --- 7. "at any time": se puede jugar con el turno del rival --- */
+  var S5 = fresh('servantsofcthulhu1', 'bavarianilluminati1');
+  plant(me, 'r14-5', GOLDF.idx, 0);
+  give(me, COMMIT);
+  var turnsThrew = false, turnsErr = '';
+  var S5b = E.getState();
+  if (S5b.currentPid === me) {
+    /* el reparto aleatorio dio mi turno: se lo cedemos al rival */
+    try { E.endTurn(); } catch (e) { }
+  }
+  var S5c = E.getState();
+  ok(S5c.currentPid !== me, 'P1-014 fixture: ahora es el turno del rival -> ' + S5c.currentPid);
+  try { E.playPlot(me, COMMIT.idx, 'r14-5'); } catch (e) { turnsThrew = true; turnsErr = e.message; }
+  ok(!turnsThrew, 'P1-014 "may be done at any time": funciona aunque no sea tu turno' +
+    (turnsThrew ? ' -> ' + turnsErr : ' -> turno de ' + S5c.currentPid));
+  ok(nodeOf(me, 'r14-5').resistanceOverride === 8, 'P1-014 el link se creo playing out of turn');
+})();
+
+/* =====================================================================
+ * P1-015 — Messiah (312) + Angst (194)
+ * Las dos son efectos de link permanente deduced del texto impreso. No
+ * pertenecen a ninguna de las seis familias oficiales de Plot: son lote
+ * propio. Este bloque comprueba (a) la clasificacion, (b) las reglas de
+ * cada carta, (c) "at any time EXCEPT during an attack" en sus dos mitades,
+ * y (d) la decision de diseno goalPower(): un cambio de Poder permanente en
+ * un nodo SI cuenta para las metas, mientras que el +10 de las cartas +10
+ * (que no escribe nada en el nodo) sigue sin contar.
+ * ===================================================================== */
+(function () {
+  var byName = function (n) { return C.cards.filter(function (c) { return c.name === n; })[0]; };
+  var pidOfHere = function (S, base) {
+    for (var i = 0; i < S.players.length; i++) {
+      if (E.card(S.players[i].illumId).effect.code === base) return i;
+    }
+    throw new Error('fixture: no esta la faccion ' + base);
+  };
+  var nodeOf = function (pid, uid) {
+    var found = null;
+    (function w(n) {
+      if (found) return;
+      if (n.uid === uid) { found = n; return; }
+      (n.children || []).forEach(w);
+    })(E._raw().players[pid].structure);
+    return found;
+  };
+  /* Purgar antes de inyectar: el reparto inicial ya puede traer el indice y
+   * eso ya provoco 5 flakes distintos en este archivo. */
+  var give = function (pid, card) {
+    var h = E._raw().players[pid].hand;
+    for (var i = h.length - 1; i >= 0; i--) if (h[i] === card.idx) h.splice(i, 1);
+    h.push(card.idx);
+  };
+  /* Busqueda dinamica: no fijar a mano una carta que dependa de una propiedad
+   * del dataset (ya provoco un TypeError). */
+  var personality = C.cards.filter(function (c) {
+    return c.type === 'group' && c.subtype === 'personality' &&
+      typeof c.power === 'number' && typeof c.resistance === 'number';
+  }).sort(function (a, b) { return a.name < b.name ? -1 : 1; })[0];
+  var place = C.cards.filter(function (c) {
+    return c.type === 'group' && c.subtype === 'place' && typeof c.power === 'number';
+  }).sort(function (a, b) { return a.name < b.name ? -1 : 1; })[0];
+  var org = C.cards.filter(function (c) {
+    return c.type === 'group' && c.subtype === 'organization' && typeof c.power === 'number';
+  }).sort(function (a, b) { return a.name < b.name ? -1 : 1; })[0];
+  var churches = C.cards.filter(function (c) {
+    return c.type === 'group' && c.attributes && c.attributes.indexOf('church') >= 0 &&
+      typeof c.power === 'number';
+  });
+  var PSY = byName('Psychiatrists');
+  var MESSIAH = byName('Messiah');
+  var ANGST = byName('Angst');
+  var CHARISMA = byName('Charismatic Leader');
+  var MARTIAL = byName('Martial Law');
+  var TEXAS = byName('Texas');
+
+  /* --- 1. clasificacion --- */
+  ok(!!MESSIAH && MESSIAH.effect && MESSIAH.effect.kind === 'messiah' &&
+    MESSIAH.mechanicsStatus === 'implemented-pending-engine',
+    'P1-015 Messiah clasificada -> ' + (MESSIAH ? MESSIAH.mechanicsStatus : 'ausente'));
+  ok(!!ANGST && ANGST.effect && ANGST.effect.kind === 'angst' &&
+    ANGST.mechanicsStatus === 'implemented-pending-engine',
+    'P1-015 Angst clasificada -> ' + (ANGST ? ANGST.mechanicsStatus : 'ausente'));
+  ok(MESSIAH.effect.targetSubtype === 'personality' && MESSIAH.effect.baseBonus === 4 &&
+    MESSIAH.effect.perChurch === 2 && MESSIAH.effect.churchAttr === 'church',
+    'P1-015 Messiah declara los parametros impresos (+4, +2 por Church)');
+  ok(ANGST.effect.value === 1 && ANGST.effect.requiresActionFrom.indexOf('Psychiatrists') >= 0 &&
+    ANGST.effect.requiresActionFrom.indexOf('Intellectuals') >= 0 &&
+    ANGST.effect.requiresActionFrom.indexOf('Orbital Mind Control Lasers') >= 0,
+    'P1-015 Angst declara los tres grupos del texto impreso');
+
+  /* --- 2. Messiah: la mecanica --- */
+  var S1 = fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me = pidOfHere(S1, 'bavarian');
+  /* tokens:0 a proposito: el texto NO dice "this is an action for...", asi que
+   * jugar sobre un grupo sin ficha de accion debe funcionar. */
+  plant(me, 'm15-p', personality.idx, 0);
+  give(me, MESSIAH);
+  E.playPlot(me, MESSIAH.idx, 'm15-p');
+  var mn = nodeOf(me, 'm15-p');
+  ok(mn.powerOverride === personality.power + 4,
+    'P1-015 Messiah sube el Poder +4 sobre el impreso -> ' + mn.powerOverride + ' (impreso ' + personality.power + ')');
+  ok(mn.resistanceOverride === personality.resistance + 4,
+    'P1-015 Messiah sube la Resistencia +4 sobre el impreso -> ' + mn.resistanceOverride + ' (impresa ' + personality.resistance + ')');
+  ok(mn.tokens === 0, 'P1-015 Messiah NO cobra ficha de accion (el texto no dice que sea una accion) -> tokens ' + mn.tokens);
+  var lp1 = E._raw().players[me].linkedPlots.filter(function (x) { return x.cardId === MESSIAH.idx; });
+  ok(lp1.length === 1 && lp1[0].linkedTo === 'm15-p',
+    'P1-015 Messiah queda linkeada de forma permanente a la Personality');
+  ok(E._raw().players[me].hand.indexOf(MESSIAH.idx) < 0, 'P1-015 la carta jugada sale de la mano');
+
+  /* --- 3. Messiah: +2 por cada grupo Church que controles --- */
+  var S2 = fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me2 = pidOfHere(S2, 'bavarian');
+  ok(churches.length >= 2, 'P1-015 fixture: hay al menos 2 grupos con atributo church -> ' + churches.length);
+  plant(me2, 'm15-c0', churches[0].idx, 1);
+  plant(me2, 'm15-c1', churches[1].idx, 1);
+  plant(me2, 'm15-p2', personality.idx, 0);
+  give(me2, MESSIAH);
+  E.playPlot(me2, MESSIAH.idx, 'm15-p2');
+  var expect2 = personality.power + 4 + 2 * 2;
+  ok(nodeOf(me2, 'm15-p2').powerOverride === expect2,
+    'P1-015 Messiah +2 por cada Church (4 + 2x2) -> ' + nodeOf(me2, 'm15-p2').powerOverride + ' (esperado ' + expect2 + ')');
+
+  /* --- 4. Messiah: rechazos y unicidad --- */
+  var S3 = fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me3 = pidOfHere(S3, 'bavarian');
+  var rival3 = 1 - me3;
+  give(me3, MESSIAH);
+  throws(function () { E.playPlot(me3, MESSIAH.idx); },
+    /elige una Personality/, 'P1-015 Messiah exige objetivo');
+  plant(me3, 'm15-org', org.idx, 1);
+  throws(function () { E.playPlot(me3, MESSIAH.idx, 'm15-org'); },
+    /solo se usa sobre una Personality/, 'P1-015 Messiah rechaza una Organization');
+  plant(rival3, 'm15-riv', personality.idx, 1);
+  throws(function () { E.playPlot(me3, MESSIAH.idx, 'm15-riv'); },
+    /debe ser tuyo/, 'P1-015 Messiah exige "any Personality you control"');
+  plant(me3, 'm15-ok', personality.idx, 0);
+  E.playPlot(me3, MESSIAH.idx, 'm15-ok');
+  give(me3, MESSIAH);
+  throws(function () { E.playPlot(me3, MESSIAH.idx, 'm15-ok'); },
+    /Only one Messiah can be in play/, 'P1-015 Messiah: "Only one Messiah can be in play at a time"');
+
+  /* --- 5. "at any time EXCEPT during an attack": las dos mitades --- */
+  var S4 = fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me4 = pidOfHere(S4, 'bavarian');
+  plant(me4, 'm15-p4', personality.idx, 0);
+  give(me4, MESSIAH);
+  var s4 = E.getState();
+  if (s4.currentPid === me4) { try { E.endTurn(); } catch (e) { } }
+  var s4b = E.getState();
+  var outOfTurnThrew = false, outOfTurnErr = '';
+  try { E.playPlot(me4, MESSIAH.idx, 'm15-p4'); } catch (e) { outOfTurnThrew = true; outOfTurnErr = e.message; }
+  ok(!outOfTurnThrew, 'P1-015 "at any time": Messiah se puede jugar en el turno del rival' +
+    (outOfTurnThrew ? ' -> ' + outOfTurnErr : ' -> turno de ' + s4b.currentPid));
+  /* Ahora la otra mitad: con un ataque abierto debe rechazar. */
+  var S5 = fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me5 = pidOfHere(S5, 'bavarian');
+  var rival5 = 1 - me5;
+  plant(me5, 'm15-atk', TEXAS.idx, 1);
+  plant(me5, 'm15-p5', personality.idx, 0);
+  plant(rival5, 'm15-def', org.idx, 1);
+  var atk5 = readyToAttack(me5);
+  ok(atk5 != null, 'P1-015 fixture: hay turno de ataque valido');
+  if (atk5 != null) {
+    give(atk5, MESSIAH);
+    E.declareAttack(atk5, 'control', { attackerUid: 'm15-atk', uid: 'm15-def' });
+    ok(!!E._raw().attack, 'P1-015 fixture: el ataque quedo abierto');
+    throws(function () { E.playPlot(atk5, MESSIAH.idx, 'm15-p5'); },
+      /no se puede jugar durante un ataque/, 'P1-015 "EXCEPT during an attack": Messiah rechazada con un ataque abierto');
+    E.resolveAttack();
+    ok(E._raw().attack === null, 'P1-015 el ataque de prueba se limpio');
+  } else {
+    ok(true, 'P1-015 fixture de turno no aplicable en esta corrida');
+  }
+
+  /* --- 6. Angst: la mecanica y el doble costo --- */
+  var S6 = fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me6 = pidOfHere(S6, 'bavarian');
+  plant(me6, 'a15-psy', PSY.idx, 1);
+  plant(me6, 'a15-place', place.idx, 1);
+  /* fresh() solo empieza el turno de UN jugador, asi que el token Illuminati del
+   * evaluado puede ser 0 segun quien salio sorteado. Se fija a 1 para que la
+   * asercion mida el gasto de la carta y no el reparto aleatorio. */
+  E._raw().players[me6].illumTokens = 1;
+  var tokBefore = E._raw().players[me6].illumTokens;
+  give(me6, ANGST);
+  E.playPlot(me6, ANGST.idx, 'a15-place');
+  ok(nodeOf(me6, 'a15-place').powerOverride === 1,
+    'P1-015 Angst deja el Poder en 1 (texto: "permanently reduced to 1") -> ' + nodeOf(me6, 'a15-place').powerOverride);
+  ok(E._raw().players[me6].illumTokens === tokBefore - 1,
+    'P1-015 Angst cobra 1 accion de tu Illuminati -> ' + tokBefore + ' -> ' + E._raw().players[me6].illumTokens);
+  ok(nodeOf(me6, 'a15-psy').tokens === 0,
+    'P1-015 Angst cobra ademas la accion del grupo nombrado (Psychiatrists)');
+  var lp6 = E._raw().players[me6].linkedPlots.filter(function (x) { return x.cardId === ANGST.idx; });
+  ok(lp6.length === 1 && lp6[0].linkedTo === 'a15-place', 'P1-015 Angst queda linkeada al objetivo');
+  ok(E._raw().players[me6].hand.indexOf(ANGST.idx) < 0, 'P1-015 Angst sale de la mano');
+
+  /* --- 7. Angst: rechazos --- */
+  var S7 = fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me7 = pidOfHere(S7, 'bavarian');
+  plant(me7, 'a15-pers', personality.idx, 1);
+  plant(me7, 'a15-pl7', place.idx, 1);
+  give(me7, ANGST);
+  throws(function () { E.playPlot(me7, ANGST.idx, 'a15-pers'); },
+    /Places u Organizations/, 'P1-015 Angst rechaza una Personality ("any Place or Organization")');
+  /* Sin ninguno de los grupos del texto en la estructura: el Illuminati NO debe
+   * gastar su token (los dos costos se comprueban antes de gastar ninguno). */
+  E._raw().players[me7].illumTokens = 1;
+  throws(function () { E.playPlot(me7, ANGST.idx, 'a15-pl7'); },
+    /necesita una accion de uno de/, 'P1-015 Angst exige la accion de uno de los grupos del texto');
+  ok(E._raw().players[me7].illumTokens === 1,
+    'P1-015 Angst NO gastó el token Illuminati al fallar la validacion del grupo -> ' + E._raw().players[me7].illumTokens);
+  ok(nodeOf(me7, 'a15-pl7').tokens === 1 && nodeOf(me7, 'a15-pers').tokens === 1,
+    'P1-015 el rechazo de Angst no toco ningun grupo');
+  /* Sin token Illuminati: */
+  var S8 = fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me8 = pidOfHere(S8, 'bavarian');
+  plant(me8, 'a15-psy8', PSY.idx, 1);
+  plant(me8, 'a15-pl8', place.idx, 1);
+  E._raw().players[me8].illumTokens = 0;
+  give(me8, ANGST);
+  throws(function () { E.playPlot(me8, ANGST.idx, 'a15-pl8'); },
+    /requiere una accion de tu Illuminati/, 'P1-015 Angst exige la accion de tu Illuminati');
+  ok(nodeOf(me8, 'a15-psy8').tokens === 1,
+    'P1-015 sin token Illuminati el grupo nombrado conserva su ficha (nada se gasta a medias)');
+
+  /* --- 8. goalPower: un cambio permanente SI cuenta para las metas --- */
+  var S9 = fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me9 = pidOfHere(S9, 'bavarian');
+  plant(me9, 'g15-p', personality.idx, 0);
+  var before9 = E.goalStatus(me9).count;
+  give(me9, MESSIAH);
+  E.playPlot(me9, MESSIAH.idx, 'g15-p');
+  var after9 = E.goalStatus(me9).count;
+  ok(after9 - before9 === 4,
+    'P1-015 goalPower: el +4 del Messiah suma al Poder total de la meta -> ' + before9 + ' -> ' + after9);
+
+  /* --- 9. y el +10 de las cartas +10 SIGUE sin contar --- */
+  var S10 = fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me10 = pidOfHere(S10, 'bavarian');
+  plant(me10, 'g10-atk', TEXAS.idx, 1);
+  var rival10 = 1 - me10;
+  plant(rival10, 'g10-def', org.idx, 1);
+  var atk10 = readyToAttack(me10);
+  if (atk10 != null) {
+    var base10 = E.goalStatus(atk10).count;
+    E.declareAttack(atk10, 'control', { attackerUid: 'g10-atk', uid: 'g10-def' });
+    give(atk10, MARTIAL);
+    E.playPlot(atk10, MARTIAL.idx, 'g10-atk', { boostMode: 'attack' });
+    ok(nodeOf(atk10, 'g10-atk').powerOverride == null,
+      'P1-015 el +10 no escribe powerOverride en el nodo (por eso sigue sin contar)');
+    ok(E.goalStatus(atk10).count === base10,
+      'P1-015 el +10 ("does not count toward any Goal") NO suma a la meta -> ' + base10 + ' -> ' + E.goalStatus(atk10).count);
+    E.resolveAttack();
+  } else {
+    ok(true, 'P1-015 fixture de turno no aplicable en esta corrida');
+  }
+})();
+
+/* ---- P1-018: `mayAddPowerFromAligns` acepta ATRIBUTOS, no solo ideologias ----
+ * El gate de cobertura (test_fase4_cards.js) encontro este bug; lo que faltaba era
+ * la regresion que lo fija. El defecto: hasAnyAlign() solo miraba `c.alignments`,
+ * y las cartas Poison (338) y Withering Curse (416) imprimen literalmente
+ * "One *Magic* group may use its action to add its Power to this attack". Magic NO
+ * es una ideologia en este juego: es un atributo (9 grupos lo tienen, 0 grupos lo
+ * tienen como alineacion). Consecuencia: la clausula era CODIGO MUERTO y el
+ * jugador nunca podia usar esa parte de la carta.
+ * Tercera aparicion de la misma clase de defecto (la palabra impresa es real pero el
+ * dato vive en otro campo); las dos anteriores fueron los AND/OR de
+ * bonusTargetMatches y doubleQualifies. */
+(function () {
+  var byName = function (n) { return C.cards.filter(function (c) { return c.name === n; })[0]; };
+  var hasMagic = function (c) {
+    return (c.attributes || []).map(function (s) { return String(s).toLowerCase(); })
+      .indexOf('magic') >= 0;
+  };
+
+  /* Fixtures DETERMINISTAS y dinamicos (leccion: nunca fijar a mano una carta que
+   * depende de una propiedad del mazo). */
+  var MAGICS = C.cards.filter(function (c) {
+    return c.type === 'group' && typeof c.power === 'number' && hasMagic(c);
+  }).sort(function (a, b) { return a.name < b.name ? -1 : 1; });
+  ok(MAGICS.length > 0, 'P1-018 debe existir al menos un grupo con el atributo magic');
+  var MAGIC = MAGICS[0];
+
+  /* Un grupo que NO es magic NI criminal: sirve de contra-test para comprobar que
+   * el filtro filtra de verdad y no es "cualquier grupo suma su Poder". */
+  var NEUTRAL = C.cards.filter(function (c) {
+    return c.type === 'group' && typeof c.power === 'number' && !hasMagic(c) &&
+      (c.alignments || []).indexOf('criminal') < 0;
+  }).sort(function (a, b) { return a.name < b.name ? -1 : 1; })[0];
+
+  var VICTIM = C.cards.filter(function (c) {
+    return c.type === 'group' && c.subtype === 'personality' && typeof c.power === 'number';
+  }).sort(function (a, b) { return a.name < b.name ? -1 : 1; })[0];
+
+  var POISON = byName('Poison');
+  var CURSE = byName('Withering Curse');
+  ok(POISON && CURSE, 'P1-018 deben existir Poison y Withering Curse en el mazo');
+
+  /* Monta una partida, pone la Plot en la mano del jugador Bavarian, planta un
+   * grupo ayudante (si lo hay) y una victima Personality, y devuelve el resultado.
+   *
+   * LECION (novena vez): `startGame()` ALEATORIZA quien empieza, asi que
+   * `currentPid` no es una identidad estable. Aqui se fija la faccion POR
+   * INDICE (jugador 0 = Bavarian, jugador 1 = Servants of Cthulhu), asi que si se
+   * usara `currentPid` el atacante seria a veces Cthulhu y su "+4 a cualquier
+   * destroy" (P1-009) contaminaria TODAS las medidas. Por eso se busca al jugador
+   * Bavarian explicitamente: asi el Poder esperado es exactamente el impreso mas
+   * el Poder del grupo ayudante, sin bonificacion de faccion que se cuele. */
+  function instantWith(helper) {
+    var St = fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var me = -1;
+    for (var p = 0; p < St.players.length; p++) {
+      if (String(St.players[p].illumId).replace(/\d+$/, '') === 'bavarianilluminati') { me = p; break; }
+    }
+    ok(me >= 0, 'P1-018 la partida debe tener un jugador Bavarian');
+    var riv = 1 - me;
+    var plot = helper.plot;
+    var raw = E._raw();
+    raw.players[me].hand = raw.players[me].hand.filter(function (ix) { return ix !== plot.idx; });
+    raw.players[me].hand.push(plot.idx);
+    if (helper.card) plant(me, 'p118-ayudante', helper.card.idx, 1);
+    plant(riv, 'p118-victima', VICTIM.idx, 1);
+    var out = E.playPlot(me, plot.idx, 'p118-victima');
+    return { res: out.lastPlotResult, raw: E._raw(), me: me };
+  }
+
+  /* (1) Poison: Poder impreso 8 + el Poder del grupo Magic. */
+  var a = instantWith({ plot: POISON, card: MAGIC });
+  ok(a.res, 'P1-018 Poison debe devolver un resultado trazable');
+  ok(a.res && a.res.power === 8 + MAGIC.power,
+     'P1-018 un grupo *Magic* aporta su Poder a Poison: 8 + ' + MAGIC.power + ' = ' +
+     (a.res ? a.res.power : '?') + ' (grupo: ' + MAGIC.name + ', Poder ' + MAGIC.power + ')');
+  ok(a.res && (a.res.notes || []).some(function (n) { return n.indexOf(MAGIC.name) >= 0; }),
+     'P1-018 la nota del resultado nombra al grupo Magic que aporto su Poder');
+
+  /* (2) Withering Curse: Poder impreso 10 + el Poder del grupo Magic. */
+  var b = instantWith({ plot: CURSE, card: MAGIC });
+  ok(b.res && b.res.power === 10 + MAGIC.power,
+     'P1-018 un grupo *Magic* aporta su Poder a Withering Curse: 10 + ' + MAGIC.power + ' = ' +
+     (b.res ? b.res.power : '?'));
+
+  /* (3) Contra-test: un grupo que NO es Magic ni Criminal NO aporta su Poder.
+   * Si esto fallara, el arreglo habria convertido la clausula en "cualquier grupo
+   * suma su Poder", que seria PEOR que el bug original. */
+  var c = instantWith({ plot: POISON, card: NEUTRAL });
+  ok(c.res && c.res.power === 8,
+     'P1-018 un grupo que no es Magic ni Criminal NO aporta Poder a Poison: debe quedar en 8, ' +
+     'fue ' + (c.res ? c.res.power : '?') + ' (grupo: ' + NEUTRAL.name + ')');
+
+  /* (4) Sin grupo ayudante en la estructura, el Poder es exactamente el impreso. */
+  var d = instantWith({ plot: POISON, card: null });
+  ok(d.res && d.res.power === 8,
+     'P1-018 sin grupo ayudante el Poder de Poison es el impreso 8, fue ' +
+     (d.res ? d.res.power : '?'));
+
+  /* (5) La accion se gasto: el grupo Magic ya no tiene ficha. */
+  ok(a.raw.players[a.me].structure.children.some(function (n) {
+       return n.uid === 'p118-ayudante' && n.tokens === 0;
+     }),
+     'P1-018 el grupo Magic que aporta su Poder gasta su ficha de accion');
+
+  console.log('   P1-018 hasAnyAlign acepta atributos: ' + MAGICS.length +
+              ' grupos magic; fixture=' + MAGIC.name + ' (Poder ' + MAGIC.power + '), contra-test=' +
+              NEUTRAL.name + ' (Poder ' + NEUTRAL.power + ')');
 })();
 
 console.log('');

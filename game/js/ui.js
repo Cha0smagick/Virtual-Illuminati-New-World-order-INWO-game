@@ -458,8 +458,12 @@ function goalBars(st) {
     var cur = 0, max = 12, m = String(g).match(/(\d+)\s*\/\s*(\d+)/);
     if (m) { cur = parseInt(m[1], 10); max = parseInt(m[2], 10) || 12; }
     var pct = Math.max(0, Math.min(100, Math.round(cur / max * 100)));
+    /* P1-010: las claves de progreso se imprimen traducidas. Antes se mostraba
+       la clave cruda ("pick3 0/3"), que arrastraba la lectura equivocada de la
+       meta UFOs al panel del jugador. */
+    var LBL = { destroyed: 'destruidos', peacefulPower: 'Poder pacífico', powerTotal: 'Poder total', goalCards: 'cartas Goal', magicResources: 'recursos Mágicos' };
     var extra = Object.keys(v.progress || {}).filter(function (k) { return k !== 'groups'; })
-      .map(function (k) { return k + ' ' + v.progress[k]; }).join(' · ');
+      .map(function (k) { return (LBL[k] || k) + ' ' + v.progress[k]; }).join(' · ');
     return '<div class="vg" title="' + esc(v.goal) + '">' +
       '<div class="vname">' + esc(v.name) + '</div>' +
       '<div class="vbar"><i style="width:' + pct + '%"></i></div>' +
@@ -775,9 +779,13 @@ function handClick(ix) {
   if (sel.mode === 'target' && c.type !== 'plot') {
     var d = sel.data; clearSel(); CB.onDeclareAttack(d.type, d.attackerUid, { handIdx: ix }); return;
   }
+  /* P1-010: una carta Goal NO se juega, se revela declarando victoria. Por eso
+     el menu ofrece "Revelar" en lugar de "Jugar", y no pide objetivo. */
+  var isGoal = c.type === 'plot' && c.effect && c.effect.kind === 'goal';
   prompt('<b>' + esc(c.name) + '</b><small class="pm">' + esc(c.type === 'plot' ? 'PLOT' : c.type === 'resource' ? 'RECURSO' : 'GRUPO · P' + c.power + '/R' + c.resistance) + '</small>', [
     { label: c.type === 'resource' ? '📦 Colocar recurso junto a mi Illuminati (1★)' : '🎁 Colocar GRATIS en mi estructura (takeover)', value: 'place' },
-    c.type === 'plot' ? { label: '✨ Jugar Plot ahora', value: 'plot' } : null,
+    isGoal ? { label: '🏆 Revelar esta carta Goal (intento de victoria)', value: 'goalVictory' } : null,
+    (!isGoal && c.type === 'plot') ? { label: '✨ Jugar Plot ahora', value: 'plot' } : null,
     c.type === 'plot' ? { label: 'ℹ ¿Cuándo sirven los Plots?', value: 'info' } : null,
     c.type !== 'illuminati' ? { label: '🗑 Descartar', value: 'discard' } : null,
     { label: 'Cancelar', value: null }
@@ -788,8 +796,13 @@ function handClick(ix) {
       else { sel = { mode: 'takeoverHost', data: { handIdx: ix } }; render(curState); }
     }
     else if (v === 'plot') { sel = { mode: 'plotTarget', data: { handIdx: ix } }; log('🎯 PASO 2/2 — clic en el grupo OBJETIVO de este Plot.'); render(curState); }
+    else if (v === 'goalVictory') {
+      clearSel();
+      log('🏆 Declaras victoria con ' + c.name + '. Si el objetivo NO se cumple, la carta vuelve a tu mano EXPUESTA.');
+      try { CB.onDeclareGoalVictory(ix); } catch (e) { log('⚠ ' + e.message); }
+    }
     else if (v === 'discard') CB.onDiscard(ix);
-    else if (v === 'info') { log('📜 PLOTS «+10»: NO se juegan solos — durante TU ataque, clic en el Plot de tu mano lo añade como +10.'); log('📜 Plots de META o NWO: se juegan con «✨ Jugar» y quedan colocados a la vista en tu panel.'); }
+    else if (v === 'info') { log('📜 PLOTS «+10»: NO se juegan solos — durante TU ataque, clic en el Plot de tu mano lo añade como +10.'); log('📜 Plots de META o NWO: se juegan con «✨ Jugar» y quedan colocados a la vista en tu panel.'); log('🏆 CARTAS GOAL: no se juegan. Se REVELAN al declarar victoria y solo puedes tener 1 en mano (2 con «Alternate Goals»). Si el intento falla, la carta vuelve a tu mano expuesta.'); }
   });
 }
 

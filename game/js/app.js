@@ -55,6 +55,18 @@ var CB = {
   onAutoTakeover: function (handIdx, parentUid) { E.autoTakeover(E.getState().currentPid, handIdx, parentUid); after('Takeover automático'); },
   onPlayResource: function (handIdx) { E.playResource(E.getState().currentPid, handIdx); after('Recurso jugado'); },
   onPlayPlot: function (handIdx, targetUid) { E.playPlot(E.getState().currentPid, handIdx, targetUid); after('Plot jugado'); },
+  /* P1-010: una carta Goal no se juega, se REVELA al declarar victoria. Si el
+     objetivo no se cumple la carta vuelve a la mano expuesta, asi que el
+     intento nunca se pierde: solo se gasta la exposicion. */
+  onDeclareGoalVictory: function (handIdx) {
+    var r = E.declareGoalVictory(E.getState().currentPid, handIdx);
+    if (r && r.lastGoalAttempt) {
+      var a = r.lastGoalAttempt;
+      if (a.met) after('\u{1F3C6} \u00A1VICTORIA! Carta Goal: ' + a.card);
+      else log('\u26A0 La carta Goal ' + a.card + ' queda EXPUESTA en tu mano (ya no podras usarla para ganar).');
+    }
+    after('Carta Goal revelada');
+  },
   onDiscard: function (ix) { E.discardCard(E.getState().currentPid, ix); after('Carta descartada'); },
   onDeclareAttack: function (type, attackerUid, tgt) {
     E.declareAttack(E.getState().currentPid, type, { attackerUid: attackerUid, uid: tgt.uid, handIdx: tgt.handIdx });

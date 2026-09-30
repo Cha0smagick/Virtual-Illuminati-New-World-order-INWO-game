@@ -84,6 +84,62 @@ function curPower(node){
   if(node.paralyzed)p=c.power||0; /* paralyze freezes abilities/tokens, power unchanged */
   return Math.max(0,p);
 }
+
+/* P1-011 — ¿Este nodo cuenta para las metas?
+   Reglas oficiales (inwo_rules_extracted.txt):
+   - Paralyze: "Control of a paralyzed Group does not count for any Goal."
+   - Devastation: un grupo devastado "cannot get Action tokens and DO NOT COUNT
+     TOWARD VICTORY" (librarian_result.txt:2151). El texto de règles lo repite:
+     "the moved Group will then lose any Action tokens and cease to count toward
+     victory" (líneas 681-682, al mover un grupo bajo un Place devastado).
+   Antes estas dos comprobaciones vivían sueltas en cada recorrido de meta, y
+   ningún recorrido miraba `devastated`: un grupo devastado seguía sumando para
+   la victoria. Se centraliza aquí para que la regla exista en un solo sitio. */
+function countsForGoals(nd){
+  return nd.cardId!=null&&!nd.paralyzed&&!nd.devastated;
+}
+
+/* P1-011 — Poder con el que se defiende un objetivo.
+   inwo_rules_extracted.txt:683-685: "While a Place is Devastated, its Power is
+   halved (ROUND DOWN) against any Attack to Destroy." La reducción aplica SÓLO a
+   los ataques de destrucción: un ataque de control sigue restando Resistencia.
+   (Un nodo devastado siempre es un Place: sólo los Plots de tipo `disaster`, cuyo
+   effect.target es 'place', escriben esa bandera.) */
+function defenderPower(node,isDestroy){
+  var p=curPower(node);
+  if(isDestroy&&node.devastated)p=Math.floor(p/2);
+  return Math.max(0,p);
+}
+
+/* P1-014 — Resistencia con la que se defiende un objetivo.
+   El valor impreso vive en la CARTA, pero las cartas "Resistance Increase"
+   (Commitment, Never Surrender) lo FIJAN sobre el grupo concreto mediante un link
+   permanente. Antes computeStrength leia siempre `tCard.resistance`, asi que un
+   link no podia cambiar la defensa real: la carta era la unica fuente de verdad.
+   Ahora la fuente de verdad es el NODO y la carta solo es el valor por defecto.
+   `node` puede venir a null (ataque contra una carta en la mano: no hay nodo), y
+   en ese caso se cae a la carta. El 5 como ultimo recurso es el mismo valor por
+   defecto que ya usaba el motor; no se introduce ninguna regla nueva. */
+function nodeResistance(node,cardObj){
+  if(node&&node.resistanceOverride!=null)return node.resistanceOverride;
+  var c=cardObj||(node?card(node.cardId):null);
+  if(c&&typeof c.resistance==='number')return c.resistance;
+  return 5;
+}
+/* P1-015 — ¿Con qué Poder cuenta este nodo para una META?
+   Las reglas oficiales son SILENTES sobre si un cambio de Poder hecho por una Plot
+   cuenta para la meta. La unica frase explicita de todo el mazo es la de las cartas
+   "+10": "does not count toward any Goal". Aqui se aplica el criterio
+   "excepcion explicita => NO cuenta; silencio => cuenta", porque el Poder actual de
+   un grupo es su Poder.
+   Y el criterio no rompe la excepcion "+10": esas cartas NO escriben nada en el
+   nodo (su +10 vive solo en A.boosts / A.defBoosts, o la carta queda expuesta), asi
+   que seguir leyendo a traves de curPower() las deja excluidas por construccion.
+   Lo que si empieza a contar son los cambios PERMANENTES por link (Power Increase,
+   Messiah, Angst), que si escriben en el nodo. */
+function goalPower(nd){
+  return curPower(nd);
+}
 function illuCard(pid){return card(S.players[pid].illumId);}
 function alignsOf(cardObj){return (cardObj&&cardObj.alignments)?cardObj.alignments:[];}
 
@@ -111,6 +167,12 @@ E.newGame=function(configs){
       usedResourceThisTurn:false,usedExtraDrawThisTurn:false,
       hand:[],structure:{uid:'p'+p+'-root',cardId:null,children:[]},
       resources:[],exposedPlots:[],discards:[],destroyedByMe:[],destroyedIlluminati:[],
+      /* P1-013: los Plots linkeados a un grupo se quedan en la mesa
+         indefinidamente (OFFICIAL_RULES_FINDINGS §8: "Linked Plots ... remain
+         on the table indefinitely"), a diferencia de un Plot exposure normal.
+         Aqui se guarda {uid,cardId,linkedTo} para que el cambio siga visible y
+         para poder deshacer el efecto si el grupo linkeado sale de la mesa. */
+      linkedPlots:[],
       turnsCompleted:0,immuneFrom:{},pickedSecrets:[],flags:{autoTakeover:false}
     });
   }
@@ -135,6 +197,7 @@ function publicState(){
         structure:clone(pl.structure),
         resources:clone(pl.resources),
         exposedPlots:pl.exposedPlots.slice(),
+    linkedPlots:(pl.linkedPlots||[]).map(function(lp){return {uid:lp.uid,cardId:lp.cardId,linkedTo:lp.linkedTo};}),
         discards:pl.discards.slice(),
         turnsCompleted:pl.turnsCompleted,
         immuneFrom:clone(pl.immuneFrom),
@@ -150,7 +213,7 @@ function publicState(){
   };
 }
 function countControlled(pl){
-  var n=0;walk(pl.structure,function(nd){if(nd.cardId!=null)n++;});return n;
+  var n=0;walk(pl.structure,function(nd){if(countsForGoals(nd))n++;});return n;
 }
 function victoryStatus(){
   var out=[];
@@ -162,7 +225,11 @@ function victoryStatus(){
     if(g.type==='destroy_reduce')st.progress.destroyed=pl.destroyedByMe.length+'/'+(g.winAt||8);
     if(g.type==='peaceful_power_in_play')st.progress.peacefulPower=sumPeacefulPower(pl)+'/'+(g.total||30);
     if(g.type==='power_total')st.progress.powerTotal=sumTotalPower(pl)+'/'+(g.total||0);
-    if(g.type==='goal_cards')st.progress.pick3=ufoProgress(p);
+    /* P1-010: la clave se llama `goalCards` y no `pick3`. `pick3` era el
+       residuo de la lectura equivocada ("3 grupos especiales") y la UI lo
+       imprimia tal cual, de modo que el jugador leia "pick3 0/3" y creia
+       que tenia que controlar 3 grupos. */
+    if(g.type==='goal_cards')st.progress.goalCards=ufoProgress(p);
     if(g.magicResourceCountsAsGroup)st.progress.magicResources=magicResourceGroups(pl);
     out.push(st);
   }
@@ -175,7 +242,7 @@ function sumPeacefulPower(){
   var tot=0;
   function take(nd){
     if(nd.cardId==null)return;var c=card(nd.cardId);
-    if(!nd.paralyzed&&c.alignments&&c.alignments.indexOf('peaceful')>=0&&(typeof c.power==='number'))tot+=c.power;
+    if(countsForGoals(nd)&&c.alignments&&c.alignments.indexOf('peaceful')>=0&&(typeof c.power==='number'))tot+=goalPower(nd);
   }
   for(var i=0;i<S.players.length;i++)walk(S.players[i].structure,take);
   (S.neutralArea||[]).forEach(take);
@@ -207,6 +274,36 @@ function goalHandLimitOf(pl){
   var two=goalCardsIn(pl).some(function(ix){return C.cards[ix].name==='Alternate Goals';});
   return two?2:1;
 }
+/* P1-014 — correccion de un bug de P1-010: al descartar el exceso de Goal
+   cards NO se puede descartar `Alternate Goals` mientras queden otras. Esa carta
+   es la que AUTORIZA el segundo hueco ("You may possess two Goal cards"); si se
+   va primero, el motor se queda con 2 Goal cards sin la carta que justifica
+   tener 2, o sea un estado imposible (sin ella el limite es 1).
+   El bug estaba en DOS sitios con codigo duplicado (reparto inicial y endTurn);
+   se centraliza aqui para que no vuelvan a divergir. Se detectó porque el test
+   de P1-010 encontro 2 cartas Goal supervivientes y ninguna era Alternate Goals.
+   Cuando el limite es 1 se conserva la primera en orden de mano: cualquier
+   sola carta Goal es legal, asi que NO se decide por el motor cual conviene. */
+function enforceGoalHandLimit(pl,prefix){
+  var lim=goalHandLimitOf(pl);
+  var held=goalCardsIn(pl);
+  if(held.length<=lim)return 0;
+  var ALT='Alternate Goals';
+  var drop;
+  if(lim===2){
+    var keep=held.filter(function(ix){return C.cards[ix].name===ALT;});
+    var others=held.filter(function(ix){return C.cards[ix].name!==ALT;});
+    keep=keep.concat(others.slice(0,1));
+    drop=held.filter(function(ix){return keep.indexOf(ix)<0;});
+  }else{
+    drop=held.slice(lim);
+  }
+  drop.forEach(function(gx){
+    removeFromHand(pl,gx);S.plotDiscard.push(gx);
+    log(prefix+card(gx).name+' descartada (máx '+lim+' Goal cards)');
+  });
+  return drop.length;
+}
 function ufoProgress(pid){
   var pl=S.players[pid];if(!pl)return '0/3';
   var ic=illuCard(pid);
@@ -237,7 +334,7 @@ function goalCardObjective(ix,pid){
        total number of groups" */
     var n=0,dbl=0,seen={};
     walk(pl.structure,function(nd){
-      if(nd.cardId==null||nd.paralyzed)return;var g=card(nd.cardId);n++;
+    if(!countsForGoals(nd))return;var g=card(nd.cardId);n++;
       var a=g.alignments||[];
       if(a.indexOf('violent')>=0&&a.indexOf('criminal')>=0&&dbl<3&&!seen[g.id]){seen[g.id]=1;dbl++;n++;}
     });
@@ -300,7 +397,7 @@ function goalText(ic){
 function alignsCovered(pl){
   var set={};
   walk(pl.structure,function(nd){
-    if(nd.cardId==null)return;var c=card(nd.cardId);
+    if(!countsForGoals(nd))return;var c=card(nd.cardId);
     (c.alignments||[]).forEach(function(a){set[a]=true;});
   });
   return set;
@@ -308,8 +405,8 @@ function alignsCovered(pl){
 function sumTotalPower(pl){
   var tot=0;
   walk(pl.structure,function(nd){
-    if(nd.cardId==null||nd.paralyzed)return;var c=card(nd.cardId);
-    if(typeof c.power==='number')tot+=c.power;
+    if(!countsForGoals(nd))return;
+    tot+=goalPower(nd); /* P1-015: ver goalPower() — el Poder actual del nodo */
   });
   return tot;
 }
@@ -408,13 +505,7 @@ E.startGame=function(){
      dejaria un estado ilegal ("No player may have more than one Goal card in his
      hand"). Se descarta el exceso antes de empezar. */
   S.players.forEach(function(pl){
-    var lim=goalHandLimitOf(pl);
-    var held=goalCardsIn(pl);
-    while(held.length>lim){
-      var gx=held.shift();
-      removeFromHand(pl,gx);S.plotDiscard.push(gx);
-      log('Reparto inicial: '+card(gx).name+' descartada (máx '+lim+' Goal cards)');
-    }
+    enforceGoalHandLimit(pl,'Reparto inicial: ');
   });
   /* high roll starts */
   var rolls=[],best=-1,bestP=0,attempts=0;
@@ -862,8 +953,13 @@ function computeStrength(resolveMode){
        fórmula de total que las pruebas verifican. */
     var ibCtl=illuAttackBonus(A.pid,'control',tCard);
     if(ibCtl){det.leaderMod+=ibCtl;det.notes.push('Bonus del Illuminati atacante: +'+ibCtl);}
-    var R=(typeof tCard.resistance==='number')?tCard.resistance:5;
+    /* P1-014: la Resistencia se lee del NODO, no de la carta. Sin esto, las
+       cartas "Resistance Increase" fijarian un valor que la cuenta de fuerza
+       nunca leeria. Para un objetivo en la mano no hay nodo y se usa la carta. */
+    var R=nodeResistance(tNode,tCard);
     det.defenseBase=R;
+    if(tNode&&tNode.resistanceOverride!=null)
+      det.notes.push('Resistencia fijada en '+R+' por un link permanente');
     /* master-shared alignments +4 each (skip fanatic-vs-fanatic master) */
     if(A.targetPid!=null){
       var mc=illuCard(A.targetPid);
@@ -889,7 +985,29 @@ function computeStrength(resolveMode){
       if(tgtAligns.indexOf(attAligns[k])>=0)det.leaderMod-=4;
       else{for(var m=0;m<tgtAligns.length;m++)if(isOpposite(attAligns[k],tgtAligns[m]))det.leaderMod+=4;}
     }
-    if(!A.neutralTarget&&!A.handTarget&&A.targetPid!=null&&A.targetUid)det.posBonus=positionBonus(A.targetPid,A.targetUid);
+    /* P1-011 (P0) — REGLA OFICIAL, inwo_rules_extracted.txt:561-580, "Attack to
+       Destroy", punto (1): "Instead of rolling 'Power minus Resistance,' roll
+       'Power minus Power.' That is, the target defends with its Power rather
+       than its Resistance." Antes el motor NUNCA restaba el Poder del objetivo en
+       una destrucción (defenseBase se quedaba en 0), de modo que un grupo con
+       Poder 2 podía destruir a un grupo con Poder 14 si las alineaciones y la
+       posición no lo impedían. La comprobación es empírica: la sonda
+       scripts/_tmp_probe_destroy.js+KKK(2) contra Texas(14) devolvía
+       defenseBase:0, total:-12 (fallaba sólo por la penalización de
+       alineaciones y el +10 posicional, no por el Poder del defensor).
+       NO se resta defenseBonus: el punto (1) sigue diciendo "The target's common
+       alignments with its master do not help — those increase Resistance, which
+       is not used in this attack".
+       defenseBase ya forma parte de los 12 campos de la fórmula de total, así
+       que la fórmula NO cambia y la invariante que verifica la prueba P1-005 se
+       mantiene intacta. */
+    det.defenseBase=tNode?defenderPower(tNode,true):0;
+    /* P1-011 — REGLA OFICIAL, mismo apartado, punto (2): "You may try to destroy
+       a Group in your own Power Structure. The target does not get a defense
+       bonus for closeness to the Illuminati in this case." Se compara el
+       objetivo con el atacante para NO conceder la defensa posicional cuando la
+       víctima es un grupo propio. */
+    if(!A.neutralTarget&&!A.handTarget&&A.targetPid!=null&&A.targetUid&&A.targetPid!==A.pid)det.posBonus=positionBonus(A.targetPid,A.targetUid);
     if(A.selfDefended&&tNode)det.selfDef=2*curPower(tNode);
     /* P1-009: Servants of Cthulhu +4 a cualquier destroy (el campo cthulhu ya
        participa en la fórmula de total). Se generaliza el antiguo caso
@@ -1019,6 +1137,19 @@ function destroyGroup(byPid,targetUid){
   /* linked resources destroyed */
   S.players[owner].resources=S.players[owner].resources.filter(function(r){
     if(r.linkedTo===targetUid){S.groupDiscard.push(r.cardId);log('Recurso linkeado destruido');return false;}
+    return true;
+  });
+  /* P1-013: un Plot linkeado a un grupo que sale de la mesa tambien se va, y
+     el cambio que aplicaba desaparece con el grupo. Se recorre TODO el subarbol
+     porque un link puede estar en un titer, no solo en el nodo destruido (igual
+     que el filtro de recursos de arriba). */
+  var lostUids={};lostUids[targetUid]=1;subtreeList(node).forEach(function(nd){lostUids[nd.uid]=1;});
+  S.players[owner].linkedPlots=(S.players[owner].linkedPlots||[]).filter(function(lp){
+    if(lostUids[lp.linkedTo]){
+      S.plotDiscard.push(lp.cardId);
+      log('Plot linkeado a un grupo destruido: '+card(lp.cardId).name+' vuelve al mazo de Plot cards');
+      return false;
+    }
     return true;
   });
   /* puppets lose tokens, return to owner's HAND.
@@ -1165,10 +1296,30 @@ function hasAttr(c,attr){
   var t=String(attr).toLowerCase();
   return attrList(c).some(function(a){return String(a).toLowerCase()===t;});
 }
+/* P1-018 (encontrado por el gate test_fase4_cards.js, no por una prueba que
+   fallara) — el campo `mayAddPowerFromAligns` miente en dos cartas.
+   "Poison" (338) declara ['criminal','magic'] y "Withering Curse" (416) declara
+   ['magic']. Sus textos impresos dicen, literalmente: "One *Magic* group may use
+   its action to add its Power to this attack". En este juego `magic` NO es una
+   ideologia: es un ATRIBUTO (§26.4). Hay 9 grupos con el atributo magic (Druids,
+   Ninjas, Reformed Church of Satan, Rosicrucians, Stonehenge, Templars, Vampires,
+   Voudonistas, W.I.T.C.H.) y CERO grupos con la alineacion magic. Como esta
+   funcion solo miraba `c.alignments`, la clausula "un grupo *Magic* puede sumar su
+   Poder" era CODIGO MUERTO en esas dos cartas: el jugador nunca podia usarla.
+   Es la tercera aparicion de la misma clase de defecto (la palabra impresa es
+   real, pero el dato vive en otro campo): las dos anteriores fueron los AND/OR de
+   bonusTargetMatches y doubleQualifies.
+   El texto de la carta es la autoridad y dice "Magic group", asi que aqui se
+   comprueban LAS DOS listas: las 10 ideologias y los atributos del vocabulario
+   oficial. Un nombre que no sea ninguna de las dos sigue sin coincidencia, que es
+   el comportamiento correcto. */
 function hasAnyAlign(c,list){
   if(!Array.isArray(list)||!list.length)return false;
   var al=c&&c.alignments||[];
-  return al.some(function(a){return list.indexOf(a)>=0;});
+  for(var i=0;i<al.length;i++)if(list.indexOf(al[i])>=0)return true;
+  var at=attrList(c);
+  for(var j=0;j<at.length;j++)if(list.indexOf(at[j])>=0)return true;
+  return false;
 }
 /* El array `power` del Plot ordena entradas; la última sin condición es el default. */
 function plotPowerFor(eff,tc,fallback){
@@ -1242,7 +1393,13 @@ function resolvePlotInstantAttack(pid,pc,tUid,opts){
   }
 
   var victim=findOwnerPid(tUid);
-  var defPower=curPower(nd);
+  /* P1-011 — REGLA OFICIAL, inwo_rules_extracted.txt:683-685: "While a Place is
+     Devastated, its Power is halved (round down) against any Attack to Destroy."
+     Los Plots `disaster` y `assassination` son Instant Attacks to Destroy, así que
+     el objetivo devastado defiende con la mitad de su Poder (redondeada hacia
+     abajo). defenderPower() centraliza la regla y no la aplica a los ataques de
+     control, que siguen restando Resistencia. */
+  var defPower=defenderPower(nd,true);
   if(eff.victimMayBeAided&&victim>=0){
     var vn=firstUsableAid(victim,null);
     if(vn){spendGroupToken(victim,vn.uid);var vp=curPower(vn);defPower+=vp;notes.push(card(vn.cardId).name+' se defiende (+'+vp+')');}
@@ -1255,6 +1412,14 @@ function resolvePlotInstantAttack(pid,pc,tUid,opts){
   var pos=(victim>=0)?positionBonus(victim,tUid):0;
   var str=power-defPower-pos;
   var res={strength:str,power:power,defense:defPower,target:tc.name,plot:pc.name};
+  /* P1-018: `notes` explicaba cada modificador ("+1 de Rosicrucians", "+5 de
+   * defensa de Shangri-La") pero SOLO se escribia en el log cuando el ataque
+   * devastaba. En todos los caminos de fallo — que son la mayoria, porque los
+   * Instant Attacks se tiran contra objetivos defendidos — se perdian. El
+   * comentario de la funcion promete "un resultado trazable": sin esto no lo es.
+   * Se adjunta al resultado para que la UI pueda explicar de donde sale la fuerza
+   * y para que las regresiones puedan comprobarlo. */
+  res.notes=notes.slice();
   if(str<2){
     res.ok=false;res.reason='fallo automático';
     log(pc.name+': ataque instantáneo contra '+tc.name+' falla automáticamente ('+str+')');
@@ -1302,7 +1467,17 @@ E.playPlot=function(pid,handIdx,targetUid,opts){
   opts=opts||{};
   var c0=C.cards[handIdx];
   var eff0=(c0&&c0.effect)||{kind:'generic'};
-  var instant=(eff0.kind==='assassination'||eff0.kind==='disaster');
+  /* P1-012: las cartas "+10" dicen literalmente "Play this card at any time",
+   * y sin esa libertad el modo 'defense' es imposible: la defensa ocurre
+   * durante el turno del atacante, y una Plot normal exige el turno propio. Se
+   * permite, igual que a los Instant Attacks, que se jueguen fuera de tu turno
+   * (siguen exigiendo que la partida no esté en setup ni en gameover). */
+  /* P1-015: Messiah y Angst dicen "Play this card at any time EXCEPT during an
+    * attack". Eso son dos cosas a la vez: fuera de turno (permiso `instant`) y
+    * prohibido con un ataque abierto. El ataque esta abierto desde declareAttack
+    * hasta resolveAttack, que es exactamente la ventana oficial de reaccion
+    * (inwo_rules_extracted.txt:924-931). El veto se comprueba dentro de cada case. */
+  var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='boost10'||eff0.kind==='power_increase'||eff0.kind==='resistance_increase'||eff0.kind==='messiah'||eff0.kind==='angst');
   if(instant){
     if(S.phase==='setup')throw new Error('No se pueden jugar Plot cards durante la preparación');
     if(S.phase==='gameover')throw new Error('La partida ha terminado');
@@ -1316,14 +1491,67 @@ E.playPlot=function(pid,handIdx,targetUid,opts){
   if(c.type!=='plot')throw new Error('No es una Plot card');
   rejectUnverifiedCard(c);
   var eff=c.effect||{kind:'generic'};
-  var consumed=true;
   var lastResult=null;
   switch(eff.kind){
     case 'boost10':{
+      /* P1-012 / P2-DATA-02 — la familia oficial "+10 Plots".
+         Texto de las 15 cartas: "Play this card at any time to give +10 Power
+         or Resistance (your choice) to any {X} group you control. If used with
+         an action, it must be played when that action is first declared, and
+         counts only for that action. If used for defense, the bonus lasts
+         until the end of the current turn and does not count toward any Goal."
+         El caso anterior IGNORABA el objetivo: cualquier carta +10 valía para
+         cualquier grupo. Ahora el calificador se comprueba siempre.
+
+         Los tres modos que el texto permite:
+           'attack'  -> +10 a la fuerza del ataque en curso. El objetivo debe
+                        ser A.attackerUid porque el texto exige "played when
+                        that action is first declared, and counts only for that
+                        action". El +10 vive en el objeto del ataque, asi que
+                        muere con el: es exactamente "counts only for that
+                        action". La ficha del atacante ya se gastó al declarar
+                        el ataque, por eso NO se cobra otra aqui.
+           'defense' -> +10 a las defensas del turno. El objetivo debe ser
+                        A.targetUid. "the bonus lasts until the end of the
+                        current turn".
+           'hold'    -> la carta queda descubierta en la mano para usarla más
+                        tarde. Es lo que corresponde cuando todavía no hay un
+                        ataque declarado, porque el texto dice "at any time".
+         "your choice" entre Power y Resistencia no necesita un modelo aparte:
+         en los tres modos el +10 suma a la misma resolución de esa única acción.
+         "does not count toward any Goal" se cumple por construcción: ningún
+         modo escribe powerOverride, asi que los recorridos de meta, que leen
+         el Poder impreso via curPower, nunca llegan a ver el +10. */
       var A=S.attack;
-      if(!A||A.resolved){pl.exposedPlots.push(handIdx);consumed=false;
-        log(c.name+' guardada como defensa +10 para este turno');}
-      else{A.boosts.push({name:c.name,v:10});log(pl.name+' juega +10 al ataque ('+c.name+')');}
+      var open=!!(A&&!A.resolved);
+      var mode=(opts&&opts.boostMode)||(open?'attack':'hold');
+      if(mode!=='attack'&&mode!=='defense'&&mode!=='hold')
+        throw new Error(c.name+': modo de uso no reconocido');
+      if((mode==='attack'||mode==='defense')&&!open)
+        throw new Error(c.name+' necesita un ataque abierto para usarse asi');
+      if(mode!=='hold'){
+        if(!targetUid)throw new Error(c.name+' necesita un grupo objetivo');
+        var tn=findNode(targetUid);
+        if(!tn)throw new Error('Objetivo inexistente');
+        var tc=card(tn.cardId);
+        if(!tc)throw new Error('El objetivo no es una carta');
+        var okQ=eff.targetAlign?(tc.alignments||[]).indexOf(eff.targetAlign)>=0:false;
+        if(eff.targetAttr)okQ=okQ||hasAttr(tc,eff.targetAttr);
+        if(!okQ)throw new Error(c.name+' solo afecta a grupos '+
+          (eff.targetAlign||eff.targetAttr)+', no a '+tc.name);
+        if(findOwnerPid(targetUid)!==pid)
+          throw new Error(c.name+': el grupo debe ser tuyo');
+        if(mode==='attack'&&A.attackerUid!==targetUid)
+          throw new Error(c.name+': el +10 al ataque debe aplicarse al grupo que lo declaró');
+        if(mode==='defense'&&A.targetUid!==targetUid)
+          throw new Error(c.name+': el +10 a la defensa debe aplicarse al grupo que se defiende');
+      }
+      if(mode==='attack'){A.boosts.push({name:c.name,v:10});
+        log(pl.name+' juega +10 al ataque ('+c.name+')');}
+      else if(mode==='defense'){A.defBoosts.push({name:c.name,v:10});
+        log(pl.name+' juega +10 a la defensa ('+c.name+')');}
+      else{pl.exposedPlots.push(handIdx);
+        log(c.name+' queda descubierta en la mesa para usarla más tarde');}
       break;}
     case 'paralyze':{
       var nd=findNode(targetUid);
@@ -1331,10 +1559,149 @@ E.playPlot=function(pid,handIdx,targetUid,opts){
       nd.paralyzed=true;nd.tokens=0;
       log('PARALIZADO: '+card(nd.cardId).name);break;}
     case 'power_increase':{
-      var nd2=findNode(targetUid);
-      if(!nd2)throw new Error('Objetivo inexistente');
-      if(curPower(nd2)<(eff.value||8))nd2.powerOverride=eff.value||8;
-      log('Poder aumentado a '+(eff.value||8)+' en '+card(nd2.cardId).name);break;}
+      /* P1-013 — familia oficial "Power Increase" (10 cartas, una por
+       * ideologia). Texto impreso verbatim, comun a las 10:
+       *   "This card may be played at any time, and counts as the action for
+       *    the group it affects. The increased Power takes effect immediately.
+       *    The Power for one {X} group is increased to {N}. Link this card to
+       *    your chosen {X} group. No player may have more than one {Name} in
+       *    play."
+       * inwo_rules_extracted.txt:268-273 (familia oficial):
+       *   "A Power-increasing Plot is linked to a Group of a certain type to
+       *    increase its Power to the value stated on the card. They have no
+       *    effect on a Group that already has Power greater than or equal to
+       *    the stated value."
+       * => (a) FIJA el Poder al valor impreso, no lo suma; (b) es un no-op si
+       *    el grupo ya tiene Poder >= ese valor; (c) la carta CUENTA COMO LA
+       *    ACCION del grupo afectado, asi que se gasta su ficha (no la
+       *    Illuminati); (d) la carta queda LINKED al grupo de forma permanente
+       *    (inwo_rules_extracted.txt:819-847) y por eso va a linkedPlots, no al
+       *    descarte; (e) una sola por jugador.
+       * Antes este case era 4 lineas que aceptaba CUALQUIER grupo, no gastaba
+       * ninguna ficha, no representaba el link y caia en el splice incondicional
+       * del final (o sea, la carta se descartaba y el cambio se perdia al
+       * reiniciar la partida). */
+      var nd2=targetUid?findNode(targetUid):null;
+      if(!nd2)throw new Error(c.name+': elige un grupo de tu estructura para linkear la carta');
+      var tc2=card(nd2.cardId);
+      if(eff.targetAlign&&(!tc2.alignments||tc2.alignments.indexOf(eff.targetAlign)<0))
+        throw new Error(c.name+' solo funciona sobre grupos '+eff.targetAlign+', y '+tc2.name+' no lo es');
+      if(findOwnerPid(targetUid)!==pid)
+        throw new Error(c.name+': el grupo debe ser tuyo ("your chosen group")');
+      if(pl.linkedPlots.some(function(lp){return lp.cardId===handIdx;}))
+        throw new Error(c.name+': no puede haber mas de una en juego por jugador');
+      if(nd2.tokens<1)
+        throw new Error(c.name+' cuenta como la accion del grupo y '+tc2.name+' no tiene ficha de accion');
+      var want=(typeof eff.value==='number')?eff.value:6;
+      if(curPower(nd2)>=want){
+        /* La regla oficial dice "no effect on a Group that already has Power
+           greater than or equal to the stated value": no se gasta ficha, no se
+           linkea, y la carta se descarta normalmente. */
+        log(c.name+': '+tc2.name+' ya tiene Poder '+curPower(nd2)+' (>= '+want+'), la carta no tiene efecto');
+        break;
+      }
+      spendGroupToken(pid,targetUid);
+      nd2.powerOverride=want;
+      pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:targetUid});
+      log(c.name+': Poder de '+tc2.name+' fijado a '+want+' (linkeado)');
+      break;}
+    case 'resistance_increase':{
+      /* P1-014 — familia "Resistance Increase" (2 cartas: Commitment, Never
+       * Surrender). Texto impreso verbatim:
+       *   Commitment: "The Resistance for any one group is increased to 8. Link
+       *     this card to your chosen group. Playing this card is a FREE MOVE and
+       *     may be done at any time, even while its target group is being
+       *     attacked. The target group may belong to ANY player, or may be one
+       *     that has just been played from a rival's hand."
+       *   Never Surrender: mismo free-move / at any time / any player, mas "The
+       *     Resistance for one Fanatic group is increased to 12. Link this card
+       *     to your chosen Fanatic group."
+       * => (a) FIJA la Resistencia al valor impreso (no la suma); (b) es FREE:
+       *     NO se gasta ninguna ficha, ni de grupo ni Illuminati; (c) se puede
+       *     jugar "at any time", asi que esta en la lista `instant` de playPlot
+       *     (tambien durante el ataque, que es lo que el texto pide); (d) el
+       *     objetivo puede ser de CUALQUIER jugador, asi que a diferencia de
+       *     power_increase NO se exige propiedad; (e) el link es permanente
+       *     (inwo_rules_extracted.txt:819-847) asi que la carta va a linkedPlots
+       *     y no al descarte, y la Resistencia queda fijada en el NODO (asi la
+       *     lee nodeResistance() al calcular la fuerza de un ataque futuro).
+       * NO se modela unicidad: ninguna de las 2 cartas dice "no puede haber mas de
+       * una en juego", a diferencia de las 10 de Power Increase. */
+      var nd3=targetUid?findNode(targetUid):null;
+      if(!nd3)throw new Error(c.name+': elige un grupo objetivo');
+      var tc3=card(nd3.cardId);
+      if(eff.targetAlign&&(!tc3.alignments||tc3.alignments.indexOf(eff.targetAlign)<0))
+        throw new Error(c.name+' solo funciona sobre grupos '+eff.targetAlign+', y '+tc3.name+' no lo es');
+      var wantR=(typeof eff.value==='number')?eff.value:8;
+      /* Sin unique check y sin spendGroupToken: el texto dice "free move". La
+       * unica validacion que queda es que el objetivo exista y sea del tipo
+       * declarado, porque "may belong to any player" es literal. */
+      nd3.resistanceOverride=wantR;
+      pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:targetUid});
+      log(c.name+': Resistencia de '+tc3.name+' fijada a '+wantR+' (linkeado, movimiento gratuito)');
+      break;}
+    /* P1-015 — Messiah (312). Texto impreso: "Play this card at any time except
+       during an attack. Link it to any Personality you control. That person is
+       hailed as the Messiah by millions worldwide! The new Messiah's Power and
+       Resistance are both increased by 4, plus 2 more for every Church you control
+       at any given time. Only one Messiah can be in play at a time."
+       +4 (y +2 por cada grupo Church) es un AUMENTO del Poder, no un valor fijo,
+       asi que se calcula sobre curPower() del nodo. No hay frase "this is an action
+       for...", a diferencia de power_increase: NO se cobra ficha de grupo. */
+    case 'messiah':{
+      if(S.attack)throw new Error(c.name+' no se puede jugar durante un ataque');
+      var ndM=findNode(targetUid);
+      if(!ndM)throw new Error(c.name+': elige una Personality de tu estructura');
+      var mcM=card(ndM.cardId);
+      if((eff.targetSubtype||'personality')!==mcM.subtype)
+        throw new Error(c.name+' solo se usa sobre una Personality, y '+mcM.name+' no lo es');
+      if(findOwnerPid(targetUid)!==pid)
+        throw new Error(c.name+': "any Personality you control" — el grupo debe ser tuyo');
+      if(pl.linkedPlots.some(function(lp){return lp.cardId===handIdx;}))
+        throw new Error(c.name+': "Only one Messiah can be in play at a time"');
+      var attrC=eff.churchAttr||'church';
+      var churches=0;
+      walk(pl.structure,function(n){
+        if(n.cardId==null||!countsForGoals(n))return;
+        if(hasAttr(card(n.cardId),attrC))churches++;
+      });
+      var mBonus=(typeof eff.baseBonus==='number'?eff.baseBonus:4)
+        +(typeof eff.perChurch==='number'?eff.perChurch:2)*churches;
+      ndM.powerOverride=curPower(ndM)+mBonus;
+      ndM.resistanceOverride=nodeResistance(ndM)+mBonus;
+      pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:targetUid});
+      log('MESSIAH: '+mcM.name+' recibe +'+mBonus+' de Poder y de Resistencia ('+churches+' grupo(s) '+attrC+')');
+      break;}
+    /* P1-015 — Angst (194). Texto impreso: "The leaders of your target group (any
+       Place or Organization except the Illuminati) find it boring and meaningless.
+       Their power is permanently reduced to 1. Link this card to the target. Play
+       this card at any time except during an attack. It requires an action from
+       your Illuminati and either the Psychiatrists, the Intellectuals, or the
+       Orbital Mind Control Lasers."
+       El coste es DOBLE: una accion Illuminati + una accion de grupo de la lista.
+       Las dos se COMPRUEBAN antes de gastar ninguna, para no dejar tokens a medias. */
+    case 'angst':{
+      if(S.attack)throw new Error(c.name+' no se puede jugar durante un ataque');
+      var ndA=findNode(targetUid);
+      if(!ndA)throw new Error(c.name+': elige un grupo objetivo');
+      var mcA=card(ndA.cardId);
+      var subs=eff.targetSubtypes||['place','organization'];
+      if(subs.indexOf(mcA.subtype)<0||mcA.type==='illuminati')
+        throw new Error(c.name+' solo se usa sobre Places u Organizations, y '+mcA.name+' no lo es');
+      var wantN=eff.requiresActionFrom||[];
+      if(pl.illumTokens<1)throw new Error(c.name+' requiere una accion de tu Illuminati');
+      var anA=opts.aidUid?findNode(opts.aidUid):null;
+      if(opts.aidUid&&(!anA||findOwnerPid(opts.aidUid)!==pid))
+        throw new Error('El grupo que aporta la accion debe ser tuyo');
+      if(!anA)anA=firstUsableAid(pid,function(cc){return wantN.indexOf(cc.name)>=0;});
+      if(!anA)throw new Error(c.name+' necesita una accion de uno de: '+wantN.join(', '));
+      pl.illumTokens--;
+      spendGroupToken(pid,anA.uid);
+      var wantV=(typeof eff.value==='number')?eff.value:1;
+      ndA.powerOverride=wantV;
+      pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:targetUid});
+      log('ANGST: Poder de '+mcA.name+' reducido permanentemente a '+wantV+' (accion de '+card(anA.cardId).name+')');
+      break;}
     case 'zap':{
       for(var q=0;q<S.players.length;q++){
         if(q===pid)continue;
@@ -1362,14 +1729,22 @@ E.playPlot=function(pid,handIdx,targetUid,opts){
         }
         return true;
       });
-      pl.exposedPlots.push(handIdx);consumed=false;
+      pl.exposedPlots.push(handIdx);
       log('NWO en juego: '+c.name+' ('+(eff.color||'?')+')');break;}
     default:{
       throw new Error('La carta "'+c.name+'" tiene una mecánica no implementada.');
     }
   }
-  if(consumed)pl.hand.splice(i,1);
-  else pl.hand.splice(i,1);
+  /* P1-012: una carta jugada SIEMPRE sale de la mano. Antes había
+   * `if(consumed)pl.hand.splice(i,1); else pl.hand.splice(i,1);` — dos ramas
+   * idénticas, así que la variable `consumed` era letra muerta y las cartas que
+   * se exponen (la carta +10 en modo 'hold' y las cartas NWO) se quedaban a la
+   * vez en la mano y en `exposedPlots`, con lo que el límite de Plots las
+   * contaba dos veces. Las reglas dicen que una Plot expuesta se pone boca
+   * arriba EN LA MESA y se queda ahí hasta que se juega, se descarta, se roba o
+   * se vuelve a ocultar; y una carta NWO "remains on the table indefinitely".
+   * En ambos casos la carta no debe seguir ocultada en la mano. */
+  pl.hand.splice(i,1);
   var out=publicState();
   if(lastResult)out.lastPlotResult=lastResult;
   return out;
@@ -1390,7 +1765,10 @@ E.instantAttack=function(pid,power,targetUid,opts){
      a los Instant Attacks genéricos (no pasan por computeStrength). */
   var iaB=illuAttackBonus(pid,'destroy',tc);
   var idB=owner>=0?illuDefenseBonus(owner):0;
-  var defP=curPower(nd)+(Number(opts.extraDefense)||0)+idB;
+  /* P1-011 — misma regla oficial: un objetivo devastado defiende con la mitad de
+     su Poder contra cualquier ataque de destrucción (inwo_rules_extracted.txt:
+     683-685, "round down"). E.instantAttack ES un ataque de destrucción. */
+  var defP=defenderPower(nd,true)+(Number(opts.extraDefense)||0)+idB;
   var pos=(owner>=0)?positionBonus(owner,targetUid):0;
   var str=(Number(power)||0)+(Number(opts.extraPower)||0)+iaB-defP-pos;
   var res={strength:str,target:tc.name};
@@ -1470,13 +1848,8 @@ E.endTurn=function(){
   /* P1-010: "No player may have more than one Goal card in his hand" — 2 si
      Alternate Goals esta en mano. Se descarta el exceso antes de terminar el
      turno para que nunca exista un estado imposible al empezar el siguiente. */
-  var gLimit=goalHandLimitOf(pl);
-  var gHeld=goalCardsIn(pl);
-  while(gHeld.length>gLimit){
-    var gx=gHeld.shift();
-    removeFromHand(pl,gx);S.plotDiscard.push(gx);
-    log('Límite de Goal cards: '+C.cards[gx].name+' descartada (máx '+gLimit+')');
-  }
+  var gDropped=enforceGoalHandLimit(pl,'Límite de Goal cards: ');
+  if(gDropped>0)log(pl.name+' tenía '+gDropped+' Goal cards de más al final de su turno');
   S.turnCompleted=true;
   pl.turnsCompleted++;
   checkElimination();
@@ -1534,7 +1907,12 @@ function goalMetFor(p){
   /* --- meta básica (12 grupos) con el doble declarado en el dato --- */
   var doubles={},doubledNames=[],count=0;
   walk(pl.structure,function(nd){
-    if(nd.cardId==null||nd.paralyzed)return;
+    /* P1-011: ESTE recorrido es el que decide de verdad la victoria (basicWithDouble
+       sólo lo usan las 2 cartas Goal que lo invocan). Estaba duplicando la regla a
+       mano y por eso se le escapó el `devastated`: un grupo devastado seguía
+       contando para la meta. Se usa countsForGoals() para que la regla viva en un
+       solo sitio. */
+    if(!countsForGoals(nd))return;
     var c=card(nd.cardId);count++;
     if(doubleQualifies(c,g.double)&&Object.keys(doubles).length<3&&!doubles[c.id]){
       doubles[c.id]=true;count++;doubledNames.push(c.name);
