@@ -211,9 +211,15 @@ const GOALS = new Set(['criminaloverlords','fratricide','haileris',
 const ALIGNMENTS10 = new Set(['government','corporate','liberal','conservative',
   'peaceful','violent','straight','weird','criminal','fanatic']);
 const ATTRIBUTES = new Set(['computer','magic','science','coastal','huge',
-  'bank','media','secret','green','illusion','outworld']);
+  'bank','media','secret','green','nation','church','communist','space',
+  'illusion','outworld']);
 // bank/illusion/outworld: printed as attributes on some cards.
 // media/secret/green added in P2-DATA-01 from the secondary transcription.
+// nation/church/communist/space added in P2-DATA-02: the secondary
+// transcription prints them in italics (11 Places are Nations, Vatican City is
+// a Church, ...), and the Plot "World Cup Victory" says "+10 to any Nation you
+// control", so without `nation` that card had no expressible target. Only the
+// qualifier is consumed; no effect data references these four terms.
 const JUNK_TAGS = new Set();   // P2-DATA-01: `green` salio de aqui (es atributo real)
 
 /* ------------------------------------------------------------------ *
@@ -299,6 +305,180 @@ const PLOT_FX = {
     t:'*Assassination!* This is an Instant Attack to Destroy any Personality, at any time. It does not require an action. Its Power is 10. One *Magic* group may use its action to add its Power to this attack. This attack is *Magic*.' },
 };
 const PLOT_FXN = {}; for (const k in PLOT_FX) { PLOT_FXN[norm(k)] = PLOT_FX[k]; }
+
+/* ------------------------------------------------------------------ *
+ * BOOST10_FX — the 15 "+10 Plots", verbatim.
+ *
+ * Source: the printed face of each card, read off the PNGs; the shared
+ * sentence is identical on all 15, only the group qualifier changes. That
+ * regularity was verified card by card (see docs/audit/INWO_SURGICAL_AUDIT.md
+ * section 25.6): "Play this card at any time to give +10 Power or Resistance
+ * (your choice) to any {X} group you control. If used with an action, it must
+ * be played when that action is first declared, and counts only for that
+ * action. If used for defense, the bonus lasts until the end of the current
+ * turn and does not count toward <any Goal>."
+ *
+ * The OCR corpus truncates the sentence at "does not count toward", so the
+ * final words are completed from the official rules, which describe the
+ * family as "+10 Plots ... Does not count for any Goal." That is the only
+ * place where the transcription is completed from a second source, and it is
+ * recorded here rather than left silent.
+ *
+ * `targetAlign` is used for the nine ideologies and `targetAttr` for the six
+ * official attributes; the engine matches EITHER, never both, because a card
+ * names exactly one qualifier. Exactly the same AND->OR lesson as the Gnomes
+ * of Zurich bonus in P1-009, inverted: here there is only one condition per
+ * card, so the fields are mutually exclusive by construction.
+ * ------------------------------------------------------------------ */
+const BOOST10_TAIL = ' If used with an action, it must be played when that action is first declared, and counts only for that action. If used for defense, the bonus lasts until the end of the current turn and does not count toward any Goal.';
+function b10(field, value, name) {
+  var o = { kind:'boost10' };
+  o[field] = value;
+  o.t = 'Play this card at any time to give +10 Power or Resistance (your choice) to any ' +
+        name + ' group you control.' + BOOST10_TAIL;
+  return o;
+}
+const BOOST10_FX = {
+  'benefitconcert':     b10('targetAlign','liberal',     'Liberal'),
+  'coldfusion':         b10('targetAttr', 'science',     'Science'),
+  'harmonicavirgins':   b10('targetAttr', 'magic',       'Magic'),
+  'infobahn':           b10('targetAttr', 'computer',    'Computer'),
+  'jihad':              b10('targetAlign','fanatic',     'Fanatic'),
+  'justsayno':          b10('targetAlign','straight',    'Straight'),
+  'martiallaw':         b10('targetAlign','government',  'Government'),
+  'martyrs':            b10('targetAlign','peaceful',    'Peaceful'),
+  'pulitzerprize':      b10('targetAttr', 'media',       'Media'),
+  'savethewhales':      b10('targetAttr', 'green',       'Green'),
+  'slushfund':          b10('targetAlign','conservative','Conservative'),
+  'stocksplit':         b10('targetAlign','corporate',   'Corporate'),
+  'terroristnuke':      b10('targetAlign','violent',     'Violent'),
+  'thebigscore':        b10('targetAlign','criminal',    'Criminal'),
+  'worldcupvictory':    b10('targetAttr', 'nation',      'Nation'),
+};
+const BOOST10_FXN = {}; for (const k in BOOST10_FX) { BOOST10_FXN[norm(k)] = BOOST10_FX[k]; }
+
+/* ---- P1-013 / Fase 4 lote 2: familia "Power Increase" (10 cartas) ----
+ * inwo_rules_extracted.txt:268-273, verbatim:
+ *   "Power Increase: A Power-increasing Plot is linked to a Group of a certain
+ *    type to increase its Power to the value stated on the card. They have no
+ *    effect on a Group that already has Power greater than or equal to the
+ *    stated value."
+ * => FIJA el Poder al valor impreso (no lo suma) y es un no-op si el grupo ya
+ *    tiene Poder >= ese valor. Las 10 cartas del mazo dicen, literalmente:
+ *    "This card may be played at any time, and counts as the action for the
+ *     group it affects. The increased Power takes effect immediately. The Power
+ *     for one {X} group is increased to {N}. Link this card to your chosen {X}
+ *     group. No player may have more than one {Name} in play."
+ * Son las 10 ideologías, una carta cada una. The Weird Turn Pro dice 4 y las
+ * otras nueve 6: NO se normaliza a 6 porque la carta impresa es la autoridad.
+ * `t` es el texto impreso verbatim; `pow` es el valor que fija la regla. */
+const POWERINC_HEAD = 'This card may be played at any time, and counts as the action for the group it affects. The increased Power takes effect immediately.';
+const POWERINC_TAIL = ' Link this card to your chosen ';
+function pinc(align, value, name, card) {
+  var o = { kind: 'power_increase' };
+  o.targetAlign = align;
+  o.value = value;
+  o.t = POWERINC_HEAD + ' The Power for one ' + name +
+        ' group is increased to ' + value + '.' + POWERINC_TAIL + name +
+        ' group. No player may have more than one ' + card + ' in play.';
+  return o;
+}
+const POWERINC_FX = {
+  'charismaticleader': pinc('fanatic',     6, 'Fanatic',     'Charismatic Leader'),
+  'citizenshipaward': pinc('conservative', 6, 'Conservative', 'Citizenship Award'),
+  'emergencypowers':   pinc('government',  6, 'Government',  'Emergency Powers'),
+  'grassrootssupport': pinc('straight',    6, 'Straight',    'Grassroots Support'),
+  'mobinfluence':     pinc('criminal',    6, 'Criminal',    'Mob Influence'),
+  'monopoly':         pinc('corporate',   6, 'Corporate',   'Monopoly'),
+  'newblood':         pinc('violent',     6, 'Violent',     'New Blood'),
+  'nobelpeaceprize':  pinc('peaceful',    6, 'Peaceful',    'Nobel Peace Prize'),
+  'selfesteem':       pinc('liberal',     6, 'Liberal',     'Self-Esteem'),
+  'theweirdturnpro':  pinc('weird',       4, 'Weird',       'The Weird Turn Pro'),
+};
+const POWERINC_FXN = {}; for (const k in POWERINC_FX) { POWERINC_FXN[norm(k)] = POWERINC_FX[k]; }
+
+/* RESISTANCE INCREASE — familia de 2 cartas (Fase 4, lote 3).
+   Texto impreso verbatim (transcripcion OCR local):
+
+   Commitment (idx 223): "The Resistance for any one group is increased to 8. Link
+   this card to your chosen group. Playing this card is a free move and may be done
+   at any time, even while its target group is being attacked. The target group may
+   belong to any player, or may be one that has just been played from a rival's
+   hand."
+
+   Never Surrender (idx 325): mismos free-move / at any time / any player, mas
+   "The Resistance for one Fanatic group is increased to 12. Link this card to your
+   chosen Fanatic group."
+
+   Las dos cartas se distinguen en TRES puntos, y por eso se guardan como datos
+   distintos y no como el mismo efecto con un parametro:
+   1. Commitment no dice "de una {ideologia}" => NO lleva targetAlign (vale
+      cualquier grupo). Never Surrender si: targetAlign 'fanatic'.
+   2. Los valores son distintos (8 y 12) y es un "increased to", no un "+N": al
+      igual que Power Increase, el valor queda FIJADO, no sumado.
+   3. NO se dice "No player may have more than one X in play" (a diferencia de las
+      10 cartas de Power Increase), asi que no se modela unicidad. Anadir ese
+      limite seria inventar una regla: la carta es la autoridad. */
+function resinc(phrase, align, value, name) {
+  var o = { kind: 'resistance_increase' };
+  if (align) o.targetAlign = align;
+  o.value = value;
+  o.t = 'The Resistance for ' + phrase + ' group is increased to ' + value + '. ' +
+    'Playing this card is a free move and may be done at any time, even while its ' +
+    'target group is being attacked. The target group may belong to any player, or ' +
+    'may be one that has just been played from a rival\'s hand. ' +
+    'Link this card to your chosen ' + name + ' group.';
+  return o;
+}
+const RESINC_FX = {
+  'commitment':     resinc('any one',    null,     8, 'group'),
+  'neversurrender': resinc('one Fanatic', 'fanatic', 12, 'Fanatic'),
+};
+const RESINC_FXN = {}; for (const k in RESINC_FX) { RESINC_FXN[norm(k)] = RESINC_FX[k]; }
+
+/* ==== P1-015: Messiah (312) y Angst (194) ====
+ * Estas dos cartas NO pertenecen a ninguna de las seis familias oficiales de Plot
+ * que lista OFFICIAL_RULES_FINDINGS.md §6 (lo mismo que las "Resistance Increase"
+ * del lote P1-014): son efectos de link permanente propios, deducidos del texto
+ * impreso de cada carta, que es la autoridad. Se declaran aparte precisamente
+ * para que quede escrito que son una lectura nuestra y no una familia del
+ * reglamento.
+ *
+ * MESSIAH — "The new Messiah's Power and Resistance are BOTH INCREASED BY 4, plus
+ * 2 more for every Church you control": por eso el efecto guarda `baseBonus` y
+ * `perChurch` en vez de un valor único. El texto no dice "this is an action for...",
+ * asi que el motor NO cobra ficha de grupo (a diferencia de Power Increase).
+ *
+ * ANGST — el coste es doble: una acción Illuminati (`illumToken:1`) y una acción de
+ * grupo de la lista `requiresActionFrom`. OJO con el tercer nombre impreso: en este
+ * dataset "Orbital Mind Control Lasers" está transcrito como type=resource (idx
+ * 332), no como grupo, así que nunca podrá aportar una acción de grupo. Se deja el
+ * nombre tal cual aparece en la carta y es el motor el que, al buscar la acción
+ * dentro de la estructura del jugador, simplemente no lo encuentra. La pregunta de
+ * si la transcripción es correcta queda abierta; NO se "corrige" a ojo. */
+const MESSIAH_FX = {
+  'messiah': {
+    kind: 'messiah',
+    targetSubtype: 'personality',
+    baseBonus: 4,
+    perChurch: 2,
+    churchAttr: 'church',
+    t: 'Play this card at any time except during an attack. Link it to any Personality you control. That person is hailed as the Messiah by millions worldwide! The new Messiah\'s Power and Resistance are both increased by 4, plus 2 more for every Church you control at any given time. Only one Messiah can be in play at a time.'
+  }
+};
+const MESSIAH_FXN = {}; for (const k in MESSIAH_FX) { MESSIAH_FXN[norm(k)] = MESSIAH_FX[k]; }
+
+const ANGST_FX = {
+  'angst': {
+    kind: 'angst',
+    targetSubtypes: ['place', 'organization'],
+    value: 1,
+    illumToken: 1,
+    requiresActionFrom: ['Psychiatrists', 'Intellectuals', 'Orbital Mind Control Lasers'],
+    t: 'The leaders of your target group (any Place or Organization except the Illuminati) find it boring and meaningless. Their power is permanently reduced to 1. Link this card to the target. Play this card at any time except during an attack. It requires an action from your Illuminati and either the Psychiatrists, the Intellectuals, or the Orbital Mind Control Lasers.'
+  }
+};
+const ANGST_FXN = {}; for (const k in ANGST_FX) { ANGST_FXN[norm(k)] = ANGST_FX[k]; }
 
 function baseFromFolder(m) {
   if (m.folder === 'Illuminati') return { type: 'illuminati', subtype: null };
@@ -435,8 +615,19 @@ function splitAlignments(rec) {
 function applySecondaryAttributes(rec) {
   const row = scribdCards[norm(rec.name)];
   if (!row) return;
-  const src = Array.isArray(row.attributes) ? row.attributes
-    : String(row.attributeText || '').split(/[,;/|]/);
+  /* P2-DATA-02: hay que unir LAS DOS representationes de la fuente secundaria.
+   * row.attributes es la lista ya parseada, pero su lista blanca era mas
+   * estrecha que la de la fuente: Brasil trae attributes=["coastal","huge"]
+   * mientras que su attributeText es "Huge, Coastal, Nation". Al usar
+   * attributes como unica fuente, `nation` se perdia para siempre. row
+   * .attributeText es el texto crudo de la misma impresion y si contiene el
+   * termino, asi que se une (nunca se reemplaza). El vocabulario completo que
+   * aparece en attributeText es: science computer green media huge coastal
+   * nation church communist secret bank space magic. */
+  const src = [];
+  if (Array.isArray(row.attributes)) src.push.apply(src, row.attributes);
+  const rawText = String(row.attributeText || '');
+  if (rawText) src.push.apply(src, rawText.split(/[,;/|]/));
   const added = [];
   for (const raw of src) {
     const t = String(raw).trim().toLowerCase();
@@ -526,8 +717,9 @@ for (const m of manifest) {
    * Source of truth: research/audit_reports/plot_transcription.md, read
    * verbatim off the card faces. These 18 cards are the only ones whose
    * printed rules have been confirmed word-for-word, so they are the only
-   * ones that may claim implemented:true. */
-  const pfx = PLOT_FXN[key];
+   * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
+   * in BOOST10_FX, transcribed the same way off the same card faces. */
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key];
   if (pfx) {
     rec.effect = pfx;
     rec.subtype = pfx.kind;
