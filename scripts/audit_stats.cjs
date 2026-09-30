@@ -12,6 +12,12 @@ load('cards.js');
 const C = global.window.INWO_CARDS;
 if (!C || !Array.isArray(C.cards)) throw new Error('No se pudo cargar cards.js');
 
+const mergePath = path.join(ROOT, 'research', 'audit_reports', 'card_data_merge.json');
+const merge = fs.existsSync(mergePath)
+  ? JSON.parse(fs.readFileSync(mergePath, 'utf8'))
+  : { cards: {}, summary: {} };
+const mergeCards = merge.cards || {};
+
 const ocrPath = path.join(ROOT, 'research', 'stats_ocr.json');
 const ocr = JSON.parse(fs.readFileSync(ocrPath, 'utf8'));
 const CMU = {
@@ -34,13 +40,32 @@ let cmuMatches = 0;
 const cmuDiscrepancies = [];
 const nullPower = [];
 const nullResistance = [];
+let secondaryPowerFills = 0;
+let secondaryResistanceFills = 0;
+let secondaryAlignmentFills = 0;
+let secondaryConfirmations = 0;
+let secondaryConflictCards = 0;
+let secondaryConflictFields = 0;
 
 for (const card of groups) {
   const key = normalize(card.name);
   const image = ocr[key];
+  const mergeRow = mergeCards[key] || mergeCards[normalize(card.id)] || null;
   const runtime = { power: card.power ?? null, resistance: card.resistance ?? null };
   if (card.power == null) nullPower.push(card.name);
   if (card.resistance == null) nullResistance.push(card.name);
+
+  if (mergeRow) {
+    if (mergeRow.power && mergeRow.power.status === 'secondary') secondaryPowerFills++;
+    if (mergeRow.resistance && mergeRow.resistance.status === 'secondary') secondaryResistanceFills++;
+    if (mergeRow.alignments && mergeRow.alignments.status === 'secondary') secondaryAlignmentFills++;
+    if (mergeRow.power && mergeRow.power.status === 'runtime-confirmed-secondary') secondaryConfirmations++;
+    if (mergeRow.resistance && mergeRow.resistance.status === 'runtime-confirmed-secondary') secondaryConfirmations++;
+    if (mergeRow.conflicts && Object.keys(mergeRow.conflicts).length) {
+      secondaryConflictCards++;
+      secondaryConflictFields += Object.keys(mergeRow.conflicts).length;
+    }
+  }
 
   if (image && typeof image.power === 'number' && typeof image.resistance === 'number') {
     if (image.power === runtime.power && image.resistance === runtime.resistance) agreements++;
@@ -51,32 +76,37 @@ for (const card of groups) {
 
   const expected = CMU[key];
   if (expected) {
-    const observed = image && typeof image.power === 'number'
-      ? { power: image.power, resistance: image.resistance ?? null }
-      : runtime;
-    if (observed.power === expected[0] && observed.resistance === (expected[1] ?? null)) cmuMatches++;
-    else cmuDiscrepancies.push(`${card.name}: runtime/OCR ${observed.power}/${observed.resistance} vs CMU ${expected[0]}/${expected[1]}`);
+    const observed = runtime;
+    const expectedResistanceMatches = expected[1] == null || observed.resistance === expected[1];
+    if (observed.power === expected[0] && expectedResistanceMatches) cmuMatches++;
+    else cmuDiscrepancies.push(`${card.name}: runtime ${observed.power}/${observed.resistance} vs CMU ${expected[0]}/${expected[1] ?? '(resistance unspecified)'}`);
   }
 }
 
 const report = [
   '=== ESTADÍSTICAS DE CARTAS ===',
   `runtime groups: ${groups.length}`,
-  `OCR agree: ${agreements}`,
-  `OCR corrections: ${imageCorrections}`,
-  `OCR missing: ${missingOcr}`,
-  `CMU verified matches: ${cmuMatches}`,
-  `CMU discrepancies: ${cmuDiscrepancies.length}`,
-  `runtime power null: ${nullPower.length}`,
-  `runtime resistance null: ${nullResistance.length}`,
+  `runtime power null (after secondary fill): ${nullPower.length}`,
+  `runtime resistance null (after secondary fill): ${nullResistance.length}`,
+  `secondary Power fills: ${secondaryPowerFills}`,
+  `secondary Resistance fills: ${secondaryResistanceFills}`,
+  `secondary alignment fills: ${secondaryAlignmentFills}`,
+  `secondary runtime confirmations: ${secondaryConfirmations}`,
+  `secondary conflict cards: ${secondaryConflictCards}`,
+  `secondary conflict fields: ${secondaryConflictFields}`,
+  `OCR agree (diagnostic only): ${agreements}`,
+  `OCR corrections (diagnostic only): ${imageCorrections}`,
+  `OCR missing (diagnostic only): ${missingOcr}`,
+  `CMU runtime matches: ${cmuMatches}`,
+  `CMU runtime discrepancies: ${cmuDiscrepancies.length}`,
   '',
-  'CMU DISCREPANCIES:',
+  'CMU RUNTIME DISCREPANCIES:',
   ...cmuDiscrepancies,
   '',
-  'POWER NULL:',
+  'UNRESOLVED POWER NULL:',
   ...nullPower,
   '',
-  'RESISTANCE NULL:',
+  'UNRESOLVED RESISTANCE NULL:',
   ...nullResistance
 ].join('\n');
 
@@ -85,9 +115,10 @@ fs.mkdirSync(reportDir, { recursive: true });
 fs.writeFileSync(path.join(reportDir, 'stats.txt'), report + '\n', 'utf8');
 console.log(report);
 
-// A data-quality gate must be explicit: default mode reports known debt;
-// --strict turns discrepancies/missing values into a failing command.
+// The strict gate covers unresolved canonical/runtime debt. Raw OCR
+// discrepancies remain visible diagnostics because the OCR source is noisy;
+// secondary conflicts and missing runtime values are never silently ignored.
 const reportOnly = process.argv.includes('--report-only');
-if (!reportOnly && (missingOcr || cmuDiscrepancies.length || nullPower.length || nullResistance.length)) {
+if (!reportOnly && (cmuDiscrepancies.length || nullPower.length || nullResistance.length || secondaryConflictFields)) {
   process.exitCode = 1;
 }

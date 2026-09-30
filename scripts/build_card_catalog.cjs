@@ -86,7 +86,11 @@ const catalog = cards.map((card) => {
       power: card.power ?? null,
       resistance: card.resistance ?? null,
       alignments: card.alignments || [],
-      estimated: Boolean(card.estimated)
+      estimated: Boolean(card.estimated),
+      statSource: card.statSource || null,
+      statConfidence: card.statConfidence || null,
+      statProvenance: card.statProvenance || null,
+      statEvidence: card.statEvidence || null
     },
     mechanics: {
       kind,
@@ -117,6 +121,8 @@ const summary = {
   ocrCoverage: catalog.filter((card) => card.mechanics.sourceText).length,
   mechanicStatus: counts(catalog.map((card) => card.mechanics.status)),
   estimatedStats: catalog.filter((card) => card.stats.estimated).length,
+  secondaryStatFields: catalog.reduce((total, card) => total + (card.stats.statEvidence?.filled?.length || 0), 0),
+  secondaryConflictFields: catalog.reduce((total, card) => total + (card.stats.statEvidence?.conflicts?.length || 0), 0),
   nullPower: catalog.filter((card) => card.stats.power == null).length,
   nullResistance: catalog.filter((card) => card.stats.resistance == null).length
 };
@@ -151,6 +157,8 @@ const lines = [
   `- Tipo oficial encontrado: **${summary.officialTypeCoverage}/${summary.total}**`,
   `- Texto OCR disponible: **${summary.ocrCoverage}/${summary.total}**`,
   `- Stats estimadas: **${summary.estimatedStats}**`,
+  `- Campos numéricos secundarios: **${summary.secondaryStatFields}**`,
+  `- Conflictos secundarios preservados: **${summary.secondaryConflictFields}**`,
   `- Power null: **${summary.nullPower}**`,
   `- Resistance null: **${summary.nullResistance}**`,
   '',
@@ -170,7 +178,8 @@ for (const card of catalog) {
     '',
     `- ID: \`${card.id}\` · runtime: \`${card.type}\` · oficial: \`${card.officialType || 'no encontrado'}\``,
     `- Power: ${stats.power == null ? 'null' : stats.power} · Resistance: ${stats.resistance == null ? 'null' : stats.resistance} · alineamientos: ${stats.alignments.length ? stats.alignments.join(', ') : '—'} · estimado: ${stats.estimated ? 'sí' : 'no'}`,
-    `- Mecánica: \`${card.mechanics.kind}\` · estado: **${card.mechanics.status}** · implementada: ${card.mechanics.implemented ? 'sí' : 'no'}`,
+     `- Procedencia numérica: ${stats.statSource || 'runtime/local'} · confianza: ${stats.statConfidence || 'no aplica'} · conflictos: ${stats.statEvidence?.conflicts?.length || 0}`,
+     `- Mecánica: \`${card.mechanics.kind}\` · estado: **${card.mechanics.status}** · implementada: ${card.mechanics.implemented ? 'sí' : 'no'}`,
     `- Investigación Internet: ${card.research ? `${card.research.researchStatus}; OCR ${card.research.ocr.status}; menciones oficiales ${card.research.officialMentions.length}` : 'sin manifest (carta ya verificada o pendiente de regenerar)'}`,
     `- Imagen: ${card.image ? `\`${card.image}\`` : '—'}`,
     '',
