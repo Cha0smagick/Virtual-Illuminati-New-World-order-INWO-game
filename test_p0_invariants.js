@@ -210,7 +210,21 @@ run('generic plot cannot be used as universal attack boost', function () {
   const attacker = ownGroups(state, pid)[0];
   const opponent = setup.second === pid ? setup.first : setup.second;
   const target = ownGroups(state, opponent)[0];
-  const plot = state.players[pid].hand.find(function (idx) { return C.cards[idx] && C.cards[idx].type === 'plot'; });
+  /* FIX (8th flake of the same class, found 2026-09-30): this fixture used to
+   * take "the first Plot in hand". That was safe while every Plot was generic,
+   * but P1-012..P1-015 classified 29 real Plots (boost10, power_increase,
+   * resistance_increase, messiah, angst) and addBoost() legitimately ACCEPTS a
+   * boost10, so the assertion started failing ~17% of the time depending on the
+   * deal. The card text and the engine are both right: the FIXTURE was wrong.
+   * It now picks a deterministically unverified Plot from the whole card set and
+   * purges any pre-existing copy before injecting it (the purge-before-inject
+   * lesson). */
+  const generic = C.cards.find(function (c) { return c.type === 'plot' && c.mechanicsStatus === 'unverified'; });
+  assert(generic !== undefined, 'fixture requires an unverified Plot');
+  const raw0 = E._raw();
+  raw0.players[pid].hand = raw0.players[pid].hand.filter(function (idx) { return idx !== generic.idx; });
+  raw0.players[pid].hand.push(generic.idx);
+  const plot = generic.idx;
   assert(plot !== undefined, 'fixture requires a Plot');
   E.declareAttack(pid, 'control', { uid: target.uid, attackerUid: attacker.uid });
   const raw = E._raw();

@@ -13,6 +13,7 @@ const tests = [
   'test_respond.js',
   'test_ui.js',
   'test_fase2_rules.js',
+  'test_fase4_cards.js',
   'test_card_research_manifest.js'
 ];
 const failed = [];
