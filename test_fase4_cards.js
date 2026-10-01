@@ -329,7 +329,63 @@ for (const c of C.cards) {
     ok(n > 0, 'carta "' + c.name + '" exige una accion de un grupo con ' + e.requireActionFromAttr +
                ' pero ningun grupo lo tiene -> INJUGABLE');
   }
-  if (e.targetSubtype) {
+  /* L1 — TOKEN-GIFT: filtro de la familia "Place an Action token on each of your
+   <X> groups". No son `targetAlign`/`targetAttr` a proposito: esos dos ya
+   significan "un UNICO grupo objetivo" en las familias que los usan, y un filtro
+   "cada uno de tus grupos" es otra cosa. Mezclarlos seria el defecto P1-018 en
+   el gate: dos campos con el mismo nombre y semanticas distintas.
+   Que uno sea IDEOLOGIA y otro ATRIBUTO no es arbitrario — Bank Merger (201)
+   dice "Bank groups" y `bank` es un atributo (§23), no una de las diez
+   ideologias del mazo. */
+if (e.giftAlign) {
+    checkedFields.giftAlign = true;
+    const n = groupsWithAlign(e.giftAlign).length;
+    ok(n > 0, 'carta "' + c.name + '" reparte fichas a tus grupos ' + e.giftAlign +
+               ' pero ningun grupo del mazo tiene esa ideologia -> la carta no hace NADA -> INJUGABLE');
+}
+if (e.giftAttr) {
+    checkedFields.giftAttr = true;
+    const n = groupsWithAttr(e.giftAttr).length;
+    ok(n > 0, 'carta "' + c.name + '" reparte fichas a tus grupos con el atributo ' + e.giftAttr +
+               ' pero ningun grupo del mazo lo tiene -> la carta no hace NADA -> INJUGABLE');
+}
+/* L2 — FORCE-ALIGN: las nueve cartas "The target becomes permanently <X>. If it
+     was <OPP>, that alignment is lost." El filtro del PAGADOR va aparte del filtro
+     del EFECTO, igual que en L1: `forceAlign` es "que ideologia deben tener mis grupos
+     para pagar", `oppAlign` es "que ideologia del objetivo dobla el coste". Y el
+     `oppAlign` se valida con DOS condiciones, no una: (1) que exista algun grupo con
+     esa ideologia y (2) que ALGUN grupo del mazo la LLEVE, porque si nadie la llevara
+     la clausula "doubled if the group is currently <OPP>" seria vacua y el motor
+     nunca doblaria el coste de nadie. Un gate que solo comprueba (1) deja pasar una
+     carta que, en la practica, hace la mitad de lo que dice. */
+  if (e.forceAlign) {
+    checkedFields.forceAlign = true;
+    const n = groupsWithAlign(e.forceAlign).length;
+    ok(n > 0, 'carta "' + c.name + '" la pagan grupos ' + e.forceAlign +
+               ' pero ningun grupo del mazo tiene esa ideologia -> nunca se podria jugar -> INJUGABLE');
+  }
+  if (e.oppAlign) {
+    checkedFields.oppAlign = true;
+    const exists = groupsWithAlign(e.oppAlign).length;
+    ok(exists > 0, 'carta "' + c.name + '" dobla el coste si el objetivo es ' + e.oppAlign +
+                ' pero ningun grupo del mazo tiene esa ideologia');
+    /* (2) la clausula no vacua: al menos un grupo debe LLEVARLA de serie. */
+    const carried = GROUPS.some(g => (g.alignments || []).indexOf(e.oppAlign) >= 0);
+    ok(carried, 'carta "' + c.name + '" dobla el coste si el objetivo es ' + e.oppAlign +
+                ' pero NINGUN grupo del mazo la trae de fabrica -> la clausula "doubled if ..." es VACUA');
+  }
+  /* L2 — el ronda de Dictatorship que Privatiization (345) retira: la familia
+     `dictatorship` ya existe en el motor (P1-017), asi que la clausula es jugable y
+     el gate debe saber que `noDictatorship` no es decorativo. Si ningun grupo del
+     mazo fuese Dictatorship la clausina no tendria a que applies, pero tampoco
+     tendria sentido declararla, asi que basta con comprobar que el campo existe
+     solo en la carta que lo necesita. */
+  if (e.noDictatorship) {
+    checkedFields.noDictatorship = true;
+    const hasFam = C.cards.some(x => x && x.effect && x.effect.kind === 'dictatorship');
+    ok(hasFam, 'carta "' + c.name + '" retira el estado Dictatorship pero el mazo no tiene ninguna carta de esa familia');
+  }
+if (e.targetSubtype) {
     checkedFields.targetSubtype = true;
     ok(groupsOfSubtype(e.targetSubtype).length > 0,
        'carta "' + c.name + '" exige targetSubtype=' + e.targetSubtype + ' y no hay ningun grupo de ese subtipo');
@@ -501,6 +557,8 @@ for (const c of C.cards) {
   [e.targetAttr, e.requireAttr, e.rejectAttr, e.churchAttr, e.requireActionFromAttr]
     .forEach(v => { if (typeof v === 'string') usedAttrs.add(v); });
   (e.requireAttrAny || []).forEach(v => { if (typeof v === 'string') usedAttrs.add(v); });
+  /* L1: `giftAttr` tambien es un atributo exigido por una carta clasificada. */
+  if (typeof e.giftAttr === 'string') usedAttrs.add(e.giftAttr);
 }
 for (const a of Array.from(usedAttrs).sort()) {
   const n = groupsWithAttr(a).length;

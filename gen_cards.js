@@ -683,6 +683,222 @@ const DICTATORSHIP_FX = {
 };
 const DICTATORSHIP_FXN = {}; for (const k in DICTATORSHIP_FX) { DICTATORSHIP_FXN[norm(k)] = DICTATORSHIP_FX[k]; }
 
+const BOIL = ' This card may be played at any time. This card does not benefit groups which are suffering from the effect of any card or special ability that prevents them from getting Action tokens.';
+
+/* L1 — TOKEN-GIFT: las 11 cartas que dicen, literalmente, "Place an Action token
+ * on each of your <X> groups". Son la primera familia MASIVA del plan.md: mismo
+ * efecto, distinto filtro. Por eso comparten UN solo `kind` y se distinguen solo
+ * por el calificador (`giftAlign` / `giftAttr`).
+ *
+ * POR QUE 2 CAMPOS Y NO SOLO UNO. De las 11 cartas, DIEZ filtran por IDEOLOGIA
+ * (alineacion) y UNA sola —Bank Merger (201), "your Bank groups"— por ATRIBUTO.
+ * El vocabulario del mazo lo confirma: las 10 ideologias son conservative,
+ * corporate, criminal, fanatic, government, liberal, peaceful, straight,
+ * violent, weird; y `bank` NO es ninguna de ellas, es un atributo (§23).
+ * Confundir los dos planos fue exactamente el defecto P1-018 (dos cartas decian
+ * "Magic group" y el motor solo miraba c.alignments, dejando la clausula como
+ * codigo muerto). Aqui los dos planos se nombran por separado.
+ *
+ * INTERPRETACIONES DECLARADAS (no hay ruling oficial para ninguna):
+ *
+ * 1) ALCANCE = la estructura de Poder COMPLETA, recursivamente, titeres
+ *    incluidos. Las 11 cartas dicen "your ... groups" sin restringir; el unico
+ *    alcance que el texto sostiene es "todos los grupos tuyos", y un titere bajo
+ *    tu propio grupo sigue siendo tuyo. Se recorre con `walk`, la misma
+ *    idoneidad que usa `firstUsableAid` y que usa el `case 'zap'`.
+ *
+ * 2) `tokens = 1`, no `tokens++`. Un grupo tiene UNA ficha de accion por turno y
+ *    la gasta al actuar; "Place an Action token on each of your X groups" pone
+ *    LA FICHA, no la multiplica. Asi se cumple de forma natural el "which does
+ *    not already have one" de las 10 cartas normales, y el "even those which
+ *    already have an Action token" de Bank Merger (201) queda como el
+ *    recordatorio redundante que el texto impreso es: con `tokens = 1` un grupo
+ *    que ya tenia ficha conserva exactamente una.
+ *
+ * 3) EL SUFIJO "and any other Fanatic group in play that you want to benefit!"
+ *    de Full Moon (263) NO se implementa. Republicar una carta de Fanatic ajena
+ *    seria un regalo gratis al enemigo con la misma ficha de este mazo; el motor
+ *    solo reparte fichas a grupos propios. Queda declarado, no implementado.
+ *
+ * 4) "This card does not benefit groups which are suffering from the effect of
+ *    any card or special ability that prevents them from getting Action tokens"
+ *    se implementa con el MISMO conjunto de banderas que ya usa
+ *    `firstUsableAid` para "puede actuar": devastated, paralyzed, zapped,
+ *    actionStripped. Es el unico predicado de "no puede recibir fichas" que
+ *    existe en el motor, y por coherencia no se inventa un segundo.
+ *
+ * 5) SIN COSTE IMPRESO y "may be played at any time" literal: por eso las 11 van
+ *    a la lista `instant` del motor (pueden jugarse fuera de turno) y su `case`
+ *    no cobra nada. No es un descuido: no hay nada que cobrar. */
+const TOKEN_FX = {
+  'bank merger': {
+    kind: 'token_gift',
+    /* "each of your Bank groups" — ATRIBUTO, no ideologia (§23). */
+    giftAttr: 'bank',
+    t: 'Place an Action token on each of your Bank groups, even those which already have an Action token.' + BOIL
+  },
+  'dollars for decency': {
+    kind: 'token_gift',
+    giftAlign: 'straight',
+    t: 'Place an Action token on each of your Straight groups which does not already have one.' + BOIL
+  },
+  'flower power': {
+    kind: 'token_gift',
+    giftAlign: 'peaceful',
+    t: 'Place an Action token on each of your Peaceful groups which does not already have one.' + BOIL
+  },
+  'freaking the mundanes': {
+    kind: 'token_gift',
+    giftAlign: 'weird',
+    t: 'Place an Action token on each of your Weird groups which does not already have one.' + BOIL
+  },
+  'full moon': {
+    kind: 'token_gift',
+    /* La segunda mitad ("and any other Fanatic group in play") NO se implementa:
+       ver interpretacion 3 del comentario de la familia. */
+    giftAlign: 'fanatic',
+    t: 'Place an Action token on each of your Fanatic groups, whether it has one or not, and any other Fanatic group in play that you want to benefit!' + BOIL
+  },
+  'gang war': {
+    kind: 'token_gift',
+    giftAlign: 'criminal',
+    t: 'Place an Action token on each of your Criminal groups which does not already have one.' + BOIL
+  },
+  'new federal budget': {
+    kind: 'token_gift',
+    giftAlign: 'government',
+    t: 'Place an Action token on each of your Government groups which does not already have one.' + BOIL
+  },
+  'pledge drive': {
+    kind: 'token_gift',
+    giftAlign: 'liberal',
+    t: 'Place an Action token on each of your Liberal groups which does not already have one.' + BOIL
+  },
+  'red scare': {
+    kind: 'token_gift',
+    giftAlign: 'conservative',
+    t: 'Place an Action token on each of your Conservative groups which does not already have one.' + BOIL
+  },
+  'reload': {
+    kind: 'token_gift',
+    giftAlign: 'violent',
+    t: 'Place an Action token on each of your Violent groups which does not already have one.' + BOIL
+  },
+  'tax breaks': {
+    kind: 'token_gift',
+    giftAlign: 'corporate',
+    t: 'Place an Action token on each of your Corporate groups which does not already have one.' + BOIL
+  }
+};
+const TOKEN_FXN = {}; for (const k in TOKEN_FX) { TOKEN_FXN[norm(k)] = TOKEN_FX[k]; }
+
+/* L2 - ILLUM-OR-X (198, 264, 290, 295, 301, 323, 340, 345, 376).
+ *
+ * Nueve cartas que plan.md agrupo como "L2 ILLUM-OR-X" por compartir la formula
+ * del coste. Al leer el texto impreso completo resulto que NO son una familia de
+ * coste: son la familia "forzar una alineacion de forma permanente", y el coste
+ * es DINAMICO (la Resistencia del objetivo), no un numero fijo. Se conservan aqui
+ * las 5 DECLARACIONES que fija la auditoria (§40).
+ *
+ * 1) COSTE DINAMICO. El texto dice "with a total Power equal to the Resistance of
+ *    the target group", no un numero. El motor calcula el coste con
+ *    nodeResistance(objetivo) y lo DUPLICA si el objetivo tiene la alineacion
+ *    opuesta (oppAlign). Power Corrupts (340) es la unica sin clausula "doubled",
+ *    y el motivo es oficial: el glosario de reglas dice de Criminal "It has no
+ *    opposite". Que la tabla OPPOSITES del motor no incluya criminal, government,
+ *    corporate ni fanatic coincide con el glosario impreso, asi que la ausencia de
+ *    la clausula NO es un olvido de transcripcion sino la lectura correcta.
+ *
+ * 2) "Add bonuses for its closeness to the Illuminati if it belongs to a rival!".
+ *    Las reglas oficiales (inwo_rules_extracted.txt :563-576) distinguen DOS
+ *    conceptos: "closeness to the Illuminati" da una bonificacion de DEFENSA
+ *    (alineaciones compartidas con su amo, +4 cada una) y "common alignments with
+ *    its master" aumentan la RESISTENCIA. El coste se calcula con la Resistencia
+ *    y, SOLO si el objetivo es de un rival, se le suma su bonificacion de
+ *    cercanía. Se extrajo el bloque que ya vivia dentro de computeStrength a una
+ *    funcion reutilizable closenessDefenseBonus() para que la regla exista una sola
+ *    vez.
+ *
+ * 3) "The target becomes permanently X. If it was <opposite>, that alignment is
+ *    lost." Se implementa con los dos campos de nodo que ya existen/aregables:
+ *    alignsAdded (sumar) y el nuevo alignsRemoved (restar) que nodeAligns filtra.
+ *    OJO: tocar nodeAligns cambia el comportamiento de TODOS sus consumidores
+ *    (bonificacion +/-4 de los ataques, shares, isOpposite y el caso token_gift de
+ *    §39). Es deliberado y se declara.
+ *
+ * 4) "Keep this card, with a link to the target." La Plot NO se descarta: se
+ *    guarda en pl.linkedPlots. El chequeo linkedHere que introducio P1-025 en
+ *    E.playPlot ya la mantiene fuera de la pila de descarte, asi que no hace falta
+ *    tocar el motor para eso.
+ *
+ * 5) Las nueve son "Play this card at any time", luego las nueve entran en la
+ *    lista instant del motor.
+ *
+ * Privatization anade "and if it was a Dictatorship, it is no longer": por eso
+ * lleva noDictatorship:true. Para que eso sea comprobable el motor tuvo que
+ * arreglar la carta Dictatorship (239), que declaraba "The target is now a
+ * Dictatorship. It gets +2 Power" pero solo guardaba el link y el +0: no ponia
+ * ninguna marca de Dictatorship ni aplicaba el +2 de Poder. Auditoria §40.
+ */
+const FORCE_FX = {
+  'assertiveness training': {
+    kind: 'force_align',
+    forceAlign: 'violent',
+    oppAlign: 'peaceful',
+    t: 'Play this card at any time. It requires action(s) by either the Illuminati, or Violent group(s) with a total Power equal to the Resistance of the target group, doubled if the group is currently Peaceful. Add bonuses for its closeness to the Illuminati if it belongs to a rival! The target becomes permanently Violent. If it was Peaceful, that alignment is lost. Keep this card, with a link to the target. Requires Action'
+  },
+  'fundie money': {
+    kind: 'force_align',
+    forceAlign: 'conservative',
+    oppAlign: 'liberal',
+    t: 'Play this card at any time. It requires action(s) by either the Illuminati, or Conservative group(s) with a total Power equal to the Resistance of the target group, doubled if the group is currently Liberal. Add bonuses for its closeness to the Illuminati if it belongs to a rival! The target group becomes permanently Conservative. If it was Liberal, that alignment is lost. Keep this card, with a link to the target. Requires Action'
+  },
+  'jake day': {
+    kind: 'force_align',
+    forceAlign: 'weird',
+    oppAlign: 'straight',
+    t: 'Play this card at any time. It requires action(s) by either the Illuminati, or Weird group(s) with a total Power equal to the Resistance of the target group, doubled if the group is currently Straight. Add bonuses for its closeness to the Illuminati if it belongs to a rival! The target group becomes permanently Weird. If it was Straight, that alignment is lost. Keep this card, with a link to the target. Requires Action'
+  },
+  'kinder and gentler': {
+    kind: 'force_align',
+    forceAlign: 'peaceful',
+    oppAlign: 'violent',
+    t: 'Play this card at any time. It requires action(s) by either the Illuminati, or Peaceful group(s) with a total Power equal to the Resistance of the target group, doubled if the group is currently Violent. Add bonuses for its closeness to the Illuminati if it belongs to a rival! The target group becomes permanently Peaceful. If it was Violent, that alignment is lost. Keep this card, with a link to the target. Requires Action'
+  },
+  'liberal agenda': {
+    kind: 'force_align',
+    forceAlign: 'liberal',
+    oppAlign: 'conservative',
+    t: 'Play this card at any time. It requires action(s) by either the Illuminati, or Liberal group(s) with a total Power equal to the Resistance of the target group, doubled if the group is currently Conservative. Add bonuses for its closeness to the Illuminati if it belongs to a rival! The target group becomes permanently Liberal. If it was Conservative, that alignment is lost. Keep this card, with a link to the target. Requires Action'
+  },
+  'nationalization': {
+    kind: 'force_align',
+    forceAlign: 'government',
+    oppAlign: 'corporate',
+    t: 'Play this card at any time. It requires action(s) by either the Illuminati, or Government group(s) with a total Power equal to the Resistance of the target group, doubled if the group is currently Corporate. Add bonuses for its closeness to the Illuminati if it belongs to a rival! The target group becomes permanently Government. If it was Corporate, that alignment is lost. Keep this card, with a link to the target. Requires Action'
+  },
+  'power corrupts': {
+    kind: 'force_align',
+    forceAlign: 'criminal',
+    /* SIN oppAlign: el glosario oficial dice que Criminal no tiene opuesta. */
+    t: 'Play this card at any time. It requires action(s) by either the Illuminati, or Criminal group(s) with a total Power equal to the Resistance of the target group. Add bonuses for its closeness to the Illuminati if it belongs to a rival! The target group becomes permanently Criminal. Keep this card, with a link to the target. Requires Action'
+  },
+  'privatization': {
+    kind: 'force_align',
+    forceAlign: 'corporate',
+    oppAlign: 'government',
+    noDictatorship: true,
+    t: 'Play this card at any time. It requires action(s) by either the Illuminati, or Corporate group(s) with a total Power equal to the Resistance of the target group, doubled if the group is currently Government. Add bonuses for its closeness to the Illuminati if it belongs to a rival! The target group becomes permanently Corporate. If it was Government, that alignment is lost (and if it was a Dictatorship, it is no longer). Keep this card, with a link to the target. Requires Action'
+  },
+  'straighten up': {
+    kind: 'force_align',
+    forceAlign: 'straight',
+    oppAlign: 'weird',
+    t: 'Play this card at any time. It requires action(s) by either the Illuminati, or Straight group(s) with a total Power equal to the Resistance of the target group, doubled if the group is currently Weird. Add bonuses for its closeness to the Illuminati if it belongs to a rival! The target group becomes permanently Straight. If it was Weird, that alignment is lost. Keep this card, with a link to the target. Requires Action'
+  }
+};
+const FORCE_FXN = {}; for (const k in FORCE_FX) { FORCE_FXN[norm(k)] = FORCE_FX[k]; }
+
 function baseFromFolder(m) {
   if (m.folder === 'Illuminati') return { type: 'illuminati', subtype: null };
   return { type: 'group', subtype: 'organization' }; // Groups folder
@@ -953,7 +1169,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key];
   if (pfx) {
     rec.effect = pfx;
     rec.subtype = pfx.kind;

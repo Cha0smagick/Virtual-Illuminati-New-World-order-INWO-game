@@ -801,6 +801,20 @@ function isOwnNode(uid) {
   (function walk(n) { if (n.uid === uid) hit = true; else (n.children || []).forEach(walk); })(curState.players[pid].structure);
   return hit;
 }
+/* L1 — TOKEN-GIFT no tiene grupo OBJETIVO: su texto dice "each of your <X>
+ * groups", o sea todos los que coincidan. El camino generico de Plots
+ * (`value: 'plot'`) exige siempre un clic de objetivo, y para estas cartas ese clic
+ * seria un grupo cualquiera que el motor ni mira: puro ruido que ademas ensena mal
+ * ("este grupo es el objetivo" cuando el efecto alcanza a todos). Se anaden aqui
+ * como cartas de UN SOLO CLIC.
+ *
+ * La lista se compara contra `kind`, no contra ids de carta, por el mismo motivo
+ * documentado en la lista `instant` del motor. */
+var NO_TARGET_KINDS = ['token_gift'];
+function plotNeedsTarget(c) {
+  return NO_TARGET_KINDS.indexOf((c.effect || {}).kind) < 0;
+}
+
 function route(uid) {
   var m = sel.mode, d = sel.data;
   try {
@@ -877,7 +891,7 @@ function handClick(ix) {
     canReactEvent ? { label: '⚡ REACCIONAR a ' + esc(evPend.label || 'un suceso'), value: 'reactEvent' } : null,
     isEventCard && !canReactEvent ? { label: '❓ ¿Cuándo sirve esta carta?', value: 'infoEvent' } : null,
     isCancelCard && !canCancel ? { label: 'ℹ ¿Cuándo sirve esta carta?', value: 'infoCancel' } : null,
-    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard) ? { label: '✨ Jugar Plot ahora', value: 'plot' } : null,
+    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
     c.type === 'plot' ? { label: 'ℹ ¿Cuándo sirven los Plots?', value: 'info' } : null,
     c.type !== 'illuminati' ? { label: '🗑 Descartar', value: 'discard' } : null,
     { label: 'Cancelar', value: null }
@@ -915,7 +929,17 @@ function handClick(ix) {
       log('ℹ Convierte ese ataque en un fallo automático y da una protección permanente al grupo protegido.');
       log('ℹ Ahora mismo no hay ningún Assassination anunciado, así que no se puede jugar.');
     }
-    else if (v === 'plot') { sel = { mode: 'plotTarget', data: { handIdx: ix } }; log('🎯 PASO 2/2 — clic en el grupo OBJETIVO de este Plot.'); render(curState); }
+    else if (v === 'plot') {
+      clearSel();
+      if (!plotNeedsTarget(c)) {
+        log('✨ ' + c.name + ': se juega de inmediato, alcanza a TODOS tus grupos que coincidan (no hay un objetivo unico).');
+        try { CB.onPlayPlot(ix, null); } catch (e) { log('\u26A0 ' + e.message); }
+      } else {
+        sel = { mode: 'plotTarget', data: { handIdx: ix } };
+        log('\uD83C\uDFAF PASO 2/2 \u2014 clic en el grupo OBJETIVO de este Plot.');
+        render(curState);
+      }
+    }
     else if (v === 'goalVictory') {
       clearSel();
       log('🏆 Declaras victoria con ' + c.name + '. Si el objetivo NO se cumple, la carta vuelve a tu mano EXPUESTA.');

@@ -53,13 +53,25 @@ st = E.endTurn();
 try { E.exchangeForPlot(st.currentPid, { illum: true }); console.log('ok - exchangeForPlot'); } catch (e) { console.log('exchange skipped:', e.message); }
 
 // unverified plot text must fail fast without spending resources
+// P1-029: the fixture used to be "whatever unverified plot this random deal
+// happened to put in the hand". That is not a fixture, it is a coin toss: as
+// L1/L2 turned cards from 'unverified' into 'implemented-pending-engine' the
+// probability moved, and the SMOKE test started failing ~1 run in 12 with
+// "unverified plot fixture available". The card is now taken from the plot
+// DECK (which always holds ~149 unverified plots) and moved into the hand
+// under test, so the deck stays consistent and the assertion is deterministic.
 var cur2 = st.currentPid;
-var pIdx = st.players[cur2].hand.find(function (ix) {
-  var c = window.INWO_CARDS.cards[ix];
-  return c.type === 'plot' && c.mechanicsStatus === 'unverified';
-});
-assert(pIdx != null, 'unverified plot fixture available');
+var Sraw = E._raw();
+var pIdx = null;
+for (var d = 0; d < Sraw.plotDeck.length; d++) {
+  var dc = window.INWO_CARDS.cards[Sraw.plotDeck[d]];
+  if (dc && dc.type === 'plot' && dc.mechanicsStatus === 'unverified') { pIdx = Sraw.plotDeck[d]; break; }
+}
+assert(pIdx != null, 'the plot deck still holds an unverified plot to test');
 if (pIdx != null) {
+  Sraw.plotDeck.splice(Sraw.plotDeck.indexOf(pIdx), 1);
+  Sraw.players[cur2].hand.push(pIdx);
+  st = E.getState();
   var beforeTokens = st.players[cur2].illumTokens;
   var beforeHand = st.players[cur2].hand.length;
   var beforeDiscard = st.deckCounts.plotDiscard;

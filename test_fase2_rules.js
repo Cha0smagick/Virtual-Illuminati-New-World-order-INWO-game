@@ -3030,6 +3030,305 @@ function readyToAttack(pid) {
   })();
 })();
 
+/* ---------- L1 — TOKEN-GIFT: "Place an Action token on each of your <X> groups"
+   Se asertan EFECTOS OBSERVABLES (la ficha que queda en el nodo, el descarte, el
+   log), nunca quantias de cartas en mano: `sealWindows()` y `noCancelWindow()`
+   mutan las manos, asi que contar cartas es fragil por construccion (leccion de
+   §37.5 / §38.8).                                                  */
+(function () {
+  function put(pid, card) { E._raw().players[pid].hand.push(card.idx); }
+  /* Un grupo del mazo que cumpla el filtro pedido, por IDEOLOGIA o por ATRIBUTO.
+   * Devuelve el indice de la carta, o -1 si el mazo no tiene ninguno (que seria un
+   * fallo del generador, no de la prueba). */
+  function gIdx(filter, byAttr, exclude) {
+    for (var i = 0; i < C.cards.length; i++) {
+      var c = C.cards[i];
+      if (c.type !== 'group') continue;
+      var list = byAttr ? (c.attributes || []) : (c.alignments || []);
+      if (list.indexOf(filter) < 0) continue;
+      /* `exclude` sirve para escoger un grupo que NO sea ademas de otra ideologia:
+       * sin esto, el primer Criminal del mazo puede ser tambien Violent y la
+       * asercion "NO toca un Criminal" estaria probando nada. */
+      if (exclude && list.indexOf(exclude) >= 0) continue;
+      return i;
+    }
+    return -1;
+  }
+  /* Planta un grupo NUEVO bajo un padre concreto. El `plant` de module scope solo
+   * cuelga de la raiz, y aqui hace falta comprobar que el recorrido es RECURSIVO. */
+  function plantUnder(pid, parentUid, uid, cardId, tokens) {
+    var S = E._raw();
+    var host = findNode(S.players[pid].structure, parentUid);
+    if (!host) throw new Error('plantUnder: no existe ' + parentUid);
+    var node = { uid: uid, cardId: cardId, tokens: tokens || 0, children: [], links: [] };
+    host.children.push(node);
+    return node;
+  }
+  function tokensOf(pid, uid) {
+    var n = findNode(E._raw().players[pid].structure, uid);
+    return n ? n.tokens : null;
+  }
+
+  var BM = C.cards[idxOfId('bankmerger')];
+  var RL = C.cards[idxOfId('reload')];
+  var FM = C.cards[idxOfId('fullmoon')];
+  var bank = gIdx('bank', true, 'violent');
+  var violent = gIdx('violent', false);
+  /* Un Criminal que ademas NO sea Violent: si no, la prueba de "Reload! no toca un
+   * Criminal" seria tautologica (el filtro `violent` lo habria incluido igual). */
+  var criminal = gIdx('criminal', false, 'violent');
+  ok(bank >= 0 && violent >= 0 && criminal >= 0,
+    'L1 el mazo tiene Bank, Violent y un Criminal-no-Violent para probar los dos planos');
+
+  /* --- 1) PLANO ATRIBUTO + "even those which already have an Action token".
+     Bank Merger filtra por el ATRIBUTO `bank`, que no es ninguna ideologia (§23).
+     El grupo que ya tenia ficha debe conservar EXACTAMENTE una, no dos. */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  plant(0, 'b1', bank, 0);
+  plant(0, 'b2', bank, 1);
+  plant(0, 'x1', violent, 0);
+  put(0, BM);
+  var r1 = E.playPlot(0, BM.idx, null, {});
+  ok(tokensOf(0, 'b1') === 1, 'L1 Bank Merger da ficha al Bank que no tenia -> ' + tokensOf(0, 'b1'));
+  ok(tokensOf(0, 'b2') === 1, 'L1 Bank Merger NO duplica: deja 1, no 2 -> ' + tokensOf(0, 'b2'));
+  ok(tokensOf(0, 'x1') === 0, 'L1 Bank Merger NO toca un Violent (filtra por atributo bank) -> ' + tokensOf(0, 'x1'));
+  ok(r1.lastPlotResult && r1.lastPlotResult.granted === 2,
+    'L1 lastPlotResult informa 2 grupos -> ' + JSON.stringify(r1.lastPlotResult && r1.lastPlotResult.granted));
+  ok(E._raw().plotDiscard.indexOf(BM.idx) >= 0, 'L1 la Plot usada llega a la pila de descarte (P1-025)');
+  var lastLog = E._raw().log[E._raw().log.length - 1];
+  ok(/2 grupo/.test(lastLog.msg || ''), 'L1 el log dice cuantos grupos recibieron ficha -> ' + (lastLog.msg || ''));
+
+  /* --- 2) PLANO IDEOLOGIA. Reload! filtra por la ideologia `violent`: el Bank y el
+     Criminal, aunque sean del mismo jugador, se quedan sin ficha. */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  plant(0, 'v1', violent, 0);
+  plant(0, 'b1', bank, 0);
+  plant(0, 'c1', criminal, 0);
+  put(0, RL);
+  E.playPlot(0, RL.idx, null, {});
+  ok(tokensOf(0, 'v1') === 1, 'L1 Reload! da ficha al Violent -> ' + tokensOf(0, 'v1'));
+  ok(tokensOf(0, 'b1') === 0, 'L1 Reload! NO toca un Bank -> ' + tokensOf(0, 'b1'));
+  ok(tokensOf(0, 'c1') === 0, 'L1 Reload! NO toca un Criminal -> ' + tokensOf(0, 'c1'));
+
+  /* --- 3) LA CLAUSULA DE EXCEPCION. Las 11 cartas dicen "does not benefit groups
+     which are suffering from the effect of any card or special ability that
+     prevents them from getting Action tokens". Un grupo devastado o paralizado no
+     la recibe; el sano de al lado, si. */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  plant(0, 'v1', violent, 0);
+  var dev = plant(0, 'v2', violent, 0); dev.devastated = true;
+  var par = plant(0, 'v3', violent, 0); par.paralyzed = true;
+  put(0, RL);
+  E.playPlot(0, RL.idx, null, {});
+  ok(tokensOf(0, 'v1') === 1, 'L1 el grupo sano si recibe ficha -> ' + tokensOf(0, 'v1'));
+  ok(tokensOf(0, 'v2') === 0, 'L1 un grupo DEVASTADO no recibe ficha -> ' + tokensOf(0, 'v2'));
+  ok(tokensOf(0, 'v3') === 0, 'L1 un grupo PARALIZADO no recibe ficha -> ' + tokensOf(0, 'v3'));
+
+  /* --- 4) RECORRIDO RECURSIVO: "your groups" incluye titeres a dos niveles. Se
+     planta un Bank en la raiz, un Violent colgando de el y otro Violent colgando del
+     anterior; los DOS son Violent, asi que los DOS deben recibir ficha. Es la
+     prueba de que `walk` baja de verdad y de que no se filtra solo la raiz. */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  plant(0, 'b1', bank, 0);
+  plantUnder(0, 'b1', 'v1', violent, 0);
+  plantUnder(0, 'v1', 'v2', violent, 0);
+  put(0, RL);
+  E.playPlot(0, RL.idx, null, {});
+  ok(tokensOf(0, 'v1') === 1, 'L1 el titere de primer nivel recibe ficha -> ' + tokensOf(0, 'v1'));
+  ok(tokensOf(0, 'v2') === 1, 'L1 el titere de SEGUNDO nivel tambien recibe ficha -> ' + tokensOf(0, 'v2'));
+  ok(tokensOf(0, 'b1') === 0, 'L1 el Bank padre, que no es Violent, no recibe ficha -> ' + tokensOf(0, 'b1'));
+
+  /* --- 5) SIN COINCIDENCIAS: la carta se gasta y no hace nada. Es legal —el texto
+     no dice "requires a matching group"— y se declara aqui para que no se lea como
+     un fallo cuando aparezca. */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  plant(0, 'b1', bank, 0);
+  plant(0, 'v1', violent, 0);
+  put(0, FM);   /* Full Moon es fanatic: esta estructura no tiene ninguno */
+  var r5 = E.playPlot(0, FM.idx, null, {});
+  ok(tokensOf(0, 'b1') === 0 && tokensOf(0, 'v1') === 0,
+    'L1 Full Moon sin Fanaticos no cambia ninguna ficha');
+  ok(r5.lastPlotResult && r5.lastPlotResult.granted === 0,
+    'L1 sin coincidencias informa granted=0 -> ' + JSON.stringify(r5.lastPlotResult && r5.lastPlotResult.granted));
+  ok(E._raw().plotDiscard.indexOf(FM.idx) >= 0,
+    'L1 la carta sin efecto tambien se gasta y va al descarte');
+})();/* ---------- L2 - FORCE-ALIGN (P1-028): las 9 cartas que fuerzan una alineacion ----------
+   REPARTO (idx / id / forceAlign / oppAlign):
+     198 Assertiveness Training  violent     / peaceful
+     264 Fundie Money            conservative/ liberal
+     290 Jake Day                weird       / straight
+     295 Kinder and Gentler      peaceful    / violent
+     301 Liberal Agenda          liberal     / conservative
+     323 Nationalization         government  / corporate
+     340 Power Corrupts          criminal    / (sin opuesta: criminal no tiene opuesta)
+     345 Privatization           corporate   / government  (+ noDictatorship)
+     376 Straighten Up           straight    / weird
+
+   Todos estos bloques usan helpers PROPIOS porque `give`/`giveHere` viven dentro de
+   otros IIFE y no son visibles desde aqui. Se comprueba el efecto OBSERVABLE
+   (estado del nodo, pilas, ficha gastada), nunca un recuento de cartas en mano. */
+(function () {
+  function put(pid, card) { E._raw().players[pid].hand.push(card.idx); }
+  var GROUPS = C.cards.filter(function (x) { return x && x.type === 'group'; });
+  /* `skip` existe porque el reparto de fichas necesita VARIOS grupos distintos:
+     sin el, gIdx devolveria siempre el mismo y el coste nunca se alcanzaria. */
+  function gIdx(alignFilter, attrFilter, exclude, skip) {
+    var sk = skip || [];
+    for (var i = 0; i < GROUPS.length; i++) {
+      var g = GROUPS[i];
+      if (sk.indexOf(g.idx) >= 0) continue;
+      var al = g.alignments || [];
+      if (alignFilter && al.indexOf(alignFilter) < 0) continue;
+      if (exclude && al.indexOf(exclude) >= 0) continue;
+      if (attrFilter && (g.attributes || []).indexOf(attrFilter) < 0) continue;
+      return g.idx;
+    }
+    return null;
+  }
+  function nodeOf(pid, uid) { return findNode(E._raw().players[pid].structure, uid); }
+  /* Replica el nodeAligns del motor a proposito: si el motor y esta copia se
+     separan, el test falla en vez de dar un falso verde. */
+  function alignsOfUid(pid, uid) {
+    var n = nodeOf(pid, uid);
+    if (!n) return null;
+    var base = (C.cards[n.cardId].alignments || []).slice();
+    var add = Array.isArray(n.alignsAdded) ? n.alignsAdded : [];
+    for (var i = 0; i < add.length; i++) {
+      if (base.indexOf(add[i]) < 0) base.push(add[i]);
+    }
+    var rem = Array.isArray(n.alignsRemoved) ? n.alignsRemoved : [];
+    return base.filter(function (a) { return rem.indexOf(a) < 0; });
+  }
+
+  var AT = C.cards[idxOfId('assertivenesstraining')];
+  var PV = C.cards[idxOfId('privatization')];
+  var DC = C.cards[idxOfId('dictatorship')];
+  var RL = C.cards[idxOfId('reload')];       /* token_gift violent */
+  var FP = C.cards[idxOfId('flowerpower')];   /* token_gift peaceful */
+
+  /* ---- 1) El efecto: gana violent, pierde peaceful, y el +coste y el link ---- */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var gi1 = gIdx('peaceful', null, 'violent');
+  plant(0, 't1', gi1, 0);
+  var S1 = E._raw();
+  S1.players[0].illumTokens = 1;
+  var res0 = C.cards[gi1].resistance;
+  put(0, AT);
+  /* OJO: lastPlotResult viaja en el VALOR DEVUELTO por playPlot, no en getState()
+     (publicState() no lo publica). Es la trampa del mismo nombre. */
+  var r1 = E.playPlot(0, AT.idx, 't1', {}).lastPlotResult;
+  ok(!!r1 && r1.ok === true && !!r1.forced, 'L2 Assertiveness Training se aplico sobre el objetivo');
+  ok(r1.align === 'violent' && r1.gained === true, 'L2 el objetivo GANA violent de forma permanente');
+  ok(r1.wasOpposite === true, 'L2 el objetivo era peaceful, asi que lo PIERDE');
+  ok(alignsOfUid(0, 't1').indexOf('violent') >= 0, 'L2 el filtro de alineaciones ya devuelve violent');
+  ok(alignsOfUid(0, 't1').indexOf('peaceful') < 0, 'L2 el filtro de alineaciones ya NO devuelve peaceful');
+  ok(r1.doubled === true && r1.cost === res0 * 2,
+     'L2 el coste se DOBLO por la alineacion opuesta (' + res0 + ' -> ' + r1.cost + ')');
+  ok(S1.players[0].illumTokens === 0, 'L2 se gasto la ficha del Illuminati');
+  ok(S1.plotDiscard.indexOf(AT.idx) < 0,
+     'L2 "Keep this card": la Plot NO va a la pila de descarte');
+  ok(S1.players[0].linkedPlots.some(function (lp) {
+       return lp.cardId === AT.idx && lp.linkedTo === 't1';
+     }), 'L2 la Plot queda LINKED al objetivo, como pide el texto');
+  /* PRUEBA EN NEGRO del lado de la SUMA: un consumidor real del motor (token_gift)
+     ya ve la alineacion nueva. */
+  put(0, RL);
+  E.playPlot(0, RL.idx, null, {});
+  ok(nodeOf(0, 't1').tokens === 1,
+     'L2 Reload! (violent) ahora SI alcanza al grupo forzado -> tokens=' + nodeOf(0, 't1').tokens);
+  /* Y el lado de la RESTA se comprueba sobre el estado del nodo, porque
+     tokens=1 es idempotente y no podria distinguir los dos casos. */
+  put(0, FP);
+  E.playPlot(0, FP.idx, null, {});
+  ok(nodeOf(0, 't1').tokens === 1,
+     'L2 Flower Power (peaceful) no le anade una segunda ficha: tokens=' + nodeOf(0, 't1').tokens);
+
+  /* ---- 2) El coste es DINAMICO: sin fichas suficientes RECHAZA con el total ---- */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var gi2 = gIdx('peaceful', null, 'violent');
+  plant(0, 't1', gi2, 0);
+  var S2 = E._raw();
+  S2.players[0].illumTokens = 0;
+  plant(0, 'g1', gIdx('violent', null, 'peaceful'), 1);
+  put(0, AT);
+  throws(function () { E.playPlot(0, AT.idx, 't1', {}); },
+         /necesitas \d+ de Poder de grupos/i,
+         'L2 sin fichas suficientes el motor RECHAZA nombrando el coste que exige');
+  ok(nodeOf(0, 't1').tokens === 0 && alignsOfUid(0, 't1').indexOf('violent') < 0,
+     'L2 el rechazo NO toca el objetivo ni le alinea');
+  ok(S2.plotDiscard.indexOf(AT.idx) < 0,
+     'L2 una carta RECHAZada sigue en la mano (no se gasto ni se descarto)');
+
+  /* ---- 3) Pago con grupos propios: una ficha por grupo hasta alcanzar el coste --- */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var gi3 = gIdx('violent', null, 'peaceful');   /* ya violent: no se dobla ni gana */
+  plant(0, 't1', gi3, 0);
+  var S3 = E._raw();
+  S3.players[0].illumTokens = 0;
+  /* El reparto necesita grupos suficientes: se plantan hasta que la SUMA de
+     poderes alcanza la Resistencia del objetivo (asi lo calcula el motor). */
+  var res3 = C.cards[gi3].resistance;
+  var used3 = [gi3], acc3 = 0, k3 = 0;
+  while (acc3 < res3 && k3 < 14) {
+    var cand3 = gIdx('violent', null, 'peaceful', used3);
+    if (cand3 == null) break;
+    used3.push(cand3);
+    plant(0, 'g' + k3, cand3, 1);
+    acc3 += (typeof C.cards[cand3].power === 'number' ? C.cards[cand3].power : 0);
+    k3++;
+  }
+  ok(acc3 >= res3, 'L2 el fixture planta grupos suficientes (' + acc3 + ' >= ' + res3 + ')');
+  put(0, AT);
+  var r3 = E.playPlot(0, AT.idx, 't1', {}).lastPlotResult;
+  ok(r3.paidWith.via === 'groups', 'L2 se pago con la accion de un grupo propio, no con el Illuminati');
+  ok(nodeOf(0, 'g1').tokens === 0, 'L2 el grupo aportador pago su ficha de accion');
+  ok(r3.gained === false && r3.wasOpposite === false,
+     'L2 un objetivo que ya era violent no gana nada y no dobla el coste');
+  ok(r3.doubled === false && r3.cost === C.cards[gi3].resistance,
+     'L2 sin alineacion opuesta el coste es la Resistencia tal cual -> ' + r3.cost);
+  ok(r3.closeness === 0,
+     'L2 "si pertenece a un rival": sobre un grupo PROPIO la cercania es 0');
+
+  /* ---- 4) No se puede forzar la alineacion de un Illuminati ---- */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var rootUid = E._raw().players[0].structure.uid;
+  E._raw().players[0].illumTokens = 5;
+  put(0, AT);
+  throws(function () { E.playPlot(0, AT.idx, rootUid, {}); },
+         /no se puede forzar la alineacion de un Illuminati/i,
+         'L2 el Illuminati no admite alineacion forzada');
+
+  /* ---- 5) P1-028: Dictatorship marcaba el nodo? Privatization lo deshace ---- */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  readyToAttack(0);
+  var ni = gIdx(null, 'nation');
+  var oppBefore = (C.cards[ni].alignments || []).indexOf('government') >= 0;
+  plant(0, 'n1', ni, 1);
+  E._raw().players[0].illumTokens = 30;
+  put(0, DC);
+  E.playPlot(0, DC.idx, 'n1', {});
+  var n1 = nodeOf(0, 'n1');
+  ok(n1.dictatorship === true,
+     'L2 P1-028 la carta Dictatorship MARCA el nodo (antes no lo hacia)');
+  ok(!!n1.powerMods && n1.powerMods.some(function (m) {
+       return m.name === 'Dictatorship' && m.v === 2;
+     }), 'L2 P1-028 la carta Dictatorship aplica el +2 de Poder impreso');
+  put(0, PV);
+  var r5 = E.playPlot(0, PV.idx, 'n1', {}).lastPlotResult;
+  n1 = nodeOf(0, 'n1');
+  ok(r5.lostDictatorship === true,
+     'L2 Privatization declara que la Nacion deja de ser Dictatorship');
+  ok(n1.dictatorship === false, 'L2 la marca desaparece del nodo');
+  ok(!n1.powerMods || !n1.powerMods.some(function (m) { return m.name === 'Dictatorship'; }),
+     'L2 el +2 de Poder desaparece con la marca');
+  ok(r5.wasOpposite === oppBefore,
+     'L2 la alineacion opuesta solo se pierde si el objetivo la tenia (' + oppBefore + ')');
+  if (oppBefore) {
+    ok(alignsOfUid(0, 'n1').indexOf('government') < 0,
+       'L2 la Nacion pierde government de verdad, no solo en el registro');
+  }
+})();
+
 /* ---------- Utilidad global: resolver un ataque SIN ventanas de reaccion ----------
    P1-021 (ventana de RODADERO) hace que, tras tirar los dados, el motor pare y
    espere si alguien tiene una de las 6 cartas de rodadero en la mano. Los tests

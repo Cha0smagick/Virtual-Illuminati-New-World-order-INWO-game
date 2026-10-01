@@ -101,6 +101,13 @@ function curPower(node){
   var c=card(node.cardId);if(!c)return 0;
   var p=(typeof c.power==='number')?c.power:0;
   if(node.powerOverride!=null)p=node.powerOverride;
+  /* L2 / P1-028 — `powerMods`: modificadores ADITIVOS y apilables, distintos de
+     `powerOverride` (que es un valor absoluto y por eso no admite "+2"). Se aplican
+     DESPUES del override para que un "+2 de Dictatorship" sobreviva a un Anguish que
+     fija el Poder a 1. Lo necesita la familia L2 (Dictatorship) y lo reserva
+     plan.md L3 para el poder en masa ("+2 a todos los Corporates"). */
+  var pm=(node&&Array.isArray(node.powerMods))?node.powerMods:null;
+  if(pm)for(var m=0;m<pm.length;m++){ if(typeof pm[m].v==='number') p+=pm[m].v; }
   if(node.paralyzed)p=c.power||0; /* paralyze freezes abilities/tokens, power unchanged */
   return Math.max(0,p);
 }
@@ -182,6 +189,57 @@ function destroyDefenseBonus(node,isAssassination){
 }
 function illuCard(pid){return card(S.players[pid].illumId);}
 function alignsOf(cardObj){return (cardObj&&cardObj.alignments)?cardObj.alignments:[];}
+/* L2: los identificadores de alineacion son minusculas ("violent") porque asi los
+   indexa la tabla OPPOSITES y asi los imprime el dato. Los mensajes al jugador
+   los capitalizan. */
+function cap(s){var t=String(s||'');return t.charAt(0).toUpperCase()+t.slice(1);}
+
+/* L2 / P1-028 — BONIFICACION DE DEFENSA POR "CLOSENESS TO THE ILLUMINATI".
+ * Las reglas oficiales la nombran por su nombre en dos sitios distintos:
+ *   - :563-576, Attack to Destroy, punto 1: "Its closeness to the Illuminati still
+ *     counts for defense, unless you're destroying one of your own Groups."
+ *   - :572: "The target does not get a defense bonus for closeness to the Illuminati
+ *     in this case." (el ataque a un grupo propio)
+ * El bloque vivia ENTERRADO dentro de computeStrength, lo que impedia reutilizarlo
+ * para el texto de las nueve cartas de L2 ("Add bonuses for its closeness to the
+ * Illuminati if it belongs to a rival!"). Se extrae a una funcion: la regla debe
+ * existir una sola vez, y ahora mismo existia en un solo sitio por accidente.
+ *
+ * Son +4 por cada alineacion que el objetivo comparte con su Illuminati, con dos
+ * excepciones oficiales ya respetadas desde antes:
+ *   - si el Illuminati es el Discordian y TODAS las compartidas son fanatic, no
+ *     hay bonificacion (un Discordian no protege a los suyos por fanaticismo);
+ *   - si el atacante es fanatic y la compartida es fanatic, tampoco: las reglas
+ *     ("any two Fanatic Groups are opposite to each other") hacen que se anulen.
+ *     Sin atacante (L2) no hay segundo caso que comprobar.
+ * `notes` es opcional: cuando se pasa, la razon de cada +4 queda registrada en el
+ * informe de fuerza, igual que antes de la extraccion. */
+function closenessDefenseBonus(ownerPid,node,cardObj,attAligns,notes){
+  if(ownerPid==null)return 0;
+  var mc=illuCard(ownerPid);
+  if(!mc)return 0;
+  var mal=alignsOf(mc);
+  if(!mal.length)return 0;
+  var tgt=nodeAligns(node,cardObj||(node?card(node.cardId):null));
+  var shared=[];
+  for(var i=0;i<tgt.length;i++)if(mal.indexOf(tgt[i])>=0)shared.push(tgt[i]);
+  if(!shared.length)return 0;
+  if(mc.effect&&mc.effect.code==='discordian'){
+    var allFanatic=true;
+    for(var f=0;f<shared.length;f++)if(shared[f]!=='fanatic')allFanatic=false;
+    if(allFanatic)return 0;
+  }
+  var b=0;
+  for(var s=0;s<shared.length;s++){
+    if(attAligns&&shared[s]==='fanatic'&&attAligns.indexOf('fanatic')>=0){
+      if(notes)notes.push('Fanático vs Fanático: sin bonus maestro');
+      continue;
+    }
+    b+=4;
+    if(notes)notes.push('Cerca de su Illuminati ('+shared[s]+'): +4 de defensa');
+  }
+  return b;
+}
 
 /* P1-017 — Alineaciones y atributos de un NODO, no de su carta.
    Este es el mismo tipo de defecto que corrigieron nodeResistance() (P1-014) y
@@ -197,13 +255,32 @@ function alignsOf(cardObj){return (cardObj&&cardObj.alignments)?cardObj.alignmen
    "becomes a Media group, if it was not already one". Guardar un array de
    añadidas en vez de una copia completa permite ademas que Backlash (idx 200,
    "Any one change in the target's alignment ... is undone") deshaga el cambio
-   sin tener que conocer la carta que lo produjo. */
+   sin tener que conocer la carta que lo produjo.
+    L2 / P1-028 — `alignsRemoved`: la primera mitad del texto de las nueve cartas
+    "The target becomes permanently X. If it was <opposite>, that alignment is lost"
+    necesita RESTAR una alineacion, y hasta ahora no habia ninguna mecanica de
+    sustraccion en el motor. OJO DECLARADO: esta sola linea cambia el comportamiento
+    de TODOS los consumidores de nodeAligns — la bonificacion +/-4 de los ataques,
+    `shares`, `isOpposite` y el caso token_gift de §39. Es lo correcto (una
+    alineacion que el texto dice que se ha perdido no debe seguir contando para
+    nada) pero conviene tenerlo presente antes de tocar nodeAligns otra vez.
+    La suma gana a la resta: si una alineacion esta a la vez en ambos arrays (por
+    ejemplo una re-alineacion posterior) cuenta como presente. */
 function nodeAligns(node,cardObj){
   var base=alignsOf(cardObj||(node?card(node.cardId):null)).slice();
   var add=(node&&Array.isArray(node.alignsAdded))?node.alignsAdded:null;
   if(add)for(var i=0;i<add.length;i++){
     var a=String(add[i]).toLowerCase();
     if(base.indexOf(a)<0)base.push(a);
+  }
+  var rem=(node&&Array.isArray(node.alignsRemoved))?node.alignsRemoved:null;
+  if(rem&&rem.length){
+    var kept=[];
+    for(var k=0;k<base.length;k++){
+      if(rem.indexOf(base[k])>=0&&(add||[]).indexOf(base[k])<0)continue;
+      kept.push(base[k]);
+    }
+    base=kept;
   }
   return base;
 }
@@ -1167,19 +1244,12 @@ function computeStrength(resolveMode){
     det.defenseBase=R;
     if(tNode&&tNode.resistanceOverride!=null)
       det.notes.push('Resistencia fijada en '+R+' por un link permanente');
-    /* master-shared alignments +4 each (skip fanatic-vs-fanatic master) */
+    /* master-shared alignments +4 each (skip fanatic-vs-fanatic master).
+       L2 / P1-028: la regla vive ahora en closenessDefenseBonus(), que ademas la
+       reutilizan las nueve cartas de "force_align". Solo se aplica a ataques
+      contra un objetivo de OTRO jugador (A.targetPid!=null ya lo garantiza). */
     if(A.targetPid!=null){
-      var mc=illuCard(A.targetPid);
-      if(mc){
-        var mal=alignsOf(mc),shared=[];
-        tgtAligns.forEach(function(a){if(mal.indexOf(a)>=0)shared.push(a);});
-        if(!(mc.effect&&mc.effect.code==='discordian'&&shared.length&&shared.every(function(a){return a==='fanatic';}))){
-          shared.forEach(function(a){
-            if(!(a==='fanatic'&&attAligns.indexOf('fanatic')>=0))det.defenseBonus+=4;
-            else det.notes.push('Fanático vs Fanático: sin bonus maestro');
-          });
-        }
-      }
+      det.defenseBonus+=closenessDefenseBonus(A.targetPid,tNode,tCard,attAligns,det.notes);
     }
     det.posBonus=(!A.neutralTarget&&!A.handTarget&&A.targetPid!=null&&A.targetUid)?positionBonus(A.targetPid,A.targetUid):0;
     if(A.selfDefended&&tNode)det.selfDef=2*curPower(tNode);
@@ -2166,7 +2236,24 @@ var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='b
   ||eff0.kind==='privileged_attack'
   /* P1-027: las de la ventana de SUCESO ("Play immediately when/after") y la
      segunda bala ("immediately after you fail a roll to destroy"). */
-  ||EVENT_KINDS.indexOf(eff0.kind)>=0||eff0.kind==='second_bullet');
+  ||EVENT_KINDS.indexOf(eff0.kind)>=0||eff0.kind==='second_bullet'
+  /* L1: las 11 de TOKEN-GIFT dicen "This card may be played at any time", sin
+     excepcion. A diferencia de Messiah/Angst (P1-015, que dicen "EXCEPT during an
+     attack") estas no traen veto: se pueden jugar en cualquier momento, tambien
+     con un ataque abierto. Y no cobran nada: su texto no imprime coste.
+     OJO: se compara contra el KIND, no contra una lista de ids de carta. Un
+     array de ids aqui daria -1 en indexOf y las 11 cartas caerian en
+     `requireOwnMain` sin decir nada (defecto de clase "el dato existe pero vive
+en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
+      histograma de kinds del gate de FASE 4 ya cuenta y publica. */
+  ||eff0.kind==='token_gift'
+  /* L2: las 9 de FORCE-ALIGN dicen "Play this card at any time" en su primera
+     frase, sin excepcion, asi que van por la misma puerta que L1. Ojo: su texto
+     TAMBIEN dice "This is an action for that Nation or its master" en Dictatorship,
+     pero ahi la ficha la gasta el grupo o el Illuminati, no el jugador que la juega,
+     y por eso esa carta NO esta en la lista instant (P1-017, §32). Aqui el gasto de
+     fichas es de quien juega la carta, asi que la lista es la correcta. */
+  ||eff0.kind==='force_align');
   if(instant){
     if(S.phase==='setup')throw new Error('No se pueden jugar Plot cards durante la preparación');
     if(S.phase==='gameover')throw new Error('La partida ha terminado');
@@ -2419,6 +2506,123 @@ var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='b
        y no se duplica la ideologia. `alignsAdded` es ADICION (union), no reemplazo,
        lo que ademas permite que Backlash (200) deshaga el cambio sin saber que
        carta lo produjo. */
+case 'force_align':{
+      /* L2 / P1-028 — LAS NUEVE CARTAS DE "FORZAR UNA ALINEACION".
+         Assertiveness Training (198), Fundie Money (264), Jake Day (290), Kinder and
+         Gentler (295), Liberal Agenda (301), Nationalization (323), Power Corrupts
+         (340), Privatization (345) y Straighten Up (376).
+
+         El texto impreso es identico en las nueve salvo los dos alineamientos:
+           "It requires action(s) by either the Illuminati, or <X> group(s) with a
+            total Power equal to the Resistance of the target group, doubled if the
+            group is currently <opposite>. Add bonuses for its closeness to the
+            Illuminati if it belongs to a rival! The target becomes permanently <X>.
+            If it was <opposite>, that alignment is lost. Keep this card, with a link
+            to the target."
+         Ver las 5 DECLARACIONES en el comentario de FORCE_FX (gen_cards.js). */
+      var ndF=findNode(targetUid);
+      if(!ndF)throw new Error(c.name+': elige un grupo objetivo');
+      var tcF=card(ndF.cardId);
+      if(!tcF)throw new Error(c.name+': el objetivo no es una carta');
+      var ownerF=findOwnerPid(targetUid);
+      if(ownerF==null)throw new Error(c.name+': ese grupo ya no esta en juego');
+      /* El Illuminati es la raiz de la estructura y no es un grupo con ideologia
+         propia que forzar: su poder se trata aparte (llamadas de Illustrate). */
+      if(tcF.type==='illuminati')throw new Error(c.name+': no se puede forzar la alineacion de un Illuminati');
+      /* El texto no dice "una Nacion" ni ningun otro filtro de tipo: el objetivo es
+         "the target group", cualquiera. Por eso esta carta no lleva targetAttr. */
+      var fA=eff.forceAlign;
+      var oA=eff.oppAlign||null;
+      var beforeF=nodeAligns(ndF,tcF);
+
+      /* --- COSTE DINAMICO (declaracion 1) -------------------------------
+         resistance del objetivo, DOBLE si tiene la alineacion opuesta. No hay
+         numero fijo que leer de la carta porque el texto lo define en funcion del
+         objetivo; por eso esta carta no usa minPower. */
+      var costF=nodeResistance(ndF,tcF);
+      var doubledF=false;
+      if(oA&&beforeF.indexOf(oA)>=0){costF=costF*2;doubledF=true;}
+      /* --- "Add bonuses for its closeness to the Illuminati if it belongs to a
+             rival!" (declaracion 2) ---------------------------------------
+         Las reglas oficiales distinguir "closeness to the Illuminati" (bonificacion
+         de DEFENSA) de "common alignments with its master" (aumentan la
+         Resistencia). Se suma el bloque de defensa, y SOLO si el objetivo es de un
+         rival: sobre un grupo propio no hay "cercania a un rival". */
+      var closeF=0;
+      if(ownerF!==pid)closeF=closenessDefenseBonus(ownerF,ndF,tcF,null,null);
+      costF=costF+closeF;
+
+      /* --- PAGO: "either the Illuminati, or <X> group(s) with a total Power" ---
+         El Illuminati es la via rapida (UNA ficha, sea cual sea el coste: asi lo
+         dicen las nueve cartas, "by EITHER the Illuminati, or ..."). La via de los
+         grupos es la que tiene el matiz de plan.md: se gasta UNA ficha por grupo
+         hasta que la SUMA de poderes alcanza el coste, no todas las fichas de
+         todos los grupos. Un grupo ya no puede repetir porque su ficha por turno
+         es una sola y declararla la gasta. */
+      var paidF=null;
+      if(pl.illumTokens>=1){pl.illumTokens--;paidF={via:'illuminati',groups:[]};}
+      else{
+        var needF=costF;
+        var pickedF=[];
+        walk(pl.structure,function(n){
+          if(needF<=0)return;
+          if(n===pl.structure)return;
+          if(n.devastated||n.paralyzed||n.zapped||n.actionStripped)return;
+          if(!n.tokens||n.tokens<1)return;
+          var nc=card(n.cardId);
+          if(!nc)return;
+          if(nodeAligns(n,nc).indexOf(fA)<0)return;
+          spendGroupToken(pid,n.uid);
+          pickedF.push({uid:n.uid,name:nc.name,power:curPower(n)});
+          needF-=curPower(n);
+        });
+        if(needF>0){
+          if(!pickedF.length)
+            throw new Error(c.name+': necesitas '+costF+' de Poder de grupos '+cap(fA)+' o una accion de tu Illuminati, y no tienes ninguna de las dos');
+          throw new Error(c.name+': necesitas '+costF+' de Poder de grupos '+cap(fA)+'; tus grupos sin ficha solo aportan '+((costF-needF))+' (accion del Illuminati: sin fichas)');
+        }
+        paidF={via:'groups',groups:pickedF};
+      }
+
+      /* --- EFECTO (declaracion 3) -----------------------------------------
+         "The target becomes permanently <X>" -> alignsAdded (ya existe desde
+         P1-017 y es la semantica de union).
+         "If it was <opposite>, that alignment is lost" -> alignsRemoved, el filtro
+         nuevo de nodeAligns. Si el objetivo no tenia la opuesta, no se registra
+         nada: registrar una resta que no aplica dejaria rastro para Backlash (200)
+         sin motivo. */
+      if(!Array.isArray(ndF.alignsAdded))ndF.alignsAdded=[];
+      var gainedF=beforeF.indexOf(fA)<0;
+      if(gainedF)ndF.alignsAdded.push(fA);
+      var lostF=false;
+      if(oA&&beforeF.indexOf(oA)>=0){
+        if(!Array.isArray(ndF.alignsRemoved))ndF.alignsRemoved=[];
+        ndF.alignsRemoved.push(oA);
+        lostF=true;
+      }
+      /* --- Privatization (345): "and if it was a Dictatorship, it is no longer".
+             Requiere la marca que P1-028 le puso a la carta Dictatorship. */
+      var lostDictF=false;
+      if(eff.noDictatorship&&ndF.dictatorship){
+        ndF.dictatorship=false;
+        ndF.powerMods=(ndF.powerMods||[]).filter(function(m){return m.name!=='Dictatorship';});
+        lostDictF=true;
+      }
+      /* --- "Keep this card, with a link to the target" (declaracion 4).
+             No hace falta tocar la pila de descarte: el chequeo linkedHere que
+             introdujo P1-025 al final de E.playPlot ya deja fuera de ella una Plot
+             linkeada, que es exactamente lo que pide el texto. */
+      pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:targetUid});
+
+      log(c.name+': '+tcF.name+' ('+S.players[ownerF].name+') se convierte permanentemente en '+cap(fA)
+        +(lostF?(' y pierde '+cap(oA)):'')+(lostDictF?' y deja de ser Dictatorship (y pierde el +2 de Poder)':'')
+        +' · coste '+costF+(doubledF?' (doblado: era '+cap(oA)+')':'')+(closeF?(' +'+closeF+' de cercania'):'')
+        +' · pagado con '+(paidF.via==='illuminati'?'una accion del Illuminati'
+            :(paidF.groups.map(function(g){return g.name;}).join(' + '))));
+      lastResult={ok:true,forced:tcF.name,owner:S.players[ownerF].name,
+        align:fA,opp:oA,wasOpposite:lostF,lostDictatorship:lostDictF,gained:gainedF,
+        cost:costF,doubled:doubledF,closeness:closeF,paidWith:paidF};
+      break;}
     case 'dictatorship':{
       var ndD=findNode(targetUid);
       if(!ndD)throw new Error(c.name+': elige una Nacion de tu estructura');
@@ -2446,8 +2650,23 @@ var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='b
         if(!Array.isArray(ndD.alignsAdded))ndD.alignsAdded=[];
         ndD.alignsAdded.push(addD);
       }
+      /* P1-028 — "The target is now a Dictatorship. It gets +2 Power."
+         Esta carta estaba implementada a MEDIAS: guardaba el link y el +0 del
+         "becomes Violent", pero NO ponia ninguna marca de Dictatorship ni aplicaba
+         el +2 de Poder impreso. Dos consecuencias reales: (a) la clausula de
+         Privatization (345) "and if it was a Dictatorship, it is no longer" no
+         tenia nada contra lo que comprobar, y (b) el +2 se perdia en silencio
+         mientras la carta figuraba como implementada. Ahora: marca `dictatorship`
+         para que la compruebe 345, y `powerMods` para el +2 (aditivo y apilable,
+         a diferencia de powerOverride que es un valor absoluto). */
+      if(!ndD.dictatorship){
+        ndD.dictatorship=true;
+        if(!Array.isArray(ndD.powerMods))ndD.powerMods=[];
+        ndD.powerMods.push({name:'Dictatorship',v:2});
+      }
       pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:targetUid});
       log('DICTATORSHIP: '+mcD.name+(alreadyD?' ya era Violent. ':' se vuelve Violent. ')
+        +'Ahora es una Dictatorship: +2 de Poder. '
         +'Carta linkeada (accion de '+(usedMaster?illuCard(pid).name:mcD.name)+')');
       break;}
     case 'zap':{
@@ -2609,6 +2828,56 @@ var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='b
         lastResult={ok:null,mod:true,plot:c.name,target:pR.target,roll:newR,from:oldR,
                     reason:'rodadero modificado a '+newR};
       }
+      break;}
+/* ===== L1 — TOKEN-GIFT (11 cartas) =====
+     * "Place an Action token on each of your <X> groups."
+     *
+     * Es la primera familia del plan.md con UN efecto y VARIOS filtros, asi que
+     * el filtro va en los datos (`eff.giftAlign` / `eff.giftAttr`) y el motor es
+     * uno solo. Dos planos, dos campos, porque el mazo los usa de verdad: diez de
+     * las once filtran por IDEOLOGIA y Bank Merger (201) filtra por el atributo
+     * `bank`, que no es ninguna de las diez ideologias (§23). Habria sido un
+     * error de P1-018 otra vez mirar `c.alignments` para todo.
+     *
+     * ALCANCE: toda la estructura de Poder, recursivamente, titeres incluidos —
+     * el texto dice "your groups" y nada mas. Se recorre con `walk`, igual que
+     * `firstUsableAid` y que el `case 'zap'`.
+     *
+     * `tokens = 1` y NO `tokens++`: la carta PONE la ficha de accion, no multiplica
+     * fichas. Asi el "which does not already have one" de las diez cartas normales
+     * se cumple solo, y el "even those which already have an Action token" de Bank
+     * Merger queda como el recordatorio redundante que el texto impreso es.
+     *
+     * "does not benefit groups which are suffering from the effect of any card or
+     * special ability that prevents them from getting Action tokens" se implementa
+     * con el mismo conjunto de banderas que `firstUsableAid` usa para "puede
+     * actuar" (devastated/paralyzed/zapped/actionStripped). Es el unico predicado
+     * de "no puede recibir fichas" que existe, y no se inventa un segundo.
+     *
+     * SIN COSTE: su texto no imprime ninguno. No es un descuido. */
+    case 'token_gift':{
+      var gAlign=(typeof eff.giftAlign==='string')?eff.giftAlign.toLowerCase():null;
+      var gAttr=(typeof eff.giftAttr==='string')?eff.giftAttr.toLowerCase():null;
+      if(!gAlign&&!gAttr)
+        throw new Error(c.name+': la carta no declara ningun filtro (ni giftAlign ni giftAttr)');
+      var gifted=[];
+      walk(pl.structure,function(n){
+        if(n===pl.structure)return; /* la raiz es el Illuminati, no es "un grupo tuyo" */
+        var gc=card(n.cardId);
+        if(!gc)return;
+        if(gAlign&&nodeAligns(n,gc).indexOf(gAlign)<0)return;
+        if(gAttr&&!hasAttr(gc,gAttr,n))return;
+        if(n.devastated||n.paralyzed||n.zapped||n.actionStripped)return;
+        n.tokens=1;
+        gifted.push(gc.name);
+      });
+      if(!gifted.length){
+        log(c.name+': no tiene ningun grupo tuyo que coincida, se gasta sin efecto');
+      }else{
+        log(c.name+': 1 ficha de accion para '+gifted.length+' grupo(s) tuyo(s) — '+gifted.join(', '));
+      }
+      lastResult={ok:true,gift:true,card:c.name,align:gAlign,attr:gAttr,
+                  granted:gifted.length,groups:gifted.slice()};
       break;}
     /* ===== P1-026 — PRIVILEGED ATTACK (346) =====
        * "Play this card when you make any attack. That attack is now privileged:

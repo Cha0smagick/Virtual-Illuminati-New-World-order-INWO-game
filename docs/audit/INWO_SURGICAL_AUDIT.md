@@ -2559,3 +2559,410 @@ takeover y se descarta" (412). Este ultimo tiene ademas el texto oficial que lo 
 Siguen abiertos, sin cambio: **Fase 3** (UX, onboarding, comprobacion del DOM en navegador real),
 la IA que todavia no juega cartas de rodadero ni de suceso (§37.2, §38.4) y **P1-DATA-03 Global
 Power**, bloqueado por entorno porque la red no resuelve ni `cs.cmu.edu` ni `sjgames.com`.
+
+---
+
+## 39. L1 - TOKEN-GIFT: las 11 cartas que reparten fichas de accion a todos tus grupos de un tipo
+
+Ejecuta el lote **L1** de `plan.md`. Primer lote del plan atomico escrito tras el commit `6530733`, y
+primero que usa la regla "un lote = una familia de mecanica, nunca partir una familia".
+
+### 39.1 Hallazgo
+
+Once Plots comparten una unica mecanica: "coloca una ficha de accion en cada uno de TUS grupos de
+tipo X". Hasta ahora ninguna estaba implementada, y las once seguian con
+`effect.kind === 'unverified'`, es decir, con el texto impreso transcrito pero sin nada que lo
+ejecutara.
+
+| idx | id | carta | filtro impreso |
+|---|---|---|---|
+| 201 | `bankmerger` | Bank Merger | atributo `bank` |
+| 240 | `dollarsfordecency` | Dollars for Decency | alineamiento `straight` |
+| 256 | `flowerpower` | Flower Power | alineamiento `peaceful` |
+| 262 | `freakingthemundanes` | Freaking the Mundanes | alineamiento `weird` |
+| 263 | `fullmoon` | Full Moon | alineamiento `fanatic` |
+| 265 | `gangwar` | Gang War | alineamiento `criminal` |
+| 327 | `newfederalbudget` | New Federal Budget | alineamiento `government` |
+| 337 | `pledgedrive` | Pledge Drive | alineamiento `liberal` |
+| 352 | `redscare` | Red Scare | alineamiento `conservative` |
+| 353 | `reload` | Reload! | alineamiento `violent` |
+| 383 | `taxbreaks` | Tax Breaks | alineamiento `corporate` |
+
+**Por hacen falta DOS campos calificadores y no uno.** El vocabulario canonico del mazo esta
+partido en dos ejes y no son intercambiables (§23 para atributos, §18/§32 para alineamientos):
+
+- 13 atributos: `bank, church, coastal, communist, computer, green, huge, magic, media, nation,
+  science, secret, space`
+- 10 alineamientos: `conservative, corporate, criminal, fanatic, government, liberal, peaceful,
+  straight, violent, weird`
+
+Diez de las once cartas filtran por **alineamiento**; solo Bank Merger filtra por **atributo**
+(`bank`). Un unico campo `targetAlign` habria dejado a Bank Merger sin filtro, y un unico campo
+`targetAttr` habria hecho matching de cadenas sobre `"straight,peaceful,weird"` con el mismo
+fallo que llevo a `requireAttrAny` en §37. Precedente directo: P1-018 ya habia abierto la
+disyuncion `requireAttrAny` cuando un texto de carta exigia "Science, Space or Computer".
+
+Los once valores exigidos existen en el mazo, asi que la puerta de calificadores de FASE 4 los
+acepta sin excepciones.
+
+### 39.2 Correcciones aplicadas
+
+**`gen_cards.js`** (980 -> 1090 lineas). Nueva constante `BOIL` con la frase de cierre que las once
+cartas comparten ("This card may be played at any time. This card does not benefit groups which are
+suffering from the effect of any card or special ability that prevents them from getting Action
+tokens."), nueva familia `TOKEN_FX` con las once entradas y `TOKEN_FXN` con la normalizacion
+`norm(k)` que exige el generador, insertada justo detras de `DICTATORSHIP_FXN`, y `|| TOKEN_FXN[key]`
+anadido a la cadena de resolucion. Registrar la familia fija `rec.effect`, `rec.subtype`,
+`rec.verifiedMechanic = true` y `rec.text`, lo que fuerza `mechanicsStatus:
+'implemented-pending-engine'`.
+
+**`game/js/engine.js`** (3123 -> 3184 lineas). La lista `instant` de `E.playPlot` termina ahora en
+`|| eff0.kind === 'token_gift'`, porque las once cartas dicen literalmente "may be played at any
+time". Nuevo `case 'token_gift'` antes del bloque P1-026: lee `eff.giftAlign` / `eff.giftAttr`,
+rechaza con mensaje oficial si no declara ninguno, y despues `walk(pl.structure, ...)` saltando la
+raiz, filtrando con `nodeAligns(n,gc).indexOf(gAlign)` o `hasAttr(gc,gAttr,n)`, saltando nodos
+`devastated / paralyzed / zapped / actionStripped`, y poniendo `n.tokens = 1`. Dos ramas de log
+(0 coincidencias / N coincidencias) y `lastResult` con la lista de grupos tocados.
+
+**`game/js/ui.js`** (-> 1263 lineas). `var NO_TARGET_KINDS = ['token_gift']` mas
+`plotNeedsTarget(c)`. El despachador `value:'plot'` ahora juega de inmediato cuando la carta no
+necesita objetivo, porque una carta que reparte fichas a todos los grupos de la estructura no tiene
+a quien apuntar, y el boton dice "Jugar ya (afecta a todos)".
+
+**`test_fase4_cards.js`.** Dos ramas nuevas en la seccion 4 (`giftAlign` y `giftAttr`) mas su
+aportacion a `usedAttrs`. Sin ellas la puerta no habria validado nada y el informe `checkedFields`
+no habria listado los campos nuevos: una puerta que no conoce el campo no falla, y por tanto no
+protege.
+
+**`test_fase2_rules.js`.** Bloque IIFE con 19 aserciones y 5 escenarios, con helpers propios
+(`put`, `gIdx`, `plantUnder`, `tokensOf`) porque `give`/`giveHere` viven dentro de otros IIFE.
+
+### 39.3 Interpretaciones declaradas
+
+No existe jurisprudencia oficial para ninguna de las once. Se declara:
+
+1. **Recorrido recursivo de toda la Power Structure, incluidos los titiriteros.** El texto dice
+   "each of your groups"; en el juego oficial un grupo tuyo sigue siendo tuyo este bajo el tuyo.
+2. **`tokens = 1`, nunca `tokens++`.** La ficha de accion de un grupo es un unico hueco, asi que Bank
+   Merger's "even those which already have an Action token" es un recordatorio redundante, no un
+   segundo efecto.
+3. **La frase "and any other Fanatic group in play that you want to benefit!" de Full Moon NO se
+   implementa.** Daria una ficha gratuita a grupos enemigos; el texto la ofrece como opcion al
+   jugador y no como parte del efecto automatico, y no hay un lugar en el estado donde guardarla.
+4. **La clausula "does not benefit groups which are suffering from ..." reutiliza exactamente el
+   mismo juego de banderas que `firstUsableAid`** (sin ficha, paralizado, zapeado, devastado,
+   accion arrebatada). No es una lista nueva: es la misma, para que un grupo-under-effecto no pueda
+   recibir la ficha por una via distinta a la que ya le impedia actuar.
+5. **Ninguna carta tiene coste impreso.** Se juega sola; no hay llamada a `pl.illumTokens` ni a
+   `firstUsableAid`.
+
+### 39.4 Dos bugs reales encontrados al ejecutar el lote
+
+**4.1 Un array muerto que hacia ineffective la lista `instant`.** Escribi primero
+`var TOKEN_KINDS = ['bankmerger', ...]` con los once IDENTIFICADORES de carta, y despues use
+`TOKEN_KINDS.indexOf(eff0.kind)` en la lista `instant`. Como `eff0.kind` vale `'token_gift'`, el
+`indexOf` devolvia -1, ninguna de las once cartas entraba por la via instantanea y todas caian en
+`requireOwnMain`, lanzando "No es tu turno" siempre que el jugador 0 no fuese el actual. Solo
+aparecio porque el script de humo ejecuto tres escenarios con orden de turno distinto. Se borro el
+array y ahora se compara contra el **kind**; un comentario en la lista avisa de esto y recuerda que
+el recuento "11 cartas, 1 kind" ya lo publica el histograma de kinds de FASE 4. **Quinta vez que
+aparece esta clase de defecto: el dato existe pero vive en otro sitio y nadie lo lee.**
+
+**4.2 El fixture estaba mal, no el motor.** `gIdx('criminal')` devolvia el primer grupo Criminal,
+que ademas es Violent, asi que la asercion negativa "Reload! no toca un Criminal" era una
+tautologia. Se anadio un parametro `exclude` al helper y se uso
+`gIdx('criminal', false, 'violent')`. **Una asercion negativa necesita un fixture que este de
+verdad fuera del filtro; si no, prueba que el filtro existe, no que funciona.**
+
+Ademas se corrigieron dos tokens basura (`2 grupos<caracteres CJK>` y `L1documentacion:`) y una
+asercion que exigia 0 fichas donde las dos eran Violent (las dos deben estar a 1).
+
+### 39.5 Verificacion
+
+- `node gen_cards.js` -> `written 421 {"group":167,"illuminati":18,"plot":201,"resource":35} verified-groups 33`
+- `node test_fase2_rules.js` -> FASE 2 RULES PASSED, con las 19 aserciones de L1 en `ok`
+- `node test_fase4_cards.js` -> **90 cartas clasificadas** (antes 79), **158 Plots/Resources sin
+  mecanica** (antes 169, exactamente -11), techo 182, 3 ramas muertas declaradas, 9 cartas
+  bloqueadas congeladas, 4 huecos de texto declarados
+- `mechanicsStatus` -> `{"source-text-unmapped":35,"unverified":296,"implemented":1,"implemented-special":18,"implemented-pending-engine":71}`
+- `npm test` -> ALL TESTS PASSED (10), exit 0
+
+### 39.6 Lecciones
+
+1. **El vocabulario del mazo esta partido en dos ejes y las cartas los usan indistintamente.**
+   Buscar "que campoQualifier uso" antes de escribir el `case` evita el fallo de matching de
+   cadenas que ya costo un ciclo entero en §37 con `requireAttrAny`.
+2. **Una puerta de gate que no conoce un campo nuevo no falla: no protege.** Las ramas de
+   `giftAlign`/`giftAttr` en `test_fase4_cards.js` no son documentacion, son la unica razon por la
+   que estas once cartas no pueden reintroducir un valor inexistente en el mazo.
+3. **Comparar siempre contra el `kind`, no contra una lista de ids.** El histograma de kinds de
+   FASE 4 ya cuenta "11 cartas, 1 kind"; un array paralelo de ids es el duplicado que se pudre.
+4. **Una asercion negativa con un fixture que no cumple el filtro no prueba nada.**
+5. **Un lote que se ejecuta de verdad encuentra bugs que la revision no.** Los dos de §39.4
+   aparecieron al escribir los tests y el script de humo, no al leer el codigo.
+
+### 39.7 Backlog
+
+L1 cerrado. Sigue **L2 (ILLUM-OR-X, 9 cartas)**: `payIllumOrAligns` como helper de coste compartido,
+que es la primera vez que un mismo coste se implementa una sola vez para nueve cartas. Le siguen
+L3 BULK-POWER (14, campo nuevo `powerMods` plegado en `curPower` mas `expiresAtTurn`), L4 TOKEN-STRIP
+(3), L5 CONDITIONAL ATTACK BOOST (11), L6 NEGATE EVENT (10, reutiliza las tres ventanas
+existentes), L7 PEEK HIDDEN PLOTS (5), L8 DECK MANIPULATION (8, necesita `S.outsidePlots`), L9 ALIGN
+EDIT (4), L10 LINKED PERMANENT EFFECTS (14), L11 PLAY DUPLICATE (4), L12 RESOURCE MANIPULATION (5),
+L13 DISASTER DEFENCE (5), L14 TURN MANIPULATION (5), L15 GOAL COMBOS (5) y L16 MULTI-ACTION (4).
+
+Sin cambio: **Fase 3** (UX, onboarding, DOM en navegador real, IA que juegue cartas de reaccion),
+**P1-DATA-03 Global Power** (bloqueado por red) y las siete cartas congeladas de L17.
+---
+
+## 40. L2 - FORCE-ALIGN: las 9 cartas que fuerzan la alineacion de un grupo (y P1-028, la Dictatorship a medias)
+
+### 40.1 Hallazgo y RECLASIFICACION de la familia
+
+`plan.md` defini L2 como "ILLUM-OR-X", una familia de **COSTE**:
+*"requires action(s) by either the Illuminati, or X group(s) with a total Power of N"*.
+
+Leidos los **textos impresos completos** de las 9 cartas, esa definicion es incorrecta.
+Lo que las 9 cartas comparten es un **efecto** identico: convertir el grupo objetivo **permanentemente** en una alineacion concreta,
+y si tenia la alineacion **opuesta**, esa alineacion se pierde.
+El coste (el "N" de "total Power of N") es solo un numero **dinamico**, no un rasgo de la familia.
+
+Por tanto **L2 se reclasifica** como una familia de **FORZAR ALINEACION**, `force_align`, cuyo coste resulta ser dinamico.
+
+Texto literal (la ausencia de la clausula "doubled" en Power Corrupts es **correcta**, ver 40.3 interpretacion 2):
+*"Play this card at any time. It requires action(s) by either the Illuminati, or <X> group(s) with a total Power equal to the Resistance of the target group, **doubled if the group is currently <OPP>**. Add bonuses for its closeness to the Illuminati if it belongs to a rival! The target becomes permanently <X>. If it was <OPP>, that alignment is lost. Keep this card, with a link to the target. Requires Action"*
+
+| idx | id | nombre | X (pagador y resultado) | OPP (dobla el coste y se pierde) |
+|---|---|---|---|---|
+|198|assertivenesstraining|Assertiveness Training|violent|peaceful|
+|264|fundiemoney|Fundie Money|conservative|liberal|
+|290|jakeday|Jake Day|weird|straight|
+|295|kinderandgentler|Kinder and Gentler|peaceful|violent|
+|301|liberalagenda|Liberal Agenda|liberal|conservative|
+|323|nationalization|Nationalization|government|corporate|
+|340|powercorrupts|Power Corrupts|criminal|**(sin clausula "doubled")**|
+|345|privatization|Privatization|corporate|government, mas "and if it was a Dictatorship, it is no longer"|
+|376|straightenup|Straighten Up|straight|weird|
+
+### 40.2 Correcciones aplicadas
+
+**Datos -- `gen_cards.js` (1065 -> 1197 lineas).**
+Nuevo `const FORCE_FX = {…}` con 9 entradas + `const FORCE_FXN = {}; for (const k in FORCE_FX) { FORCE_FXN[norm(k)] = FORCE_FX[k]; }`,
+insertado justo despues de la linea `TOKEN_FXN` (era L793); `|| FORCE_FXN[key]` anadido a la cadena de resolucion (era L1065).
+Cada entrada: `{kind:'force_align', forceAlign:<X>, oppAlign:<OPP> (ausente en Power Corrupts), t:<texto impreso verbatim sin el nombre de la carta, igual que la convencion de TOKEN_FX>}`.
+Privatization lleva ademas `noDictatorship:true`. Un bloque de comentario en espanol de 45 lineas declara las 5 interpretaciones.
+`node gen_cards.js` -> `written 421 {"group":167,"illuminati":18,"plot":201,"resource":35} verified-groups 33`.
+
+**Motor -- `game/js/engine.js` (3184 -> 3393 lineas), 6 ediciones, `node --check` limpio.**
+1. **`curPower` folds `node.powerMods`** (array de `{name,v}`) DESPUES de `powerOverride` y antes del reset por paralyze.
+   Comentario que la nombra P1-028 y avisa de que **L3 (BULK-POWER) reutilizara el mismo campo**.
+2. **`nodeAligns` filtra `node.alignsRemoved`** tras plegar `alignsAdded`; **add gana sobre remove** (una alineacion presente en ambos arrays cuenta como presente).
+   Comentario en voz alta: esta unica linea cambia **TODOS** los consumidores de `nodeAligns`
+   (ataque +-4, `shares`, `isOpposite`, el `case 'token_gift'` de §39) y que es intencionado.
+3. **NUEVO `closenessDefenseBonus(ownerPid,node,cardObj,attAligns,notes)`** justo despues de `alignsOf`.
+   Devuelve la suma numerica de +4 por alineacion compartida, respeta las dos excepciones oficiales
+   (maestro Discordian con solo fanatic compartido => 0; fanatic-vs-fanatic => sin +4), y empuja notas explicativas si se le pasa un array `notes`.
+   El bloque en linea de `computeStrength` (era L1196-1209) fue sustituido por
+   `det.defenseBonus+=closenessDefenseBonus(A.targetPid,tNode,tCard,attAligns,det.notes);`
+   para que **la regla viva una sola vez**.
+4. **NUEVO helper `cap(s)`** (capitaliza la primera letra) justo despues de `alignsOf`, usado por los mensajes del caso nuevo.
+   **No existia**: el bloque se escribio asumiendolo y hubo que anadirlo.
+5. **`case 'dictatorship'` -- FIX de P1-028**: ahora fija `ndD.dictatorship=true` y empuja `{name:'Dictatorship',v:2}` en `ndD.powerMods` (guardado por `if(!ndD.dictatorship)`), y el log dice "Ahora es una Dictatorship: +2 de Poder.".
+6. **Whitelist `instant`** ahora termina en `||eff0.kind==='force_align');` con un comentario que recuerda que las nueve imprimen "Play this card at any time" y que esto se distingue de Dictatorship (cuyo coste es la accion del propio grupo, de ahi que no este en la lista, por §32 P1-017).
+7. **NUEVO `case 'force_align'`**, empalmado justo antes de `case 'dictatorship'`.
+
+**`case 'force_align'` -- comportamiento exacto (engine.js L2509-2625):**
+- Valida `findNode(targetUid)` (-> `'…: elige un grupo objetivo'`), `card()` (-> `'…: el objetivo no es una carta'`), `findOwnerPid` (-> `'…: ese grupo ya no esta en juego'`) y **`tcF.type==='illuminati'`** (-> `'…: no se puede forzar la alineacion de un Illuminati'`). **Sin filtro `targetAttr`**: el texto dice "the target group", cualquiera.
+- `beforeF=nodeAligns(ndF,tcF)`; `costF=nodeResistance(ndF,tcF)`; **duplicado** iff `oA && beforeF.indexOf(oA)>=0`;
+  `closeF=closenessDefenseBonus(ownerF,ndF,tcF,null,null)` se anade **solo cuando `ownerF!==pid`**.
+- Pago: **`if(pl.illumTokens>=1){pl.illumTokens--}` -- UNA ficha del Illuminati sea cual sea el coste**;
+  si no, `walk(pl.structure, …)` saltando la raiz / `devastated|paralyzed|zapped|actionStripped` / `tokens<1` / `nodeAligns(n,nc).indexOf(fA)<0`,
+  `spendGroupToken` + acumulando `curPower` hasta `needF<=0`. Dos throws distintos: uno cuando no se pudo elegir nada,
+  otro cuando la suma se quedo corta (nombrando el total necesario y la parcial).
+- Efecto: `ndF.alignsAdded.push(fA)` solo `if(gainedF)`; `ndF.alignsRemoved.push(oA)` solo `if(oA && beforeF.indexOf(oA)>=0)`
+  (para que Backlash no reciba una entrada fantasma); `eff.noDictatorship` limpia `ndF.dictatorship` y filtra la entrada `Dictatorship` de `ndF.powerMods`;
+  `pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:targetUid})`.
+- Un `log(...)` rico y `lastResult={ok:true,forced,owner,align,opp,wasOpposite,lostDictatorship,gained,cost,doubled,closeness,paidWith}`
+  con `paidWith={via:'illuminati'|'groups',groups:[{uid,name,power}]}`.
+
+**Gate -- `test_fase4_cards.js` (566 -> 602 lineas).** Tres ramas nuevas en la seccion 4.
+Ojo: la linea `if (e.targetSubtype) {` esta **sin sangria** (lineas 352-356 del fichero, flush-left), al contrario que las ramas de L1 en 340-351; el anchor debe ser `'if (e.targetSubtype) {'`.
+- `e.forceAlign` -> `groupsWithAlign(a).length>0`.
+- `e.oppAlign` -> **DOS** condiciones: (1) `groupsWithAlign(a).length>0` **y** (2) `GROUPS.some(g => (g.alignments||[]).indexOf(a)>=0)`.
+- `e.noDictatorship` -> `C.cards.some(x => x && x.effect && x.effect.kind==='dictatorship')`, para probar que el campo no es decorativo.
+`checkedFields` pasa a listar **17** campos.
+
+**UI -- sin cambios, verificado.** `force_align` **si** necesita objetivo, asi que `plotNeedsTarget(c)` devuelve true
+(`NO_TARGET_KINDS` sigue siendo `['token_gift']` y **no** debe crecer) y el flujo existente `plotTarget` de dos pasos sirve:
+`ui.js:938` pone `sel={mode:'plotTarget',data:{handIdx:ix}}` y `ui.js:826` hace `CB.onPlayPlot(d.handIdx, uid)`, pasando el `targetUid` de verdad.
+
+**Regresion -- `test_fase2_rules.js` (3201 -> 3378 lineas).** Nueva IIFE anclada en `/* ---------- L2 - FORCE-ALIGN (P1-028)…`,
+empalmada justo antes de `/* ---------- Utilidad global:`. **26 aserciones / 5 escenarios**:
+(1) forzar violent sobre un grupo peaceful -> `gained`, `wasOpposite`, el coste duplicado (`4 -> 8`), ficha del Illuminati gastada,
+carta **NO** en `S.plotDiscard`, carta **SI** en `linkedPlots`, mas una **sondea a caja negra** de que un consumidor real lo ve
+(jugar `Reload!` da ficha al grupo forzado); el lado de la perdida de alineacion se aserta sobre el estado del nodo porque `tokens=1` es idempotente.
+(2) acciones insuficientes -> `throws(/necesitas \d+ de Poder de grupos/i)`, objetivo intacto, carta ni gastada ni descartada.
+(3) pago con grupos propios: la fixture planta grupos violent hasta que su `curPower` sumada alcanza la Resistencia del objetivo,
+afirma `paidWith.via==='groups'`, la ficha del pagador gastada, `gained===false`/`wasOpposite===false`, `doubled===false`,
+`cost === C.cards[gi3].resistance` y `closeness===0` para un objetivo PROPIO.
+(4) objetivo Illuminati rechazado.
+(5) P1-028: Dictatorship sobre una Nacion fija `dictatorship===true` y una entrada `powerMods {name:'Dictatorship',v:2}`, y Privatization limpia ambas.
+
+### 40.3 Las 5 interpretaciones declaradas
+
+1. **El coste es dinamico**: `coste = Resistencia del objetivo`, **duplicado** si el objetivo tiene la alineacion OPP.
+   No existe ninguna carta oficial con un N fijo, asi que `FORCE_FX` guarda `forceAlign` + `oppAlign` y el motor lee la Resistencia y las alineaciones del objetivo.
+2. **"Criminal" no tiene opuesto** en las reglas oficiales (`inwo_rules_extracted.txt:370-377`: *"Criminal: Extorting money... **It has no opposite.**"*),
+   y por eso Power Corrupts es la unica carta sin clausula "doubled". No es un OCR perdido: es correcto.
+   La tabla `OPPOSITES` del motor (L18) ya coincide con la glosario oficial, asi que `criminal`, `government`, `corporate` y `fanatic` estan **sin opuesto**.
+3. **"Permanentemente"** = `node.alignsAdded` + `node.alignsRemoved`, que son permanentes por construccion (no hay caducidad).
+   `add gana sobre remove`, de modo que una re-alineacion posterior gana a una perdida anterior.
+4. **"Keep this card, with a link to the target"** = la Plot va a `pl.linkedPlots`, NO al descarte.
+   P1-025 ya tiene el chequeo `linkedHere` en la cola del switch de `E.playPlot`, asi que **no hizo falta ningun cambio de motor** para el descarte.
+5. **La ruta del Illuminati gasta exactamente UNA ficha**, sea cual sea el coste: el texto dice *"either the Illuminati, or X group(s) with a total Power…"*,
+   no *"the Illuminati provides N"*. La ruta de grupos gasta **una ficha por grupo** (no todas) hasta que la `curPower` acumulada llega al coste.
+
+### 40.4 La distincion "closeness to the Illuminati" frente a "closeness to its master"
+
+El texto de las 9 cartas dice *"Add bonuses for its closeness to the Illuminati if it belongs to a rival!"*.
+Las reglas oficiales (`:563-576`) distinguen **DOS** conceptos distintos:
+- *"Its closeness to the Illuminati still counts for defense, unless you're destroying one of your own Groups."* => un **bonus de DEFENSA** (alineaciones compartidas con su maestro), +4 por compartida;
+- *"The target's common alignments with its master do not help -- those increase Resistance, which is not used in this attack!"* => alineaciones comunes con el maestro **suben la Resistencia**, que es un mecanismo distinto.
+
+Por tanto la lectura de L2 es: **el coste = Resistencia del objetivo + su bonus de defense por closeness, pero solo cuando el objetivo pertenece a un rival.**
+De ahi el `if(ownerF!==pid)` que anade `closeF`. El escenario 3 de la regresion afirma `closeness===0` para un objetivo propio, que es exactamente esta regla.
+
+### 40.5 P1-028 - La Dictatorship estaba implementada a medias
+
+La carta Dictatorship (idx 239) dice: *"Play this card during your turn, on any Nation which you control. This is an action for that Nation or its master. **The target is now a Dictatorship. It gets +2 Power.** It becomes Violent, if it was not already. Link this card to the Nation. Requires Action"*.
+
+`case 'dictatorship'` (engine.js L2432 antes del fix) hacia **solo** esto: chequeo de objetivo + atributo `nation`, chequeo de propiedad,
+una ficha (ficha del grupo o `pl.illumTokens--`), `alignsAdded.push('violent')`, `linkedPlots.push`, `log`.
+**Nunca fijaba ninguna marca de "esto es una Dictatorship" y nunca aplicaba el +2 de Poder impreso.**
+
+Consecuencias: (a) la clausula de 345 Privatization *"and if it was a Dictatorship, it is no longer"* no tenia nada que comprobar;
+(b) el +2 impreso se descartaba en silencio **mientras la carta ya estaba etiquetada `implemented-pending-engine`** -- exactamente el pecado que esta auditoria existe para matar.
+La correccion introduce el campo de nodo `nd.dictatorship=true` y el `powerMods` `{name:'Dictatorship',v:2}`, y le da a 345 el `noDictatorship` que lo borra.
+
+### 40.6 La declaracion de radio de impacto de `nodeAligns`
+
+`nodeAligns` es consumido por el calculo de ataque +-4, por `shares`, por `isOpposite` y por el `case 'token_gift'` de §39.
+Anadir el filtro de `alignsRemoved` **cambia el comportamiento de todos ellos sin tocar ninguno**.
+Esto es intencionado (una alineacion que el juego declara perdida no debe seguir contando como bonus de ataque ni como oponente),
+pero significa que un bug futuro en `alignsRemoved` se manifestaria en el motor de combate y no en la carta que lo produjo. Queda declarado aqui.
+
+### 40.7 Leccion del gate: una clausula vacua es un bug silencioso
+
+`e.oppAlign` podria validarse solo con `groupsWithAlign(a).length>0`, y el gate pasaria.
+Pero la clausula impresa *"doubled if the group is currently <OPP>"* exige que **algun grupo de la mansion lo tenga por defecto**; si ninguno lo tiene,
+el motor **nunca duplicaria el coste de nadie** y la carta haria la mitad de lo que dice, en silencio.
+El gate exige por eso las **dos** condiciones. Es el mismo motivo por el que §36 exigio que `textFull` fuera estrictamente mas largo que `text`
+y por el que §37 rechazo relajar el gate de atributos: **una comprobacion mas debil que los datos que valida aprueba cartas que no hacen lo que prometen.**
+
+### 40.8 Cuatro bugs que solapo el test nuevo (y que no eran del motor)
+
+1. **`lastPlotResult` NO viaja dentro de `E.getState()`** -- `publicState()` nunca lo publica; solo el valor de retorno de `E.playPlot` lo lleva. Dos aserciones fallaron por esto.
+   **Leccion: un observable se lee de la llamada que lo produjo, no de una instantanea de estado posterior.**
+2. **`S.plotDiscard` es de nivel superior, no por jugador** (`S.players[p].plotDiscard` es `undefined` -> `TypeError`).
+   `linkedPlots`, `exposedPlots` e `illumTokens` **si** son por jugador; los Discard estan en `S`.
+3. **La fixture, no el motor: las Nations de este mazo SI son `government`-alineadas**, asi que la asercion `wasOpposite===false` era falsa.
+   Se sustituyo por `oppBefore` calculado desde `C.cards[ni].alignments`.
+4. **Un solo grupo pagador nunca puede alcanzar un coste de Resistencia 5** (los Poderes de grupos violent estan entre 1 y 3).
+   La fixture tiene que plantar grupos hasta que la `curPower` sumada llegue a la resistencia -- que es exactamente como lo calcula el motor.
+
+Ademas, al escribir el test: **`alignsOfUid` reimplementa `nodeAligns` a proposito** (con add-gana-sobre-remove), para que una divergencia entre motor y test falle en vez de quedar verde.
+
+### 40.9 Verificacion
+
+- `node --check` limpio en `game/js/engine.js`, `game/js/ui.js`, `gen_cards.js`, `test_fase2_rules.js`, `test_fase4_cards.js`.
+- `npm test` -> **ALL TESTS PASSED (10)**, exit 0.
+- `node test_fase2_rules.js` -> **FASE 2 RULES PASSED** con las 26 aserciones de L2.
+- `node test_fase4_cards.js` -> **FASE 4 COVERAGE PASSED (99 cartas clasificadas, 149 Plots/Resources sin mecanica (techo 182), 3 ramas muertas declaradas, 9 cartas bloqueadas congeladas, 4 huecos de texto declarados)**.
+  Numeros: 90 -> **99** clasificadas | 158 -> **149** sin mecanica (**exactamente -9**) | `implemented-pending-engine` 71 -> **80** | el histograma de kinds muestra `"force_align":9`.
+- El gate **fallo correctamente** en el estado intermedio (los datos declaraban `force_align`, el motor aun no tenia ese `case` -> 9 errores "rama NO existe en el motor"), que es exactamente su proposito.
+
+### 40.10 Lecciones
+
+1. **El nombre de la familia puede estar equivocado y solo lo revela el texto impreso completo.** `plan.md` llamo a L2 una familia de COSTE; el texto revela que es una familia de FORZAR-ALINEACION con un coste dinamico. Sin `textFull` (§36) estas cartas habrian quedado como "unimplemented" para siempre.
+2. **Un campo de estado puede existir sin que nada lo consuma.** `node.powerMods` no existia y `node.dictatorship` tampoco; ambos eran **datos que el motor nunca leia**. Es la misma clase de defecto que `A.privilege` (§38/P1-026) y que las ramas muertas declaradas: **el dato existe, vive en otro sitio, y por eso nadie lo ve**.
+3. **Extraer una regla a un helper y llamar al helper desde el sitio viejo** (la closeness bonus) evita que la regla exista en dos sitios y diverja. Se hizo asi en un solo movimiento y FASE 2 paso inmediatamente despues.
+4. **Asumir que un helper existe es un bug diferido.** El bloque se escribio llamando a `cap()` y no existia; fallo en runtime, no en `node --check`.
+5. **Un test que afirma "esto NO lo toca" necesita una fixture que este de verdad FUERA del filtro.** Es la 3a repeticion de la misma clase (fixture tautologica).
+6. **Nunca afirmar sobre un observable que no viaja en el estado** (`lastPlotResult`), ni asumir la forma de la estructura (`S.plotDiscard` es global, `linkedPlots` es por jugador).
+
+### 40.11 Backlog
+
+- **L3 (BULK-POWER) reutiliza `node.powerMods`**, que se ha construido aqui para eso. Ya puede anadir modificadores permanentes sin tocar `curPower`.
+- **Las 5 cartas de ataque condicional (L5) que "+N to any Attack to Destroy a X"**: `node.powerMods` podria ser el lugar natural para un bonus permanente, pero el texto de esas cartas es *por un ataque*, no permanente, asi que probablemente necesite un campo distinto.
+- **Un Plot que fuerza alineaciones puede volver ILEGAL un link existente** (ejemplo oficial `inwo_rules_extracted.txt:891-895`: Jake Day sobre un Straight unido a Grassroots Support deja el link permanentemente ilegal y el recurso se descarta). Eso es un problema de **L10**, no de L2. Queda anotado aqui para L10.
+- **La oficial "any two Fanatic Groups are considered opposite to each other"** (`:487-493` y `:370-377`) es una oposicion real que la tabla `isOpposite` del motor (L18) **no implementa**. Afecta al motor de combate, no a ninguna de estas 9 cartas. Anotado para una seccion futura de motor.
+- **Continuar con L3** (BULK-POWER, 14 cartas), luego L4..L16, mas **Fase 3** (UX, onboarding, verificacion DOM en navegador real, IA que juegue de verdad cartas de reaccion), **P1-DATA-03** (Global Power, bloqueado por red) y **L17** (las 7 cartas bloqueadas con su razon declarada).
+---
+
+## 41. P1-029 - La prueba SMOKE tenia una ficha aleatoria: fallo 1 de cada 3
+
+### 41.1 Hallazgo
+
+Al cerrar L2 seton's Stability (varias corridas seguidas de `npm test`), **1 de cada 3 corridas terminaba en `SMOKE TEST FAILED | FAIL: unverified plot fixture available`**. No era un fallo de logica: la prueba **nunca llego a ejecutar el motor**.
+
+La causa esta en `test_engine.js` L55-61. La prueba de humo necesita *una* Plot con `mechanicsStatus === 'unverified'` para comprobar que el motor la **rechaza** con un error claro. La fixture era:
+
+```js
+st.players[cur2].hand.find(ix => cards[ix].type === 'plot' && cards[ix].mechanicsStatus === 'unverified')
+```
+
+Es decir: *"la Plot no verificada que esta ahi por casualidad en esta mano"*. La mano es el resultado de un reparto aleatorio, asi que la ficha depende de la suerte.
+
+Por que fallo **ahora** y no antes: L1 y L2 Trayaron 20 cartas de `unverified` a `implemented-pending-engine`. Cada vez que una carta sale de la bolsa de "no verificadas", la probabilidad de que el reparto de esa partida en concreto ponga **una de las que quedan** en la mano del jugador actual baja un poco. El test llevaba tiempo raspando el limite; L1/L2 lo bajaron por debajo de 1 y el fallo se volvio visible. La semilla no cambio: **cambio el monton del que se saca**.
+
+Se aislo con 12 corridas directas de `node test_engine.js`: fallo 1 de 12. Con 25 corridas: 0 de 25 tras el arreglo.
+
+**Esta es la sexta aparicion de la misma clase de bug** que esta auditoria lleva registrando desde §33.5:
+
+| # | Seccion | Que dependia de la suerte |
+|---|---|---|
+| 1 | §33.5 | Car Bomb +10 de posicion hacia que el ataque fallase solo |
+| 2 | §37.5 | `sealWindows()` -- si un reparto metia una carta de ventana en la mano, el test se colgaba |
+| 3 | §38.8 | las **dos** copias de `noCancelWindow()` |
+| 4 | §39.4 | `gIdx('criminal')` devolvia un grupo que tambien era Violent, asi que la asercion negativa era tautologica |
+| 5 | §40.8 | un solo grupo pagador nunca podia alcanzar una Resistencia de 5 |
+| 6 | **este** | la ficha de la prueba SMOKE |
+
+### 41.2 Correccion aplicada
+
+En vez de buscar la ficha **en la mano**, se busca **en el mazo de Plots** y se mueve a la mano bajo prueba. El mazo siempre guarda las ~149 Plots sin mecanica, asi que la fixture es determinista, y ademas el mazo sigue siendo coherente (la carta se **saca** de el, no se duplica):
+
+```js
+var cur2 = st.currentPid;
+var Sraw = E._raw();
+var pIdx = null;
+for (var d = 0; d < Sraw.plotDeck.length; d++) {
+  var dc = window.INWO_CARDS.cards[Sraw.plotDeck[d]];
+  if (dc && dc.type === 'plot' && dc.mechanicsStatus === 'unverified') { pIdx = Sraw.plotDeck[d]; break; }
+}
+assert(pIdx != null, 'the plot deck still holds an unverified plot to test');
+if (pIdx != null) {
+  Sraw.plotDeck.splice(Sraw.plotDeck.indexOf(pIdx), 1);
+  Sraw.players[cur2].hand.push(pIdx);
+  st = E.getState();
+```
+
+Dos hechos comprobados antes de parchear, para no cambiar lo que la prueba verifica:
+
+- `rejectUnverifiedCard(c)` (engine.js L893-898) lanza para `kind==='unverified'` con `'La carta "X" no tiene una mecanica verificada; no puede jugarse todavia.'`. El `/` regex existente del test sigue tambien matcheando `mecanica no implementada`, asi que la asercion no se debilito.
+- `S.plotDeck` es un array **de nivel superior** de indices de carta (init L309, llenado L317, barajado L319, `deckCounts.plot.plotDeck.length` L389, robado L687 y L779) -- no es `S.players[p].plotDeck`. Es el mismo agregacion de §40.8: `plotDiscard`, `groupDeck` y `groupDiscard` viven en `S`; `hand`, `linkedPlots`, `exposedPlots` e `illumTokens` viven en `S.players[p]`.
+
+### 41.3 Verificacion
+
+- `node --check test_engine.js` limpio.
+- **25 de 25 corridas consecutivas de `node test_engine.js` PASSED** (antes 11 de 12).
+- **5 de 5 corridas consecutivas de `npm test` -> ALL TESTS PASSED (10)**.
+- `node test_fase2_rules.js` -> FASE 2 RULES PASSED. `node test_fase4_cards.js` -> FASE 4 COVERAGE PASSED (99 clasificadas, 149 sin mecanica, techo 182, 3 ramas muertas, 9 bloqueadas, 4 huecos de texto, `implemented-pending-engine: 80`).
+
+### 41.4 Leccion
+
+**Una fixture que se apoya en "el reparto de esta partida pondra esto en la mano" es un test que passara por suerte, no por diseno.** Y el riesgo no se queda en el test: cuando el juego crece, cambiar el reparto **es** cambiar la fixture.
+
+La forma de evitarlo es que la fixture se elija de una poblacion **grande y estable**, nunca de una poblacion de 7 cartas que se sortea. Para una asercion negativa ("el motor rechaza esto") el sitio correcto no es la mano del jugador, que se baraja cada partida, sino el mazo, del que se saca la carta. Y si la prueba necesita la carta **en la mano** porque la regla es sobre la mano, hay que **quitarla del mazo al meterla** -- o el test esta probando una carta que en una partida real todavia estaria en el mazo.
+
+Cierre de L2 y L1 con esto. **Proximo lote: L3 (BULK-POWER, 14 cartas)**, que reutiliza `node.powerMods`.
