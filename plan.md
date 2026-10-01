@@ -5,7 +5,7 @@ impreso transcrito pero ninguna mecanica ejecutable en el motor, sin romper ning
 reglas ya auditadas (P0-001..P0-007, P1-001..P1-027) y sin inventar reglas que el reglamento
 no dice.
 
-Referencia de estado: `docs/audit/INWO_SURGICAL_AUDIT.md` (ultima seccion ejecutada: §38).
+Referencia de estado: `docs/audit/INWO_SURGICAL_AUDIT.md` (ultima seccion ejecutada: §43).
 Referencia de metricas: `node test_fase4_cards.js` imprime
 `FASE 4 COVERAGE PASSED (N cartas clasificadas, M Plots/Resources sin mecanica, ... implemented-pending-engine: K)`.
 
@@ -48,6 +48,16 @@ Estas reglas nacen de los hallazgos de §32-§38. Violarlas es un defecto, no un
     (`E.resolvePendingAttack` / `E.resolvePendingRoll` / `E.resolvePendingEvent`). Este contrato
     es de las tres ventanas ya implementadas.
 12. Nada se commitea salvo peticion explicita del usuario.
+13. **Un fixture no puede depender del reparto aleatorio** (§41 P1-029, §43). Si la carta debe
+    estar en la mano porque la regla habla de la mano, **sacala de la baraja al meterla**. Si el
+    test afirma "la carta salio de la mano", **compara COPIAS antes y despues**; `indexOf(...) < 0`
+    es una asercion invalida en cuanto la fixture uso `put()` para anadir una copia. Y **crecer el
+    juego cambia los fixtures**: anadir una ventana o mover una carta de `unverified` puede
+    romper una prueba que llevaba meses pasando por casualidad. Toda regresion nueva se prueba
+    **30+ corridas consecutivas** antes de darla por buena.
+14. **Aserciones sobre el log: nunca `log[length-1]`** (§43). Desde §38/P1-027 jugar una Plot abre a
+    menudo `VENTANA DE SUCESO ABIERTA`, asi que el efecto **no** es la ultima linea. Buscar en todo
+    el log con `.some(...)` y volcar las ultimas 3 lineas en el mensaje de fallo.
 
 ## 0.1 Definicion de Hecho (Definition of Done) de un lote
 
@@ -125,29 +135,61 @@ Los nuevos hallazgos empiezan en **P1-028** y suben. Los ids P2-### empiezan don
   juega y ambos grupos pierden 1 ficha; con los mismos grupos pero Poder total < N, la carta se
   **rechaza** y NO sale de la mano.
 
-## [ ] L3 - BULK-POWER: "Increase/Reduce the Power of all X groups by N"
+## [x] L3 - BULK-POWER: "Increase/Reduce the Power of all X groups by N" — CERRADO en dos partes (auditoria §42)
 
-- **Cartas (14)**: 204 Bigger Business · 217 Chicken in Every Pot · 241 Don't Forget to Smash
-  the State · 251 Energy Crisis · 268 Good Polls (dura hasta tu proximo turno) ·
-  271 Gun Control · 296 Law and Order · 339 Political Correctness · 341 Power for its Own Sake ·
-  344 Principia Discordia (Resistencia +1 por cada Weird) · 355 Resistance is Useless! ·
-  384 Tax Reform · 418 World Hunger · 234 Currency Speculation (triplica para su proxima accion).
-- **Mecanica**: `bulk_power`. Efecto permanente mientras el grupo siga en juego (una entrada en
-  el nodo: `powerMods: [{name, v}]`), **no** un `powerOverride` (que el motor ya usa para
- ANGST, valor absoluto).
-- **Ficheros**: los mismos, mas el campo de nodo `powerMods` pliegado en `curPower`.
-- **Interpretaciones declaradas**:
-  1. Los efectos son **permanentes hasta que el grupo salga de juego**: asi funciona el Poder en
-     este juego y es lo que distingue estos textos de las cartas "por una accion" (que van a L5).
-  2. 268 Good Polls dura "until the beginning of your next turn": se implementa como permanente
-     con un campo `expiresAtTurn` que el motor limpia al cambiar de turno.
-  3. 355 Resistance is Useless! dura "for the rest of the current turn": mismo campo con
-     `expiresAtTurn = turno actual`.
-  4. 234 Currency Speculation "for its next action": permanente con `expiresOnTokenSpend`.
-  5. Las cartas que reimprimen texto de otro jugador (384 Tax Reform es un Atajo) se toman
-     literalmente por su texto impreso.
-- **Aceptacion**: con dos grupos Corporativos y uno Liberal, 204 sube el Poder de los Corporativos
-  y **solo** de los Corporativos (afirmado comparando `curPower` de los tres).
+### L3a — CERRADO (8 cartas; 99->107 clasificadas; 149->141 sin mecanica; 80->88 implemented-pending-engine)
+
+- **Cartas (8)**: 204 Bigger Business · 217 Chicken in Every Pot · 241 Don't Forget to Smash
+  the State · 251 Energy Crisis · 271 Gun Control · 296 Law and Order ·
+  339 Political Correctness · 344 Principia Discordia.
+- **Mecanica**: `bulk_power`. Efecto permanente mientras el grupo siga en juego: una entrada mas
+  en `node.powerMods` / `node.resistanceMods` (`{name, v}`), **no** un `powerOverride` (que el
+  motor ya usa para ANGST, valor absoluto). Se creo `node.resistanceMods` y se pliego en
+  `nodeResistance`, despues de `resistanceOverride` (ASI un Angst que fija Resistencia en 1 no
+  borra un +1 de Principia Discordia).
+- **Gramatica de clausulas** (datos en `eff.moves`, ejecucion en UN solo case): cada clausula
+  admite `align` / `aligns[]` (+`match:'all'|'any'`) / `notAligns[]` (excluye) / `attr` /
+  `attrs[]` / `subtype` / `minPower` / `maxPower` / `power` / `resistance` / `become` /
+  `scaleBy:{align}` / `scope:'own'|'all'`. Anadir una carta nueva es anadir DATOS.
+- **Interpretaciones declaradas** (bloque `BULK_FX` de `gen_cards.js`):
+  1. **ALCANCE**: 10 de estas cartas dicen "all X groups" SIN "your": se aplican solo a los grupos
+     del controlador. Razon: son Plots jugadas en tu turno para reforzar tu propia estructura, y la
+     lectura contraria haria que 251 Energy Crisis fuera estrictamente mejor que un Disaster.
+  2. **PERMANENCIA**: el efecto dura mientras el grupo siga en juego; solo salir del juego lo borra.
+  3. **ACUMULATIVO**: "Increase the Power of all Conservative Corporate groups by 3" (204, 296) NO
+     es una frase que sustituye: un grupo Conservative+Corporate recibe +2 +2 +3 = +7.
+  4. `minPower`/`maxPower` miran el Poder **IMPRESO** (`gc.power`), no el actual: 339 dice "groups
+     with a Power of only 1" y "su Poder" es el dato de la carta.
+  5. El modificador va al **NODO**, no a la carta.
+- **Aceptacion cumplida**: con un Nuclear Power Companies (el UNICO grupo del mazo Conservative Y
+  Corporate) + un Conservative + un Government/Liberal, 204 sube +7 / +2 / 0 respectivamente,
+  `affected=2` y `hits=4`, `scope='own'`, y el homonimo de un rival queda intacto.
+
+### L3b — APLAZADO (5 cartas, cada una con su propio motivo)
+
+- **268 Good Polls** — "Until the beginning of your next turn ... tripled, **for defense only**":
+  necesita `expiresAtTurn` (que el motor limpia al cambiar de turno) y un modificador que solo
+  afecte a la DEFENSA, no al ataque. Es un `bulk_power` con caducidad: otra variante.
+- **418 World Hunger** — dos mecanismos en una carta: los grupos Green pierden sus fichas y no
+  pueden obtener nuevas (hace falta un predicado `noTokens` nuevo que consulten `spendGroupToken`,
+  `firstUsableAid` y `token_gift`; hoy el unico predicado de "no recibe fichas" es
+  `devastated||paralyzed||zapped||actionStripped`) Y ademas `scope:'all'` con −2 de Poder a Liberal
+  y/o Nation. Se declara partida en dos.
+- **234 Currency Speculation · 355 Resistance is Useless! · 377 Sucked Dry and Cast Aside!** — las
+  tres son de un unico grupo objetivo, no "todos los grupos X". Lo mas probable es que sean
+  **entradas nuevas de las familias que YA existen** (`POWERINC_FX` / `RESINC_FX` de §27/§28) y
+  no un `kind` nuevo. **ANTES de implementarlas hay que comprobar su `type`: 344 demostro que una
+  carta puede ser Resource, y entonces `E.playPlot` es el punto de entrada equivocado.**
+
+### BLOQUEADAS (2 cartas, motives distintos, congeladas en `test_fase4_cards.js`)
+
+- **341 Power for its Own Sake** — ILEGIBLE. El OCR solo da "including your llluminati group 3" y
+  no aparece en NINGUNA de las dos fuentes secundarias (`scribd_card_text.json` ni
+  `scribd_inwo_cards_full.html`), asi que no se puede autorizar el numero que aplica.
+- **384 Tax Reform** — NO es `bulk_power`. Su texto impreso es un efecto continuo entre turnos
+  ("The IRS can now tax one Plot card from each player, at the beginning of its own turn"), que es
+  un subsistema distinto de una modificacion de Poder/Resistencia. **La agrupacion de plan.md era
+  incorrecta.**
 
 ## [ ] L4 - TOKEN-STRIP: "Remove all Action tokens from ..."
 

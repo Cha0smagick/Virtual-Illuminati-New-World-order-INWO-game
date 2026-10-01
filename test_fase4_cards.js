@@ -139,7 +139,12 @@ const BLOCKED_CARDS = {
   'counterspell': '§38 un Resource no puede atacar ni ayudar a un ataque (esta en pl.resources con tokens:0 y sin nodo), asi que "any Magic Resource used to attack you" nunca ocurre',
   'hattrick': '§38 exigiria deshacer una Plot ya resuelta de forma transaccional',
   'ilied': '§38 el motor no tiene tratos que cumplir, luego el marcador no lo consumiria nadie (INJUGABLE)',
-  'vultures': '§38 el motor no tiene el camino "jugar un grupo de la mano, fallar el takeover y descartarlo" (placeUnder lanza y la carta sigue en la mano); las reglas oficiales si (inwo_rules_extracted.txt:226-241)'
+  'vultures': '§38 el motor no tiene el camino "jugar un grupo de la mano, fallar el takeover y descartarlo" (placeUnder lanza y la carta sigue en la mano); las reglas oficiales si (inwo_rules_extracted.txt:226-241)',
+  /* §42 / L3 — dos cartas que plan.md metio en BULK-POWER y que al leer el
+     texto impreso resulta que NO son de esa familia. Congeladas por motivo
+     DISTINTO: una es ilegible, la otra es de otra mecanica. */
+  'powerforitsownsake': '§42 ilegible: el OCR solo da "including your llluminati group 3" y no aparece en NINGUNA de las dos fuentes secundarias (scribd_card_text.json ni scribd_inwo_cards_full.html), asi que no se puede autorizar el numero',
+  'taxreform': '§42 NO es bulk_power: su texto impreso es un efecto continuo entre turnos ("The IRS can now tax one Plot card from each player, at the beginning of its own turn"), que es un subsistema distinto de una modificacion de Poder/Resistencia'
 };
 
 const IMPLEMENTED_STATUSES = new Set([
@@ -385,6 +390,83 @@ if (e.giftAttr) {
     const hasFam = C.cards.some(x => x && x.effect && x.effect.kind === 'dictatorship');
     ok(hasFam, 'carta "' + c.name + '" retira el estado Dictatorship pero el mazo no tiene ninguna carta de esa familia');
   }
+/* L3a — BULK-POWER: los filtros de cada clausula de `moves`. El gate tiene que
+     bajar DENTRO del array: una clausula puede ser valida mientras otra de la
+     misma carta es vacua, y una carta con 3 clausulas solo se juega si las tres
+     hacen algo. Se validan cuatro cosas por clausula:
+       (a) que la ideologia / atributo / subtipo EXISTA en el mazo (si no, la carta
+           no hace NADA y es INJUGABLE);
+       (b) que una clausula `aligns` con match:'all' la LLEVEN de verdad ALGUN
+           grupo del mazo — sin esto "all Conservative Corporate groups" seria
+           vacua y el motor nunca incrementaria a nadie (misma leccion que el oppAlign
+           de L2);
+       (c) que `become` sea una ideologia real del mazo, porque alineamos el
+           nodo con ella y `nodeAligns` la devolveria como basura;
+       (d) que la clausula tenga AL MENOS un efecto (power, resistance o
+           become): una clausula que solo filtra no hace nada por si sola. */
+  if (Array.isArray(e.moves) && e.moves.length) {
+    checkedFields.moves = true;
+    ok(e.moves.length > 0, 'carta "' + c.name + '" declara moves vacio -> INJUGABLE');
+    e.moves.forEach(function (mv, mi) {
+      const tag = ' (clausula ' + (mi + 1) + ' de ' + e.moves.length + ')';
+      const acts = (typeof mv.power === 'number') || (typeof mv.resistance === 'number') || !!mv.become;
+      ok(acts, 'carta "' + c.name + '"' + tag + ' filtra pero no cambia ni Poder, ni Resistencia, ni alineacion -> no hace NADA');
+      if (mv.align) {
+        const n = groupsWithAlign(mv.align).length;
+        ok(n > 0, 'carta "' + c.name + '"' + tag + ' pide la ideologia ' + mv.align +
+                   ' pero ningun grupo del mazo la tiene -> la clausula no hace NADA -> INJUGABLE');
+      }
+      if (Array.isArray(mv.aligns)) {
+        mv.aligns.forEach(function (a) {
+          const n = groupsWithAlign(a).length;
+          ok(n > 0, 'carta "' + c.name + '"' + tag + ' pide la ideologia ' + a +
+                     ' pero ningun grupo del mazo la tiene -> la clausula no hace NADA -> INJUGABLE');
+        });
+        if (mv.match === 'all' && mv.aligns.length > 1) {
+          const both = GROUPS.some(function (g) {
+            const ga = g.alignments || [];
+            return mv.aligns.every(function (a) { return ga.indexOf(a) >= 0; });
+          });
+          ok(both, 'carta "' + c.name + '"' + tag + ' exige a la vez ' + mv.aligns.join(' + ') +
+                   ' pero ningun grupo del mazo lleva las dos -> la clausula es VACUA -> INJUGABLE');
+        }
+      }
+      if (Array.isArray(mv.notAligns)) {
+        mv.notAligns.forEach(function (a) {
+          const n = groupsWithAlign(a).length;
+          ok(n > 0, 'carta "' + c.name + '"' + tag + ' EXCLUYE la ideologia ' + a +
+                     ' pero ningun grupo del mazo la tiene -> la exclusion no hace NADA');
+        });
+      }
+      if (mv.become) {
+        const n = groupsWithAlign(mv.become).length;
+        ok(n > 0, 'carta "' + c.name + '"' + tag + ' convierte al objetivo en ' + mv.become +
+                   ' pero esa ideologia no existe en el mazo -> alineariamos el nodo con basura');
+      }
+      if (mv.attr) {
+        const n = groupsWithAttr(mv.attr).length;
+        ok(n > 0, 'carta "' + c.name + '"' + tag + ' pide el atributo ' + mv.attr +
+                   ' pero ningun grupo del mazo lo tiene -> la clausula no hace NADA -> INJUGABLE');
+      }
+      if (Array.isArray(mv.attrs)) {
+        mv.attrs.forEach(function (a) {
+          const n = groupsWithAttr(a).length;
+          ok(n > 0, 'carta "' + c.name + '"' + tag + ' pide el atributo ' + a +
+                     ' pero ningun grupo del mazo lo tiene -> la clausula no hace NADA -> INJUGABLE');
+        });
+      }
+      if (mv.subtype) {
+        const n = groupsOfSubtype(mv.subtype).length;
+        ok(n > 0, 'carta "' + c.name + '"' + tag + ' pide el subtipo ' + mv.subtype +
+                   ' pero ningun grupo del mazo lo tiene -> la clausula no hace NADA -> INJUGABLE');
+      }
+      if (mv.scaleBy && mv.scaleBy.align) {
+        const n = groupsWithAlign(mv.scaleBy.align).length;
+        ok(n > 0, 'carta "' + c.name + '"' + tag + ' escala por la ideologia ' + mv.scaleBy.align +
+                   ' pero ningun grupo del mazo la tiene -> el factor seria 0 -> INJUGABLE');
+      }
+    });
+  }
 if (e.targetSubtype) {
     checkedFields.targetSubtype = true;
     ok(groupsOfSubtype(e.targetSubtype).length > 0,
@@ -490,11 +572,49 @@ for (const c of C.cards) {
     withFull++;
     fullChars += c.textFull.length - String(c.text || '').length;
     const ocrLen = String(c.text || '').length;
-    ok(c.textFull.length > ocrLen,
-       'carta "' + c.name + '" tiene textFull de ' + c.textFull.length +
+    /* P1-030: el criterio `>` era un proxy de "es mejor" y fallaba donde mas
+       duele. En una baraja truncada a media frase el OCR puede ser mas largo por
+       llevar lineas decorativas corrompidas, mientras la transcripcion del libro
+       de reglas es mas corta y esta COMPLETA. Perder el numero de un efecto por un
+       criterio de longitud es peor que aceptar un texto mas corto, asi que ahora
+       se aceptan tres casos, todos verificables y no gustativos:
+         1. la fuente es mas larga (comportamiento original);
+         2. empate de longitud: mismo contenido, transcripcion real, se prefiere;
+         3. el OCR esta truncado de forma demostrable (no acaba en puntuacion) y la
+            fuente si acaba: el numero del efecto esta al final de la frase.
+       El aserto de abajo NO copia el predicado del generador (eso seria
+       tautologico): comprueba que, cuando el texto secundario es mas corto, el OCR
+       estaba de verdad cortado Y ademas que la fuente termina en puntuacion, que es
+       justo la propiedad que hace que el numero este dentro. */
+    const sec = c.textFull;
+    const secComplete = /[.!?)]["']?$/.test(sec);
+    const ocrTrim = String(c.text || '').trim();
+    const ocrCut = !/[.!?)]["']?$/.test(ocrTrim);
+    ok(sec.length > ocrLen || sec.length === ocrLen || (ocrCut && secComplete),
+       'carta "' + c.name + '" tiene textFull de ' + sec.length +
        ' caracteres y text de ' + ocrLen + '. applySecondaryText solo debe escribir ' +
-       'textFull cuando la fuente secundaria es ESTRICTAMENTE mas larga; si son iguales, ' +
-       'no hay nada que ganar y duplicar el texto solo infla el dataset.');
+       'textFull cuando la fuente sea mas larga, cuando empate, o cuando el OCR este ' +
+       'demostrablemente truncado (no termina en puntuacion) y la fuente si. Aqui el OCR ' +
+       'termina en ' + JSON.stringify(ocrTrim.slice(-24)) + ' y la fuente en ' +
+       JSON.stringify(sec.slice(-24)) + '.');
+    /* Y el contrapunto, que es la garantia de fondo: si la fuente es mas corta, tiene
+       que aportar algo que el OCR no trae. Se comprueba con el rasgo que motivo
+       P1-030 en primera persona: un numero impreso en el texto. */
+    if (sec.length < ocrLen) {
+      /* La cantidad puede venir en digito o en palabra: "by 3" y "tripled" son el
+         mismo dato, y el aserto no puede exigir la forma que casualmente usa la
+         mayoria. Se listan las palabras numericas que aparecen en las cartas de
+         este mazo (double/triple/quadruple cubren x2/x3/x4, que es como la baraja
+         redacta de verdad "tripled power"). */
+      const WORDS = /\b(one|two|three|four|five|six|seven|eight|nine|ten|once|twice|thrice|double|doubles|double\s|treble|triple|triple|triples|tripled|quadruple|quadrupled|halve|halved|twice\s)\b/i;
+      const quantified = /\d/.test(sec) || WORDS.test(sec);
+      ok(quantified,
+         'carta "' + c.name + '" solo se acepta un texto secundario mas corto si expresa ' +
+         'una cantidad (digito o palabra: two, tripled, double...). Ese es exactamente el ' +
+         'dato que el OCR truncaba al perder la cola de la frase. Revisar: ' +
+         JSON.stringify(sec.slice(-40)));
+    }
+
     ok(c.textSource === 'secondary',
        'carta "' + c.name + '" tiene textFull pero textSource=' + JSON.stringify(c.textSource) +
        '. Sin la fuente declarada, la evidencia no es rastreable.');

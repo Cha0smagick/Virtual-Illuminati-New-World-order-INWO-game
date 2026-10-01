@@ -2757,10 +2757,17 @@ function readyToAttack(pid) {
     plant(me, 'u1', att.idx, 1);
     plant(dfn, 'u2', vic.idx, 1);
     put(me, B10);
+    /* No se cuenta con indexOf: la reparto aleatoria puede traer OTRA copia de la
+     * misma carta, y entonces "no esta en la mano" es falso sin que el motor
+     * falle. Se comparan COPIAS antes y despues. */
+    var copiesB10 = function () {
+      return E._raw().players[me].hand.filter(function (x) { return x === B10.idx; }).length;
+    };
+    var beforeB10 = copiesB10();
     E.declareAttack(me, 'destroy', { attackerUid: 'u1', uid: 'u2' });
     E.playPlot(me, B10.idx, 'u1', { mode: 'attack', aidUid: 'u1' });
     var raw = E._raw();
-    ok(raw.players[me].hand.indexOf(B10.idx) < 0,
+    ok(copiesB10() === beforeB10 - 1,
       'P1-025 la Plot usada sale de la mano -> ' + raw.players[me].hand.join(','));
     ok(raw.plotDiscard.indexOf(B10.idx) >= 0,
       'P1-025 la Plot USADA llega al descarte (no se pierde) -> ' + raw.plotDiscard.join(','));
@@ -2886,10 +2893,20 @@ function readyToAttack(pid) {
     /* coste: accion del Illuminati o de un grupo Secret */
     E.getState().players[me].illumTokens = 0;
     var raw0 = E._raw(); raw0.players[me].illumTokens = 1;
+    /* OCTAVA aparicion de la clase de §41: `put()` mete una copia, pero el
+       reparto ALEATORIO puede haber-traido YA otra. Entonces "no esta en la
+       mano" es falso sin que el motor falle. El invariante real es "jugar la
+       carta quita exactamente UNA copia", asi que se cuenta el antes y el
+       despues. No es el antipatron de §38 (contar cartas en mano) porque aqui
+       NADIE muta la mano: ni sealWindows ni noCancelWindow pasan por este bloque. */
+    function copiesOf(pid, ix) { return E._raw().players[pid].hand.filter(function (x) { return x === ix; }).length; }
+    var beforePA = copiesOf(me, PA.idx);
     E.playPlot(me, PA.idx, null, {});
     ok(!!E._raw().attack.privilege, 'P1-026 346 vuelve privilegiado EL ATAQUE DECLARADO');
     ok(raw0.players[me].illumTokens === 0, 'P1-026 346 gasto la accion del Illuminati');
-    ok(raw0.players[me].hand.indexOf(PA.idx) < 0, 'P1-026 la carta jugada sale de la mano');
+    ok(copiesOf(me, PA.idx) === beforePA - 1,
+      'P1-026 la carta jugada sale de la mano -> ' + copiesOf(me, PA.idx) + ' vs ' + (beforePA - 1) +
+      ' (habia ' + beforePA + ' copia(s) antes)');
     /* y no se puede repetir sobre el mismo ataque */
     put(me, PA);
     throws(function () { E.playPlot(me, PA.idx, null, {}); }, /ya es privilegiado/i,
@@ -2909,10 +2926,21 @@ function readyToAttack(pid) {
     if (!EMB) return;
     var resp = 1 - me;
     /* el que responde necesita una Plot propia para pagar ("Requires Plot Discard") */
-    var filler = C.cards.filter(function (c) { return c.type === 'plot' && c.idx !== EMB.idx; })[0];
     put(resp, EMB);
-    put(resp, filler);
+    /* La Plot en disputa se ROBA al azar: 1 de cada ~15 veces sale la propia
+     * Embezzlement, y entonces su indice coincide con el de la Plot bajo custodia
+     * y el guard de "todavia no puedes usar una Plot" bloquea la respuesta. El
+     * motor acierta; el fixture es el que se pisa a si mismo. Se saca el indice
+     * del mazo antes de robar (misma tecnica que P1-029 en test_engine.js). */
+    E._raw().plotDeck = E._raw().plotDeck.filter(function (ix) { return ix !== EMB.idx; });
     var res = E.drawPlot(me);
+    /* El pago se elige DESPUES de robar, por la misma razon: si el indice de la
+     * Plot que se paga fuera el de la Plot en disputa, el motor la excluye del
+     * pago (es la carta que se esta robando) y `plotDiscard` nunca la veria. */
+    var filler = C.cards.filter(function (c) {
+      return c.type === 'plot' && c.idx !== EMB.idx && c.idx !== res.idx;
+    })[0];
+    put(resp, filler);
     var ev = E.getState().pendingEvent;
     ok(!!ev && ev.kind === 'plotDrawn',
       'P1-027 robar una Plot de otro jugador abre la ventana de SUCESO -> ' + JSON.stringify(ev && ev.kind));
@@ -3095,8 +3123,13 @@ function readyToAttack(pid) {
   ok(r1.lastPlotResult && r1.lastPlotResult.granted === 2,
     'L1 lastPlotResult informa 2 grupos -> ' + JSON.stringify(r1.lastPlotResult && r1.lastPlotResult.granted));
   ok(E._raw().plotDiscard.indexOf(BM.idx) >= 0, 'L1 la Plot usada llega a la pila de descarte (P1-025)');
-  var lastLog = E._raw().log[E._raw().log.length - 1];
-  ok(/2 grupo/.test(lastLog.msg || ''), 'L1 el log dice cuantos grupos recibieron ficha -> ' + (lastLog.msg || ''));
+  /* NO se mira solo la ULTIMA linea: desde §38 (P1-027) descartar una Plot abre
+   * la ventana de SUCESO, asi que si alguien robo Embezzlement o Stealing the
+   * Plans, el log sigue con "VENTANA DE SUCESO ABIERTA: ...". El efecto se
+   * busca en TODO el log, no en la ultima entrada. */
+  var logMsgs = E._raw().log.map(function (e) { return e.msg || ''; });
+  ok(logMsgs.some(function (m) { return /2 grupo/.test(m); }),
+    'L1 el log dice cuantos grupos recibieron ficha -> ' + logMsgs.slice(-3).join(' | '));
 
   /* --- 2) PLANO IDEOLOGIA. Reload! filtra por la ideologia `violent`: el Bank y el
      Criminal, aunque sean del mismo jugador, se quedan sin ficha. */
@@ -3329,6 +3362,210 @@ function readyToAttack(pid) {
   }
 })();
 
+/* ---------- L3a - BULK-POWER: "Increase/Reduce the Power of all X groups by N"
+   Las 8 cartas de esta familia describen sus frases en `eff.moves` y el motor
+   las ejecuta con UN solo case. Aqui se comprueba el EFECTO OBSERVABLE, nunca
+   la cuenta de cartas en mano: `sealWindows()`/`noCancelWindow()` mutan las
+   manos, asi que contar cartas seria medir el fixture y no la carta.
+   Ojo con `powerMods`: un grupo que encaja en TRES clausulas recibe tres
+   deltas apilados, y eso es intencionado (interpretacion 3 del bloque BULK_FX). */
+(function () {
+  var BB = 204, PD = 344, PC = 339, EC = 251, CI = 217;
+  /* Fichas reales del mazo, elegidas por sus datos IMPRESOS:
+       101 Nuclear Power Companies  P4 R4  conservative+corporate  science
+        28 Dan Quayle              P1 R1  conservative+straight     personality
+         1 Al Gore                 P1 R4  government+liberal       computer+green
+        15 California              P5 R4  gov+liberal+weird       green+coastal+huge PLACE
+        12 Brazil                  P5 R3  government              huge+coastal+nation PLACE
+        43 Federal Reserve         R7     government              bank (organization)
+         2 American Autoduel Assn  P1 R5  violent+weird
+     101 es el UNICO grupo del mazo que es conservative Y corporate a la vez:
+     por eso es el que puede comprobar la ACUMULACION de las tres clausulas. */
+  var P0 = C.cards[101].power, D0 = C.cards[28].power, G0 = C.cards[1].power;
+  var R2 = C.cards[2].resistance;
+
+  function put(pid, c) { E._raw().players[pid].hand.push(c); }
+  function nodeOf(pid, uid) { return findNode(E._raw().players[pid].structure, uid); }
+  /* curPower reimplementado a proposito: si el motor y el test comparten la
+     misma funcion, una divergencia pasa en verde. Aqui NO se llama curPower. */
+  function curPowOf(pid, uid) {
+    var n = nodeOf(pid, uid), c = C.cards[n.cardId];
+    var p = (c && typeof c.power === 'number') ? c.power : 0;
+    if (Array.isArray(n.powerMods)) n.powerMods.forEach(function (m) {
+      if (typeof m.v === 'number') p += m.v;
+    });
+    return Math.max(0, p);
+  }
+  function resOf(pid, uid) {
+    var n = nodeOf(pid, uid), c = C.cards[n.cardId];
+    var r = (c && typeof c.resistance === 'number') ? c.resistance : 5;
+    if (Array.isArray(n.resistanceMods)) n.resistanceMods.forEach(function (m) {
+      if (typeof m.v === 'number') r += m.v;
+    });
+    return r;
+  }
+  /* nodeAligns reimplementado (add-wins-over-remove) por el mismo motivo. */
+  function alignsOfUid(pid, uid) {
+    var n = nodeOf(pid, uid);
+    var base = (C.cards[n.cardId].alignments || []).slice();
+    if (Array.isArray(n.alignsAdded)) n.alignsAdded.forEach(function (a) {
+      if (base.indexOf(a) < 0) base.push(a);
+    });
+    if (Array.isArray(n.alignsRemoved)) {
+      var kept = base.filter(function (a) { return n.alignsRemoved.indexOf(a) < 0; });
+      (n.alignsAdded || []).forEach(function (a) {
+        if (kept.indexOf(a) < 0) kept.push(a);
+      });
+      base = kept;
+    }
+    return base;
+  }
+  function modsOf(pid, uid, field) {
+    var n = nodeOf(pid, uid);
+    return Array.isArray(n[field]) ? n[field].map(function (m) { return m.v; }) : [];
+  }
+  function sum(a) { return a.reduce(function (x, y) { return x + y; }, 0); }
+
+  /* 1) 204 Bigger Business ACUMULA las tres frases sobre el grupo que es
+        conservative Y corporate: +2 (corporate) +2 (conservative) +3 (ambos) = +7.
+        Y un government+liberal NO se toca: el efecto no es "a todo el mundo". */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  plant(0, 'n1', 101, 0); plant(0, 'd1', 28, 0); plant(0, 'g1', 1, 0);
+  put(0, BB);
+  var r1 = E.playPlot(0, BB, null, {});
+  ok(curPowOf(0, 'n1') === P0 + 7, 'L3a Bigger Business ACUMULA +2+2+3 sobre el grupo bi-alineado -> ' +
+    curPowOf(0, 'n1') + ' (esperado ' + (P0 + 7) + ')');
+  ok(modsOf(0, 'n1', 'powerMods').length === 3, 'L3a las tres clausulas dejan tres deltas APILADOS -> ' +
+    JSON.stringify(modsOf(0, 'n1', 'powerMods')));
+  ok(sum(modsOf(0, 'n1', 'powerMods')) === 7, 'L3a los tres deltas suman +7 -> ' +
+    JSON.stringify(modsOf(0, 'n1', 'powerMods')));
+  ok(curPowOf(0, 'd1') === D0 + 2, 'L3a un conservative sin mas solo recibe su +2 -> ' + curPowOf(0, 'd1'));
+  ok(curPowOf(0, 'g1') === G0, 'L3a un government+liberal NO se toca (no es corporate ni conservative) -> ' +
+    curPowOf(0, 'g1') + ' vs ' + G0);
+  ok(modsOf(0, 'g1', 'powerMods').length === 0, 'L3a el grupo que no encaja no recibe NINGUN delta');
+  ok(r1.lastPlotResult && r1.lastPlotResult.affected === 2,
+    'L3a affected cuenta GRUPOS DISTINTOS (2, no 4) -> ' + (r1.lastPlotResult && r1.lastPlotResult.affected));
+  ok(r1.lastPlotResult && r1.lastPlotResult.hits === 4,
+    'L3a hits cuenta PARES grupo-clausula (3 del n1 + 1 del d1) -> ' + (r1.lastPlotResult && r1.lastPlotResult.hits));
+  ok(r1.lastPlotResult && r1.lastPlotResult.scope === 'own',
+    'L3a el alcance declarado es el del dueno -> ' + (r1.lastPlotResult && r1.lastPlotResult.scope));
+
+  /* 2) ALCANCE (interpretacion 1). Diez de estas cartas dicen "all X groups" SIN
+        decir "your". Se declaran propias del que las juega: un grupo del rival
+        con la misma alineacion queda intacto. Y el contador `affected` es 0. */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  plant(1, 'r1', 101, 0);
+  put(0, BB);
+  var r2 = E.playPlot(0, BB, null, {});
+  ok(curPowOf(1, 'r1') === P0, 'L3a el grupo del RIVAL no se toca -> ' + curPowOf(1, 'r1') + ' vs ' + P0);
+  ok(r2.lastPlotResult && r2.lastPlotResult.affected === 0,
+    'L3a sin coincidencias affected=0 y la carta se gasta sin efecto -> ' +
+    (r2.lastPlotResult && r2.lastPlotResult.affected));
+
+  /* 3) 344 Principia Discordia: "for every Weird group you control". Es
+        AUTOREFERENCIAL (cada Weird se cuenta a si mismo), y el motor cuenta la
+        estructura ENTERA del dueno: dos Weird => +2 de Resistencia a CADA uno. */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  /* E.playResource SI exige turno propio (requireOwnMain), a diferencia de
+     E.playPlot con una carta "instant". Hay que dejar al jugador 0 como actual
+     de forma EXPLICITA: fresh() decide el turno inicial por la tirada mas
+     alta, asi que si no se fuerza, este escenario falla cuando el rival gana.
+     Es la SEPTIMA aparicion de la clase de §41 (un fixture que depende del
+     reparto o del turno en vez de fijarlos). */
+  var me344 = readyToAttack(0);
+  ok(me344 === 0, 'L3a 344 el jugador 0 es el turno actual antes de jugar el Resource');
+  plant(0, 'w1', 2, 0); plant(0, 'w2', 2, 0); plant(0, 'n1', 101, 0);
+  put(0, PD);
+  /* P1-031: 344 es type=resource (su texto va sellado "Unique Artifact"), asi
+       que E.playPlot lo rechaza con "No es una Plot card". Se juega con
+       E.playResource, que hasta L3a no despachaba por effect.kind. */
+  throws(function () { E.playPlot(0, PD, null, {}); }, /No es una Plot card/i,
+    'P1-031 344 Principia Discordia NO es una Plot (es un Resource Unique Artifact)');
+  E._raw().players[0].illumTokens = 1;
+  E.playResource(0, PD, null);
+  ok(resOf(0, 'w1') === R2 + 2, 'L3a cada Weird recibe +1 por cada Weird controlado (+2) -> ' +
+    resOf(0, 'w1') + ' vs ' + (R2 + 2));
+  ok(resOf(0, 'w2') === R2 + 2, 'L3a el segundo Weird tambien +2 -> ' + resOf(0, 'w2'));
+  ok(modsOf(0, 'w1', 'powerMods').length === 0,
+    'L3a Principia Discordia no toca el PODER, solo la Resistencia');
+  ok(modsOf(0, 'n1', 'resistanceMods').length === 0,
+    'L3a un no-Weird no recibe Resistencia');
+
+  /* 4) 339 Political Correctness: +3 a los liberales, y los conservative de
+        Poder IMPRESO 1 "become Criminal as well" = ANADE la alineacion, no la
+        sustituye (sigue siendo Conservative). El filtro mira el Poder impreso. */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  plant(0, 'g1', 1, 0); plant(0, 'd1', 28, 0); plant(0, 'n1', 101, 0);
+  put(0, PC);
+  E.playPlot(0, PC, null, {});
+  ok(curPowOf(0, 'g1') === G0 + 3, 'L3a un liberal recibe +3 -> ' + curPowOf(0, 'g1'));
+  var dAl = alignsOfUid(0, 'd1');
+  ok(dAl.indexOf('criminal') >= 0, 'L3a un conservative de Poder 1 "become Criminal" -> ' + JSON.stringify(dAl));
+  ok(dAl.indexOf('conservative') >= 0,
+    'L3a "as well" ANADE: sigue siendo Conservative ademas de Criminal -> ' + JSON.stringify(dAl));
+  ok(curPowOf(0, 'd1') === D0, 'L3a volverse Criminal NO le da Poder extra -> ' + curPowOf(0, 'd1'));
+  ok(modsOf(0, 'n1', 'powerMods').length === 0,
+    'L3a un corporate (no liberal, Poder impreso 4) no recibe nada');
+
+  /* 5) 251 Energy Crisis: Poder -2 a corporate y Poder Y Resistencia -1 a los
+        green. Un mismo grupo puede caer en dos clausulas (Al Gore es green). */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  plant(0, 'n1', 101, 0); plant(0, 'g1', 1, 0);
+  var gR0 = C.cards[1].resistance, nR0 = C.cards[101].resistance;
+  put(0, EC);
+  E.playPlot(0, EC, null, {});
+  ok(curPowOf(0, 'n1') === P0 - 2, 'L3a un corporate pierde 2 de Poder -> ' + curPowOf(0, 'n1') + ' vs ' + (P0 - 2));
+  ok(resOf(0, 'n1') === nR0, 'L3a Energy Crisis NO toca la Resistencia de los corporate -> ' + resOf(0, 'n1'));
+  ok(curPowOf(0, 'g1') === Math.max(0, G0 - 1), 'L3a un green pierde 1 de Poder -> ' + curPowOf(0, 'g1'));
+  ok(resOf(0, 'g1') === gR0 - 1, 'L3a y TAMBIEN 1 de Resistencia -> ' + resOf(0, 'g1') + ' vs ' + (gR0 - 1));
+  ok(modsOf(0, 'g1', 'resistanceMods').length === 1, 'L3a el green recibe exactamente un delta de Resistencia');
+
+  /* 6) 217 Chicken in Every Pot: +2 a los Bank (atributo), +2 a los Coastal PLACE
+        (atributo Y subtipo) y -1 a los violent. El "atributo Y subtipo" se
+        comprueba buscando en el mazo un coastal que NO sea Place: si existe, no
+        puede llevar el +2, porque su unica clausula verde exige Place. */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var coastalNonPlace = -1;
+  C.cards.forEach(function (c) {
+    if (coastalNonPlace < 0 && c.type === 'group' && (c.attributes || []).indexOf('coastal') >= 0
+      && c.subtype !== 'place') coastalNonPlace = c.idx;
+  });
+  plant(0, 'c1', 15, 0); plant(0, 'f1', 43, 0); plant(0, 'v1', 2, 0);
+  if (coastalNonPlace >= 0) plant(0, 'x1', coastalNonPlace, 0);
+  var fP0 = typeof C.cards[43].power === 'number' ? C.cards[43].power : 0;
+  var vP0 = C.cards[2].power;
+  var xP0 = coastalNonPlace >= 0 ? C.cards[coastalNonPlace].power : null;
+  put(0, CI);
+  E.playPlot(0, CI, null, {});
+  ok(curPowOf(0, 'c1') === C.cards[15].power + 2,
+    'L3a un coastal PLACE recibe +2 -> ' + curPowOf(0, 'c1'));
+  ok(curPowOf(0, 'f1') === fP0 + 2, 'L3a un Bank recibe +2 por ATRIBUTO -> ' + curPowOf(0, 'f1') + ' vs ' + (fP0 + 2));
+  ok(curPowOf(0, 'v1') === Math.max(0, vP0 - 1), 'L3a un violent PIERDE 1 -> ' + curPowOf(0, 'v1'));
+  if (coastalNonPlace >= 0) {
+    ok(curPowOf(0, 'x1') === xP0,
+      'L3a un coastal que NO es Place no recibe el +2 (la clausula exige Place) -> ' +
+      curPowOf(0, 'x1') + ' vs ' + xP0 + ' (' + C.cards[coastalNonPlace].name + ')');
+  } else {
+    /* No hay ningun coastal que no sea Place, asi que la exclucion no se puede
+     * probar en negativo. Se prueba el otro lado de la conjuncion: un Place
+     * SIN atributo coastal tampoco puede llevar el +2, porque su clausula exige
+     * el atributo. */
+    var nonCoastalPlace = -1;
+    C.cards.forEach(function (c) {
+      if (nonCoastalPlace < 0 && c.type === 'group' && c.subtype === 'place'
+        && (c.attributes || []).indexOf('coastal') < 0) nonCoastalPlace = c.idx;
+    });
+    if (nonCoastalPlace >= 0) {
+      plant(0, 'y1', nonCoastalPlace, 0);
+      var yP0 = typeof C.cards[nonCoastalPlace].power === 'number' ? C.cards[nonCoastalPlace].power : 0;
+      ok(curPowOf(0, 'y1') === yP0,
+        'L3a conjuncion atributo+subtipo probada en positivo: un Place SIN coastal no recibe el +2 -> ' +
+        curPowOf(0, 'y1') + ' vs ' + yP0 + ' (' + C.cards[nonCoastalPlace].name + ')');
+    } else {
+      ok(true, 'L3a el mazo no tiene Place sin coastal: la conjuncion se comprueba solo en positivo');
+    }
+  }
+})();
 /* ---------- Utilidad global: resolver un ataque SIN ventanas de reaccion ----------
    P1-021 (ventana de RODADERO) hace que, tras tirar los dados, el motor pare y
    espere si alguien tiene una de las 6 cartas de rodadero en la mano. Los tests

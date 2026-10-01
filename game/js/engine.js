@@ -150,8 +150,15 @@ function defenderPower(node,isDestroy){
 function nodeResistance(node,cardObj){
   if(node&&node.resistanceOverride!=null)return node.resistanceOverride;
   var c=cardObj||(node?card(node.cardId):null);
-  if(c&&typeof c.resistance==='number')return c.resistance;
-  return 5;
+  var r=(c&&typeof c.resistance==='number')?c.resistance:5;
+  /* L3a — `resistanceMods`: deltas ADITIVOS y apilables, distintos de
+     `resistanceOverride` (que es un valor absoluto, y por eso no admite
+     un "+1"). Se anaden DESPUES del override para que el "+1 de cada
+     Weird" de Principia Discordia sobreviva a un Anguish que fije la
+     Resistencia. Mismo criterio que `powerMods` dentro de curPower. */
+  var rm=(node&&Array.isArray(node.resistanceMods))?node.resistanceMods:null;
+  if(rm)for(var mi=0;mi<rm.length;mi++){ if(typeof rm[mi].v==='number') r+=rm[mi].v; }
+  return r;
 }
 /* P1-015 — ¿Con qué Poder cuenta este nodo para una META?
    Las reglas oficiales son SILENTES sobre si un cambio de Poder hecho por una Plot
@@ -905,6 +912,17 @@ E.playResource=function(pid,handIdx,linkedToUid){
   var c=card(handIdx);
   if(!c||c.type!=='resource')throw new Error('No es un Resource');
   rejectUnverifiedCard(c);
+  /* P1-031 - E.playResource NUNCA despachaba por effect.kind: enlazaba el
+   * Resource y no ejecutaba nada. Hoy solo hay un Resource con mecanica
+   * verificada (344 Principia Discordia, kind bulk_power) y por eso 344 no se
+   * podia jugar en absoluto; el defecto estaba latente. Se ejecuta el mismo
+   * cuerpo que E.playPlot, y el default LANZA para que ningun Resource con
+   * mecanica pueda volver a jugarse en silencio. rejectUnverifiedCard ya ha
+   * descartado los kind === "unverified", asi que lo que llega aqui tiene
+   * mecanica verificada y por tanto merece un error explicito. */
+  var resFx = (c.effect || {}).kind;
+  if (resFx === 'bulk_power') applyBulkPower(pid, c, c.effect);
+  else throw new Error('El Resource "' + c.name + '" tiene una mecanica (' + resFx + ') que E.playResource todavia no ejecuta');
   pl.illumTokens--;pl.usedResourceThisTurn=true;
   removeFromHand(pl,handIdx);
   var link=linkedToUid||pl.illumId;
@@ -2212,6 +2230,139 @@ E.resolvePendingAttack=function(){
 };
 
 /* ================= PLOT CARDS ================= */
+/* P1-031 - L3a: el cuerpo de "bulk_power" vive aqui, no dentro del switch de
+ * E.playPlot, porque 344 Principia Discordia es un RESOURCE ("Unique Artifact")
+ * y se juega con E.playResource, que hasta ahora no despachaba por effect.kind:
+ * enlazaba el Resource y no ejecutaba nada. Con un unico cuerpo las dos
+ * entradas ejecutan exactamente el mismo efecto. La declaracion es doble:
+ * E.playResource llama a esta funcion Y su default lanza, de modo que ningun
+ * Resource con mecanica verificada vuelva a jugarse en silencio. */
+function bulkClauseHit(m, n, gc) {
+  if (m.align) {
+    if (nodeAligns(n, gc).indexOf(String(m.align).toLowerCase()) < 0) return false;
+  }
+  if (Array.isArray(m.aligns) && m.aligns.length) {
+    var al = nodeAligns(n, gc);
+    var want = m.aligns.map(function (a) { return String(a).toLowerCase(); });
+    var hit = (m.match === 'any')
+      ? want.some(function (a) { return al.indexOf(a) >= 0; })
+      : want.every(function (a) { return al.indexOf(a) >= 0; });
+    if (!hit) return false;
+  }
+  if (Array.isArray(m.notAligns) && m.notAligns.length) {
+    var al2 = nodeAligns(n, gc);
+    if (m.notAligns.some(function (a) { return al2.indexOf(String(a).toLowerCase()) >= 0; })) return false;
+  }
+  if (m.attr) {
+    if (!hasAttr(gc, String(m.attr).toLowerCase(), n)) return false;
+  }
+  if (Array.isArray(m.attrs) && m.attrs.length) {
+    var anyAttr = (m.match === 'any');
+    var okAttr = anyAttr
+      ? m.attrs.some(function (a) { return hasAttr(gc, String(a).toLowerCase(), n); })
+      : m.attrs.every(function (a) { return hasAttr(gc, String(a).toLowerCase(), n); });
+    if (!okAttr) return false;
+  }
+  if (m.subtype && gc.subtype !== m.subtype) return false;
+  /* minPower/maxPower miran el Poder IMPRESO (gc.power), no el actual: 339 dice
+     "groups with a Power of only 1" y "su Poder" es el dato de la carta. */
+  if (typeof m.minPower === 'number' && !(gc.power >= m.minPower)) return false;
+  if (typeof m.maxPower === 'number' && !(gc.power <= m.maxPower)) return false;
+  return true;
+}
+function applyBulkPower(pid, c, eff) {
+  /* L3a — "Increase/Reduce the Power of all X groups by N".
+   * Las 8 cartas de esta familia describen sus frases en `eff.moves` y este
+   * unico case las ejecuta: anadir una carta nueva es anadir DATOS.
+   * Gramatica y declaraciones de interpretacion: bloque BULK_FX de
+   * gen_cards.js. Lo que se recuerda aqui:
+   *   - el modificador va al NODO, no a la carta (interpretacion 5);
+   *   - las frases son ACUMULATIVAS (interpretacion 3): un grupo
+   *     Conservative+Corporate recibe los +2 +2 +3 de Bigger Business;
+   *   - no se filtra por `devastated`: el Poder sigue siendo su Poder. El
+   *     Poder de un grupo devastado importa igual (sigue siendo un objetivo
+   *     valido), y las cartas que si necesitantokens comprobaran su propia
+   *     condicion. Lo que se filtra aqui es lo que el texto dice. */
+  if (!Array.isArray(eff.moves) || !eff.moves.length)
+    throw new Error(c.name + ': la carta no declara ninguna clausula (eff.moves vacio)');
+  var bAll = (eff.scope === 'all');
+  var bTouched = [];
+  for (var qi = 0; qi < S.players.length; qi++) {
+    if (!bAll && qi !== pid) continue;
+    var qRoot = S.players[qi].structure;
+    walk(qRoot, function (n) {
+      if (n === qRoot) return; /* la raiz es el Illuminati, no es "un grupo" */
+      var gc = card(n.cardId);
+      if (!gc) return;
+      for (var mi = 0; mi < eff.moves.length; mi++) {
+        var mv = eff.moves[mi];
+        if (!bulkClauseHit(mv, n, gc)) continue;
+        var vP = mv.power, vR = mv.resistance;
+        /* scaleBy: 344 dice "for every Weird group you control", que es
+         * AUTOREFERENCIAL (cada Weird se cuenta a si mismo). Se cuenta
+         * deliberadamente la estructura ENTERA del dueno. */
+        if (mv.scaleBy) {
+          var sbAl = String(mv.scaleBy.align).toLowerCase();
+          var cnt = 0;
+          walk(qRoot, function (m2) {
+            if (m2 === qRoot) return;
+            var c2 = card(m2.cardId);
+            if (c2 && nodeAligns(m2, c2).indexOf(sbAl) >= 0) cnt++;
+          });
+          if (typeof vP === 'number') vP *= cnt;
+          if (typeof vR === 'number') vR *= cnt;
+          if (!cnt) continue; /* sin grupos de esa alineacion, nada que escalonar */
+        }
+        if (typeof vP === 'number') {
+          if (!Array.isArray(n.powerMods)) n.powerMods = [];
+          n.powerMods.push({ name: c.name + ' (' + (vP > 0 ? '+' : '') + vP + ')', v: vP });
+        }
+        if (typeof vR === 'number') {
+          if (!Array.isArray(n.resistanceMods)) n.resistanceMods = [];
+          n.resistanceMods.push({ name: c.name + ' (' + (vR > 0 ? '+' : '') + vR + ')', v: vR });
+        }
+        if (mv.become) {
+          /* 339: "become Criminal as well" — ANADE, no sustituye: el grupo
+           * sigue siendo Conservative y ademas es Criminal. */
+          var bAl = String(mv.become).toLowerCase();
+          if (!Array.isArray(n.alignsAdded)) n.alignsAdded = [];
+          if (nodeAligns(n, gc).indexOf(bAl) < 0) n.alignsAdded.push(bAl);
+        }
+        bTouched.push({
+          name: gc.name,
+          owner: S.players[qi].name,
+          power: (typeof vP === 'number') ? vP : null,
+          resistance: (typeof vR === 'number') ? vR : null,
+          become: mv.become || null
+        });
+      }
+    });
+  }
+  /* Un grupo que encaja en TRES clausulas aparece TRES veces en `bTouched`,
+   * porque el empuje esta dentro del bucle de clausulas (y debe estar: cada
+   * clausula mete su propio delta en powerMods/resistanceMods). Pero al
+   * CONTAR grupos hay que contar los distintos, o el registro mentiria:
+   * Bigger Business sobre un Conservative+Corporate + sus otros dos grupos
+   * daria "4 grupo(s) afectados" cuando solo hay 2. `bSeen` separa las dos
+   * cifras: `affected` = grupos distintos, `hits` = pares grupo-clausula. */
+  var bSeen = {}, bDistinct = 0;
+  for (var bz = 0; bz < bTouched.length; bz++) {
+    var bk = bTouched[bz].owner + '|' + bTouched[bz].name;
+    if (!bSeen[bk]) { bSeen[bk] = 1; bDistinct++; }
+  }
+  if (!bTouched.length) {
+    log(c.name + ': ningun grupo coincide con sus clausulas; se gasta sin efecto');
+  } else {
+    log(c.name + ': ' + bDistinct + ' grupo(s) afectados — ' + bTouched.map(function (t) {
+      return t.name + ' (P' + (t.power === null ? '0' : (t.power > 0 ? '+' : '') + t.power) +
+        (t.resistance === null ? '' : ' R' + (t.resistance > 0 ? '+' : '') + t.resistance) +
+        (t.become ? ' ->' + t.become : '') + ')';
+    }).join(', '));
+  }
+  return { ok: true, bulk: true, card: c.name, scope: bAll ? 'all' : 'own',
+                 clauses: eff.moves.length, affected: bDistinct, hits: bTouched.length,
+                 groups: bTouched };
+}
 E.playPlot=function(pid,handIdx,targetUid,opts){
   opts=opts||{};
   var c0=C.cards[handIdx];
@@ -2253,7 +2404,7 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
      pero ahi la ficha la gasta el grupo o el Illuminati, no el jugador que la juega,
      y por eso esa carta NO esta en la lista instant (P1-017, §32). Aqui el gasto de
      fichas es de quien juega la carta, asi que la lista es la correcta. */
-  ||eff0.kind==='force_align');
+  ||eff0.kind==='force_align'||eff0.kind==='bulk_power');
   if(instant){
     if(S.phase==='setup')throw new Error('No se pueden jugar Plot cards durante la preparación');
     if(S.phase==='gameover')throw new Error('La partida ha terminado');
@@ -2855,6 +3006,21 @@ case 'force_align':{
      * de "no puede recibir fichas" que existe, y no se inventa un segundo.
      *
      * SIN COSTE: su texto no imprime ninguno. No es un descuido. */
+    /* ==========================================================================
+   L3a - BULK-POWER (datos en gen_cards.js; aqui solo se ejecuta)
+   --------------------------------------------------------------------------
+   Ver el bloque BULK_FX de gen_cards.js para la gramatica de clausulas y las
+   CINCO declaraciones de interpretacion. Aqui solo hay codigo.
+
+   POR QUE `resistanceMods` Y NO `resistanceOverride`
+   `nodeResistance` ya tenia `resistanceOverride`, pero ese campo es un VALOR
+   ABSOLUTO (lo usa Anguish para fijar la Resistencia a 1). Estas cartas dicen
+   "+1", "+3", "-1": hacen falta deltas apilables, igual que `powerMods` para el
+   Poder. Por eso se anaden los dos campos y no se reutiliza el existente.
+
+   ========================================================================== */
+case 'bulk_power':{
+      lastResult = applyBulkPower(pid, c, eff); break;}
     case 'token_gift':{
       var gAlign=(typeof eff.giftAlign==='string')?eff.giftAlign.toLowerCase():null;
       var gAttr=(typeof eff.giftAttr==='string')?eff.giftAttr.toLowerCase():null;

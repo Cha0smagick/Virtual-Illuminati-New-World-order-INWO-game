@@ -35,7 +35,75 @@ for (const row of scribdArr) {
   if (!row || !row.name) continue;
   scribdCards[norm(row.name)] = row;
 }
-// name-key -> official type from SJG list
+// P1-030 - TERCERA FUENTE DE TEXTO (parche de datos, independiente del motor).
+// El OCR local de esta baraja esta TRUNCADO a mitad de frase en 10 cartas, y lo
+// que se pierde es justamente el numero: "Increase the Power of all Corporate
+// groups by" se corta antes del "3". No es un fallo del OCR sino que la segunda
+// fuente (scribd_card_text.json, 323 cartas) se construyo a partir de OTRO
+// scraping y no contiene esas 10 cartas, aunque el texto completo si esta en
+// disco, en research/scribd_inwo_cards_full.html.
+//
+// Ese HTML es un volcado del libro de reglas: cada carta es un parrafo
+// "<p>NEW WORLD ORDER <Nombre> <sabores> <reglas></p>". Se parsea aqui para
+// cerrar el hueco. Reglas de la fusion:
+//   1. NUNCA se sobreescribe scribd_card_text.json, que es la fuente curada y
+//      mas rica (trae power, resistance, alignments, attributes). Solo se anade
+//      lo que falte.
+//   2. El emparejamiento es por nombre normalizado (solo alfanumerico, sin
+//      distincion de mayusculas ni de apostrofos), de modo que el HTML pueda
+//      escribir "Dont Forget" donde la carta se llama "Don't Forget".
+//   3. applySecondaryText sigue exigiendo que la fuente sea ESTRICTAMENTE mas
+//      larga que el OCR, asi que una coincidencia mas corta no pisa nada.
+const scribdHtmlPath = path.join(ROOT, 'research/scribd_inwo_cards_full.html');
+if (fs.existsSync(scribdHtmlPath)) {
+  const html = fs.readFileSync(scribdHtmlPath, 'utf8');
+  // Nombres candidatos: la lista oficial de SJG, mas lo que ya aportan las otras
+  // fuentes. Se ordenan por longitud descendente para que "Military Industrial
+  // Complex" gane a un nombre mas corto que sea su prefijo.
+  const namePool = new Set();
+  for (const row of parsedArr) if (row && row.name) namePool.add(row.name);
+  for (const row of Object.values(mergeRaw.cards || {})) if (row && row.name) namePool.add(row.name);
+  for (const row of scribdArr) if (row && row.name) namePool.add(row.name);
+  const cands = Array.from(namePool).filter(Boolean).sort((a, b) => b.length - a.length);
+  const plain = h => String(h)
+    .replace(/<h2[^>]*>[\s\S]*?<\/h2>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&[a-z]+;/gi, ' ')
+    .replace(/\f/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  let recovered = 0;
+  for (const block of html.match(/<p[^>]*>[\s\S]*?<\/p>/gi) || []) {
+    if (block.indexOf('NEW WORLD ORDER') < 0) continue;
+    let body = plain(block).replace(/^NEW WORLD ORDER\s*/i, '').trim();
+    if (!body) continue;
+    const nb = norm(body);
+    for (const nm of cands) {
+      const nn = norm(nm);
+      if (!nn || nb.indexOf(nn) !== 0) continue;
+      // nn es prefijo de nb: se avanza sobre el texto ORIGINAL mientras se
+      // acumule exactamente nn.length caracteres normalizados, para obtener el
+      // punto de corte real y no perder acentos ni signos.
+      let acc = 0, cut = 0;
+      while (cut < body.length && acc < nn.length) {
+        if (/[a-z0-9]/i.test(body[cut])) acc++;
+        cut++;
+      }
+      const rest = body.slice(cut).trim();
+      if (!rest) continue;
+      const key = norm(nm);
+      if (scribdCards[key]) continue;   // la fuente JSON gana siempre
+      scribdCards[key] = { id: key, name: nm, sourceText: rest, description: '', source: 'scribd_html' };
+      recovered++;
+      break;
+    }
+  }
+  if (recovered) console.log('texto secundario recuperado del HTML de Scribd: ' + recovered);
+}// name-key -> official type from SJG list
 const offType = {};
 for (const r of parsedArr) {
   if (!r || !r.name || !r.type) continue;
@@ -899,6 +967,141 @@ const FORCE_FX = {
 };
 const FORCE_FXN = {}; for (const k in FORCE_FX) { FORCE_FXN[norm(k)] = FORCE_FX[k]; }
 
+/* ==========================================================================
+   L3a - BULK-POWER: "Increase/Reduce the Power of all X groups by N"
+   --------------------------------------------------------------------------
+   La familia se llama asi porque TODAS estas cartas hacen lo mismo: reparten
+   un modificador (de Poder o de Resistencia) a un conjunto de grupos que
+  Matches un filtro, sin elegir objetivo una por una. Es la unica diferencia
+   real entre "Power Increase" (que elige UN grupo, §27) y esta familia: aqui el
+   filtro lo decide la carta, no el jugador.
+
+   POR QUE UNA GRAMATICA DE CLAUSULAS Y NO DOCEN `case`
+   Las 8 cartas de este bloque son 17 frases del tipo "sube +2 a esto, +3 a
+   aquello que cumple dos cosas a la vez". Escribirlas como `case` produciria
+   8 copias de un mismo bucle con los numeros cambiados: exactamente el tipo de
+   duplicacion que este motor ya sufrio con los costes. En vez de eso la carta
+   DECLARA sus frases y un unico `case 'bulk_power'` las ejecuta. Anadir una
+   carta nueva es anadir una entrada de datos, no tocar el motor.
+
+   CAMPOS DE UNA CLAUSULA
+     align / aligns     filtro de alineacion (una, o varias)
+     match              'all' (tiene TODAS las de `aligns`, por defecto) o
+                        'any' (tiene al menos una)
+     attr / attrs       filtro de atributo, igual que `match` para `attrs`
+     subtype            'place', 'organization'...
+     notAligns          EXCLUYE si tiene cualquiera de estas (241: "Straight
+                        NO Government")
+     minPower/maxPower  filtro por Poder IMPRESO de la carta (339: "los
+                        Conservatives con Poder de SOLO 1")
+     power              delta de Poder (se negativo para "Reduce")
+     resistance         delta de Resistencia
+     become             alineacion que se anade (339: "become Criminal as well")
+     scaleBy            {align, count:'own'} — el delta se multiplica por
+                        cuantos grupos de esa alineacion controlas. Existe
+                        porque 344 dice "for every Weird group you control"
+                        y eso es AUTOREFERENCIAL: cada Weird se cuenta a si
+                        mismo. DECLARADO ASI a proposito: el texto es explicito
+                        ("si hay 5 Weird, cada uno recibe +5") y una lectura
+                        que se excluyera a si mismo daria +4 y no +5.
+     scope              'own' (por defecto) o 'all' (todos los jugadores)
+
+   DECLARACIONES DE INTERPRETACION (ninguna regla oficial las resuelve)
+   1) ALCANCE. Diez de estas cartas dicen "all X groups" SIN la palabra "your".
+      Se aplican SOLO a los grupos del jugador que las juega. Motivo declarado:
+      son Plot que se juegan en tu turno para reforzar tu propia estructura, y
+      la lectura alternativa (un arma que golpea tambien a los rivales) haria
+      que 251 Energy Crisis fuese objetivamente mejor que un Disaster. La
+      excepcion se marca explicitamente con `scope:'all'`, y solo la usan las
+      cartas cuyo texto nombra a los grupos de forma inequivocamente universal.
+   2) PERMANENCIA. El efecto dura mientras el grupo siga en juego. Es lo que
+      distingue estas cartas de las que dicen "for one action only", que son
+      otra familia (L5). El unico mecanismo que borra un modificador es que el
+      grupo salga del juego: `destroyGroup` descarta el nodo entero.
+   3) "Increase the Power of all Conservative Corporate groups by 3" (204 y
+      296) NO es una tercera frase que sustituya a las otras dos: es ACUMULATIVA.
+      Un grupo que sea Conservative Y Corporate recibe +2 +2 +3. El texto
+      apila las tres frases y el mazo las juega juntas.
+   4) `maxPower` mira el Poder IMPRESO de la carta, no el actual. 339 dice
+      "groups with a Power of only 1", y "su Poder" en este juego es el dato
+      impreso de la carta; si miraras el actual, una carta que ya recibio un +2
+      dejaria de-qualificar y el efecto seria inestable.
+   5) El modificador se guarda en el NODO (`powerMods` / `resistanceMods`), no
+      en la carta. Es lo que permite que dos grupos identicos se comporten
+      distinto, que es exactamente como funciona el Poder en este juego: depende
+      de quien lo controla y de que le han hecho.
+   ========================================================================== */
+const BULK_FX = {
+  'Bigger Business': {
+    kind: 'bulk_power',
+    moves: [
+      { align: 'corporate', power: 2 },
+      { align: 'conservative', power: 2 },
+      { aligns: ['conservative', 'corporate'], match: 'all', power: 3 }
+    ],
+    t: 'Increase the Power of all Corporate groups by 2. Increase the Power of all Conservative groups by 2. Increase the Power of all Conservative Corporate groups by 3.'
+  },
+  'Chicken in Every Pot': {
+    kind: 'bulk_power',
+    moves: [
+      { attrs: ['bank'], power: 2 },
+      { attr: 'coastal', subtype: 'place', power: 2 },
+      { align: 'violent', power: -1 }
+    ],
+    t: 'Increase the Power of all Banks and all Coastal Places by 2. Decrease the Power of all Violent groups by 1.'
+  },
+  "Don't Forget to Smash the State": {
+    kind: 'bulk_power',
+    moves: [
+      { align: 'government', power: -3 },
+      { align: 'straight', notAligns: ['government'], power: -2 }
+    ],
+    t: 'Reduce the Power of all Government groups by 3. Reduce the Power of all Straight non-Government groups by 2.'
+  },
+  'Energy Crisis': {
+    kind: 'bulk_power',
+    moves: [
+      { align: 'corporate', power: -2 },
+      { attr: 'green', power: -1, resistance: -1 }
+    ],
+    t: 'Reduce the Power of all Corporate groups by 2. Reduce Power and Resistance of all Green groups by 1.'
+  },
+  'Gun Control': {
+    kind: 'bulk_power',
+    moves: [
+      { aligns: ['violent', 'government'], match: 'all', power: 3 },
+      { align: 'criminal', power: 1 }
+    ],
+    t: 'Increase the Power of all Violent Government groups by 3. Increase the Power of all Criminal groups by 1.'
+  },
+  'Law and Order': {
+    kind: 'bulk_power',
+    moves: [
+      { align: 'conservative', power: 2 },
+      { align: 'straight', power: 2 },
+      { aligns: ['conservative', 'straight'], match: 'all', power: 3 }
+    ],
+    t: 'Increase the Power of all Conservative groups by 2. Increase the Power of all Straight groups by 2. Increase the Power of all Straight Conservative groups by 3.'
+  },
+  'Political Correctness': {
+    kind: 'bulk_power',
+    moves: [
+      { align: 'liberal', power: 3 },
+      { align: 'conservative', maxPower: 1, become: 'criminal' }
+    ],
+    t: 'Increase the Power of all Liberal groups by 3. All Conservative groups with a Power of only 1 become Criminal as well.'
+  },
+  'Principia Discordia': {
+    kind: 'bulk_power',
+    moves: [
+      { align: 'weird', resistance: 1, scaleBy: { align: 'weird', count: 'own' } }
+    ],
+    t: 'Each Weird group in your Power Structure increases its Resistance by 1 for every Weird group you control. So, if there are a total of 5 Weird groups in your Power Structure, each one gets +5 to its Resistance.'
+  }
+};
+const BULK_FXN = {};
+for (const k in BULK_FX) { BULK_FXN[norm(k)] = BULK_FX[k]; }
+
 function baseFromFolder(m) {
   if (m.folder === 'Illuminati') return { type: 'illuminati', subtype: null };
   return { type: 'group', subtype: 'organization' }; // Groups folder
@@ -1083,11 +1286,31 @@ function applySecondaryText(rec) {
   if (!row) return;
   const sec = String(row.sourceText || row.description || '').trim();
   const ocr = String(rec.text || rec.ocrText || '').trim();
-  if (!sec || !ocr || sec.length <= ocr.length) return;
+/* P1-030 (segunda parte): la regla "la fuente secundaria debe ser MAS LARGA"
+   era un proxy de "es mejor", y el proxy falla justo donde mas duele: en una
+   baraja truncada a mitad de frase el OCR puede ser mas largo por llevar
+   lineas decorativas corrompidas ("U=ed hte Flea Of") mientras la
+   transcripcion del libro de reglas es mas corta y esta COMPLETA. Perder el
+   numero de un efecto por un criterio de longitud es peor que aceptar un texto
+   mas corto.
+
+   Se aceptan, por tanto, tres casos, todos verificables y no gustativos:
+     1. la fuente es mas larga que el OCR (comportamiento original);
+     2. empate de longitud: el contenido es el mismo y la fuente es una
+        transcripcion real, asi que se prefiere;
+     3. el OCR esta TRUNCADO de forma demostrable (no termina en puntuacion
+        final) y la fuente si termina: un texto corto que acaba en punto es
+        mejor que uno largo cortado a la mitad, porque el numero del efecto
+        esta al final de la frase.
+   No se degrada nada: solo afecta a las cartas que aun NO tienen textFull. */
+  if (!sec || !ocr) return;
+  const complete = /[.!?)]["']?$/.test(sec);
+  const ocrCut = !/[.!?)]["']?$/.test(ocr);
+  const better = sec.length > ocr.length || sec.length === ocr.length || (ocrCut && complete);
+  if (!better) return;
   rec.textFull = sec;
   rec.textSource = 'secondary';
-  rec.textChars = { ocr: ocr.length, secondary: sec.length };
-}
+  rec.textChars = { ocr: ocr.length, secondary: sec.length };}
 function mechanicsStatus(card) {
   const kind = card.effect && card.effect.kind ? card.effect.kind : 'sin-effect';
   /* Transcribed off the card face: the printed rules are captured
@@ -1169,7 +1392,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key];
   if (pfx) {
     rec.effect = pfx;
     rec.subtype = pfx.kind;

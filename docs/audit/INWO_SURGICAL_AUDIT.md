@@ -2966,3 +2966,381 @@ Dos hechos comprobados antes de parchear, para no cambiar lo que la prueba verif
 La forma de evitarlo es que la fixture se elija de una poblacion **grande y estable**, nunca de una poblacion de 7 cartas que se sortea. Para una asercion negativa ("el motor rechaza esto") el sitio correcto no es la mano del jugador, que se baraja cada partida, sino el mazo, del que se saca la carta. Y si la prueba necesita la carta **en la mano** porque la regla es sobre la mano, hay que **quitarla del mazo al meterla** -- o el test esta probando una carta que en una partida real todavia estaria en el mazo.
 
 Cierre de L2 y L1 con esto. **Proximo lote: L3 (BULK-POWER, 14 cartas)**, que reutiliza `node.powerMods`.
+---
+
+## 42. L3 - BULK-POWER: las 8 cartas que suben o bajan el Poder de "todos los grupos X" (y P1-030, P1-031)
+
+### 42.1 Hallazgo: el OCR de 10 cartas estaba truncado y sin los numeros
+
+Al leer las 15 cartas que `plan.md`agriupa en L3 aparecio un problema de DATOS, no de motor:
+el texto OCR de runtime de 10 de ellas esta **cortado a mitad de frase**, y el numero que
+aplica el efecto estaba **justo en el trozo que falta**:
+
+| idx | carta | OCR truncado | lo que faltaba |
+|---|---|---|---|
+|204 Bigger Business|"Increase the Power of all Corporate groups by 2 / Increase the Power of all Conservative groups by / Increase the Power of all Conservative Corporate"|**by 3** en la tercera frase |
+|217 Chicken in Every Pot|"... / L crease the Power of all Banks and all Coastal"|**Decrease the Power of all Violent groups by 1** (frase entera) |
+|241 Don't Forget to Smash the State|"... Reduce the Power of all Government groups by 3 / Reduce the Power of all Straight non-Govemment"|**by 2** |
+|251 Energy Crisis|"... Reduce Power and Resistance of all Green groups"|**by 1** |
+|271 Gun Control|"Increase the Power of all Violent Government / Increase the Power of all Criminal groups by 1"|**by 3** |
+|296 Law and Order|"... Increase the Power of all Straight Conservative"|**by 3** |
+
+Las 14 con `textFull` parecian sanas. Y aqui esta la trampa: **el gate de §36 (FASE 4) exige >=20
+caracteres de `text` O de `textFull`, y las 57 cartas sin `textFull` ya cumplen los 20 con su OCR**.
+O sea, el gate no podia quejarse: 20 caracteres de una frase truncada son 20 caracteres. El gate
+**no puede ser un detector de truncamiento**; hay que buscar la fuente buena.
+
+### 42.2 P1-030 - la fuente buena existia en disco y el merge no la miraba
+
+La causa raiz esta en `gen_cards.js`:
+
+```js
+const scribdPath = path.join(ROOT, 'research/audit_reports/scribd_card_text.json');
+const scribdArr  = ... (scribdRaw.cards || []);            // 323 entradas
+for (const row of scribdArr) { scribdCards[norm(row.name)] = row; }
+...
+function applySecondaryText(rec) {
+  const row = scribdCards[norm(rec.name)];
+  if (!row) return;
+  ...
+}
+```
+
+`research/audit_reports/card_data_merge.json` marca estas 10 cartas como
+`"sourceStatus": "secondary-not-found"`. Pero **`research/scribd_inwo_cards_full.html` si las tiene**:
+es otro scrape del mismo libro y sus bloques `<p>` empiezan con `NEW WORLD ORDER <Nombre>` seguido
+del texto completo. Se comprobo que la causa es de origen, no de codigo: **el array `cards` de
+`scribd_card_text.json` (323 entradas) NO contiene Bigger Business, World Hunger, Law and Order,
+Gun Control, Political Correctness, Energy Crisis, Chicken in Every Pot, Fear and Loathing,
+A Thousand Points of Light, Peace in Our Time, Solidarity, Military-Industrial Complex ni
+World War Three** - se construyo de un scrape DIFERENTE. Y el resto de fuentes del repo se
+descartaron uno a uno: `research/card_ocr.json` y `game/js/cardtexts_data.js` (mismo OCR
+truncado), `research/cards_parsed.json` (solo inventario: nombre/frecuencia/tipo/artista),
+`research/audit_reports/plot_transcription.md` (sin textos de carta),
+`docs/audit/CARD_CATALOG.md` y `CARD_RESEARCH.md` (repiten el OCR truncado).
+
+**Correccion**: un segundo cargador que parsea los `<p>` de
+`research/scribd_inwo_cards_full.html`, quita el prefijo `NEW WORLD ORDER`, busca el **nombre de
+carta mas largo que sea prefijo del resto** (comparacion por `norm()`, o sea alfanumericos en
+minusculas: por eso el `Dont Forget` del HTML casa con el `Don't Forget` de la carta) y registra
+`{name, sourceText}` **solo si la clave no existe todavia** (el JSON gana siempre, que es la fuente
+curada y ademas trae power/resistance/alignments/attributes). Resultado: **14 textos recuperados**.
+
+La segunda correccion es tan importante como la primera. El criterio de aceptacion era
+`sec.length > ocr.length`, que es un **proxy** de "es mejor" que falla justo donde duele:
+
+```js
+/* El criterio antiguo era `sec.length > ocr.length`, un PROXY de "la fuente es mejor".
+ * Proxy, no medida: en un mazo truncado a mitad de frase el OCR puede ser MAS LARGO
+ * solo porque arrastro lineas decorativas corruptas ("U=ed hte Flea Of"), mientras
+ * que la transcripcion del libro es mas corta pero COMPLETA. Perder el numero de un
+ * efecto por un criterio de longitud es peor que aceptar un texto mas corto.
+ * Se aceptan tres casos: (1) mas largo (el original); (2) EMPATE de longitud, porque
+ * es la misma regla pero transcrita, y la transcripcion gana; (3) OCR truncado de
+ * forma PROBABLE (no termina en puntuacion) y fuente completa, porque el numero esta
+ * al final de la frase. No puede empeorar nada: solo afecta a cartas que no tenian
+ * textFull. */
+const complete = /[.!?)]["']?$/.test(sec);
+const ocrCut   = !/[.!?)]["']?$/.test(ocr);
+const better   = sec.length > ocr.length || sec.length === ocr.length || (ocrCut && complete);
+if (!better) return;
+```
+
+Efecto medido: `textFull` en Plots/Resources **179 -> 195**; las cartas con texto secundario
+recuperado **311 -> 328** (+17615 caracteres). Las 14 son 186, 204, 217, 241, 251, 255, 271, 296,
+315, 334, 339, 370, 418, 419.
+
+### 42.3 El gate tambien tuvo que cambiar (leccion de §36, 2a vez en dos lotes)
+
+La asercion de §36 era `ok(c.textFull.length > ocrLen, ...)` - exactamente el criterio del
+generador. Y **fallo correctamente** en 7 cartas (241, 247, 334, 339, 372, 418, 419), porque 7
+de las 14 recuperadas son mas cortas que su OCR. No se aflojo la asercion: se reemplazo por dos
+comprobaciones que **no copian el predicto del generador** (copiarlo seria tautologico):
+
+```js
+ok(sec.length > ocrLen || sec.length === ocrLen || (ocrCut && secComplete), ...);
+if (sec.length < ocrLen) {
+  const WORDS = /\b(one|two|...|twice|double|triple|tripled|quadruple|halved|...)\b/i;
+  ok(/\d/.test(sec) || WORDS.test(sec), ...);   /* contrapunto INDEPENDIENTE */
+}
+```
+
+La segunda es la que importa: **cuando la fuente es mas corta, tiene que expresar una CANTIDAD**,
+porque la cantidad es justo lo que el OCR truncado perdia. El primer intento exigia un digito y
+**fallo correctamente** en 372 ("combine **two** Disasters") y 419 ("has **tripled** power"): la
+cantidad tambien puede ser una palabra, y exigir la forma numerica habria sido arbitrario.
+
+### 42.4 L3 se partio en L3a y L3b, y por que
+
+`plan.md` metia 14 cartas en una sola familia. Al leer los textos resulta que son **tres formas
+distintas**:
+
+1. **AUTODIFUSION sin objetivo** ("all your Corporate groups by 2") - es lo unico que necesita
+   `powerMods`. **8 cartas: L3a, implementado.**
+2. **CADUCIDAD o supresion** (268 "until the beginning of your next turn ... for defense only",
+   418 "lose their Action tokens and cannot get new ones") - requieren campos que el motor no
+   tiene: `expiresAtTurn` y un predicado `noTokens` nuevo. **Aplazado.**
+3. **UN SOLO grupo objetivo** (234, 355, 377) - "any one of your Bank groups", "the target
+   group". Lo mas probable es que sean entradas nuevas de las familias que **ya existen**
+   (`POWERINC_FX` / `RESINC_FX` de §27/§28) y no un `kind` nuevo. **Aplazado.**
+
+Y dos cartas quedaron **BLOQUEADAS con motivos distintos** (congeladas en
+`test_fase4_cards.js`, que pasa de 9 a 11):
+
+- **341 Power for its Own Sake**: ilegible. El OCR solo da "including your llluminati group 3" y
+  **no aparece en ninguna de las dos fuentes secundarias**, asi que no se puede autorizar el numero
+  que aplica. No es "dificil", es "no se sabe".
+- **384 Tax Reform**: **no es bulk_power**. Su texto impreso es un efecto continuo entre turnos
+  ("The IRS can now tax one Plot card from each player, at the beginning of its own turn"), un
+  subsistema distinto de una modificacion de Poder/Resistencia. **La agrupacion de plan.md era
+  incorrecta** y leer el texto impreso es lo que lo revelo.
+
+### 42.5 L3a - las 8 cartas y la gramatica de clausulas
+
+Un solo `kind`, **`bulk_power`**, con las frases descritas como DATOS en `eff.moves`. Anadir una
+carta nueva a la familia es anadir un objeto en `gen_cards.js`, no escribir codigo:
+
+| carta | `moves` |
+|---|---|
+|204 Bigger Business|`{align:'corporate',power:2}`, `{align:'conservative',power:2}`, `{aligns:['conservative','corporate'],match:'all',power:3}` |
+|217 Chicken in Every Pot|`{attrs:['bank'],power:2}`, `{attr:'coastal',subtype:'place',power:2}`, `{align:'violent',power:-1}` |
+|241 Don't Forget to Smash the State|`{align:'government',power:-3}`, `{align:'straight',notAligns:['government'],power:-2}` |
+|251 Energy Crisis|`{align:'corporate',power:-2}`, `{attr:'green',power:-1,resistance:-1}` |
+|271 Gun Control|`{aligns:['violent','government'],match:'all',power:3}`, `{align:'criminal',power:1}` |
+|296 Law and Order|`{align:'conservative',power:2}`, `{align:'straight',power:2}`, `{aligns:['conservative','straight'],match:'all',power:3}` |
+|339 Political Correctness|`{align:'liberal',power:3}`, `{align:'conservative',maxPower:1,become:'criminal'}` |
+|344 Principia Discordia|`{align:'weird',resistance:1,scaleBy:{align:'weird',count:'own'}}` |
+
+**Gramatica de una clausula**: `align` / `aligns[]` (+`match:'all'|'any'`) / `notAligns[]` (EXCLUYE)
+/ `attr` / `attrs[]` / `subtype` / `minPower` / `maxPower` / `power` / `resistance` / `become` /
+`scaleBy:{align}` / `scope:'own'|'all'`.
+
+**Cinco interpretaciones declaradas** (bloque `BULK_FX`):
+
+1. **ALCANCE**: 10 de estas cartas dicen "all X groups" **sin** "your": se aplican solo a los
+   grupos del controlador. Razon declarada: son Plots jugadas en tu turno para reforzar tu propia
+   estructura, y la lectura contraria haria que **251 Energy Crisis fuera estrictamente mejor que un
+   Disaster** (reducir el Poder de los grupos de TODOS los jugadores sin coste de Disaster). Solo
+   los textos inequivocamente universales usan `scope:'all'`, y en L3a ninguno.
+2. **PERMANENCIA**: dura mientras el grupo siga en juego; solo salir del juego lo borra.
+3. **ACUMULATIVO**: "Increase the Power of all Conservative Corporate groups by 3" (204, 296) **no**
+   sustituye: un grupo Conservative+Corporate recibe **+2 +2 +3 = +7**.
+4. `minPower`/`maxPower` miran el Poder **IMPRESO** (`gc.power`), no el actual: 339 dice "groups
+   with a Power of only 1" y "su Poder" es el dato de la carta.
+5. El modificador va al **NODO**, no a la carta.
+
+Campo de nodo nuevo: **`node.resistanceMods`**, pliegado en `nodeResistance` **despues** de
+`resistanceOverride` - a proposito, para que un Angst que fija Resistencia en 1 no borre el +1 de
+Principia Discordia (`resistanceOverride` es un valor ABSOLUTO usado por Angst; estas cartas son
+"+1/+3/-1", que necesitan deltas apilables, igual que `powerMods` para el Poder).
+
+### 42.6 Un fallo de registro: `affected` no era `hits`
+
+`bTouched.push` esta dentro del bucle de clausulas, y **debe** estarlo (cada clausula mete su
+propio delta). Pero al **contar** grupos hay que contar los distintos, o el registro miente:
+Bigger Business sobre un Conservative+Corporate mas otros dos grupos decia **"4 grupo(s)
+afectados"** cuando solo habia **2**. Consecuencia real: el log y el resultadoancaaban en cifras que
+un jugador leeria como error. Se separo en `bSeen` (clave `owner|nombre`) y ahora `lastPlotResult`
+trae **`affected` = grupos distintos** y **`hits` = pares grupo-clausula**. Lo encontro la prueba de
+regresion, no el gate.
+
+### 42.7 P1-031 - `E.playResource` NUNCA despachaba por `effect.kind`
+
+La prueba de regresion fallo con `Error: No es una Plot card` en la linea de **344 Principia
+Discordia**. La causa es un hallazgo de verdad: **344 es `type=resource`** (su texto impreso lleva
+el sello "Unique Artifact"), asi que `E.playPlot` la rechaza y **no se podia jugar de ninguna
+forma**. Al buscar el segundo punto de entrada aparecio el defecto mayor: **`E.playResource` nunca
+despachaba por `effect.kind`** - validaba, gastaba la ficha del Illuminati, enlazaba el Resource y
+**no ejecutaba nada**. Census de los 35 Resources por kind: `{"unverified":34,"bulk_power":1}`.
+O sea que estaba latente por casualidad: el unico Resource con mecanica verificada era
+precisamente el que no se podia jugar. Misma clase que el campo muerto `A.privilege` de P1-026:
+**el dato existe pero nadie lo consume.**
+
+Correccion, dos mitades:
+
+1. El cuerpo de `bulk_power` se extrajo a una funcion de modulo `applyBulkPower(pid, c, eff)` que
+   **devuelve** `{bulk:true, card, scope, clauses, affected, hits, groups}` en vez de asignar
+   `lastResult`, y hace su propio `log`. `case 'bulk_power'` queda en una linea.
+2. `E.playResource` gana un despacho **cuyo `default:` LANZA**:
+   `'El Resource "X" tiene una mecanica (kind) que E.playResource todavia no ejecuta'`. Es la parte
+   que importa: mientras el `default` fuera silencioso, el proximo Resource con mecanica volveria
+   a jugarse **sin efecto y sin que nadie lo notara**. `rejectUnverifiedCard(c)` ya lanza para
+   `kind==='unverified'`, asi que lo que llega al despacho tiene mecanica verificada.
+
+### 42.8 El gate de calificadores tambien tuvo que descender al array
+
+Con `bulk_power` las tarjetas de efecto pasaron a vivir dentro de `eff.moves[]`, y el gate de §31
+recorre **campos de primer nivel**: un campo nuevo sin rama se **valida en silencio**. Se anadio
+un bloque `if (Array.isArray(e.moves) && e.moves.length)` que valida **por clausula** y etiqueta
+los mensajes con `(clausula N de M)`:
+
+- la clausula **debe hacer algo**: `power` o `resistance` numerico, o `become` - si no, "filtra
+  pero no cambia ni Poder, ni Resistencia, ni alineacion".
+- `align`, `aligns[]`, `notAligns[]`, `attr`, `attrs[]`, `subtype`, `scaleBy.align` deben existir
+  en el mazo.
+- **`match:'all'` con mas de una alineacion exige ademas que ALGUN grupo las tenga todas**: sin
+  eso la clausula "all Conservative Corporate" seria **vacia** - la misma leccion de `oppAlign` en
+  §40 aplicada a L3a.
+
+`checkedFields` pasa de 17 a **18** campos, con `moves` dentro.
+
+### 42.9 Verificacion
+
+- `node --check` limpio en `gen_cards.js`, `engine.js`, `test_fase4_cards.js` y
+  `test_fase2_rules.js`; 0 caracteres CJK ni U+FFFD en los cuatro.
+- `node gen_cards.js` -> `texto secundario recuperado del HTML de Scribd: 14` +
+  `written 421 {"group":167,"illuminati":18,"plot":201,"resource":35} verified-groups 33`.
+- `node test_fase2_rules.js` -> **FASE 2 RULES PASSED** (486 lineas de salida, 0 FAIL, 0 Error).
+- `node test_fase4_cards.js` -> **FASE 4 COVERAGE PASSED (107 cartas clasificadas, 141
+  Plots/Resources sin mecanica (techo 182), 3 ramas muertas declaradas, 11 cartas bloqueadas
+  congeladas, 4 huecos de texto declarados)**; `implemented-pending-engine` 80 -> **88**;
+  `unverified` 287 -> **279**; kinds con `"bulk_power":8`; `textFull` en Plots/Resources 179 -> 195.
+- `npm test` -> **ALL TESTS PASSED (10)**.
+- Regresion L3a: 6 escenarios, 28 aserciones. 204 acumula +7 en el Nuclear Power Companies (el
+  **unico** grupo Conservative Y Corporate del mazo) con tres `powerMods` apilados, +2 en el
+  Conservative, 0 deltas en el Government/Liberal, `affected=2`/`hits=4`/`scope=own`, y el
+  homonimo del rival intacto; 344 via `E.playResource` con conteo autorreferencial (dos Weird, +2
+  cada uno); 339 `become` **anade** criminal **conservando** conservative; 251 corporate -2 Poder
+  con Resistencia intacta y green -1 Poder **y** -1 Resistencia; 217 coastal PLACE +2, bank +2 por
+  atributo, violent -1, y la conjuncion `attr AND subtype` probada por contraste.
+
+### 42.10 Lecciones
+
+1. **El gate no puede ser un detector de truncamiento.** 57 cartas sin `textFull` ya cumplian los
+   20 caracteres del gate con un OCR cortado a mitad de frase. Un umbral de longitud es
+   satisfacible con basura. Para recuperar datos hay que ir a la **fuente primaria**, no a relajar
+   el criterio.
+2. **Dos fuentes del mismo documento pueden no ser la misma fuente.** `scribd_card_text.json` y
+   `scribd_inwo_cards_full.html` son dos scrapeos distintos del mismo libro; al primero le faltan
+   13 cartas que el segundo tiene. "Ya mire la fuente secundaria" no es lo mismo que "la fuente
+   secundaria tiene todo".
+3. **Un proxy puede estar equivocado en la direccion que mas duele.** `length >` parecia
+   decir "prefiere el texto mejor" y en realidad prefiere "el texto mas largo", que aqui era el
+   mas POBRE. La regla: cuando el criterio no mide la cualidad que importa, autorizalo a afirmar la
+   cualidad (terminal punctuation, o "expresa una cantidad") en lugar de fiarse de la longitud.
+4. **Un punto de entrada sin despacho por `kind` es un `kind` que se juega sin efecto.** El
+   `default:` de `E.playResource` **lanza** ahora, y esa es la parte que evita la recaida. El
+   defecto estaba latente desde antes de L3a.
+5. **Una carta puede ser Resource y `E.playPlot` es entonces el punto de entrada equivocado.**
+   Antes de implementar cualquier familia nueva hay que mirar el `type` de sus cartas: 344 no
+   fallo solo como bug de test, senalaba un subsistema entero sin despachar. **Regla para L3b.**
+6. **Contar mal es un bug, no un detalle de estilo.** `affected` y `hits` son la misma lista contada
+   de dos maneras; la que se muestra tiene que ser la que no cuenta dos veces.
+7. **La herramienta mas simple suele ser la correcta.** Cinco trampas de tooling en este lote
+   (anclar con un regex que no puede cruzar un `;` de comentario; guardar la cadena del ancla donde
+   se esperaba el indice; un guard de idempotencia con un substring que el fichero contiene DOS
+   veces; un contador de llaves que no entiende comentarios multilinea; un `.cjs` que murio por
+   comillas mixtas). Todas autoprovocadas, todas detectadas por `node --check` o por una asercion.
+   La via probada cuando ya se conocen las lineas exactas es la **herramienta `edit`**, no un
+   script temporal. La unica que no se puede recuperar es un **`git checkout` de un fichero con
+   trabajo sin commitear** (ya perdi 962 lineas una vez por eso).
+8. **Los fixtures tambien fallan.** Tres veces en este lote: `power` es `null` en Center for
+   Disease Control (y en Federal Reserve y I.R.S.) y `curPower` lo trata como 0; `gIdx` devolvia un
+   grupo que tambien estaba en el filtro; y el **"negativo" de la clausula `attr AND subtype` no
+   existe en el mazo** (no hay ningun coastal que no sea Place), asi que la conjuncion solo se
+   puede probar en positivo - y el test **lo dice** en vez de fingir lo contrario.
+
+### 42.11 Backlog
+
+- **L3b**: 268 Good Polls (`expiresAtTurn` + "for defense only"), 418 World Hunger (partida en dos:
+  predicado `noTokens` + `scope:'all'`), y 234 / 355 / 377, que probablemente son entradas nuevas de
+  `POWERINC_FX` / `RESINC_FX` de §27/§28. **Comprobar su `type` antes de nada.**
+- **34 Resources sin mecanica** y `E.playResource` ejecutando un solo kind. Cada uno que se
+  implemente debe entrar por el despacho o launchar.
+- L4..L16 sin empezar; 141 Plots/Resources aun sin mecanica.
+- El predicado de "no recibe fichas" esta duplicado en `spendGroupToken`, `firstUsableAid` y
+  `case 'token_gift'`; L3b (418) probablemente quiera **un unico helper** en lugar del tercero.
+- Fase 3 (UX, onboarding, DOM en navegador real, IA que juegue cartas de reaccion).
+- P1-DATA-03 Global Power: el entorno no resuelve `cs.cmu.edu` ni `sjgames.com`.
+- 5 cartas sin transcripcion secundaria (185, 195, 206, 229, 331) y 232/258 con OCR mas largo que
+  la fuente secundaria.
+---
+## 43. Caza de flakes: cuatro fixtures que dependian de la suerte
+
+L3a quedo verde en una sola corrida. El rastro de la §33.5 (Car Bomb +10), la §37.5
+(`sealWindows`), la §38.8 (`noCancelWindow`) y la §41 (P1-029, la ficha aleatoria del SMOKE) es que
+**una prueba que depende del reparto se rompe cuando el juego crece**. L3a movio 8 cartas de
+`unverified` a `implemented-pending-engine`, y eso cambio las probabilidades de varios fixtures que
+llevaban meses pasando por casualidad. Esta seccion documenta cuatro de ellos, los cuatro
+arreglados.
+
+### 43.1 Sintoma y alcance
+
+`node test_fase2_rules.js` fallo **16 de 30** corridas. Ningun fallo era del motor: en los cuatro
+casos **el motor tenia razon y la fixture mintia**. Los tres primeros eran el mismo defecto (la
+mano aleatoria traia algo que la fixture daba por hecho que no estaba); el cuarto es una clase de
+interferencia **nueva** que §38 introdujo y contra la que ningun bloque anterior estaba escrito.
+
+| id | bloque | sintoma | causa |
+|---|---|---|---|
+| F1 | §38 P1-026 | la carta jugada "no sale de la mano" fallaba 1 de 20 | el reparto traia una **segunda copia** |
+| F2 | L3a escenario 3 | `Error: No es tu turno` en `E.playResource` 1 de 12 | `fresh()` elige quien empieza por el 2d6 mas alto; los escenarios 1/2 sobrevivian solo porque `bulk_power` esta en la lista `instant` y `E.playPlot` **no** exige turno propio |
+| F3 | §38 Embezzlemento | `Error: <filler>: todavia no puedes usar una Plot que acaba de robarte otro jugador` 1 de 15 | `E.drawPlot` robo **la misma Embezzlement** que la fixture habia puesto a mano |
+| F4 | L1 Token gift | el log decia `VENTANA DE SUCESO ABIERTA: A descarta Bank Merger` en vez de `2 grupo(s) afectados` | §38/P1-027 hace que `discardPlot` **abra ventana de suceso**, asi que jugar la carta **anade una linea de log despues** de la linea del efecto |
+
+### 43.2 Correcciones aplicadas
+
+**F1 y el mismo defecto en §38.** `ok(raw.players[me].hand.indexOf(B10.idx) < 0, ...)` es
+**una asercion invalida** cuando la fixture uso `put()` para anadir una copia: si el reparto ya
+trajo otra, "no esta en la mano" es falso sin que el motor falle. Las dos aserciones pasan a
+**contar copias antes y despues**:
+```js
+function copiesOf(pid, ix) { return E._raw().players[pid].hand.filter(function (x) { return x === ix; }).length; }
+var beforePA = copiesOf(me, PA.idx);
+E.playPlot(me, PA.idx, null, {});
+ok(copiesOf(me, PA.idx) === beforePA - 1, ...);
+```
+El comentario de §42.8 ("nunca contar cartas en mano") **no** contradice esto: aqui nada muta la
+mano (no hay `sealWindows` ni `noCancelWindow` en estos bloques); lo que se cuenta es *la
+diferencia*, no el total.
+
+**F2.** El bloque L3a ahora fija el turno antes de jugar el Resource:
+```js
+var me344 = readyToAttack(0);
+ok(me344 === 0, 'L3a 344 el jugador 0 es el turno actual antes de jugar el Resource');
+```
+`advanceTo` (L2717) esta **scopado dentro de otro IIFE** y no se ve desde este bloque;
+`readyToAttack` **si** esta a nivel de modulo (L53) y es el helper correcto.
+
+**F3.** Dos pasos. (1) Antes de `E.drawPlot`, quitar la carta de la baraja, que es la tecnica de
+P1-029 aplicada en el otro sentido:
+```js
+E._raw().plotDeck = E._raw().plotDeck.filter(function (ix) { return ix !== EMB.idx; });
+```
+(2) La carta de pago `filler` se elige **despues** del robo y filtrando `c.idx !== EMB.idx &&
+c.idx !== res.idx`, porque el motor excluye la carta en disputa del pago y entonces `plotDiscard`
+nunca la ve.
+
+**F4.** El efecto se busca en **todo** el log, no en la ultima entrada:
+```js
+var logMsgs = E._raw().log.map(function (e) { return e.msg || ''; });
+ok(logMsgs.some(function (m) { return /2 grupo/.test(m); }), ... + logMsgs.slice(-3).join(' | '));
+```
+
+### 43.3 Verificacion
+
+- `node --check test_fase2_rules.js` limpio.
+- **`test_fase2_rules.js` 60/60 corridas consecutivas PASS** (era 14/30).
+- FASE 4 sin cambios: 107 clasificadas, 141 sin mecanica, 11 bloqueadas, `bulk_power:8`.
+- Los cuatro arreglos se hicieron con la herramienta `edit`, sin un solo script `_*.cjs`, y el
+  arbol de trabajo quedo limpio de archivos temporales.
+
+### 43.4 Dos lecciones sistemicas
+
+1. **`indexOf(...) < 0` nunca es una asercion valida de "la carta salio de la mano"** cuando la
+   fixture uso `put()` para anadirla. El reparto puede traer otra copia. Comparar **copias antes y
+   despues**.
+2. **§38/P1-027 creo una clase de interferencia para la que los bloques anteriores no estaban
+   escritos**: jugar una Plot ahora abre a menudo `VENTANA DE SUCESO ABIERTA`, asi que **ningun
+   bloque puede suponer que su propio efecto es la ultima linea del log**. Cada vez que se anada
+   una ventana, hay que releer los bloques que asertan sobre `log[length-1]`.
+
+Y una tercera, ya registrada en §41 y ahora confirmada por octava vez: **crecer el juego cambia las
+fichas de los fixtures**. Un reparto deja de contener la carta que la fixture daba por hecho en el
+momento exacto en que esa carta deja de ser `unverified`.
+
+### 43.5 Backlog
+
+- Cerrado: F1..F4. `test_fase2_rules.js` estable en 60/60.
+- Sigue pendiente lo de §42.11 (L3b, 34 Resources, L4..L16, Fase 3, P1-DATA-03, las 5 cartas sin
+  transcripcion secundaria).
