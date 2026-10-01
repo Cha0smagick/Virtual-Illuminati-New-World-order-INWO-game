@@ -27,6 +27,25 @@ function nodesOf(pid) {
   })(E.getState().players[pid].structure);
   return out;
 }
+/* P1-024 — este test mide si la IA responde a un ataque con AYUDAS, no si el
+   motor cierra una ventana de reaccion. Con las manos del reparto real, si a
+ * cualquiera le toca una carta de rodadero, `E.resolveAttack()` deja el ataque
+ * a medias (ventana abierta) y este test falla al azar: se midio 9 fallos en 120
+ * ejecuciones. Mismo remedy que en test_fase2_rules.js — `sealWindows()`:
+   * se quitan las cartas que abren ventana para que el escenario sea
+   * determinista. Quinta vez que aparece esta clase de fragilidad. */
+var WINDOW_KINDS = ['bodyguard', 'talisman', 'bribery', 'computervirus', 'murphyslaw',
+                    'timewarp', 'mistakenidentity', 'mothersmarch',
+                    'stealing_the_plans', 'embezzlement'];
+(function sealWindows() {
+  var S = E._raw();
+  S.players.forEach(function (p) {
+    p.hand = p.hand.filter(function (ix) {
+      var e = C.cards[ix] && C.cards[ix].effect;
+      return !(e && WINDOW_KINDS.indexOf(e.kind) >= 0);
+    });
+  });
+})();
 function hasToken(pid) { return nodesOf(pid).some(function (n) { return (n.tokens || 0) >= 1; }); }
 function onTurn(pid) { var s = E.getState(); return !s.gameover && s.phase === 'main' && s.currentPid === pid; }
 

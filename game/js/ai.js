@@ -408,8 +408,9 @@ function runAttack(E, st, pid) {
       (s3.players || []).forEach(function (p, qi) { if (qi !== pid && !p.human) others.push(qi); });
       for (var oi = 0; oi < others.length; oi++) { try { respondInternal(E, others[oi]); } catch (e4) {} }
       try { E.resolveAttack(); } catch (e3) {}
+      settleRollWindow(E);           /* P1-024: cierra la ventana de rodadero */
       return 'done';
-    } catch (e) { try { E.resolveAttack(); } catch (e5) {} }
+    } catch (e) { try { E.resolveAttack(); } catch (e5) {} settleRollWindow(E); }
   }
   return 'none';
 }
@@ -515,6 +516,8 @@ function takeTurn(E, pid) {
   var st = E.getState();
   if (st.phase === 'gameover') return;
   E.drawPlot(pid);
+  /* P1-027: robar la Plot es el suceso que abre la ventana de EMBEZZLEMENT. */
+  settleWindows(E);
   E.drawGroup(pid);
   st = E.getState();
   /* takeover automatico: mejor grupo por valor de meta */
@@ -538,6 +541,10 @@ function takeTurn(E, pid) {
   }
   /* plots utiles */
   try { playUsefulPlots(E, st, pid); } catch (eP) {}
+  /* P1-027: jugar un Plot lo descarta (P1-025), y descartar abre la ventana de
+     STOLING THE PLANS. Tambien puede haber quedado una de EMBEZZLEMENT. */
+  settleWindows(E);
+  st = E.getState();
   /* ataques hasta 3 rondas */
   var rounds = 0;
   while (rounds++ < 3) {
@@ -551,7 +558,42 @@ function takeTurn(E, pid) {
     st = E.getState();
     if (st.attack) break;
   }
+  settleWindows(E);
 }
+/* P1-024 — la ventana de RODADERO. Tras tirar, el motor puede parar esperando
+   una carta de rodadero (Bribery, Computer Virus, Murphy's Law, Time Warp,
+   Mistaken Identity, Mothers' March). En un ataque announced SIN resolver, el
+   efecto todavia no se ha aplicado, asi que `st.attack` sigue abierto: si nadie
+   cierra la ventana la partida se queda colgada.
+   DECLARACION DE LIMITACION: la IA todavia no JUEGA cartas de rodadero (eso
+   exige elegir a quien conviene — §37 lo deja para Fase 3); lo que
+   si hace es cerrarla, que es el mismo efecto que no reaccionar. Se implementa
+   aqui, y no en un if suelto en cada llamada, porque los tres puntos de
+   resolucion comparten exactamente la misma necesidad. */
+function settleRollWindow(E) {
+  var st = E.getState();
+  if (st && st.pendingRoll) E.resolvePendingRoll();
+}
+/* P1-027 — la ventana de SUCESO. Mismo problema y misma solucion que
+   settleRollWindow, con un matiz que obliga a llamarla en MAS sitios: la ventana
+   de suceso se abre al ROBAR una Plot (E.drawPlot, linea 518) y al DESCARTAR
+   una, y `E.drawPlot` es justo lo primero que hace la IA. Ademas la ventana de
+   EMBEZZLEMENT bloquea el uso de la Plot robada, asi que dejarla abierta
+   atascaria el turno entero.
+   DECLARACION DE LIMITACION: la IA todavia no JUEGA cartas de suceso ni de
+   rodadero (§37 y §38 las dejan para Fase 3); lo que si hace es cerrarlas. */
+function settleEventWindow(E) {
+  var st = E.getState();
+  if (st && st.pendingEvent) E.resolvePendingEvent();
+}
+/* Un solo punto de entrada para las tres ventanas: cada vez que la IA toca el
+   motor y vuelve a leer el estado, cierra lo que quedara abierto. Es mas barato
+   y mas seguro que recordar cerrar despues de cada llamada. */
+function settleWindows(E) {
+  settleEventWindow(E);
+  settleRollWindow(E);
+}
+
 function runAttackResume(E, st, pid) {
   var A = st.attack;
   if (!A) return;
@@ -561,6 +603,7 @@ function runAttackResume(E, st, pid) {
   if (humansLeft > 0) return;
   try { E.resolveAttack(); }
   catch (e) { if (window.console) console.error('[INWO] AI: fallo al resolver el ataque: ' + (e && e.message ? e.message : e), e); throw e; }
+  settleRollWindow(E);
 }
 
 /* Errors are RE-THROWN on purpose. app.js already wraps every AI call in a

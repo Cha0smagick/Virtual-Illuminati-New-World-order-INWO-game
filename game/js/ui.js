@@ -545,6 +545,60 @@ function chipMini(c, uid) {
 
 function attackPanel(st) {
   var A = st.attack;
+  /* P1-016 — VENTANA DE REACCIÓN. Va ANTES de la guarda de `A`: un Instant Attack
+     de Plot nunca abre `st.attack` (sólo lo abren los ataques de grupo), así que
+     con la guarda primero esta barra no se dibujaría nunca y la partida se
+     quedaría colgada sin ninguna acción posible. Los dados se pueden retrasar
+     todo lo que la mesa quiera: la ventana oficial es "after the attempt is
+     announced, but before the dice are rolled", y además está prohibido el
+     speed-play, así que este botón es siempre correcto. */
+  /* P1-024 — la barra de RODADERO. Distinta de la de P1-016: aqui los dados ya
+     salieron, lo que esta pendiente es el EFECTO. Las cartas que pueden entrar son
+     las 6 de rodadero, y despues hay que resolver. */
+  var R = st.pendingRoll;
+  if (R) {
+    $('actionBtns').insertAdjacentHTML('afterbegin',
+      '<div class="pendbar">' +
+      '<b>🎲 ' + esc(R.label) + '</b> sacó <b>' + esc(R.roll) + '</b> sobre una fuerza de <b>' + esc(R.total) + '</b>' +
+      (R.success ? ' <span class="good">(éxito provisional)</span>' : ' <span class="bad">(fallo provisional)</span>') +
+      (R.reroll ? ' · <span class="bad">ya se.repeató por ' + esc(R.reroll.card) + (R.reroll.penalty ? ' a ' + R.reroll.penalty : '') + '</span>' : '') +
+      (R.cancelled ? ' · <span class="bad">ANULADO por ' + esc(R.cancelled.card) + '</span>' : '') +
+      (R.mods && R.mods.length
+        ? ' · cambios: ' + R.mods.map(function (m) { return esc(m.card) + ' ' + m.from + '→' + m.to; }).join(', ')
+        : '') +
+      (R.responders && R.responders.length
+        ? ' · pueden reaccionar: ' + R.responders.map(function (p) { return esc(p.cardName); }).join(', ')
+        : ' · nadie puede reaccionar') +
+      ' <button data-act="resolveroll" class="primary" title="Aplica el efecto del ataque con el rodadero actual. Si alguien tiene una carta de rodadero, juégala ANTES: hace falta este momento">' +
+      'Aplicar el resultado</button></div>');
+  }
+  /* P1-027 — la barra de SUCESO. Tercera ventana y la más simple de las tres:
+     no hay dados ni ataque, solo un suceso de carta (un robo de Plot, un descarte).
+     Las cartas que pueden entrar son las 2, y el efecto se aplica al cerrar,
+     no al jugar (por eso el botón dice "aplicar" y no "cerrar"). */
+  var EV = st.pendingEvent;
+  if (EV) {
+    $('actionBtns').insertAdjacentHTML('afterbegin',
+      '<div class="pendbar">' +
+      '<b>⚡ ' + esc(EV.label || 'Suceso') + '</b>' +
+      (EV.cardName ? ' — la Plot en disputa es <b>' + esc(EV.cardName) + '</b>' : '') +
+      (EV.claimed ? ' · <span class="good">ya reclamada</span>' : '') +
+      (EV.taken ? ' · <span class="good">ya robada del descarte</span>' : '') +
+      (EV.responders && EV.responders.length
+        ? ' · pueden reaccionar: ' + EV.responders.map(function (p) { return esc(p.cardName); }).join(', ')
+        : ' · nadie puede reaccionar') +
+      ' <button data-act="resolveevent" class="primary" title="Aplica lo que decidió la carta jugada. Si alguien tiene una carta de suceso, juégala ANTES: hace falta este momento">' +
+      'Aplicar el resultado</button></div>');
+  }
+  var P = st.pendingAttack;
+  if (P) {
+    $('actionBtns').insertAdjacentHTML('afterbegin',
+      '<div class="pendbar">' +
+      '<b>⚔ ' + esc(P.cardName) + '</b> anunciado contra <b>' + esc(P.targetName) + '</b>' +
+      (P.cancelled ? ' — <span class="bad">YA CANCELADO por ' + esc(P.cancelled.cardName || '') + '</span>' : '') +
+      ' <button data-act="resolvepending" class="primary" title="Tira los dados. Si alguien tiene un Bodyguard o un Talisman, juégala ANTES: hace falta este momento">' +
+      '🎲 RESOLVER EL INSTANT ATTACK ▶</button></div>');
+  }
   if (!A || A.resolved) return;
   var me = st.players[st.currentPid];
   var attCard = null;
@@ -573,6 +627,17 @@ function attackPanel(st) {
       if (A.pid !== hp && !supportedBy(st, hp)) html += '<button data-act="aid" title="Uno de tus grupos suma su Power al atacante">🤝 Ayudar (+Power)</button>' +
         '<button data-act="oppose" title="Uno de tus grupos resta su Power al atacante">✋ Oponerse (−Power)</button>';
       if (A.pid === hp || isDefender) html += '<button data-act="resolve" class="primary" title="Tira dos dados: si sale ≤ la fuerza del ataque, tiene éxito">🎲 RESOLVER ▶</button>';
+      /* P1-026 — botón del ataque PRIVILEGIADO. Solo al atacante, y solo antes de
+         que nadie participe: si se admitiera después, el que ya había puesto su
+         ficha vería cobrado su participación sin previo aviso. Que la facción
+         tenga o no ese poder lo decide el motor (E.togglePrivilege), que además
+         lleva la cuenta de "1 vez por turno"; el botón se ofrece siempre para no
+         tener que duplicar en la UI la tabla de poderes de las 18 facciones. */
+      if (A.pid === hp && !A.privilege && !A.aids.length && !A.opposes.length)
+        html += '<button data-act="privilege" title="' +
+          ((st.players[hp].privilegedUsed || 0) >= 1 ? 'Ya has usado tu ataque privilegiado este turno' :
+            'El ataque queda privilegiado: solo tú y el defensor podréis participar. Nadie podrá ayudar ni oponerse') +
+          '">🛡 ATAQUE PRIVILEGIADO</button>';
     }
   }
   html += '</div>';
@@ -782,10 +847,37 @@ function handClick(ix) {
   /* P1-010: una carta Goal NO se juega, se revela declarando victoria. Por eso
      el menu ofrece "Revelar" en lugar de "Jugar", y no pide objetivo. */
   var isGoal = c.type === 'plot' && c.effect && c.effect.kind === 'goal';
+  /* P1-016 — Una carta de cancelación (Bodyguard / Talisman of Ahrimanes) no pide
+     objetivo: protege a la carta que el ataque anunciado iba a matar ("the card it
+     protected"), y el motor lo resuelve solo. Además sólo tiene sentido con un
+     Assassination anunciado, así que sin `pendingAttack` el menu ofrece una
+     explicación en vez de un botón que el motor va a rechazar. */
+  var isCancelCard = c.type === 'plot' && c.effect &&
+                     (c.effect.kind === 'bodyguard' || c.effect.kind === 'talisman');
+  var pend = (curState && curState.pendingAttack) ? curState.pendingAttack : null;
+  var canCancel = isCancelCard && pend && !pend.cancelled;
+  /* P1-024 — las 6 cartas de RODADERO. No eligen objetivo: cambian el numero que
+     ya salio. Se pueden encadenar, asi que jugar una NO cierra la ventana. */
+  /* P1-027 — cartas de la ventana de SUCESO. */
+  var EVENT_UI = ['stealing_the_plans', 'embezzlement', 'second_bullet', 'privileged_attack'];
+  var isEventCard = c.type === 'plot' && c.effect && EVENT_UI.indexOf(c.effect.kind) >= 0;
+  var evPend = (curState && curState.pendingEvent) ? curState.pendingEvent : null;
+  var canReactEvent = isEventCard && !!evPend;
+  var ROLL_UI = ['bribery', 'computervirus', 'murphyslaw', 'timewarp',
+                 'mistakenidentity', 'mothersmarch'];
+  var isRollCard = c.type === 'plot' && c.effect && ROLL_UI.indexOf(c.effect.kind) >= 0;
+  var rollPend = (curState && curState.pendingRoll) ? curState.pendingRoll : null;
+  var canReact = isRollCard && rollPend && !rollPend.cancelled && !rollPend.reroll;
   prompt('<b>' + esc(c.name) + '</b><small class="pm">' + esc(c.type === 'plot' ? 'PLOT' : c.type === 'resource' ? 'RECURSO' : 'GRUPO · P' + c.power + '/R' + c.resistance) + '</small>', [
     { label: c.type === 'resource' ? '📦 Colocar recurso junto a mi Illuminati (1★)' : '🎁 Colocar GRATIS en mi estructura (takeover)', value: 'place' },
     isGoal ? { label: '🏆 Revelar esta carta Goal (intento de victoria)', value: 'goalVictory' } : null,
-    (!isGoal && c.type === 'plot') ? { label: '✨ Jugar Plot ahora', value: 'plot' } : null,
+    canCancel ? { label: '🛡 CANCELAR el ' + esc(pend.cardName) + ' y proteger a ' + esc(pend.targetName), value: 'cancelAttack' } : null,
+    canReact ? { label: '🎲 REACCIONAR al rodadero ' + esc(rollPend.roll) + ' de ' + esc(rollPend.label), value: 'reactRoll' } : null,
+    isRollCard && !canReact ? { label: '❓ ¿Cuándo sirve esta carta?', value: 'infoRoll' } : null,
+    canReactEvent ? { label: '⚡ REACCIONAR a ' + esc(evPend.label || 'un suceso'), value: 'reactEvent' } : null,
+    isEventCard && !canReactEvent ? { label: '❓ ¿Cuándo sirve esta carta?', value: 'infoEvent' } : null,
+    isCancelCard && !canCancel ? { label: 'ℹ ¿Cuándo sirve esta carta?', value: 'infoCancel' } : null,
+    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard) ? { label: '✨ Jugar Plot ahora', value: 'plot' } : null,
     c.type === 'plot' ? { label: 'ℹ ¿Cuándo sirven los Plots?', value: 'info' } : null,
     c.type !== 'illuminati' ? { label: '🗑 Descartar', value: 'discard' } : null,
     { label: 'Cancelar', value: null }
@@ -794,6 +886,34 @@ function handClick(ix) {
       clearSel();
       if (c.type === 'resource') { try { CB.onAutoTakeover(ix, null); } catch (e) { log('\u26A0 ' + e.message); } }
       else { sel = { mode: 'takeoverHost', data: { handIdx: ix } }; render(curState); }
+    }
+    else if (v === 'cancelAttack') {
+      clearSel();
+      log('🛡 ' + c.name + ' cancela el ' + pend.cardName + ': pasa a ser un fallo automático y protege a ' + pend.targetName + '.');
+      CB.onPlayCancelCard(ix);
+    }
+    else if (v === 'reactRoll') {
+      clearSel();
+      log('🎲 ' + c.name + ' reacciona al rodadero ' + rollPend.roll + ' de ' + rollPend.label + '.');
+      log('🎲 Ojo: la ventana SIGUE ABIERTA; usa el botón de la barra morada para aplicar el efecto.');
+      CB.onPlayRollCard(ix);
+    }
+    else if (v === 'reactEvent') {
+      log('⚡ ' + c.name + ' responde a ' + (evPend.label || 'un suceso') + '. La ventana sigue abierta: despues hay que aplicar el resultado.');
+      CB.onPlayEventCard(ix, {});
+      if (window.E) window.E.getState();
+    }
+    else if (v === 'infoEvent') {
+      log(c.name + ' solo sirve dentro de una ventana abierta: un ataque declarado (privileged), un rodadero fallido (The Second Bullet) o un suceso de carta (un robo o un descarte de Plot).');
+    }
+    else if (v === 'infoRoll') {
+      log('❓ ' + c.name + ' se juega DESPUÉS de que se tire un dado, antes de que ese efecto se aplique.');
+      log('❓ Ahora mismo no hay ningún rodadero pendiente, así que no se puede jugar.');
+    }
+    else if (v === 'infoCancel') {
+      log('ℹ ' + c.name + ' sólo se juega DESPUÉS de que alguien anuncie un Assassination y ANTES de que se tiren los dados.');
+      log('ℹ Convierte ese ataque en un fallo automático y da una protección permanente al grupo protegido.');
+      log('ℹ Ahora mismo no hay ningún Assassination anunciado, así que no se puede jugar.');
     }
     else if (v === 'plot') { sel = { mode: 'plotTarget', data: { handIdx: ix } }; log('🎯 PASO 2/2 — clic en el grupo OBJETIVO de este Plot.'); render(curState); }
     else if (v === 'goalVictory') {
@@ -981,6 +1101,10 @@ function bindEvents() {
       else if (act === 'resource') startResourceFlow();
       else if (act === 'cancel') { clearSel(); render(curState); }
       else if (act === 'resolve') CB.onResolveAttack();
+      else if (act === 'resolvepending') { clearSel(); CB.onResolvePendingAttack(); }
+      else if (act === 'resolveroll') { clearSel(); CB.onResolvePendingRoll(); }
+    else if (act === 'resolveevent') { clearSel(); CB.onResolvePendingEvent(); }
+    else if (act === 'privilege') { CB.onTogglePrivilege(); }
       else if (act === 'aid') { sel = { mode: 'aid', data: {} }; render(curState); }
       else if (act === 'oppose') { sel = { mode: 'oppose', data: {} }; render(curState); }
       else if (act === 'selfdef') CB.onSelfDefend();

@@ -86,7 +86,64 @@ var CB = {
     var lr = null; try { lr = E.getState().lastResultText; } catch (e) {}
     after(lr ? ('🎲 ' + lr) : 'Ataque resuelto');
   },
+  /* P1-016 — Cierre de la ventana de reacción. Si un Assassination quedó
+     anunciado (porque alguien tiene un Bodyguard o un Talisman en la mano), el
+     ataque NO se resuelve solo: hace falta una acción explícita. Sin este botón
+     la partida se queda colgada, porque onPlayPlot nunca resolvía. */
+  onResolvePendingAttack: function () {
+    var st = E.resolvePendingAttack();
+    var r = st.lastPlotResult || {};
+    if (r.cancelled) after('❌ ' + (r.reason || 'ataque cancelado'));
+    else if (r.pending === undefined && r.ok === false && r.reason) after('❌ ' + r.reason);
+    else after((r.ok ? '✅ ' : '❌ ') + (r.plot || 'Ataque instantáneo') + ' vs ' + (r.target || '?') +
+               ' · fuerza ' + (r.strength != null ? r.strength : '?') +
+               ' · dados ' + (r.roll != null ? r.roll : 'sin tirada') +
+               (r.ok ? ' · ÉXITO' : ' · ' + (r.reason || 'fallo')));
+  },
+  /* P1-016 — Una carta de cancelación no elige objetivo: protege a la carta que
+     el ataque iba a matar. Por eso el motor no necesita targetUid. */
+  onPlayCancelCard: function (handIdx) {
+    try { E.playPlot(E.getState().currentPid, handIdx); after('Carta de cancelación jugada'); }
+    catch (e) { log('⚠ ' + e.message); }
+  },
+  /* P1-024 — Una carta de RODADERO tampoco elige objetivo: modifica el numero
+     que ya salio, no a quien se ataca. Ojo con el doble paso: jugar la carta
+     MODIFICA el rodadero pero la ventana sigue ABIERTA, porque varias cartas
+     pueden encadenarse. El cierre es un boton aparte (onResolvePendingRoll). */
+  onPlayRollCard: function (handIdx) {
+    try { E.playPlot(E.getState().currentPid, handIdx); after('Carta de rodadero jugada'); }
+    catch (e) { log('⚠ ' + e.message); }
+  },
+  onResolvePendingRoll: function () {
+    var st = E.resolvePendingRoll();
+    var r = st.lastPlotResult || {};
+    if (r.cancelled) after('⚠ ' + (r.reason || 'rodadero anulado'));
+    else if (r.reroll) after('🔁 ' + (r.plot || 'Carta de rodadero') + ': ' + (r.reason || 'se repite el rodadero'));
+    else if (r.mod) after('🎲 ' + (r.plot || 'Carta de rodadero') + ': el rodadero pasa de ' + r.from + ' a ' + r.roll);
+    else after((r.ok ? '✔ ' : '✖ ') + (r.plot || 'Ataque') + ' vs ' + (r.target || '?') +
+               ' · fuerza ' + (r.strength != null ? r.strength : '?') +
+               ' · dados ' + (r.roll != null ? r.roll : 'sin tirada'));
+  },
   onBoost: function (idx, toDefense) { try { E.addBoost(E.getState().currentPid, idx, toDefense); after('📜 Plot +10 añadido al ataque'); } catch (e) { log('⚠ ' + e.message); } },
+  /* P1-026 — el ataque privilegiado. Lo declara el ATACANTE sobre su propio
+     ataque, y solo antes de que nadie participe. */
+  onTogglePrivilege: function () {
+    try { E.togglePrivilege(); after('Ataque declarado PRIVILEGIADO: nadie mas puede ayudar ni oponerse'); }
+    catch (e) { log('! ' + e.message); }
+  },
+  /* P1-027 — cartas de la ventana de SUCESO. Mismo contrato de dos pasos que
+     §37: jugar la carta NO cierra la ventana; cerrar es otro boton. */
+  onPlayEventCard: function (handIdx, opts) {
+    try { E.playPlot(E.getState().currentPid, handIdx, null, opts || {}); after('Carta de suceso jugada: ahora aplica el resultado'); }
+    catch (e) { log('! ' + e.message); }
+  },
+  onResolvePendingEvent: function () {
+    var st = E.resolvePendingEvent();
+    var r = st.lastPlotResult || {};
+    if (r.stolen) after((r.ok ? '✔ ' : '⚠ ') + (r.by ? r.by + ' se queda con ' : '') + r.stolen +
+      (r.paid ? ' (paga con ' + r.paid + ')' : ''));
+    else after((r.ok ? '✔ ' : '⚠ ') + (r.reason || 'suceso resuelto'));
+  },
   onMoveGroup: function (uid, newParentUid) { E.moveGroup(E.getState().currentPid, uid, newParentUid); after('Grupo movido'); },
   onEndTurn: function () { endTurnFlow(); }
 };

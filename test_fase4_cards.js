@@ -123,16 +123,23 @@ const KNOWN_TEXT_GAPS = {
   'vaticancity': 'text vacio, referenceText de ~126 chars (§31)'
 };
 
-/* Las seis cartas bloqueadas, con el subsistema que falta. Congeladas aqui para
- * que "bloqueada" sea ejecutable. */
+/* Las cartas bloqueadas, con el subsistema que falta. Congeladas aqui para
+ * que "bloqueada" sea ejecutable.
+ * P1-016 cerro la ventana de reaccion, asi que Bodyguard y Talisman salieron de
+ * esta lista. Head in a Jar SIGUE bloqueada: ademas de la ventana necesita la
+ * mecanica de "asesinado"/resurreccion, que el motor no tiene. */
 const BLOCKED_CARDS = {
-  'bodyguard': 'P1-016 ventana de reaccion (§29.4)',
-  'talismanofahrimanes': 'P1-016 ventana de reaccion (§29.4)',
-  'headinajar': 'P1-016 + mecanica de "asesinado" ausente (§30.1)',
+  'headinajar': 'P1-016 cerrada, pero falta la mecanica de "asesinado"/resurreccion (§30.1)',
   'hiddeninfluence': 'P1-DATA-03 Global Power ausente (§30.3)',
   'purge': 'P1-DATA-03 Global Power ausente (§30.3)',
-  'mediaconnections': 'P1-DATA-03 + atributos a nivel de nodo ausentes (§30.6)',
-  'dictatorship': 'alineaciones a nivel de nodo ausentes (§29.5)'
+  'mediaconnections': 'P1-DATA-03 Global Power ausente (the node-attr part closed by P1-017, but the Global Power data is not)',
+  /* §38 — las 5 de la familia de reaccion inmediata que NO tienen mecanica que las
+     sostenga. No es pereza: cada motivo esta comprobado contra el motor. */
+  'andstaydead': '§38 sin mecanica de resurreccion en el motor, asi que "gone forever" no seria observable (INJUGABLE)',
+  'counterspell': '§38 un Resource no puede atacar ni ayudar a un ataque (esta en pl.resources con tokens:0 y sin nodo), asi que "any Magic Resource used to attack you" nunca ocurre',
+  'hattrick': '§38 exigiria deshacer una Plot ya resuelta de forma transaccional',
+  'ilied': '§38 el motor no tiene tratos que cumplir, luego el marcador no lo consumiria nadie (INJUGABLE)',
+  'vultures': '§38 el motor no tiene el camino "jugar un grupo de la mano, fallar el takeover y descartarlo" (placeUnder lanza y la carta sigue en la mano); las reglas oficiales si (inwo_rules_extracted.txt:226-241)'
 };
 
 const IMPLEMENTED_STATUSES = new Set([
@@ -293,6 +300,16 @@ for (const c of C.cards) {
     ok(n > 0, 'carta "' + c.name + '" exige requireAttr=' + e.requireAttr +
                ' pero ningun grupo del mazo lo tiene -> INJUGABLE');
   }
+  /* `requireAttrAny` es la DISYUNCION ("any Science, Space or Computer group"):
+     basta con que un unico grupo del mazo tenga UNO de los atributos. Sin esta
+     rama, un array en `requireAttr` se convertia en la cadena "science,space,
+     computer" y la carta se declaraba INJUGABLE siendo perfectamente jugable. */
+  if (e.requireAttrAny) {
+    checkedFields.requireAttrAny = true;
+    const n = e.requireAttrAny.filter(a => groupsWithAttr(a).length > 0).length;
+    ok(n > 0, 'carta "' + c.name + '" exige requireAttrAny=' + JSON.stringify(e.requireAttrAny) +
+               ' pero ningun grupo del mazo tiene ninguno de esos atributos -> INJUGABLE');
+  }
   if (e.rejectAttr) {
     checkedFields.rejectAttr = true;
     const n = groupsWithAttr(e.rejectAttr).length;
@@ -398,6 +415,50 @@ for (const c of C.cards) {
 }
 console.log('     huecos de texto declarados: ' + JSON.stringify(Object.keys(KNOWN_TEXT_GAPS)));
 
+/* P1-DATA-04: la transcripcion OCR del runtime trunca a media frase un porcentaje
+ * sustancial de las Plots/Resources. `applySecondaryText()` en gen_cards.js anade
+ * `textFull` con el texto de un SEGUNDO pase de OCR sobre la misma impresion
+ * (research/audit_reports/scribd_card_text.json) cuando ese texto es mas largo,
+ * y NUNCA sobrescribe `text` (la UI lo muestra y el motor no lo lee).
+ *
+ * Estos asertos comprueban la INVARIANTE que hace seguro ese campo:
+ *   1. si existe `textFull`, es estrictamente mas largo que `text` (criterio `>`);
+ *   2. `textSource` dice de donde salio;
+ *   3. `textChars` es consistente con las longitudes reales, para que el dato de
+ *      evidencia no pueda mentir sobre cuanto se recupero.
+ * Y que ninguna carta clasificada se quede sin texto utilizable entre los dos. */
+let withFull = 0;
+let fullChars = 0;
+for (const c of C.cards) {
+  if (typeof c.textFull === 'string') {
+    withFull++;
+    fullChars += c.textFull.length - String(c.text || '').length;
+    const ocrLen = String(c.text || '').length;
+    ok(c.textFull.length > ocrLen,
+       'carta "' + c.name + '" tiene textFull de ' + c.textFull.length +
+       ' caracteres y text de ' + ocrLen + '. applySecondaryText solo debe escribir ' +
+       'textFull cuando la fuente secundaria es ESTRICTAMENTE mas larga; si son iguales, ' +
+       'no hay nada que ganar y duplicar el texto solo infla el dataset.');
+    ok(c.textSource === 'secondary',
+       'carta "' + c.name + '" tiene textFull pero textSource=' + JSON.stringify(c.textSource) +
+       '. Sin la fuente declarada, la evidencia no es rastreable.');
+    ok(c.textChars && c.textChars.ocr === ocrLen && c.textChars.secondary === c.textFull.length,
+       'carta "' + c.name + '" tiene textChars=' + JSON.stringify(c.textChars) +
+       ' incoherente con text(' + ocrLen + ') y textFull(' + c.textFull.length + ').');
+  }
+  if (!IMPLEMENTED_STATUSES.has(c.mechanicsStatus)) continue;
+  /* Los 4 KNOWN_TEXT_GAPS ya se declaran y se verifican mas arriba: son Grupos que el
+   * OCR dejo sin `text` pero conservan `referenceText`. Exigirles tambien `textFull`
+   * seria exigirles una transcripcion que la fuente secundaria tampoco trae. */
+  if (Object.prototype.hasOwnProperty.call(KNOWN_TEXT_GAPS, c.id)) continue;
+  const usable = String(c.text || '').length >= 20 || String(c.textFull || '').length >= 20;
+  ok(usable,
+     'carta clasificada "' + c.name + '" (idx ' + c.idx + ') no tiene ni text ni textFull de 20 ' +
+     'caracteres: no hay texto impreso que autorice su mecanica.');
+}
+console.log('     cartas con texto secundario recuperado: ' + withFull +
+            ' (+' + fullChars + ' caracteres)');
+
 /* ===========================================================================
  * 6. SIN MEDIO ESTADO — `unverified` no puede esconder un kind ya implementado
  * =========================================================================== */
@@ -439,6 +500,7 @@ for (const c of C.cards) {
   const e = c.effect || {};
   [e.targetAttr, e.requireAttr, e.rejectAttr, e.churchAttr, e.requireActionFromAttr]
     .forEach(v => { if (typeof v === 'string') usedAttrs.add(v); });
+  (e.requireAttrAny || []).forEach(v => { if (typeof v === 'string') usedAttrs.add(v); });
 }
 for (const a of Array.from(usedAttrs).sort()) {
   const n = groupsWithAttr(a).length;

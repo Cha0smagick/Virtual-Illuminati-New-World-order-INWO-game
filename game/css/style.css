@@ -328,6 +328,22 @@ img.sm { width: 46px; height: auto; }
   max-height: 240px; overflow-y: auto; scrollbar-gutter: stable;
   display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start;
 }
+/* P1-016 — barra de la ventana de reacción. Ocupa todo el ancho de la barra de
+   acción porque es un aviso de estado de la partida, no un botón más: si el
+   jugador no ve que hay un Instant Attack anunciado, la partida parece colgada. */
+.pendbar {
+  flex: 1 0 100%;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 10px; margin-bottom: 2px;
+  background: rgba(255, 176, 58, 0.10);
+  border: 1px solid var(--amber);
+  border-left-width: 4px;
+  border-radius: 8px;
+  font-size: 13px; line-height: 1.35;
+}
+.pendbar b { color: var(--amber); }
+.pendbar .bad { color: var(--red); font-weight: 700; }
+.pendbar button { margin-left: auto; }
 /* padding-top: 4px — #handCards tiene overflow-y:auto, que recorta a sus hijos.
    Sin este margen, la carta sobre la que se hace hover (scale 1.05 => ~2.4px de
    desbordamiento por arriba) se recortaba en el borde superior del contenedor. */

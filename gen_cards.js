@@ -480,6 +480,209 @@ const ANGST_FX = {
 };
 const ANGST_FXN = {}; for (const k in ANGST_FX) { ANGST_FXN[norm(k)] = ANGST_FX[k]; }
 
+/* P1-016 — CARTAS DE CANCELACION: Bodyguard (208) y Talisman of Ahrimanes (382).
+   Las dos son la MISMA mecanica: "Play this card after any type of Assassination.
+   It becomes an automatic failure." No reaccionan a un assassination ya
+   resuelto; reactionan al QUE ESTA ANUNCIADO y AUN SIN RODAR, que es
+   exactamente la ventana de la pagina 15 del manual (inwo_rules_extracted.txt:
+   924-931). Hasta que esa ventana existio en el motor (P1-016) no tenian a donde
+   encajar, y por eso estaban declaradas bloqueadas en el gate de cobertura.
+   NO pertenecen a ninguna de las seis familias oficiales de Plot de
+   OFFICIAL_RULES_FINDINGS.md seccion 6; son cartas de reaction, una categoria
+   que el motor no tenia. Se declara aqui para que nadie las busque en la
+   taxonomia oficial.
+   La diferencia entre las dos esta en sus dos cifras y NO es un detalle: Bodyguard
+   dice "+6 against any Attempt to Destroy, INCLUDING FURTHER ASSASSINATIONS"
+   (una sola cifra para los dos casos), y Talisman dice "+2 against any further
+   attack to destroy OR +10 against any further Assassination" (dos cifras para
+   dos clases de ataque). Por eso el efecto lleva destroyBonus y
+   assassinationBonus como campos separados, y el motor NO los puede sumar. */
+const BODYGUARD_FX = {
+  'bodyguard': {
+    kind: 'bodyguard',
+    destroyBonus: 6,
+    t: 'Play this card after any type of Assassination. It becomes an automatic failure. ' +
+       'Then link this card permanently to the card it protected. That Personality now has ' +
+       'an extra +6 against any Attempt to Destroy, including further Assassinations. ' +
+       'If the Personality is killed or destroyed, the Bodyguard is lost.'
+  }
+};
+const TALISMAN_FX = {
+  'talismanofahrimanes': {
+    kind: 'talisman',
+    destroyBonus: 2,
+    assassinationBonus: 10,
+    t: 'This card may be played only after any type of Assassination. It becomes an automatic ' +
+       'failure. Then link this card permanently to the card it protected. That Personality ' +
+       'now has an extra +2 against any further attack to destroy or +10 against any further ' +
+       'Assassination. If the Personality is Killed anyway, the Talisman is lost. No more than ' +
+       'one Talisman of Ahrimanes can be in play at one time'
+  }
+};
+const BODYGUARD_FXN = {}; for (const k in BODYGUARD_FX) { BODYGUARD_FXN[norm(k)] = BODYGUARD_FX[k]; }
+const TALISMAN_FXN = {}; for (const k in TALISMAN_FX) { TALISMAN_FXN[norm(k)] = TALISMAN_FX[k]; }
+
+/* P1-024 — LAS SEIS CARTAS DE RODADERO (211, 225, 321, 403, 317, 320).
+   Hermanas de P1-016 pero al otro lado del dado: las seis dicen "Play immediately
+   after any die roll" / "Play this card when any Attack to Destroy succeeds",
+   es decir reaccionan a un rodadero YA TIRADO y todavia sin aplicar. El motor
+   (engine.js) abre S.pendingRoll justo despues de tirar y antes de comparar,
+   asi que quien juegue una de estas cambia el numero o fuerza una repeticion.
+   NO pertenecen a ninguna de las seis familias oficiales de Plot de
+   OFFICIAL_RULES_FINDINGS.md §6: son "reacciones al rodadero", el mismoConglomerado
+   que P1-016 pero en fase posterior.
+   DECLARACIONES DE INTERPRETACION (no hay ruling oficial para ninguna):
+   1. "Requires all Action tokens currently on your Illuminati (min 1)" se
+      implementa como `illumTokenAll`: exige >=1 y GASTA TODAS
+      (pl.illumTokens = 0). Es lo unico que hace que "all" signifique algo.
+   2. Computer Virus necesita una DIRECCION (+2 o -2) que su texto no imprime:
+      se expone como opts.rollDelta y por defecto es -2 (el jugador que gasta su
+      accion es el que empeora el ataque ajeno). El resultado se recorta a 2..12
+      porque un 2d6 no puede dar 1, 0 ni 13.
+   3. Mistaken Identity NO tiene coste impreso, asi que no se le exige accion
+      alguna: es la unica de las seis que se juega gratis.
+   4. Time Warp tampoco imprime coste. El "+1 Group card" NO usa E.drawGroup()
+      porque esa funcion consume el flag groupDrawn del turno; se roba con
+      drawFrom() + hand.push, como exchangeForPlot().
+   5. Mothers' March usa `minPower:3` (texto: "an action by any group with Power
+      >= 3"), comprobado contra el Poder IMPRESO de la carta.
+   6. La repeticion que fuerzan Time Warp / Mothers' March NO reabre la ventana
+      ("No player may do anything else to change the strength of the re-rolled
+      attack"), y solo se admite una: rollReactionAllowed() rechaza si P.reroll. */
+const ROLL_FX = {
+  'bribery': {
+    kind: 'bribery',
+    illumTokenAll: true,
+    t: 'Play immediately after any die roll (by any player). That roll is changed, ' +
+       'retroactively, to a 2. If it was an attack it succeeds only if the attack ' +
+       'had net Power ≥ 2. Requires all Action tokens currently on your Illuminati (min 1).'
+  },
+  'computervirus': {
+    kind: 'computervirus',
+    /* "an action from any Science, Space or Computer group" es una DISYUNCION de
+       tres atributos, y `requireAttr` es de un solo atributo (si se le pasa un
+       array, el motor y el gate lo convierten en la cadena "science,space,computer"
+       y la carta queda INJUGABLE). Por eso existe `requireAttrAny`: semantica OR. */
+    requireAttrAny: ['science', 'space', 'computer'],
+    t: 'Play immediately after any die roll (by any player). You may change the ' +
+       'result of that roll, retroactively, by ±2. Requires an action from any ' +
+       'Science, Space or Computer group.'
+  },
+  'murphyslaw': {
+    kind: 'murphyslaw',
+    illumTokenAll: true,
+    t: 'Play immediately after any die roll (by any player). That roll is changed, ' +
+       'retroactively, to a 12. Requires all Action tokens on your Illuminati (min 1).'
+  },
+  'timewarp': {
+    kind: 'timewarp',
+    t: 'Play immediately after any successful die roll by any other player. That ' +
+       'player must roll again; however they also get to draw a Group card.'
+  },
+  'mistakenidentity': {
+    kind: 'mistakenidentity',
+    t: 'Play this card after any type of Assassination. It becomes an automatic failure.'
+  },
+  'mothersmarch': {
+    kind: 'mothersmarch',
+    minPower: 3,
+    t: 'Play this card when any Attack to Destroy succeeds. The attacker must try ' +
+       'the roll again immediately, at a −4 penalty. No player may do anything else ' +
+       'to change the strength of the re-rolled attack. Requires an action by any ' +
+       'group with Power ≥ 3.'
+  }
+};
+const ROLL_FXN = {}; for (const k in ROLL_FX) { ROLL_FXN[norm(k)] = ROLL_FX[k]; }
+
+/* P1-025 / P1-026 / P1-027 — la TERCERA familia de cartas de reaccion inmediata,
+   la que NO reacciona a los dados sino a SUCESOS DE CARTA: un descarte, un robo
+   de Plot, el momento de declarar un ataque. Es hermana de BODYGUARD/TALISMAN
+   (P1-016, antes de los dados) y de ROLL_FX (P1-024, despues de los dados), y
+   por eso se implementa con la misma maquinaria: una ventana `S.pendingEvent`
+   que se abre SOLO si alguien tiene una carta valida para ese suceso.
+
+   De las nueve cartas de §38 se implementan cuatro. Las otras cinco quedan
+   BLOQUEADAS con motivo declarado, no por pereza:
+     - 192 And STAY Dead!  : el motor no tiene mecanica de resurreccion, asi que
+       "the destroyed group is gone forever" no seria observable (INJUGABLE).
+     - 228 Counterspell    : un Resource no puede atacar ni ayudar a un ataque
+       (esta en `pl.resources` con tokens:0 y sin nodo, y `E.addSupport` exige
+       `findNode` + `tokens>=1`), asi que "any Magic Resource used to attack you"
+       nunca ocurre.
+     - 276 Hat Trick       : "discard this card instead, and put the other Plot
+       card back into your hand" exige deshacer una Plot ya resuelta.
+     - 285 I Lied          : no existen tratos que cumplir en el motor, luego el
+       marcador no lo consumiria nadie.
+     - 412 Vultures        : el motor no tiene el camino "jugar un grupo de la
+       mano, fallar el takeover y descartarlo" (`placeUnder` lanza y la carta
+       sigue en la mano). Las reglas oficiais SI tienen ese camino
+       (inwo_rules_extracted.txt:226-241), asi que esto es una carencia del
+       motor, no de la carta. */
+const EVENT_FX = {
+  'privilegedattack': {
+    kind: 'privileged_attack',
+    /* "Your Illuminati or a Secret group must participate or spend an Action
+       token." → O el Illuminati paga una accion, O un grupo Secret la paga. */
+    illumOrSecretAlign: 'secret',
+    t: 'Play this card when you make any attack. That attack is now privileged: ' +
+       'nobody except you and the target player may aid either side. Your ' +
+       'Illuminati or a Secret group must participate or spend an Action token.'
+  },
+  'thesecondbullet': {
+    kind: 'second_bullet',
+    /* Sin coste impreso propio: el texto dice "spend THEIR action(s)", o sea las
+       fichas que ya participaban en el ataque. El motor las gasta al aplicar. */
+    t: 'Play immediately after you fail a roll to destroy. If any of your own ' +
+       'groups still have Action tokens and were eligible to participate in the ' +
+       'attack, you may spend their action(s) to add enough Power to make the ' +
+       'attack succeed.'
+  },
+  'stealingtheplans': {
+    kind: 'stealing_the_plans',
+    minPower: 3,
+    t: 'Play immediately after someone else discards a Plot card, whether or not ' +
+       'they used it. Take the discarded Plot card and add it to your hand. ' +
+       'Requires an action from a group with Power ≥ 3.'
+  },
+  'embezzlement': {
+    kind: 'embezzlement',
+    /* "Requires Plot Discard": la carta de EXIGENCIA es la que se descarta, no la
+       Plot que se roba. El motor lo comprueba antes de entregar la carta. */
+    requiresPlotDiscard: true,
+    t: 'Play immediately when another player draws a Plot card, before he uses it ' +
+       'or announces what it is. That Plot card becomes yours, but you must ' +
+       'discard one other Plot card from your own hand. Requires Plot Discard.'
+  }
+};
+const EVENT_FXN = {}; for (const k in EVENT_FX) { EVENT_FXN[norm(k)] = EVENT_FX[k]; }
+
+/* P1-017 — DICTATORSHIP (239). Cambio de IDEOLOGIA a nivel de nodo, la primera
+   carta del mazo que lo exige. Hasta ahora el motor leia las alineaciones de la
+   CARTA inmutable en mas de 20 sitios, asi que "It becomes Violent, if it was not
+   already" no tenia ninguna representacion posible: no existia almacenamiento de
+   alineaciones por grupo. P1-017 creo nodeAligns()/nodeAttrs() y migro los 15
+   sitios de lectura, y ahora la carta es ejecutable.
+   NO pertenece a ninguna de las seis familias oficiales de Plot de
+   OFFICIAL_RULES_FINDINGS.md §6 (como las 2 de Resistance Increase de P1-014 y
+   las 2 de Messiah/Angst de P1-015): es un efecto de link deducido del texto
+   impreso, que es la autoridad. Se deja escrito para que nadie lo confunda con
+   una familia del reglamento.
+   `addAlign` es ADICION (union), no reemplazo, porque el texto dice "if it was
+   not already" y porque guardar la lista de anadidas permite que Backlash (200)
+   deshaga el cambio sin conocer la carta que lo produjo.
+   OJO con 'during your turn': la carta NO entra en la lista `instant` del motor,
+   a diferencia de las 15 cartas "+10" y las 10 de Power Increase, que si dicen
+   "may be played at any time". */
+const DICTATORSHIP_FX = {
+  'dictatorship': {
+    kind: 'dictatorship',
+    targetAttr: 'nation',
+    addAlign: 'violent',
+    t: 'Play this card during your turn, on any Nation which you control. This is an action for that Nation or its master. It becomes Violent, if it was not already. Link this card to the Nation.'
+  }
+};
+const DICTATORSHIP_FXN = {}; for (const k in DICTATORSHIP_FX) { DICTATORSHIP_FXN[norm(k)] = DICTATORSHIP_FX[k]; }
+
 function baseFromFolder(m) {
   if (m.folder === 'Illuminati') return { type: 'illuminati', subtype: null };
   return { type: 'group', subtype: 'organization' }; // Groups folder
@@ -638,6 +841,37 @@ function applySecondaryAttributes(rec) {
   // El texto secundario tambien conserva la etiqueta cruda como evidencia.
   if (row.attributeText && !rec.attributeText) rec.attributeText = row.attributeText;
 }
+
+/* P1-DATA-04 -- el OCR del runtime trunca muchas cartas a media frase.
+ *
+ * MEDICION (179 Plots/Resources pendientes, sandbox vm sobre cards.js):
+ * de las 139 que aparecen en scribd_card_text.json, 131 tienen un texto
+ * fuente MAS LARGO que el OCR del runtime, 8 son mas cortas y 40 no
+ * aparecen. Ejemplos: 420 Xanadu 359 -> 727, 324 Necronomicon 219 -> 395,
+ * 277 Head in a Jar 400 -> 466, 321 Murphy's Law 212 -> 279.
+ *
+ * scribd_card_text.json es un SEGUNDO pase de OCR sobre la MISMA impresion
+ * (web archive del documento "Cards Illuminati INWO"). Donde es mas largo,
+ * es muy probablemente donde el primer pase se corto a media frase.
+ *
+ * Regla dura: NUNCA se sobrescribe rec.text. La UI lo muestra y el motor
+ * no lo lee, asi que tocarlo solo podria introducir regresiones sin
+ * ganancia. Este lote solo ANADE un campo nuevo (textFull) para que las
+ * decisiones de clasificacion se tomen leyendo el texto completo, y se
+ * guardan ambos longitudes como evidencia para que la comparacion sea
+ * auditable. El criterio es ">", no ">=": si son igual de largos no hay
+ * nada que ganar y se evita duplicar texto en el dataset.
+ */
+function applySecondaryText(rec) {
+  const row = scribdCards[norm(rec.name)];
+  if (!row) return;
+  const sec = String(row.sourceText || row.description || '').trim();
+  const ocr = String(rec.text || rec.ocrText || '').trim();
+  if (!sec || !ocr || sec.length <= ocr.length) return;
+  rec.textFull = sec;
+  rec.textSource = 'secondary';
+  rec.textChars = { ocr: ocr.length, secondary: sec.length };
+}
 function mechanicsStatus(card) {
   const kind = card.effect && card.effect.kind ? card.effect.kind : 'sin-effect';
   /* Transcribed off the card face: the printed rules are captured
@@ -719,7 +953,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key];
   if (pfx) {
     rec.effect = pfx;
     rec.subtype = pfx.kind;
@@ -729,6 +963,7 @@ for (const m of manifest) {
   applySecondaryStats(rec);
   splitAlignments(rec);
   applySecondaryAttributes(rec);
+  applySecondaryText(rec);
   rec.mechanicsStatus = mechanicsStatus(rec);
   // dedupe ids for duplicate image copies
   const dup = cards.find(c=>c.id===rec.id);
