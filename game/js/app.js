@@ -154,6 +154,17 @@ var CB = {
       (r.paid ? ' (paga con ' + r.paid + ')' : ''));
     else after((r.ok ? '✔ ' : '⚠ ') + (r.reason || 'suceso resuelto'));
   },
+  /* L8b — 233 Crystal Skull / 367 Shroud of Turin (draw_hook). A diferencia de las otras
+     tres ventanas, aqui `act` NO es "aplicar lo que ya decidio una carta": es la ELECCION
+     en si. El robo ya se aplazo y las cartas ya salieron del mazo, asi que cada boton de
+     la barra llama directamente a este callback con su respuesta: `{pick,rest}` para 233
+     (que carta de las tres te quedas, y las otras dos arriba o abajo) o `{take}` para 367
+     (la de cima o la del fondo sin mirar). El mensaje se deriva del propio log del motor
+     porque el motor ya lo explica con el nombre de las cartas concretas. */
+  onResolveDraw: function (act) {
+    try { E.resolvePendingDraw(act || {}); after('Eleccion de robo resuelta'); }
+    catch (e) { log('! ' + e.message); }
+  },
   onMoveGroup: function (uid, newParentUid) { E.moveGroup(E.getState().currentPid, uid, newParentUid); after('Grupo movido'); },
   onEndTurn: function () { endTurnFlow(); }
 };
@@ -297,6 +308,12 @@ function finishAITurn(pid) {
     var st = E.getState();
     if (st.phase === 'gameover') { checkOver(refresh()); return; }
     if (st.attack && !st.attack.resolved) { try { E.resolveAttack(); } catch (e) { log('⚠ IA no pudo resolver el ataque: ' + e.message); } }
+    /* L8b — ultima puerta antes de terminar: `E.endTurn` rechaza si queda una
+       eleccion de robo abierta (233/367). `settleWindows` ya la cierra en cada
+       contacto con el motor, asi que esto solo puede saltar si un camino futuro
+       se olvida; sin esta linea la partida se quedaria atascada en silencio,
+       porque el throw cae en el catch de abajo y solo loguea. */
+    if (window.AI && window.AI.settleDraw) { try { window.AI.settleDraw(E); } catch (e) { log('⚠ IA no pudo resolver su eleccion de robo: ' + e.message); } }
     /* E.endTurn avanza y hace beginTurn del siguiente él mismo */
     E.endTurn();
     afterAdvance();

@@ -5072,6 +5072,212 @@ function readyToAttack(pid) {
     'S9 388 coloca el token extra sobre el grupo que el jugador eligio -> ' + nodeOf(0, 'gB1').tokens);
 })();
 
+/* ---------- L8b - GANCHOS DE ROBO (233 Crystal Skull, 367 Shroud of Turin) ---------- */
+(function () {
+  /* 233 y 367 son Resources PASIVOS: colocarlas no hace nada visible, cambia el PROXIMO
+   * robo. El motor roba de forma sincrona (`drawFrom` -> `pop()` -> mano) sin punto de
+   * decision, y las dos cartas IMPRESAS son una decision, asi que no se pueden resolver
+   * despues del robo: habria que deshacerlo. Por eso el robo se APLAZA: las cartas
+   * salen del mazo a `S.pendingDraw.pool` y el llamante sale sin robar y SIN consumir la
+   * bandera del turno; la bandera se pone al cerrar la ventana.
+   *
+   * fixtures (regla 13, P1-029): nada depende del reparto aleatorio. `pull` saca la
+   * carta del mazo que le toca antes de meterla en la mano, y las aserciones comparan
+   * COPIAS de un indice, nunca `indexOf(...)<0` (ver la nota larga de la cabecera L8a). */
+  var SKULL = idxOfId('crystalskull');
+  var TURIN = idxOfId('shroudofturin');
+
+  function raw() { return E._raw(); }
+  function copiesOf(list, ix) {
+    var n = 0;
+    for (var i = 0; i < list.length; i++) if (list[i] === ix) n++;
+    return n;
+  }
+  /* El FONDO del mazo es el indice 0 y la CIMA es la ultima posicion. Para 233 solo
+   * hace falta mirar el fondo, que es donde acaba lo que NO te quedas. */
+  function bottomTwo(which) { var d = which === 'plot' ? raw().plotDeck : raw().groupDeck; return [d[0], d[1]]; }
+  function samePair(a, b) {
+    if (!a || !b || a.length !== 2 || b.length !== 2) return false;
+    return (a[0] === b[0] && a[1] === b[1]) || (a[0] === b[1] && a[1] === b[0]);
+  }
+  function pull(pid, ix, which) {
+    var pl = raw().players[pid];
+    var deck = which === 'group' ? raw().groupDeck : raw().plotDeck;
+    var pile = which === 'group' ? raw().groupDiscard : raw().plotDiscard;
+    var at = deck.indexOf(ix);
+    if (at >= 0) deck.splice(at, 1);
+    else if (pile.indexOf(ix) >= 0) pile.splice(pile.indexOf(ix), 1);
+    pl.hand.push(ix);
+    return ix;
+  }
+  function myMain(pid) {
+    for (var g = 0; g < 8; g++) {
+      var s = E.getState();
+      if (s.gameover) return false;
+      if (s.phase === 'main' && s.currentPid === pid) return true;
+      E.endTurn();
+    }
+    return false;
+  }
+  /* Cada entrada de `log` es un OBJETO {t,p,msg} (regla 14): se busca con .some(...). */
+  function said(re) {
+    return E.getState().log.some(function (l) {
+      var s2 = l && l.msg != null ? l.msg : l;
+      return re.test(String(s2));
+    });
+  }
+  /* Coloca el Resource y devuelve la ENTRADA en `pl.resources`, que es donde queda
+   * visible el gancho. Devolver la entrada y no un booleano permite comprobar que el
+   * gancho se guardo POR RECURSO (y no como bandera de jugador). */
+  function placeHook(pid, ix) {
+    pull(pid, ix, 'group'); /* los Resources viven en el mazo de Groups */
+    E.playResource(pid, ix, null);
+    var rs = raw().players[pid].resources;
+    for (var i = rs.length - 1; i >= 0; i--) if (rs[i].cardId === ix) return rs[i];
+    return null;
+  }
+
+  /* --- S1: 233 aplaza el robo de Plot; el jugador elige una de las tres ---------- */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(myMain(0), 'L8b S1 fixture: el jugador 0 llega a su fase principal');
+  var rS1 = placeHook(0, SKULL);
+  ok(!!(rS1 && rS1.drawHook && rS1.drawHook.pick === 3),
+    'L8b S1 colocar 233 no hace nada visible: solo deja un gancho de 3 cartas en su recurso');
+  ok(said(/cambiara los proximos robos/), 'L8b S1 el registro anuncia que 233 va a cambiar el proximo robo');
+  var d0 = raw().plotDeck.length, h0 = raw().players[0].hand.length;
+  var resS1 = E.drawPlot(0);
+  ok(resS1 && resS1.deferred === true && /Crystal Skull/.test(String(resS1.hook)),
+    'L8b S1 E.drawPlot APLAZA el robo y dice que carta lo provoco');
+  ok(raw().plotDeck.length === d0 - 3,
+    'L8b S1 las 3 cartas salen del mazo en el acto -> ' + d0 + ' -> ' + raw().plotDeck.length);
+  ok(raw().pendingDraw && raw().pendingDraw.pool.length === 3,
+    'L8b S1 quedan 3 cartas a la espera de la eleccion');
+  ok(raw().players[0].hand.length === h0, 'L8b S1 la mano NO cambia hasta que el jugador decide');
+  ok(raw().players[0].flags.plotDrawn === false,
+    'L8b S1 aplazar NO consume la bandera de "ya robaste tu Plot este turno"');
+  throws(function () { E.drawPlot(0); }, /eleccion de robo pendiente/,
+    'L8b S1 no se puede volver a robar con la eleccion abierta');
+  var pool1 = raw().pendingDraw.pool.slice();
+  var c1 = copiesOf(raw().players[0].hand, pool1[1]);
+  var c10 = copiesOf(raw().players[0].hand, pool1[0]);
+  var c12 = copiesOf(raw().players[0].hand, pool1[2]);
+  E.resolvePendingDraw({ pick: 1, rest: 'bottom' });
+  ok(copiesOf(raw().players[0].hand, pool1[1]) === c1 + 1,
+    'L8b S1 la carta ELEGIDA entra en la mano -> copias ' + c1 + ' -> ' + copiesOf(raw().players[0].hand, pool1[1]));
+  ok(samePair(bottomTwo('plot'), [pool1[0], pool1[2]]),
+    'L8b S1 las otras dos vuelven al FONDO del mazo -> ' + JSON.stringify(bottomTwo('plot')));
+  ok(copiesOf(raw().players[0].hand, pool1[0]) === c10 && copiesOf(raw().players[0].hand, pool1[2]) === c12,
+    'L8b S1 las otras dos NO se colaron en la mano');
+  ok(raw().players[0].flags.plotDrawn === true, 'L8b S1 al cerrar la ventana SI consume la bandera de Plot');
+  ok(raw().pendingDraw === null, 'L8b S1 la ventana queda cerrada');
+  ok(said(/se queda .* y devuelve las otras dos debajo de su mazo/),
+    'L8b S1 el registro dice que carta se quedo y donde fue el resto');
+
+  /* --- S2: 367 aplaza tambien el robo de Grupo y permite cambiar por el fondo ------ */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(myMain(0), 'L8b S2 fixture: el jugador 0 llega a su fase principal');
+  var rS2 = placeHook(0, TURIN);
+  ok(!!(rS2 && rS2.drawHook && rS2.drawHook.deck === 'plotOrGroup'),
+    'L8b S2 367 imprime "a Plot or Group card": su gancho sirve para los dos mazos');
+  var fondo2 = raw().groupDeck[0];
+  var cFondo2 = copiesOf(raw().players[0].hand, fondo2);
+  var resS2 = E.drawGroup(0);
+  ok(resS2 && resS2.deferred === true, 'L8b S2 E.drawGroup tambien se aplaza mientras 367 este enlazado');
+  var pool2 = raw().pendingDraw.pool.slice();
+  ok(pool2.length === 1, 'L8b S2 367 deja ver UNA sola carta (no tres como 233)');
+  ok(raw().pendingDraw.kind === 'group', 'L8b S2 la ventana sabe que es un robo de Grupo');
+  ok(raw().players[0].flags.groupDrawn === false, 'L8b S2 aplazar NO consume la bandera de grupo');
+  E.resolvePendingDraw({ take: 'bottom' });
+  ok(copiesOf(raw().players[0].hand, fondo2) === cFondo2 + 1,
+    'L8b S2 al rechazar la cima se lleva la del FONDO sin mirarla');
+  ok(raw().groupDeck[raw().groupDeck.length - 1] === pool2[0],
+    'L8b S2 la carta que rechazo vuelve a quedar ENCIMA del mazo');
+  ok(raw().players[0].flags.groupDrawn === true, 'L8b S2 al cerrar SI consume la bandera de grupo');
+  ok(raw().pendingDraw === null, 'L8b S2 la ventana queda cerrada');
+
+  /* --- S3: 367 tambien cubre el robo de Plot ("Whenever you draw a Plot OR Group") - */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(myMain(0), 'L8b S3 fixture: el jugador 0 llega a su fase principal');
+  placeHook(0, TURIN);
+  var d3 = raw().plotDeck.length;
+  var resS3 = E.drawPlot(0);
+  ok(resS3 && resS3.deferred === true, 'L8b S3 367 tambien aplaza el robo de Plot');
+  ok(raw().pendingDraw.kind === 'plot', 'L8b S3 la ventana sabe que es un robo de Plot');
+  ok(raw().plotDeck.length === d3 - 1, 'L8b S3 sale 1 carta del mazo de Plot -> ' + d3 + ' -> ' + raw().plotDeck.length);
+  var pool3 = raw().pendingDraw.pool.slice();
+  var c3 = copiesOf(raw().players[0].hand, pool3[0]);
+  E.resolvePendingDraw({ take: 'top' });
+  ok(copiesOf(raw().players[0].hand, pool3[0]) === c3 + 1,
+    'L8b S3 quedarse con la de cima mete la carta que estaba viendo');
+  ok(raw().pendingDraw === null, 'L8b S3 la ventana queda cerrada');
+
+  /* --- S4: no se puede terminar el turno con la eleccion abierta ------------------ */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(myMain(0), 'L8b S4 fixture: el jugador 0 llega a su fase principal');
+  placeHook(0, SKULL);
+  E.drawPlot(0);
+  ok(raw().currentPid === 0, 'L8b S4 antes de intentar nada el turno es del jugador 0');
+  throws(function () { E.endTurn(); }, /sin resolver tu eleccion de robo/,
+    'L8b S4 no se puede terminar el turno con la eleccion de robo abierta');
+  ok(raw().currentPid === 0, 'L8b S4 el turno NO avanza: las cartas ya salieron del mazo');
+  E.resolvePendingDraw({ pick: 0, rest: 'top' });
+  ok(raw().pendingDraw === null, 'L8b S4 cerrando la ventana se desbloquea el fin de turno');
+
+  /* --- S5: el canje de estrella tambien se aplaza y NO consume el robo normal ----- */
+  /* UFOS y no ADEPTS: `E.playResource` gasta 1 estrella Illuminati y al empezar el
+   * turno solo hay 1 con adepts, asi que el canje no tendria con que pagarse.
+   * Se cambia la Illuminati del fixture en vez de escribir `illumTokens` a mano,
+   * para no meter valores de motor dentro de un test. */
+  fresh(firstOf('ufos'), firstOf('cthulhu'));
+  ok(myMain(0), 'L8b S5 fixture: el jugador 0 llega a su fase principal');
+  placeHook(0, TURIN);
+  var stars5 = raw().players[0].illumTokens;
+  ok(stars5 === 1, 'L8b S5 tras colocar el Resource con UFOS queda 1 estrella para el canje -> ' + stars5);
+  var resS5 = E.exchangeForPlot(0, { illum: true });
+  ok(resS5 && resS5.deferred === true, 'L8b S5 el canje de estrella tambien pasa por el gancho');
+  ok(raw().pendingDraw.exchanged === true, 'L8b S5 la ventana recuerda que este robo venia de un canje');
+  ok(raw().players[0].illumTokens === stars5 - 1,
+    'L8b S5 la estrella YA esta gastada: aplazar no devuelve el pago (era un canje, no un robo)');
+  ok(raw().players[0].flags.plotDrawn === false,
+    'L8b S5 el canje NO es el robo normal de Plot: no puede consumir su bandera');
+  var pool5 = raw().pendingDraw.pool.slice();
+  var c5 = copiesOf(raw().players[0].hand, pool5[0]);
+  E.resolvePendingDraw({ take: 'top' });
+  ok(copiesOf(raw().players[0].hand, pool5[0]) === c5 + 1, 'L8b S5 el canje entrega la Plot elegida');
+  ok(raw().players[0].flags.plotDrawn === false,
+    'L8b S5 tras el canje la bandera de Plot sigue libre: se puede robar la Plot NORMAL del turno');
+  var resS5b = E.drawPlot(0);
+  ok(resS5b && resS5b.deferred === true,
+    'L8b S5 el robo normal tambien pasa por 367 ("Whenever you draw...") y vuelve a aplazar');
+  var pool5b = raw().pendingDraw.pool.slice();
+  var c5b = copiesOf(raw().players[0].hand, pool5b[0]);
+  E.resolvePendingDraw({ take: 'top' });
+  ok(copiesOf(raw().players[0].hand, pool5b[0]) === c5b + 1, 'L8b S5 el robo normal entrega su Plot');
+  ok(raw().players[0].flags.plotDrawn === true, 'L8b S5 el robo normal SI consume la bandera al final');
+
+  /* --- S6: una eleccion invalida se rechaza y NO destruye la ventana -------------- */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(myMain(0), 'L8b S6 fixture: el jugador 0 llega a su fase principal');
+  placeHook(0, SKULL);
+  E.drawPlot(0);
+  var pool6 = raw().pendingDraw.pool.slice();
+  throws(function () { E.resolvePendingDraw({ pick: 9 }); }, /elige una de las 3 cartas/,
+    'L8b S6 elegir una carta fuera del rango de lo mirado se rechaza');
+  ok(raw().pendingDraw !== null,
+    'L8b S6 tras el rechazo la ventana SIGUE ABIERTA: las 3 cartas no se pierden para siempre');
+  throws(function () { E.resolvePendingDraw({ pick: 0, rest: 'al-lado' }); }, /arriba o abajo del mazo/,
+    'L8b S6 un destino imposible del resto tambien se rechaza');
+  ok(raw().pendingDraw !== null, 'L8b S6 la ventana sigue abierta tras el segundo rechazo');
+  var d6 = raw().plotDeck.length;
+  E.resolvePendingDraw({ pick: 0, rest: 'top' });
+  ok(raw().plotDeck.length === d6 + 2,
+    'L8b S6 con destino ARRIBA las otras dos vuelven al mazo -> ' + d6 + ' -> ' + raw().plotDeck.length);
+  ok(raw().plotDeck[raw().plotDeck.length - 1] === pool6[2],
+    'L8b S6 la ultima de las otras dos es la siguiente que se robara');
+  throws(function () { E.resolvePendingDraw({ pick: 0 }); }, /No hay ninguna eleccion/,
+    'L8b S6 la ventana es idempotente: un segundo cierre no hace nada');
+})();
+
 /* ---------- Utilidad global: resolver un ataque SIN ventanas de reaccion ----------
    P1-021 (ventana de RODADERO) hace que, tras tirar los dados, el motor pare y
    espere si alguien tiene una de las 6 cartas de rodadero en la mano. Los tests

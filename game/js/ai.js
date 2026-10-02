@@ -586,10 +586,33 @@ function settleEventWindow(E) {
   var st = E.getState();
   if (st && st.pendingEvent) E.resolvePendingEvent();
 }
-/* Un solo punto de entrada para las tres ventanas: cada vez que la IA toca el
+/* L8b — la ventana de ELECCIÓN DE ROBO (233 Crystal Skull, 367 Shroud of Turin).
+   Es la QUINTA ventana y, a diferencia de las otras cuatro, no se puede dejar
+   abierta: las cartas ya salieron del mazo y `E.endTurn` rechaza el turno entero
+   mientras siga abierta. Ademas se abre en el sitio mas incomodo del turno,
+   `E.drawPlot` (primera llamada de `takeTurn`), igual que la de suceso.
+   DECLARACION DE LIMITACION: `getState()` solo proyecta `{idx,name}` de las cartas
+   de la ventana, no el objeto completo, y la IA no tiene un oraculo de "que carta
+   es buena". Asi que la politica es NEUTRA y honesta: quedarse con la que ya
+   habria robado (la de cima) y devolver las otras dos al fondo. Nunca es peor que
+   no tener la carta, y no finge una heuristica que no existe. Que loija el humano
+   es lo que hace el hook. */
+function settleDrawWindow(E) {
+  var st = E.getState();
+  if (!st || !st.pendingDraw) return;
+  var DR = st.pendingDraw;
+  var act = DR.mode === 'choose3' ? { pick: 0, rest: 'bottom' } : { take: 'top' };
+  try { E.resolvePendingDraw(act); }
+  catch (e) { if (window.console) console.error('[INWO] AI: fallo al resolver la eleccion de robo: ' + (e && e.message ? e.message : e)); }
+}
+/* Un solo punto de entrada para las cinco ventanas: cada vez que la IA toca el
    motor y vuelve a leer el estado, cierra lo que quedara abierto. Es mas barato
-   y mas seguro que recordar cerrar despues de cada llamada. */
+   y mas seguro que recordar cerrar despues de cada llamada.
+   ORDEN IMPORTA: la de robo va PRIMERA porque es la unica que bloquea `E.endTurn`,
+   y resolverla puede abrir la de suceso (P1-027) al entregar la Plot, asi que la
+   de suceso tiene que cerrarse DESPUES. */
 function settleWindows(E) {
+  settleDrawWindow(E);
   settleEventWindow(E);
   settleRollWindow(E);
 }
@@ -614,6 +637,15 @@ function runAttackResume(E, st, pid) {
 window.AI = {
   takeTurn: function (E, pid) { takeTurn(E, pid); },
   respond: function (E, pid) { respondInternal(E, pid); },
+  /* Exportada a proposito: app.js la llama justo antes de `E.endTurn` de la IA.
+     `settleWindows` ya cierra la ventana en cada punto de contacto con el motor,
+     pero `E.endTurn` RECHAZA el turno si queda alguna abierta, y si un camino
+     futuro del turno de la IA se olvidara de cerrar una, la partida se quedaria
+     atascada sin crash (el throw cae en un catch que solo loguea). Esta segunda
+     puerta, en el ultimo momento antes de terminar el turno, convierte ese
+     atasco silencioso en nada. Se reutiliza `settleDrawWindow` para que la
+     politica de eleccion este escrita una sola vez. */
+  settleDraw: function (E) { settleDrawWindow(E); },
   _internal: { respondInternal: respondInternal, takeTurn: takeTurn }
 };
 })();

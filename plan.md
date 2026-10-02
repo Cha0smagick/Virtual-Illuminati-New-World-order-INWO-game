@@ -430,8 +430,13 @@ Kind `align_rule`, unica cualificadora `alignMag`.
 > - **L8a (hecho, §52)**: 361 + 388 + 411. `deck_manip` con `mode:'draw'|'burn'|'sellout'`,
 >   `topOfDeck(deck,n)`, y `placeBonusAction` — que creo el subsistema de token de
 >   accion EXTRA, que no existia de ninguna forma en el motor (P1-036).
-> - **L8b (pendiente)**: 233 Crystal Skull + 367 Shroud of Turin. No son `deck_manip`:
->   son ganchos en `drawFrom`, otra superficie.
+> - **L8b (hecho, §53)**: 233 Crystal Skull + 367 Shroud of Turin. No son `deck_manip`:
+>   son ganchos de robo (`draw_hook`) en `drawFrom`, otra superficie. El robo se APLAZA
+>   a `S.pendingDraw.pool` (quinta ventana) porque las dos cartas impresas SON una
+>   decision y deshacer un robo ya hecho no es una opcion. Hallazgos P1-042 (el canje
+>   de estrella no consume el robo normal), P1-043 (validar antes de cerrar la ventana),
+>   P1-044 (el robo sincrono no admite decisiones), P1-045 (`E.playResource` con if/else
+>   invisible para el gate de FASE 4), P1-046 (la IA no podia cerrar la quinta ventana).
 > - **L8c (pendiente)**: 405 Unlucky 13. Ventana de reactivo al principio del turno ajeno
 >   + bandera auto-limpiante de "no roba Plot cards".
 > - **BLOQUEADAS (P1-038)**: 191 y 395. El juego real tiene un mazo de Plot POR JUGADOR

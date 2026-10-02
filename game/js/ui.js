@@ -91,6 +91,11 @@ function takeIco(pid) {
 }
 /* Orden de la mano */
 var handSort = 'table'; /* table | type | power */
+/* L8b — destino de las cartas que NO te quedas en la ventana de 233 Crystal Skull.
+   Es estado de la INTERFAZ, no del motor: el motor no sabe nada de "arriba/abajo"
+   hasta que el jugador contesta. Empieza en 'bottom' porque devolverlas al fondo es lo
+   que menos molesta al jugador que ya las ha visto. */
+var drawRest = 'bottom'; /* top | bottom */
 function maxKids(depthFromRoot) { return depthFromRoot === 1 ? 4 : 3; }
 function nodeDepth(structure, uid) {
   var d = 0, found = false;
@@ -587,8 +592,35 @@ function attackPanel(st) {
       (EV.responders && EV.responders.length
         ? ' · pueden reaccionar: ' + EV.responders.map(function (p) { return esc(p.cardName); }).join(', ')
         : ' · nadie puede reaccionar') +
-      ' <button data-act="resolveevent" class="primary" title="Aplica lo que decidió la carta jugada. Si alguien tiene una carta de suceso, juégala ANTES: hace falta este momento">' +
+' <button data-act="resolveevent" class="primary" title="Aplica lo que decidió la carta jugada. Si alguien tiene una carta de suceso, juégala ANTES: hace falta este momento">' +
       'Aplicar el resultado</button></div>');
+  }
+  /* L8b — la ventana de ELECCIÓN DE ROBO (233 Crystal Skull, 367 Shroud of Turin).
+     Es la única de las cuatro ventanas en la que el efecto ES la decisión: el robo ya
+     se aplazó y las cartas ya salieron del mazo, así que no hay nada que "aplicar"
+     después. Por eso no hay botón de resolver: cada botón ES una respuesta, y el
+     jugador elige (nunca se elige solo). Va al principio de attackPanel porque bloquea
+     el turno: `E.endTurn` rechaza mientras siga abierta. Los índices son de SU mazo y
+     el motor sólo se lo proyecta al dueño, así que aquí no hay que filtrar nada. */
+  var DR = st.pendingDraw;
+  if (DR) {
+    var dh = '<b>🎴 ' + esc(DR.hook) + '</b> ';
+    if (DR.mode === 'choose3') {
+      dh += 'mira las 3 primeras cartas de su mazo y <b>quedáte con una</b>; las otras dos van ' +
+        '<b>' + (drawRest === 'top' ? 'ENCIMA' : 'DEBAJO') + '</b>' +
+        (DR.exchanged ? ' · <i>(venía de un canje ★→Plot)</i>' : '') + '. ' +
+        DR.cards.map(function (cd, k) {
+          return '<button data-act="drawpick" data-i="' + k + '" title="' + esc(cd.name) + '">' + esc(cd.name) + '</button>';
+        }).join(' ') +
+        ' <button data-act="drawresttop" class="' + (drawRest === 'top' ? 'on' : '') + '" title="Devuelve las otras dos cartas al TECHO del mazo">↥ resto arriba</button>' +
+        ' <button data-act="drawrestbot" class="' + (drawRest === 'bottom' ? 'on' : '') + '" title="Devuelve las otras dos cartas al FONDO del mazo">↧ resto abajo</button>';
+    } else {
+      dh += 'mira la carta de la cima de su mazo' +
+        (DR.exchanged ? ' <i>(venía de un canje ★→Plot)</i>' : '') + '. ' +
+        '<button data-act="drawtake" data-v="top" title="Me quedo con la carta que veo">quedarse con la de CIMA</button>' +
+        ' <button data-act="drawtake" data-v="bottom" title="Cambio por la del fondo del mazo sin mirarla">quedarse con la del FONDO (sin verla)</button>';
+    }
+    $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar">' + dh + '</div>');
   }
   var P = st.pendingAttack;
   if (P) {
@@ -1259,6 +1291,13 @@ function bindEvents() {
       else if (act === 'resolvepending') { clearSel(); CB.onResolvePendingAttack(); }
       else if (act === 'resolveroll') { clearSel(); CB.onResolvePendingRoll(); }
     else if (act === 'resolveevent') { clearSel(); CB.onResolvePendingEvent(); }
+    /* L8b — ventana de eleccion de robo (233/367). Cada boton es una respuesta, asi
+       que se resuelve al pulsar: no hay "aplicar resultado" aparte. Los dos de destino
+       NO resuelven, solo cambian lo que se enviará. */
+    else if (act === 'drawresttop') { drawRest = 'top'; render(curState); }
+    else if (act === 'drawrestbot') { drawRest = 'bottom'; render(curState); }
+    else if (act === 'drawpick') { clearSel(); CB.onResolveDraw({ pick: parseInt(btn.getAttribute('data-i'), 10), rest: drawRest }); }
+    else if (act === 'drawtake') { clearSel(); CB.onResolveDraw({ take: btn.getAttribute('data-v') }); }
     else if (act === 'privilege') { CB.onTogglePrivilege(); }
       else if (act === 'aid') { sel = { mode: 'aid', data: {} }; render(curState); }
       else if (act === 'oppose') { sel = { mode: 'oppose', data: {} }; render(curState); }

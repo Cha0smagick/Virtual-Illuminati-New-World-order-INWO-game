@@ -344,7 +344,7 @@ E.newGame=function(configs){
   S={
       phase:'setup',turn:0,round:1,currentPid:-1,turnCompleted:false,
     players:[],groupDeck:[],plotDeck:[],groupDiscard:[],plotDiscard:[],
-    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,alignRule:null,log:[],uidCounter:100,winner:null,
+    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,alignRule:null,log:[],uidCounter:100,winner:null,
     config:{goalCount:(configs.goalCount||12)},
     lastRoll:null
   };
@@ -589,6 +589,15 @@ function publicState(){
       cards:S.pendingPeek.data.cards.map(function(ix){return {idx:ix,name:card(ix).name};}),
       cancelledBy:S.pendingPeek.cancelledBy?{card:S.pendingPeek.cancelledBy.cardName,by:S.pendingPeek.cancelledBy.name}:null,
       responders:S.pendingPeek.responders?S.pendingPeek.responders.slice():[]}:null,
+ /* L8b: la ventana de robo es INTIMA del jugador que roba (233/367 eligen entre sus
+  * propias cartas), al reves que pendingPeek que es de un rival. Se proyecta
+  * entero solo para el dueno: los indices de carta son de SU mazo y ningun otro
+  * jugador debe verlos. El hook ya sabe que las cartas son las que el mira. */
+ pendingDraw:S.pendingDraw?(S.pendingDraw.byPid===S.currentPid?{
+   kind:S.pendingDraw.kind,hook:S.pendingDraw.hookCard,hookUid:S.pendingDraw.hookUid,
+   mode:S.pendingDraw.pick>1?'choose3':'choose1',exchanged:!!S.pendingDraw.exchanged,
+   cards:S.pendingDraw.pool.map(function(ix){return {idx:ix,name:card(ix).name};})
+ }:null):null,
     players:S.players.map(function(pl,i){
       return {
         idx:i,name:pl.name,human:pl.human,illumId:pl.illumId,
@@ -1078,6 +1087,10 @@ E.drawPlot=function(pid){
   requireOwnMain(pid);
   var pl=S.players[pid];
   if(pl.flags.plotDrawn)throw new Error('Ya robaste tu carta de Plot este turno');
+  if(S.pendingDraw)throw new Error('Primero resuelve la eleccion de robo pendiente');
+  /* L8b: 233/367. El robo se APLAZA (las cartas ya estan en S.pendingDraw.pool) y el
+   * turno NO consume la bandera: la consumira resolvePendingDraw al cerrar. */
+  if(deferDrawForHook(pid,'plot'))return {deferred:true,hook:S.pendingDraw.hookCard};
   var ix=drawFrom(S.plotDeck,S.plotDiscard,'plots');
   if(ix==null)throw new Error('No quedan Plot cards');
   pl.flags.plotDrawn=true;
@@ -1096,6 +1109,9 @@ E.drawGroup=function(pid){
   requireOwnMain(pid);
   var pl=S.players[pid];
   if(pl.flags.groupDrawn)throw new Error('Ya robaste tu carta de Grupo este turno');
+  if(S.pendingDraw)throw new Error('Primero resuelve la eleccion de robo pendiente');
+  /* L8b: 367 imprime "a Plot or Group card". */
+  if(deferDrawForHook(pid,'group'))return {deferred:true,hook:S.pendingDraw.hookCard};
   var ix=drawFrom(S.groupDeck,S.groupDiscard,'grupos');
   if(ix==null)throw new Error('No quedan Group cards');
   pl.flags.groupDrawn=true;
@@ -1118,6 +1134,10 @@ E.exchangeForPlot=function(pid,payment){
         spentGroups.push(u);
       });
     }else throw new Error('Pago inválido (1 acción Illuminati o 2 tokens de grupo)');
+    if(S.pendingDraw)throw new Error('Primero resuelve la eleccion de robo pendiente');
+    /* L8b: el pago YA esta aplicado y el `return` de aqui sale del `try`, asi que el
+     * `catch` no lo devuelve. El canje se completa al cerrar la eleccion de robo. */
+    if(deferDrawForHook(pid,'plot')){S.pendingDraw.exchanged=true;return {deferred:true,hook:S.pendingDraw.hookCard};}
     var ix=drawFrom(S.plotDeck,S.plotDiscard,'plots');
     if(ix==null)throw new Error('No quedan Plot cards');
     pl.hand.push(ix);
@@ -1184,6 +1204,131 @@ function applyBonusUids(pid,uids,earn,cardName,maxPerGroup){
   }
   return placed;
 }
+/* ---------------- L8b: ganchos de robo (233 Crystal Skull, 367 Shroud of Turin) ----------------
+ * Resources PASIVOS que cambian el PROXIMO robo. El problema de fondo es que este
+ * motor roba de forma sincrona: `drawFrom` saca una carta y la mete en la mano, sin
+ * punto de decision. Las dos cartas impresas son una decision ("pick the one you
+ * want", "if you don't want it, take the bottom card instead"), asi que no se pueden
+ * resolver despues del robo: habria que deshacerlo. Por eso el robo se APLAZA.
+ *
+ * CONVENCION DE MAZO (ya existe, ver topOfDeck en L8a y drawFrom): el mazo es un
+ * array donde la ULTIMA posicion es la cima (`pop()` = cima, `push()` = nueva cima,
+ * indice 0 = FONDO). Todo el reparto de este bloque depende de eso.
+ *
+ * El hook NO se consume: las dos cartas dicen "Whenever you draw ...", o sea que
+ * dura mientras el Resource siga enlazado. Se guarda POR RECURSO (`r.drawHook`),
+ * no como una bandera de jugador, para que capturar o destruir el Resource lo apague
+ * sin tocar nada mas, y para que dos Resources distintos no se pisen.
+ */
+function drawHookOf(pid,kind){
+  var pl=S.players[pid];
+  if(!pl)return null;
+  for(var i=0;i<pl.resources.length;i++){
+    var r=pl.resources[i];
+    if(!r||!r.drawHook)continue;
+    var c=card(r.cardId);
+    var h=(c&&c.effect&&c.effect.hook)||null;
+    if(!h)continue;
+    if(h.deck===kind||h.deck==='plotOrGroup')return {res:r,card:c,hook:h};
+  }
+  return null;
+}
+/* ¿Se puede aplazar este robo? Devuelve true si abrio la ventana. Se llama ANTES de
+ * `drawFrom`, y el llamante DEBE salir sin robar y sin consumir la bandera del turno:
+ * las cartas ya estan en `pool`, asi que la bandera se pone al resolver. */
+function deferDrawForHook(pid,kind){
+  var h=drawHookOf(pid,kind);
+  if(!h)return false;
+  var deck=kind==='plot'?S.plotDeck:S.groupDeck;
+  var want=Math.max(1,h.hook.pick||1);
+  var pool=topOfDeck(deck,Math.min(want,deck.length));
+  if(!pool.length)return false;
+  S.pendingDraw={byPid:pid,kind:kind,hookUid:h.res.uid,hookCard:h.card.name,
+                 pick:h.hook.pick||1,rest:h.hook.rest||null,alt:h.hook.alt||null,
+                 pool:pool,exchanged:false};
+  log(h.card.name+': '+S.players[pid].name+' mira '+pool.length+' carta(s) de la cima de su mazo de '+kind);
+  return true;
+}
+/* Cierre idempotente: se vacia `S.pendingDraw` ANTES de mutar nada, igual que
+ * resolvePendingPeek / resolvePendingAttack, para que un segundo click no pueda
+ * cobrar dos veces. */
+E.resolvePendingDraw=function(act){
+  if(!S.pendingDraw)throw new Error('No hay ninguna eleccion de robo pendiente');
+  var P=S.pendingDraw;
+  var pl=S.players[P.byPid];
+  if(!pl)throw new Error('Jugador desconocido');
+  var pool=P.pool.slice();
+  var deck=P.kind==='plot'?S.plotDeck:S.groupDeck;
+  var chosen=null;
+  act=act||{};
+  /* L8b — VALIDAR ANTES de cerrar. Cerrar primero era un fallo real: una eleccion
+     invalida destruia la ventana Y las cartas del `pool`, que ya no estan ni en el
+     mazo ni en la mano ni en el descarte, asi que se perdian para siempre y el
+     jugador perdia un turno entero de forma irrecuperable. Ahora una eleccion
+     invalida lanza y DEJA LA VENTANA ABIERTA, que es lo unico que permite
+     reintentar. La idempotencia no se pierde por esto: el cierre sigue siendo la
+     primera mutacion, solo despues de validar. */
+  var k=-1, where=null, take=null;
+  if(P.pick>1){
+    /* 233: elige UNA de las que miro y devuelve las otras dos donde diga. */
+    k=act.pick;
+    if(typeof k!=='number'||!(k>=0&&k<pool.length))
+      throw new Error(P.hookCard+': elige una de las '+pool.length+' cartas que has mirado');
+    where=act.rest||'top';
+    if(where!=='top'&&where!=='bottom')
+      throw new Error(P.hookCard+': las otras dos cartas van arriba o abajo del mazo');
+  }else{
+    /* 367: mira la cima y, si no la quiere, se lleva el FONDO sin mirarlo. */
+    take=act.take||'top';
+    if(take!=='top'&&take!=='bottom')
+      throw new Error(P.hookCard+': quedate con la carta de cima o con la del fondo');
+  }
+  S.pendingDraw=null;
+  if(P.pick>1){
+    chosen=pool[k];
+    var rest=pool.filter(function(_,i){return i!==k;});
+    if(where==='top'){
+      /* Arriba del mazo = final del array. Se empujan en orden de lectura para que
+       * la que estaba mas abajo entre las dos quede la primera que se robara. */
+      deck.push(rest[0]);
+      deck.push(rest[1]);
+    }else{
+      /* Abajo del mazo = indice 0. `unshift` mete al principio, asi que se hace al
+       * reves para que rest[0] quede encima de rest[1] (orden de lectura). */
+      deck.unshift(rest[0]);
+      deck.unshift(rest[1]);
+    }
+    log(P.hookCard+': '+pl.name+' se queda '+card(chosen).name+' y devuelve las otras dos '+
+        (where==='top'?'encima':'debajo')+' de su mazo');
+  }else{
+    /* 367: `take` ya quedo validado arriba. */
+    if(take==='top'){
+      chosen=pool[0];
+      log(P.hookCard+': '+pl.name+' se queda '+card(chosen).name);
+    }else if(deck.length){
+      chosen=deck.shift();
+      deck.push(pool[0]);
+      log(P.hookCard+': '+pl.name+' rechaza la cima y se lleva '+card(chosen).name+' del fondo');
+    }else{
+      /* El mazo solo tenia esa carta: no hay fondo al que agarrarse. */
+      chosen=pool[0];
+      log(P.hookCard+': '+pl.name+' se queda '+card(chosen).name+' (su mazo ya no tenia fondo)');
+    }
+  }
+  pl.hand.push(chosen);
+  if(P.kind==='plot'&&!P.exchanged){
+    pl.flags.plotDrawn=true;
+    openEventWindow({kind:'plotDrawn',byPid:P.byPid,label:pl.name+' roba una Plot card ('+card(chosen).name+')',
+                     data:{cardIdx:chosen,byName:pl.name}});
+  }else if(P.kind==='group'&&!P.exchanged){
+    /* El canje de estrella es SIEMPRE por una Plot, asi que `P.kind` ya es 'plot'
+     * en ese caso; la rama de abajo solo se da con `E.drawGroup`, que si consume
+     * la bandera. Se deja explicita la negacion para que anadir un canje de
+     * grupo en el futuro no tenga que recordar esta excepcion. */
+    pl.flags.groupDrawn=true;
+  }
+  return publicState();
+};
 function requireOwnMain(pid){
   if(S.phase!=='main')throw new Error('Fuera de la fase principal');
   if(pid!==S.currentPid)throw new Error('No es tu turno');
@@ -1259,13 +1404,28 @@ E.playResource=function(pid,handIdx,linkedToUid){
    * descartado los kind === "unverified", asi que lo que llega aqui tiene
    * mecanica verificada y por tanto merece un error explicito. */
   var resFx = (c.effect || {}).kind;
-  if (resFx === 'bulk_power') applyBulkPower(pid, c, c.effect);
-  else throw new Error('El Resource "' + c.name + '" tiene una mecanica (' + resFx + ') que E.playResource todavia no ejecuta');
+  /* L8b — 233/367 pasan a ser `case` REALES (antes esta cadena era if/else): el gate
+   * de FASE 4 detecta las ramas con /case\s+'([a-z0-9_]+)'\s*:/ sobre TODO el motor,
+   * asi que un `else if` para un Resource con mecanica verificada haria que el gate
+   * viera una carta clasificada cuya rama "no existe" y tirara la suite.
+   * Kind `draw_hook`: colocar el Resource NO hace nada visible; lo que hace es
+   * REGISTRAR el gancho en la entrada que se va a enlazar. El efecto se vera en el
+   * proximo robo (ver deferDrawForHook). El registro va despues del `push` para
+   * poder dejar la referencia en la MISMA entrada. */
+  switch(resFx){
+    case 'bulk_power': applyBulkPower(pid, c, c.effect); break;
+    case 'draw_hook': break;
+    default: throw new Error('El Resource "' + c.name + '" tiene una mecanica (' + resFx + ') que E.playResource todavia no ejecuta');
+  }
   pl.illumTokens--;pl.usedResourceThisTurn=true;
   removeFromHand(pl,handIdx);
   var link=linkedToUid||pl.illumId;
-  pl.resources.push({uid:'r'+(S.uidCounter++),cardId:handIdx,linkedTo:link,tokens:0});
+  var entry={uid:'r'+(S.uidCounter++),cardId:handIdx,linkedTo:link,tokens:0};
+  if(resFx==='draw_hook')entry.drawHook={deck:c.effect.hook.deck,pick:c.effect.hook.pick||1,
+                                          rest:c.effect.hook.rest||null,alt:c.effect.hook.alt||null};
+  pl.resources.push(entry);
   log(pl.name+' juega el recurso '+c.name);
+  if(resFx==='draw_hook')log(c.name+' queda enlazado: cambiara los proximos robos de '+pl.name);
   return publicState();
 };
 E.extraGroupDraw=function(pid){
@@ -4730,6 +4890,11 @@ E.endTurn=function(){
   if(S.phase!=='main')throw new Error('No se puede terminar un turno fuera de la fase principal');
   if(S.turnCompleted)throw new Error('Este turno ya fue terminado');
   if(S.attack)throw new Error('No se puede terminar el turno con un ataque sin resolver');
+  /* L8b: una eleccion de robo pendiente (233/367) tiene las cartas YA SACADAS del
+   * mazo. Si el turno terminara con la ventana abierta, el beginTurn del rival
+   * repartiria sobre un mazo racionado y la eleccion se resolveria contra un mazo
+   * que ya no es el que se miro. Se cierra antes que nada. */
+  if(S.pendingDraw)throw new Error('No se puede terminar el turno sin resolver tu eleccion de robo');
   var pid=S.currentPid;
   var pl=S.players[pid];
   if(!pl)throw new Error('No hay jugador activo');

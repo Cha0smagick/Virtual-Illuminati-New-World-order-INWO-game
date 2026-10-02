@@ -108,8 +108,8 @@ const DEAD_BRANCHES = {
  * mecanica alguna. La cifra honesta son 182 = 147 Plots pendientes + 35 Resources
  * pendientes. Los 167 Groups que siguen con status 'unverified' no son deuda: son
  * grupos normales y jugables, y por eso ya NO entran en este techo. */
-const MAX_PENDING_PLR = 179;            // medido tras L8a: 144 plots + 35 resources sin mecanica
-const MIN_IMPLEMENTED = 50;            // medido tras L8a: implemented-pending-engine
+const MAX_PENDING_PLR = 177;            // medido tras L8b: 144 plots + 33 resources sin mecanica
+const MIN_IMPLEMENTED = 52;            // medido tras L8b: implemented-pending-engine
 
 /* Groups sin texto mostrable. Californa, Margaret Thatcher, Ollie North y Vatican
  * City tienen `text`/`ocrText` de 0 caracteres pero `referenceText` de 126-155

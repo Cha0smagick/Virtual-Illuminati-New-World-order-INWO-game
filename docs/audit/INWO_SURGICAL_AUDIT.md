@@ -5043,3 +5043,147 @@ descartes). Y `deck_manip` entra en `NO_TARGET_KINDS` porque no tienen grupo OBJ
 - **Los otros 4 PRINT de token extra** (12 Brazil, 61 Hawaii, 215 Center for Weird
   Studies, 335 Perpetual Motion Machine) siguen sin mecanismo: `placeBonusAction` ya
   existe y les sirve, pero cada una necesita su propia condicion de pago.
+
+## 53. L8b GANCHOS DE ROBO (233 Crystal Skull, 367 Shroud of Turin)
+
+### Hallazgo
+
+- 233 Crystal Skull y 367 Shroud of Turin son Resources PASIVOS cuya mecanica
+  NO es deck manipulation: "Whenever you draw a Plot card, you may look at the
+  top three cards in your deck and pick the one you want" (233) y "Whenever you
+  draw a Plot or Group card, you may look at the top card in the deck and, if
+  you don't want it, take the bottom card instead, without looking at it" (367).
+  Son ganchos de robo, otra superficie: se colocan con E.playResource y cambian
+  el PROXIMO robo.
+- **P1-044 (nuevo)** - El motor roba de forma sincrona y sin punto de decision:
+  `drawFrom` saca una carta de la cima y la mete en la mano, sin permitir
+  ninguna carta que sea una decision sobre QUE carta se roba. Habia 2 cartas
+  (233, 367) que dependian de ello y eran injugables de forma completa.
+- 367 no tiene transcripcion secundaria (`secondary-not-found`): su linea de
+  sabor llega corrupta por OCR y no se transcribe, asi que el dato lleva el
+  texto impreso de la tabla.
+- **P1-045 (nuevo)** - `E.playResource` encadenaba sus efectos con if/else
+  (`if(resFx==='bulk_power')...else if...`), asi que un kind de Resource con
+  mecanica verificada NO era visible para el gate de FASE 4, que detecta las
+  ramas con /case\s+'([a-z0-9_]+)'\s*:/ sobre TODO el motor. Mismo fallo
+  latente que P1-031: el defecto existia desde siempre y no explotaba porque
+  344 Principia Discordia era el unico Resource con mecanica verificada.
+
+### Correcciones
+
+- **gen_cards.js** - Tabla `L8B_FX` + `L8B_FXN` para `crystalskull` y
+  `shroudofturin` con `kind:'draw_hook'` y `hook:{deck,pick,rest,alt}`
+  (233: deck 'plot', pick 3, rest 'topOrBottom'; 367: deck 'plotOrGroup',
+  pick 1, alt 'bottom'). Cableada en la cadena de PLOT_FXN. Las 2 cartas quedan
+  `implemented-pending-engine` con `text` = texto impreso verbatim.
+- **engine.js** - Ventana de ELECCION DE ROBO, la QUINTA y distinta de las otras
+  cuatro: aqui el efecto ES la decision, no hay "aplicar resultado" aparte.
+  - El robo se APLAZA: `deferDrawForHook(pid,kind)` saca la carta (o 3) a
+    `S.pendingDraw.pool` ANTES de `drawFrom` y el llamante (`E.drawPlot`,
+    `E.drawGroup`, `E.exchangeForPlot`) sale sin robar y SIN consumir la
+    bandera del turno; la bandera la pone `E.resolvePendingDraw` al cerrar.
+  - `E.resolvePendingDraw(act)`: valida ANTES de cerrar (P1-043), es
+    idempotente, y en el cierre de 233 devuelve las otras dos al techo o al
+    fondo del mazo; en el de 367 cambia la cima por el fondo sin mirarlo.
+  - `E.endTurn` rechaza con la ventana abierta: las cartas ya salieron del
+    mazo y el beginTurn del rival repartiria sobre un mazo racionado.
+  - `E.playResource` pasa a `switch(resFx)` con `case 'draw_hook':`
+    REAL (P1-045); el gancho queda REGISTRADO POR RECURSO (`r.drawHook`), no
+    como bandera de jugador, asi que capturar o destruir el Resource lo apaga.
+  - `publicState()` proyecta `pendingDraw` SOLO para el dueño del robo (los
+    indices son de SU mazo) y con `exchanged` para el canje.
+- **ui.js** - Panel de la ventana en attackPanel: para 233 un boton por carta +
+  conmutador "resto: encima/abajo"; para 367 "quedarse con la de CIMA" /
+  "quedarse con la del FONDO (sin verla)". El destino de las cartas que NO te
+  quedas es estado de la INTERFAZ (`drawRest`), no del motor.
+- **app.js** - `onResolveDraw(act)` -> `E.resolvePendingDraw(act)`.
+- **ai.js** - `settleDrawWindow(E)` en el punto unico `settleWindows(E)`,
+  que cierra la quinta ventana igual que las otras cuatro. La politica de la IA
+  es NEUTRA y declarada: quedarse con la carta que ya habria robado (la de
+  cima) y devolver las otras dos al fondo, porque `getState()` solo proyecta
+  `{idx,name}` y la IA no tiene oraculo de que carta es buena. Red de
+  seguridad adicional: `window.AI.settleDraw` y app.js la llama justo antes
+  de `E.endTurn` de la IA (P1-046).
+
+### P1 findings (corregidos en este lote)
+
+- **P1-042** - El canje de estrella (exchangeForPlot) consumia la bandera de
+  "ya robaste tu Plot este turno" si pasaba por un gancho de robo: el canje es
+  una Plot EXTRA y no la del turno. El canje SIEMPRE es por una Plot, asi que
+  la rama del canje ya no consume la bandera y el jugador puede seguir robando
+  su Plot normal del turno. Lo cazo la regresion S5.
+- **P1-043** - `E.resolvePendingDraw` cerraba la ventana ANTES de validar la
+  eleccion, asi que una eleccion invalida destruia la ventana Y las cartas del
+  `pool` (que ya no estan ni en el mazo ni en la mano ni en el descarte): se
+  perdian para siempre y el jugador perdía un turno entero de forma
+  irrecuperable. Ahora una eleccion invalida lanza y DEJA LA VENTANA ABIERTA,
+  que es lo unico que permite reintentar. Lo cazo la regresion S6.
+- **P1-046** - La IA no tenia forma de cerrar la ventana de eleccion de robo:
+  `E.endTurn` la rechaza y el throw cae en el catch de app.js que solo
+  loguea, asi que una partida con IA con 233/367 se quedaba atascada sin
+  crash. Arreglado con `settleDrawWindow` en el punto unico y una segunda
+  puerta en app.js antes de `E.endTurn` de la IA.
+
+### Verificacion
+
+- `node --check` limpio en `gen_cards.js`, `engine.js`, `ui.js`,
+  `app.js`, `ai.js` y `test_fase2_rules.js`.
+- `node gen_cards.js` -> `written 421 {"group":167,"illuminati":18,"plot":201,"resource":35} verified-groups 33`.
+  Las 2 cartas quedan `implemented-pending-engine`, `effect.kind='draw_hook'`,
+  con `text` = texto impreso verbatim.
+- Las 10 suites en verde: P0 REGRESSION, FASE 2 RULES, FASE 4 COVERAGE
+  (132 clasificadas, 116 sin mecanica, techo 177, minimo 52, 13 bloqueadas),
+  SMOKE, RESPOND, CARD RESEARCH MANIFEST, y `flow`/`ai_vs_ai`/`appflow`/`ui`
+  con salida 0. `draw_hook: 2` aparece en el histograma de kinds.
+- Regresion nueva en `test_fase2_rules.js`: **6 escenarios / 40 aserciones**
+  bajo el ancla `/* ---------- L8b - GANCHOS DE ROBO (233, 367) ----------`.
+  Cada escenario arranca con su propio `fresh()`. Cubre: 233 aplaza el robo
+  de Plot y elige 1 de 3 (S1), 367 aplaza el robo de Grupo y cambia por el
+  fondo (S2), 367 tambien cubre el robo de Plot (S3), no se puede terminar el
+  turno con la eleccion abierta (S4), el canje de estrella tambien se aplaza y
+  NO consume el robo normal (S5), y una eleccion invalida se rechaza sin
+  destruir la ventana (S6).
+- **30/30 corridas consecutivas** de `test_fase2_rules` + `test_fase4_cards` +
+  `test_p0_invariants` (90 ejecuciones, 0 fallos).
+
+### Lecciones
+
+1. **El robo sincrono no admite ninguna decision sobre QUE carta se roba.** Las
+   cartas que cambian el proximo robo son OTRA superficie (un gancho en
+   drawFrom), no un caso mas de playPlot, y se tienen que medir ANTES de
+   agruparlas con las de manipulacion de mazo.
+2. **Cerrar la ventana antes de validar es el mismo fallo de clase que cobrar
+   antes de validar**: una eleccion invalida destruia 3 cartas de forma
+   irrecuperable. El orden correcto es validar PRIMERO y cerrar DESPUES, y el
+   cierre sigue siendo la primera mutacion.
+3. **Un canje (exchangeForPlot) NO es el robo normal del turno**: comparte la
+   misma superficie de drawFrom pero no consume la misma bandera. Si un gancho
+   de robo los trata igual, el jugador pierde su Plot normal del turno.
+4. **La IA tiene que poder cerrar TODAS las ventanas**, no solo las que existian
+   cuando se escribio. Una ventana nueva que E.endTurn rechaza atasca la partida
+   de IA-vs-IA sin crash (el throw cae en un catch que solo loguea), que es el
+   peor tipo de fallo: silencioso. La red de seguridad en dos sitios (el punto
+   unico settleWindows + la ultima puerta antes de endTurn) es lo que la
+   convierte en nada.
+5. **La politica de eleccion de la IA se declara, no se finge.** Sin oraculo de
+   calidad de carta, quedarse con la que ya habria robado es la unica eleccion
+   que nunca es peor que no tener la carta; fingir una heuristica de "mejor
+   carta" con solo el nombre seria inventar data que no hay.
+
+### Backlog
+
+- **L8c** - 405 Unlucky 13: ventana de reactivo al PRINCIPIO del turno ajeno +
+  bandera auto-limpiante de "no roba Plot cards".
+- **P1-041 (abierto, hueco de motor)** - Mazos de Plot POR JUGADOR. Desbloquea
+  191 y 395 y es la misma subspecies que necesitan las cartas de "robar del
+  mazo de un rival" en general. Decision de arquitectura, no arreglo local:
+  `S.plotDeck` es global y lo usan `drawFrom`, `E.drawPlot`,
+  `E.exchangeForPlot`, el reparto inicial y `publicState().deckCounts`.
+- **Desviacion preexistente, NO tocada aqui** - `E.beginTurn` solo sube las
+  fichas a 1 y nunca las pone a 0, asi que las fichas de accion sin gastar se
+  arrastran de un turno al siguiente. El juego oficial dice que se pierden al
+  final del turno; arreglarlo de raiz es un lote propio.
+- **Los otros 4 PRINT de token extra** (12 Brazil, 61 Hawaii, 215 Center for
+  Weird Studies, 335 Perpetual Motion Machine) siguen sin mecanismo:
+  `placeBonusAction` ya existe y les sirve, pero cada una necesita su propia
+  condicion de pago.

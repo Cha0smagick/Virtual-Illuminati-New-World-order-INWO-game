@@ -1773,6 +1773,32 @@ const L8A_FX = {
   'voodooeconomics': { kind: 'deck_manip', mode: 'burn', ownTurn: true, burnMax: 10, bonusMaxPerGroup: 1, t: 'Play this card during your own turn, just after you place Action tokens. You may discard up to ten Plot Cards from the top of your deck, removing them permanently from play. For each one you discard, you may place one extra Action token on one of your own Groups. No Group may get more than one extra Action token from this card. Requires Discard' }
 };
 const L8A_FXN = {};
+
+/* ---------------- L8b: ganchos de robo (233, 367) ----------------
+ * Resources PASIVOS. No hacen nada en el momento de colocarse: cambian lo que
+ * ocurre la proxima vez que su dueno roba. Por eso el kind es `draw_hook` y el
+ * efecto viaja DENTRO del effect (`hook`), porque es lo que el motor guarda en la
+ * entrada `pl.resources[]` al colocarlos.
+ *   hook.deck   'plot' | 'group' | 'plotOrGroup'  -> a que mazo se aplica
+ *   hook.pick   cuantas cartas de la mira y entre cuales elige (233: 3, 367: 1)
+ *   hook.rest   'topOrBottom' -> donde van las que NO elige (solo 233)
+ *   hook.alt    'bottom'      -> carta alternativa sin mirar (solo 367)
+ * OJO: el hook NO se consume. Las dos cartas imprimen "Unique Magic Artifact" y
+ * "Whenever you draw a Plot card", o sea que dura mientras el Resource este
+ * enlazado. */
+const L8B_FX = {
+  'crystalskull': { kind:'draw_hook', hook:{ deck:'plot', pick:3, rest:'topOrBottom' },
+    t:'Whenever you draw a Plot card, you may look at the top three cards in your deck and pick the one you want. You may replace the other two either on the top of the deck or on the bottom, before looking for your next card.' },
+  /* 367 no tiene transcripcion secundaria (source.secondary.status =
+   * 'secondary-not-found'), asi que `t:` sale del OCR. El texto impreso es legible
+   * en la frase de mecanica; la linea de sabor ("The one in the museum is a fake,
+   * The real one is far away, the center of nightly rituals") llega corrupta por
+   * OCR y NO se transcribe aqui: `t:` es la mecanica, como en el resto de tablas. */
+  'shroudofturin': { kind:'draw_hook', hook:{ deck:'plotOrGroup', pick:1, rest:null, alt:'bottom' },
+    t:'Whenever you draw a Plot or Group card, you may look at the top card in the deck and, if you don\'t want it, take the bottom card instead, without looking at it.' }
+};
+const L8B_FXN = {};
+Object.keys(L8B_FX).forEach(function (k) { L8B_FXN[k] = L8B_FX[k]; });
 for (const k in L8A_FX) { L8A_FXN[norm(k)] = L8A_FX[k]; }
 
 const L7_FX = {
@@ -2071,7 +2097,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key];
   if (pfx) {
     rec.effect = pfx;
     rec.subtype = pfx.kind;
