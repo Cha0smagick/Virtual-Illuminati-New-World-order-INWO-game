@@ -108,6 +108,25 @@ function curPower(node){
      plan.md L3 para el poder en masa ("+2 a todos los Corporates"). */
   var pm=(node&&Array.isArray(node.powerMods))?node.powerMods:null;
   if(pm)for(var m=0;m<pm.length;m++){ if(typeof pm[m].v==='number') p+=pm[m].v; }
+  /* L3b — 234 Currency Speculation: "The Power ... of any one of your Bank
+     groups is tripled for its next action or defense". El x3 va al NODO y se
+     borra al gastar la ficha del grupo (su accion) o al defenderse de verdad.
+     `stat` distingue si el triple es de Poder o de Resistencia; aqui solo
+     aplica cuando es de Poder, y nodeResistance() hace el otro caso. */
+  if(node.tripled&&node.tripled.stat==='power')p*=3;
+  /* L3b — 377 Sucked Dry and Cast Aside!: "by 4 for one action only". El dato
+     queda en el nodo aunque la carta este BLOQUEADA (ver gen_cards.js L3B):
+     el motor lo soporta para que la mecanic este lista cuando la cola de
+     destruccion diferida exista, y para que el valor sea observable. */
+  if(node.burstMul&&typeof node.burstMul.mul==='number')p*=node.burstMul.mul;
+  /* L5c — 189 Albino Alligators: "+10 Power or Resistance (your choice) to any
+     Weird group you control. If used with an action ... counts only for that
+     action. If used for defense, the bonus lasts until the end of the current
+     turn". El delta va al NODO (interpretacion 1 de gen_cards.js). En modo
+     ACCION suma aqui; en modo DEFENSA lo suma computeStrength, porque defenderse
+     con Poder no es atacar con Poder. nodeResistance() cubre los dos modos. */
+  var tb=(node&&node.timedBoost)?node.timedBoost:null;
+  if(tb&&typeof tb.v==='number'&&tb.stat==='power'&&tb.mode==='action')p+=tb.v;
   if(node.paralyzed)p=c.power||0; /* paralyze freezes abilities/tokens, power unchanged */
   return Math.max(0,p);
 }
@@ -148,6 +167,11 @@ function defenderPower(node,isDestroy){
    en ese caso se cae a la carta. El 5 como ultimo recurso es el mismo valor por
    defecto que ya usaba el motor; no se introduce ninguna regla nueva. */
 function nodeResistance(node,cardObj){
+  /* L3b — 355 Resistance is Useless!: "the target groups Resistance is 0".
+     Se comprueba ANTES que `resistanceOverride`, porque ese campo es un valor
+     ABSOLUTO (Ango pincha la Resistencia en 1) y "su Resistencia es 0" tiene
+     que ganar a un pin: si no, un grupo con Ango seria inmune a esta carta. */
+  if(node&&node.resNullify)return 0;
   if(node&&node.resistanceOverride!=null)return node.resistanceOverride;
   var c=cardObj||(node?card(node.cardId):null);
   var r=(c&&typeof c.resistance==='number')?c.resistance:5;
@@ -158,6 +182,12 @@ function nodeResistance(node,cardObj){
      Resistencia. Mismo criterio que `powerMods` dentro de curPower. */
   var rm=(node&&Array.isArray(node.resistanceMods))?node.resistanceMods:null;
   if(rm)for(var mi=0;mi<rm.length;mi++){ if(typeof rm[mi].v==='number') r+=rm[mi].v; }
+  /* L3b — la otra mitad de 234: el triple puede ser de Resistencia. */
+  if(node&&node.tripled&&node.tripled.stat==='resistance')r*=3;
+  /* L5c — 189 Albino Alligators, rama de RESISTENCIA. Aqui NO se distingue el
+     modo: atacar nunca usa la Resistencia, asi que sumarla siempre es correcto
+     (interpretacion 2: el modo lo decide el contexto, no el jugador). */
+  if(node&&node.timedBoost&&node.timedBoost.stat==='resistance'&&typeof node.timedBoost.v==='number')r+=node.timedBoost.v;
   return r;
 }
 /* P1-015 — ¿Con qué Poder cuenta este nodo para una META?
@@ -314,7 +344,7 @@ E.newGame=function(configs){
   S={
       phase:'setup',turn:0,round:1,currentPid:-1,turnCompleted:false,
     players:[],groupDeck:[],plotDeck:[],groupDiscard:[],plotDiscard:[],
-    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,log:[],uidCounter:100,winner:null,
+    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,alignRule:null,log:[],uidCounter:100,winner:null,
     config:{goalCount:(configs.goalCount||12)},
     lastRoll:null
   };
@@ -338,7 +368,7 @@ E.newGame=function(configs){
          Aqui se guarda {uid,cardId,linkedTo} para que el cambio siga visible y
          para poder deshacer el efecto si el grupo linkeado sale de la mesa. */
       linkedPlots:[],
-      turnsCompleted:0,immuneFrom:{},pickedSecrets:[],flags:{autoTakeover:false,privilegedUsed:0}
+      turnsCompleted:0,immuneFrom:{},pickedSecrets:[],flags:{autoTakeover:false,autoTakeoverBlocked:false,privilegedUsed:0}
     });
   }
   log('Nueva partida creada ('+S.players.length+' jugadores, meta básica '+S.config.goalCount+' grupos)');
@@ -733,6 +763,36 @@ function checkElimination(){
   }
 }
 
+/* L3b — CADUCIDADES POR TURNO. 268 dice "Until the beginning of your next
+   turn" y 355 "For the rest of the current turn". Ninguna de las dos necesita un
+   campo nuevo en `S`: el motor ya lleva `S.turn`, que se incrementa aqui, y en
+   un turno circular "mi proximo turno" es `S.turn + S.players.length`. Se caduca
+   en el UNICO sitio donde el numero de turno avanza, para que ninguna otra ruta
+   pueda dejar un caducado vivo. Los dos campos viven en el NODO porque su
+   duracion es la del grupo. */
+function expireTurnFlags(){
+  for(var q=0;q<S.players.length;q++){
+    walk(S.players[q].structure,function(n){
+      if(n.defTriple&&n.defTriple.untilTurn!=null&&S.turn>=n.defTriple.untilTurn){
+        n.defTriple=null;
+        log('El triple defensivo de '+card(n.cardId).name+' caduca (turno '+S.turn+')');
+      }
+      if(n.resNullify&&n.resNullify.untilTurn!=null&&S.turn>=n.resNullify.untilTurn){
+        n.resNullify=null;
+        n.noMasterAlignDefense=false;
+        log(card(n.cardId).name+' recupera su Resistencia: la carta que se la anulaba caduca');
+      }
+      /* L5c — 189 Albino Alligators en modo DEFENSA: "the bonus lasts until the
+         end of the current turn". Solo el modo defensa caduca aqui; el modo
+         accion caduca al gastar la ficha (en spendGroupToken). */
+      if(n.timedBoost&&n.timedBoost.mode==='defense'&&n.timedBoost.untilTurn!=null&&S.turn>=n.timedBoost.untilTurn){
+        var tbG=card(n.cardId).name, tbC=n.timedBoost.name;
+        n.timedBoost=null;
+        log(tbG+' pierde el bonus defensivo de '+tbC+' (caduca en el turno '+S.turn+')');
+      }
+    });
+  }
+}
 E.beginTurn=function(pid,isFirst){
   if(S.phase==='gameover')return publicState();
   if(!S.players[pid])throw new Error('Jugador inválido');
@@ -743,7 +803,14 @@ E.beginTurn=function(pid,isFirst){
   S.currentPid=pid;
   S.turn++;
   S.turnCompleted=false;
+  /* L3b — caducar los efectos de 268 y 355 ANTES de nada de este turno, para
+     que "until the beginning of your next turn"caduque en la frontera
+     correcta y no un turno tarde. */
+  expireTurnFlags();
   pl.flags.autoTakeover=false;
+  /* L6 — 359 Sabotage: "He cannot make an automatic takeover that turn" es de
+     ESE turno, asi que caduca con el resto de flags por turno. */
+  pl.flags.autoTakeoverBlocked=false;
   pl.flags.plotDrawn=false;
   pl.flags.groupDrawn=false;
   /* P1-026: el ataque privilegiado de los Bavarianos es "1 vez por turno". */
@@ -760,7 +827,10 @@ E.beginTurn=function(pid,isFirst){
   /* action token on every own group lacking one */
   walk(pl.structure,function(nd){
     if(nd.cardId==null)return;
-    if(nd.paralyzed||nd.zapped||nd.devastated)return;
+    /* L3b — cuarto consumidor de noTokensFlag(): este reparto automatico es el
+       que hace DURAR la carta de 418. Sin esta linea, un grupo verde apagado
+       recuperaba su ficha aqui al comienzo de cada turno. */
+    if(noTokensFlag(nd))return;
     var c=card(nd.cardId);
     if(curPower(nd)===0&&!(c.power===0))return; /* reduced to 0 => no tokens; printed-0 ok */
     if(nd.tokens==null)nd.tokens=0;
@@ -880,6 +950,7 @@ function placeUnder(pid,handIdx,parentUid){
 E.autoTakeover=function(pid,handIdx,parentUid){
   requireOwnMain(pid);
   var pl=S.players[pid];
+  if(pl.flags.autoTakeoverBlocked)throw new Error('No puedes hacer un takeover automático: un rival lo ha anulado este turno');
   if(pl.flags.autoTakeover)throw new Error('Ya usaste el takeover automático de este turno');
   var c=card(handIdx);
   if(!c)throw new Error('Carta inexistente');
@@ -894,6 +965,16 @@ E.autoTakeover=function(pid,handIdx,parentUid){
   var nd=placeUnder(pid,handIdx,parentUid); /* puede lanzar si no hay flecha: NO consume el takeover */
   pl.flags.autoTakeover=true;
   log(pl.name+' toma posesión automática de '+c.name);
+  /* L6 — 210 Botched Contact / 359 Sabotage. El grupo YA esta en la mesa, asi que
+     "He must return that Group to his hand" tiene sentido. NO se engancha en un
+     takeover fallido: en este motor un takeover fallido lanza y la carta se queda
+     en la mano del rival, de modo que devolverla seria un no-op (el mismo motivo
+     por el que 412 Vultures quedo bloqueada en §38.5). `aligns` viaja en `data`
+     porque 359 exige que el grupo que paga COMPARTA alineacion con este grupo, y
+     el nodo puede desaparecer antes de que la ventana se cierre. */
+  openEventWindow({kind:'autoTakeover',byPid:pid,label:'takeover automatico de '+c.name,
+    data:{nodeUid:nd.uid,cardIdx:handIdx,aligns:nodeAligns(nd,c).slice(),
+          returnedBy:null,blocked:null}});
   return publicState();
 };
 
@@ -944,12 +1025,33 @@ function removeFromHand(pl,idx){
   var i=pl.hand.indexOf(idx);
   if(i>=0)pl.hand.splice(i,1);
 }
+/* L3b — UN SOLO predicado "este grupo no puede tener fichas de accion".
+   418 World Hunger: "All Green groups lose their Action tokens and cannot get
+   new ones". El predicado NO es una lista nueva: es la MISMA condicion que ya
+   usaban `firstUsableAid` y TOKEN-GIFT, mas `noTokens`, que es lo unico que
+   anade esta carta. Se centraliza aqui porque sus consumidores son cuatro y
+   porque el cuarto (el reparto automatico de fichas de E.beginTurn) es facil de
+   olvidar: si se olvidara, un grupo verde apagado recuperaria su ficha al
+   comienzo del turno siguiente y la carta no duraria NADA. */
+function noTokensFlag(n){
+  return !!(n&&n.noTokens)||!!(n&&n.devastated)||!!(n&&n.paralyzed)||!!(n&&n.zapped)||!!(n&&n.actionStripped);
+}
 function spendGroupToken(pid,uid){
   var nd=findNode(uid);
   if(!nd)throw new Error('Grupo inexistente: '+uid);
   if(findOwnerPid(uid)!==pid)throw new Error('El grupo no te pertenece');
+  if(noTokensFlag(nd))throw new Error(card(nd.cardId).name+' no puede gastar su Action token ahora mismo');
   if(!nd.tokens||nd.tokens<1)throw new Error('Sin Action token en '+card(nd.cardId).name);
   nd.tokens--;
+  /* L3b — 234: "tripled for its NEXT ACTION". Gastar la ficha ES la accion, asi
+     que aqui se consume el triple. Si no se hiciera, el x4/x3 de una carta de
+     este tipo seria permanente, que es justo lo contrario de lo que dice. */
+  if(nd.tripled)nd.tripled=null;
+  /* L5c — 189 Albino Alligators, modo ACCION: "If used with an action, it must
+     be played when that action is first declared, and counts only for that
+     action". Gastar la ficha ES la accion, asi que aqui se consume, igual que
+     el triple de 234. El modo DEFENSA no se toca: caduca por turno. */
+  if(nd.timedBoost&&nd.timedBoost.mode==='action')nd.timedBoost=null;
 }
 
 /* P1-022 — REGLA OFICIAL, inwo_rules_extracted.txt:405 (columna derecha):
@@ -1243,12 +1345,22 @@ function computeStrength(resolveMode){
      'violent' anadido por Dictatorship (239) cuenta como violent para los +4/-4
      de esta funcion, para la defensa del master y para la ayuda/oposicion. */
   var attAligns=nodeAligns(att,attCard),tgtAligns=nodeAligns(tNode,tCard);
+  /* L5b — 255 Fear and Loathing: "Identical alignments NOW give +8 on any
+     attempt to control, and -8 on any attempt to destroy. The reverse is true
+     for opposed alignments." La regla oficial (inwo_rules_extracted.txt:487-493)
+     es "+4 por identica / -4 por opuesta"; esta carta SUSTITUYE la magnitud 4
+     por la que declare el estado, sin cambiar los signos. Por eso una sola
+     variable leida del estado sirve para los DOS bucles, y el 4 deja de estar
+     escrito a mano en ninguno. Sin S.alignRule el valor es 4: el comportamiento
+     por defecto queda intacto. */
+  var alignMag=(S.alignRule&&typeof S.alignRule.mag==='number')?S.alignRule.mag:4;
+  if(alignMag!==4)det.notes.push('Regla de alineaciones alterada por '+S.alignRule.card+': +/-'+alignMag+' por alineacion');
   if(A.type==='control'){
     det.base=curPower(att);
-    for(var i=0;i<attAligns.length;i++){ /* leader ±4 vs target aligns */
-      if(tgtAligns.indexOf(attAligns[i])>=0)det.leaderMod+=4;
+    for(var i=0;i<attAligns.length;i++){ /* leader ±alignMag vs target aligns */
+      if(tgtAligns.indexOf(attAligns[i])>=0)det.leaderMod+=alignMag;
       else{var isOpp=false;for(var j=0;j<tgtAligns.length;j++)if(isOpposite(attAligns[i],tgtAligns[j]))isOpp=true;
-        if(isOpp)det.leaderMod-=4;}
+        if(isOpp)det.leaderMod-=alignMag;}
     }
     /* P1-009: bonus del Illuminati atacante (Discordian +4 a Weird, Gnomes +4 a
        Corporate/Bank, Adepts +6 a Magic). Se suma en leaderMod para no alterar la
@@ -1262,11 +1374,21 @@ function computeStrength(resolveMode){
     det.defenseBase=R;
     if(tNode&&tNode.resistanceOverride!=null)
       det.notes.push('Resistencia fijada en '+R+' por un link permanente');
+    /* L3b — 268 Good Polls: "the Power and Resistance ... is tripled, FOR
+       DEFENSE ONLY". Aqui, en un ataque a CONTROL, la defensa es la
+       Resistencia, asi que se triplica defenseBase. El flag se lee del NODO
+       (n.defTriple), no de la carta, porque su duracion es la del grupo. */
+    if(tNode&&tNode.defTriple&&tNode.defTriple.untilTurn>S.turn)det.defenseBase*=3;
     /* master-shared alignments +4 each (skip fanatic-vs-fanatic master).
        L2 / P1-028: la regla vive ahora en closenessDefenseBonus(), que ademas la
        reutilizan las nueve cartas de "force_align". Solo se aplica a ataques
-      contra un objetivo de OTRO jugador (A.targetPid!=null ya lo garantiza). */
-    if(A.targetPid!=null){
+       contra un objetivo de OTRO jugador (A.targetPid!=null ya lo garantiza).
+       L3b — 355 Resistance is Useless!: "The target also gets no Resistance
+       bonus from its masters alignments or special abilities", asi que este
+       bloque se salta ENTERO. Lo que la carta CONSERVA son los +5/+10 de
+       proximidad al Illuminati que rigen, que son `det.posBonus` de la linea
+       siguiente (positionBonus) y no tocan nada aqui. */
+    if(A.targetPid!=null&&!(tNode&&tNode.noMasterAlignDefense)){
       det.defenseBonus+=closenessDefenseBonus(A.targetPid,tNode,tCard,attAligns,det.notes);
     }
     det.posBonus=(!A.neutralTarget&&!A.handTarget&&A.targetPid!=null&&A.targetUid)?positionBonus(A.targetPid,A.targetUid):0;
@@ -1277,8 +1399,8 @@ function computeStrength(resolveMode){
   }else{ /* destroy */
     det.base=curPower(att);
     for(var k=0;k<attAligns.length;k++){
-      if(tgtAligns.indexOf(attAligns[k])>=0)det.leaderMod-=4;
-      else{for(var m=0;m<tgtAligns.length;m++)if(isOpposite(attAligns[k],tgtAligns[m]))det.leaderMod+=4;}
+      if(tgtAligns.indexOf(attAligns[k])>=0)det.leaderMod-=alignMag;
+      else{for(var m=0;m<tgtAligns.length;m++)if(isOpposite(attAligns[k],tgtAligns[m]))det.leaderMod+=alignMag;}
     }
     /* P1-011 (P0) — REGLA OFICIAL, inwo_rules_extracted.txt:561-580, "Attack to
        Destroy", punto (1): "Instead of rolling 'Power minus Resistance,' roll
@@ -1297,6 +1419,20 @@ function computeStrength(resolveMode){
        que la fórmula NO cambia y la invariante que verifica la prueba P1-005 se
        mantiene intacta. */
     det.defenseBase=tNode?defenderPower(tNode,true):0;
+    /* L3b — 268 Good Polls, segunda mitad: en un ataque a DESTRUIR el objetivo
+       se defiende con su PODER (regla de §25, por eso `defenderPower` y no
+       `nodeResistance`), asi que "el Poder y la Resistencia se triplican" se
+       aplica aqui multiplicando defenseBase. Mismo flag, misma caducidad. */
+    if(tNode&&tNode.defTriple&&tNode.defTriple.untilTurn>S.turn)det.defenseBase*=3;
+    /* L5c — 189 Albino Alligators en modo DEFENSA: al defenderse de un ataque a
+       DESTRUIR el objetivo usa su PODER, asi que aqui (y no en nodeResistance) es
+       donde suma el "+10 Power". La rama de Resistencia ya la cubre
+       nodeResistance(), que no necesita modo.
+       OJO con la caducidad: "the bonus lasts UNTIL THE END of the current turn"
+       deja `untilTurn = S.turn` (inclusivo), al contrario que 268 que dura hasta
+       el principio del turno SIGUIENTE (`untilTurn = S.turn + jugadores`). Por eso
+       la comprobacion es `<=`, no `>`: con `>` el bonus no se aplicaria nunca. */
+    if(tNode&&tNode.timedBoost&&tNode.timedBoost.mode==='defense'&&tNode.timedBoost.stat==='power'&&typeof tNode.timedBoost.v==='number'&&tNode.timedBoost.untilTurn!=null&&S.turn<=tNode.timedBoost.untilTurn)det.defenseBase+=tNode.timedBoost.v;
     /* P1-011 — REGLA OFICIAL, mismo apartado, punto (2): "You may try to destroy
        a Group in your own Power Structure. The target does not get a defense
        bonus for closeness to the Illuminati in this case." Se compara el
@@ -1334,6 +1470,16 @@ function computeStrength(resolveMode){
   var total=det.base+det.leaderMod-det.defenseBase-det.defenseBonus-det.defBoosts-det.posBonus-det.selfDef+det.aids-det.opposes+det.boosts+det.cthulhu;
   if(!isFinite(total)){try{console.warn('INWO: fuerza total NaN → forzada a 0',det);}catch(e){}total=0;}
   det.total=total;
+  /* L3b — 234 Currency Speculation, cierre: "tripled for its next action OR
+     DEFENSE". La defensa ya ha usado el triple en las lineas de arriba, asi que
+     aqui se consume. Y SOLO cuando `resolveMode` es cierto: `E.previewStrength`
+     llama a esta misma funcion para ENSEÑAR numeros, y una vista previa no
+     puede gastar el efecto de una carta. Es el mismo motivo por el que el
+     triple se apaga en spendGroupToken y no en el sitio donde se calcula. */
+  if(resolveMode&&A&&!A.neutralTarget&&!A.handTarget&&tNode&&tNode.tripled){
+    det.notes.push('El triple de '+card(tNode.cardId).name+' se consume al defenderse');
+    tNode.tripled=null;
+  }
   return det;
 }
 
@@ -1478,7 +1624,13 @@ E.resolvePendingRoll=function(){
    ventana que nadie puede cerrar es un atasco, y ya se pagaron dos de esos en
    §33 (por eso los Disasters no abren ventana de ataque). */
 var EVENT_CTX=null;
-var EVENT_KINDS=['stealing_the_plans','embezzlement'];
+/* L6 anade un tercer tipo de suceso: `autoTakeover` (210 Botched Contact y 359
+   Sabotage). `eventReactionAllowed` RECHAZA por defecto todo kind que no este en
+   esta lista, asi que un kind nuevo que responda a un suceso tiene que registrarse
+   aqui o su rama nunca se alcanzaria (el mismo defecto de clase "el dato existe
+   pero vive en otro sitio" que P1-026 y P1-031). 278 Hex y 259 Foiled! NO entran:
+   no responden a un suceso abierto, se juegan directamente. */
+var EVENT_KINDS=['stealing_the_plans','embezzlement','takeover_return'];
 
 /* ¿Esta carta sirve para este suceso, y la puede jugar este jugador? */
 function eventReactionAllowed(eff,pid,ev){
@@ -1503,6 +1655,43 @@ function eventReactionAllowed(eff,pid,ev){
     if(ev.data&&ev.data.taken)return {ok:false,why:'ese descarte ya fue reclamado'};
     if(ev.data&&ev.data.cardIdx==null)return {ok:false,why:'no hay ninguna Plot que robar'};
     return {ok:true};
+  }
+  if(ev.kind==='autoTakeover'){
+    if(eff.kind!=='takeover_return')return {ok:false,why:'solo reacciona a que otro jugador haga un takeover automatico'};
+    if(ev.data&&ev.data.returnedBy)return {ok:false,why:'ese takeover ya fue anulado'};
+    /* L6 — el COSTE se comprueba AQUI, en seco, y se PAGA en el case: asi la
+       ventana puede seguir abierta para otro jugador que si pueda pagarlo. Es el
+       mismo criterio que el pago de Embezzlement ("necesitas al menos una Plot
+       en tu mano"), y la razon de no cobrar aqui es la misma: comprobar NO es
+       gastar, y si se gastara al abrir la ventana el primer jugador que pudiera
+       responder se quedaria sinResources ajenos. */
+    var plR=S.players[pid];
+    if(eff.payAnyGroup){
+      if(!firstUsableAid(pid,function(){return true;}))
+        return {ok:false,why:'necesitas la accion de uno de tus grupos'};
+      return {ok:true};
+    }
+    if(typeof eff.payPower==='number'){
+      if(plR.illumTokens<1){
+        var needR=eff.payPower,gotR=0,shR=false,okR=false;
+        var alR=(ev.data&&ev.data.aligns)||[];
+        walk(plR.structure,function(n){
+          if(okR||n===plR.structure)return;
+          if(!n.tokens||noTokensFlag(n))return;
+          var ccR=card(n.cardId);if(!ccR)return;
+          if(eff.payShareAlign){
+            var naR=nodeAligns(n,ccR);
+            for(var aiR=0;aiR<naR.length;aiR++)if(alR.indexOf(naR[aiR])>=0)shR=true;
+          }
+          gotR+=curPower(n);
+          if(gotR>=needR)okR=true;
+        });
+        if(!okR||(eff.payShareAlign&&!shR))
+          return {ok:false,why:'necesitas tu Illuminati o '+needR+' de Poder de grupos, uno de los cuales comparta alineacion con el grupo del takeover'};
+      }
+      return {ok:true};
+    }
+    return {ok:false,why:'el coste de esta carta no esta declarado'};
   }
   return {ok:false,why:'suceso desconocido'};
 }
@@ -1600,6 +1789,26 @@ function closePendingEvent(){
         log(card(pay).name+' se descarta como pago de EMBEZZLEMENT');
         res={ok:true,stolen:card(ixQ).name,paid:card(pay).name};
       }
+    }
+  }
+  /* L6 — 210 BOTCHED CONTACT / 359 SABOTAGE: el grupo vuelve a la mano de quien lo
+     puso. Se busca el NODO (no el indice) porque `d.nodeUid` es lo unico que sigue
+     siendo valido aunque el jugador haya movido cosas entre.medias; y se busca al
+     CERRAR la ventana, que es cuando el grupo ya esta en la mesa. */
+  if(d.returnedBy!=null){
+    var ndR=findNode(d.nodeUid);
+    if(!ndR){
+      log('L6: el grupo del takeover ya no esta en la mesa');
+      res={ok:false,reason:'el grupo ya no esta en juego'};
+    }else{
+      var pcR=card(ndR.cardId);
+      var parR=findNodeThatHas(S.players[P.byPid].structure,d.nodeUid);
+      detach(parR,d.nodeUid);
+      S.players[P.byPid].hand.push(ndR.cardId);
+      if(d.blocked)S.players[P.byPid].flags.autoTakeoverBlocked=true;
+      log((d.blocked?'SABOTAGE: ':'BOTCHED CONTACT: ')+pcR.name+' vuelve a la mano de '+
+          S.players[P.byPid].name+(d.blocked?' y no podra hacer otro takeover automatico este turno':' (puede elegir otra carta)'));
+      res={ok:true,returned:pcR.name,to:S.players[P.byPid].name,blocked:!!d.blocked};
     }
   }
   var outE=publicState();
@@ -1976,7 +2185,12 @@ function firstUsableAid(pid,filter){
   var found=null;
   walk(root,function(n){
     if(found||n===root)return;
-    if(!n.tokens||n.paralyzed||n.zapped||n.devastated||n.actionStripped)return;
+    /* `noTokensFlag` NO incluye "no tiene fichas": los dos repartidores de
+       fichas (TOKEN-GIFT y el de E.beginTurn) lo consultan justamente para
+       DARLAS, asi que el predicado es solo "no puede tenerlas". Aqui, que se
+       busca un grupo que GASTE una ficha, el "sin ficha" sigue siendo
+       obligatorio y va delante. */
+    if(!n.tokens||noTokensFlag(n))return;
     var c=card(n.cardId);
     if(!c)return;
     if(!filter||filter(c,n))found=n;
@@ -2404,7 +2618,24 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
      pero ahi la ficha la gasta el grupo o el Illuminati, no el jugador que la juega,
      y por eso esa carta NO esta en la lista instant (P1-017, §32). Aqui el gasto de
      fichas es de quien juega la carta, asi que la lista es la correcta. */
-  ||eff0.kind==='force_align'||eff0.kind==='bulk_power');
+  ||eff0.kind==='force_align'||eff0.kind==='bulk_power'
+  /* L3b — 268 y 234 imprimen "Play this card at any time" / "Use this card at
+     any time", asi que se pueden jugar fuera de turno. 418 y 355 NO se anaden:
+     355 cobra la accion de un grupo Media (es el turno de quien lo juega) y 418
+     no imprime "at any time" en ningun sitio. */
+  ||eff0.kind==='def_triple'||eff0.kind==='tripled_once'||eff0.kind==='attack_boost'||eff0.kind==='group_boost_timed'
+  /* L6: las tres cartas nuevas de "negar un suceso" se juegan FUERA del turno de
+     quien las juega, y las tres lo dicen o lo implican:
+       - 210 Botched Contact y 359 Sabotage las juega un RIVAL en la ventana que
+         abre el takeover automatico, asi que su jugador no es el del turno;
+       - 278 Hex imprime "Play this card at any time except during a privileged
+         attack" (el veto se comprueba DENTRO de su case, igual que el de 346);
+       - 259 Foiled! imprime "This card may be used at any time".
+     Nota: `takeover_return` va ademas dentro de EVENT_KINDS (mas abajo), porque
+     `eventReactionAllowed` empieza rechazando todo kind que no este en esa lista;
+     sin anadirlo aqui la rama nueva que ya existe nunca se alcanzaria. Es el mismo
+     motivo por el que se comparan KINDS y no listas de ids de carta. */
+  ||eff0.kind==='takeover_return'||eff0.kind==='resource_destroy'||eff0.kind==='force_discard_exposed');
   if(instant){
     if(S.phase==='setup')throw new Error('No se pueden jugar Plot cards durante la preparación');
     if(S.phase==='gameover')throw new Error('La partida ha terminado');
@@ -2718,7 +2949,7 @@ case 'force_align':{
         walk(pl.structure,function(n){
           if(needF<=0)return;
           if(n===pl.structure)return;
-          if(n.devastated||n.paralyzed||n.zapped||n.actionStripped)return;
+        if(noTokensFlag(n))return;
           if(!n.tokens||n.tokens<1)return;
           var nc=card(n.cardId);
           if(!nc)return;
@@ -3021,6 +3252,622 @@ case 'force_align':{
    ========================================================================== */
 case 'bulk_power':{
       lastResult = applyBulkPower(pid, c, eff); break;}
+    /* ===== L3b - LAS CUATRO CARTAS DE plan.md "L3b — APLAZADO" =====
+       Cada una tiene su propio kind porque no comparten mecanica (criterio de
+       plan.md §0.1). Las siete interpretaciones declaradas estan en el bloque
+       L3B_FX de gen_cards.js; aqui solo se recuerda la que mas afecta al
+       comportamiento: la caducidad NO se comprueba con un flag propio en cada
+       caso, sino con `untilTurn` en el NODO y un unico vaciado en
+       E.beginTurn (expireTurnFlags). */
+    case 'def_triple':{
+      /* 268 Good Polls — "Until the beginning of your next turn, the Power and
+         Resistance for all your groups of ANY CHOSEN alignment is tripled, for
+         defense only".
+         La UI elige un NODO, no una alineacion (interpretacion 1): se apunta a
+         cualquiera de los grupos propios de esa alineacion y se toma la PRIMERA
+         de sus `nodeAligns`. El triple NO se aplica aqui: se escribe en el nodo
+         de cada grupo de esa alineacion y lo consumen computeStrength (control
+         -> Resistencia) y computeStrength (destroy -> Poder). */
+      var ndT=findNode(targetUid);
+      if(!ndT)throw new Error(c.name+': elige un grupo propio de la alineacion que quieres triplicar');
+      if(findOwnerPid(targetUid)!==pid)throw new Error(c.name+': "all YOUR groups" — el grupo que eliges debe ser tuyo');
+      var tcT=card(ndT.cardId);
+      if(!tcT)throw new Error(c.name+': el objetivo no es una carta');
+      var alT=nodeAligns(ndT,tcT)[0];
+      if(!alT)throw new Error(c.name+': '+tcT.name+' no tiene ninguna alineacion con la que trabajar');
+      var untilT=S.turn+S.players.length;
+      var hitT=[];
+      walk(pl.structure,function(n){
+        if(n===pl.structure)return;
+        var ncT=card(n.cardId);
+        if(!ncT)return;
+        if(nodeAligns(n,ncT).indexOf(alT)<0)return;
+        n.defTriple={name:c.name,untilTurn:untilT};
+        hitT.push(ncT.name);
+      });
+      if(!hitT.length)throw new Error(c.name+': no tienes ningun grupo '+alT);
+      log(c.name+': la defensa de tus '+hitT.length+' grupo(s) '+alT+' se triplica hasta el comienzo de tu proximo turno');
+      lastResult={ok:true,defTriple:true,card:c.name,align:alT,mul:eff.mul||3,
+                  untilTurn:untilT,groups:hitT};
+      break;}
+    case 'token_wither':{
+      /* 418 World Hunger — DOS frases en una carta (interpretacion 6/7):
+         (a) "All Green groups lose their Action tokens and cannot get new ones"
+             -> `noTokens` en el nodo + las fichas a cero. El predicado
+             noTokensFlag() lo consultan CUATRO sitios (gastar ficha, buscar
+             grupo que pueda ayudar, TOKEN-GIFT y el reparto de E.beginTurn), y
+             el cuarto es el que hace que la carta dure algo.
+         (b) "Groups which are Liberal and/or Nation have their Power reduced by
+             2" -> clausulas `moves` + `scope:'all'`, porque el texto NO dice
+             "your". Reutiliza bulkClauseHit() y powerMods de L3a.
+         "or use their special abilities" NO se implementa: el motor no tiene
+         sistema de habilidades especiales por grupo (declarado, no-op). */
+      var wA=String(eff.witherAttr||'').toLowerCase();
+      if(!wA)throw new Error(c.name+': la carta no declara que atributo apaga (eff.witherAttr vacio)');
+      if(!Array.isArray(eff.moves)||!eff.moves.length)throw new Error(c.name+': la carta no declara ninguna clausula (eff.moves vacio)');
+      var withered=[],weakened=[];
+      for(var wq=0;wq<S.players.length;wq++){
+        var wRoot=S.players[wq].structure;
+        walk(wRoot,function(n){
+          if(n===wRoot)return;
+          var wc=card(n.cardId);
+          if(!wc)return;
+          if(hasAttr(wc,wA,n)){
+            n.noTokens=true;
+            n.tokens=0;
+            withered.push(S.players[wq].name+': '+wc.name);
+          }
+          for(var wm=0;wm<eff.moves.length;wm++){
+            if(!bulkClauseHit(eff.moves[wm],n,wc))continue;
+            var wv=eff.moves[wm].power;
+            if(typeof wv!=='number')continue;
+            if(!Array.isArray(n.powerMods))n.powerMods=[];
+            n.powerMods.push({name:c.name+' ('+(wv>0?'+':'')+wv+')',v:wv});
+            weakened.push(S.players[wq].name+': '+wc.name);
+          }
+        });
+      }
+      if(!withered.length&&!weakened.length){
+        log(c.name+': ningun grupo coincide; se gasta sin efecto');
+      }else{
+        if(withered.length)log(c.name+': '+withered.length+' grupo(s) pierden sus fichas y no pueden conseguir mas — '+withered.join(', '));
+        if(weakened.length)log(c.name+': Poder reducido en '+weakened.length+' grupo(s) — '+weakened.join(', '));
+      }
+      lastResult={ok:true,wither:true,card:c.name,attr:wA,
+                  withered:withered.length,weakened:weakened.length,
+                  witheredGroups:withered,weakenedGroups:weakened};
+      break;}
+    case 'tripled_once':{
+      /* 234 Currency Speculation — "The Power or Resistance of any one of your
+         Bank groups is tripled for its next action or defense".
+         "your choice" se resuelve con opts.stat (interpretacion 4); por defecto
+         Poder, que es lo que dice la primera mitad de la frase. El triple se
+         CONSUME en spendGroupToken (su accion) y en computeStrength cuando la
+         defensa se resuelve de verdad, nunca en la vista previa. */
+      var ndX=findNode(targetUid);
+      if(!ndX)throw new Error(c.name+': elige un grupo tuyo');
+      if(findOwnerPid(targetUid)!==pid)throw new Error(c.name+': "any ONE of your Bank groups" — el grupo debe ser tuyo');
+      var tcX=card(ndX.cardId);
+      if(!tcX)throw new Error(c.name+': el objetivo no es una carta');
+      if(eff.targetAttr&&!hasAttr(tcX,eff.targetAttr,ndX))
+        throw new Error(c.name+' solo se usa sobre grupos con el atributo '+eff.targetAttr+', y '+tcX.name+' no lo tiene');
+      var statX=(opts&&opts.stat==='resistance')?'resistance':'power';
+      ndX.tripled={name:c.name,stat:statX,mul:eff.mul||3};
+      log(c.name+': '+(statX==='resistance'?'Resistencia':'Poder')+' de '+tcX.name+' x'+(eff.mul||3)+' hasta su proxima accion o defensa');
+      lastResult={ok:true,tripled:true,card:c.name,target:tcX.name,stat:statX,mul:eff.mul||3};
+      break;}
+    case 'res_nullify':{
+      /* 355 Resistance is Useless! — "For the rest of the current turn, the
+         target groups Resistance is 0 ... no Resistance bonus from its masters
+         alignments ... But proximity to its ruling Illuminati still gives the
+         normal +5 or +10. This card must be played by a Media group, and counts
+         as the groups action."
+         LaResistance a 0 vive en nodeResistance() (primero, para ganar a un
+         Ango que la fije en 1); el bonus del maestro se apaga con
+         noMasterAlignDefense, que computeStrength consulta; y los +5/+10 de
+         proximidad NO se tocan porque son det.posBonus. */
+      var ndR0=findNode(targetUid);
+      if(!ndR0)throw new Error(c.name+': elige el grupo cuya Resistencia quieres anular');
+      if(findOwnerPid(targetUid)===pid)throw new Error(c.name+': no tiene sentido anular la Resistencia de un grupo tuyo');
+      var wantR0=String(eff.requiresActionFromAttr||'').toLowerCase();
+      if(!wantR0)throw new Error(c.name+': la carta no declara de que grupo saca la accion (eff.requiresActionFromAttr vacio)');
+      var anR0=opts.aidUid?findNode(opts.aidUid):null;
+      if(opts.aidUid&&(!anR0||findOwnerPid(opts.aidUid)!==pid))
+        throw new Error('El grupo que aporta la accion debe ser tuyo');
+      if(!anR0)anR0=firstUsableAid(pid,function(cc,nn){return hasAttr(cc,wantR0,nn);});
+      if(!anR0)throw new Error(c.name+' necesita la accion de un grupo con el atributo '+wantR0);
+      spendGroupToken(pid,anR0.uid);
+      var tcR0=card(ndR0.cardId);
+      ndR0.resNullify={name:c.name,untilTurn:S.turn};
+      ndR0.noMasterAlignDefense=true;
+      log(c.name+': '+tcR0.name+' se queda sin Resistencia hasta el final del turno (accion de '+card(anR0.cardId).name+')');
+      lastResult={ok:true,resNullify:true,card:c.name,target:tcR0.name,
+                  untilTurn:S.turn,paidWith:card(anR0.cardId).name};
+      break;}
+          /* ================= L4 - TOKEN-STRIP =================
+       * 350 Reach Out . . . y 270 Gremlins: el mismo efecto (tokens = 0) con
+       * distintos calificadores, asi que comparten un unico case. Gramatica,
+       * alcance y las 7 declaraciones de interpretacion: bloque L4_FX de
+       * gen_cards.js. Lo que se recuerda aqui:
+       *   - se pone el VALOR tokens = 0, NO la marca `noTokens`: un grupo al
+       *     que le roban la ficha puede volver a recibirla, y eso es
+       *     justamente lo que distingue esta familia de 418 World Hunger;
+       *   - los Resources no se tocan nunca: no son nodos, viven en
+       *     pl.resources, y walk() no los visita;
+       *   - 350 rechaza un objetivo propio (su texto dice "of any one of
+       *     your rivals") y su mitad "your own groups" es automatica;
+       *   - el modo 'takeResource' de 270 sustituye a su modo 2 impreso
+       *     ("cancel its action"), que queda declarado PENDIENTE. */
+  case 'token_strip':{
+    if (eff.stripPlayers === 'rival+own' || eff.stripPlayers === 'all') {
+        /* nada: se validan los dos valores abajo */
+      } else {
+        throw new Error(c.name + ': la carta no declara alcance (stripPlayers debe ser rival+own o all)');
+      }
+      /* P1-033: el coste se paga DESPUES de validar el objetivo, nunca antes.
+       * E.declareAttack paga su ficha solo cuando todas las validaciones han
+       * pasado (P1-022) y esa es la regla de todo el motor: si la carta se
+       * rechaza, el jugador no ha pagado nada. Por eso no hay un bloque de
+       * coste aqui, sino dos mas abajo, uno por rama. */
+      /* --- MODO takeResource de 270: un Resource rival vuelve a la mano --- */
+      if (eff.canTakeResource && opts.mode === 'takeResource') {
+        if (!opts.resUid) throw new Error(c.name + ': elige el Resource que el rival devuelve a tu mano');
+        var rIdx = -1;
+        for (var rz = 0; rz < S.players.length; rz++) {
+          for (var rj = 0; rj < S.players[rz].resources.length; rj++) {
+            if (S.players[rz].resources[rj].uid === opts.resUid) { rIdx = rz; }
+          }
+        }
+        if (rIdx < 0) throw new Error(c.name + ': ese Resource no esta en juego');
+        if (rIdx === pid) throw new Error(c.name + ': tu propio Resource no puede "devolverse" a tu mano');
+        if (eff.illumAction) {
+          if (pl.illumTokens < 1) throw new Error(c.name + ' requiere una accion de tu Illuminati');
+          pl.illumTokens--;
+        }
+        E.takeResourceToHand(rIdx, opts.resUid, pid);
+        log(c.name + ': ' + S.players[pid].name + ' obliga a ' + S.players[rIdx].name +
+            ' a devolver un Resource a su mano');
+        lastResult = { ok: true, strip: true, mode: 'takeResource', card: c.name,
+                      from: S.players[rIdx].name, resUid: opts.resUid };
+        break;
+      }
+      /* --- MODO strip: tokens = 0 en cada nodo que encaje --- */
+      var tOwner = -1;
+      if (eff.stripPlayers === 'rival+own') {
+        if (!targetUid) throw new Error(c.name + ': elige un grupo del rival al que robarle las fichas');
+        var ndT = findNode(targetUid);
+        if (!ndT) throw new Error(c.name + ': ese grupo ya no esta en juego');
+        tOwner = findOwnerPid(targetUid);
+        if (tOwner == null) throw new Error(c.name + ': ese grupo ya no esta en juego');
+        if (tOwner === pid) {
+          throw new Error(c.name + ': su texto dice "of any one of your rivals"; tus grupos se limpian igualmente, no necesitas elegirlos');
+        }
+      }
+      if (eff.illumAction) {
+        if (pl.illumTokens < 1) throw new Error(c.name + ' requiere una accion de tu Illuminati');
+        pl.illumTokens--;
+      }
+      var stAll = [];
+      for (var qi4 = 0; qi4 < S.players.length; qi4++) {
+        var skipQ = false;
+        if (eff.stripPlayers === 'rival+own') {
+          if (qi4 === pid) skipQ = false;             /* "your own groups" */
+          else if (qi4 === tOwner) skipQ = false;    /* el rival elegido */
+          else skipQ = true;                          /* ni unthird rival */
+        }
+        if (skipQ) continue;
+        var root4 = S.players[qi4].structure;
+        walk(root4, function (n) {
+          if (n === root4) return;
+          var gc4 = card(n.cardId);
+          if (!gc4) return;
+          if (eff.stripAttr && !hasAttr(gc4, eff.stripAttr, n)) return;
+          if (!n.tokens) return;                        /* ya estaba sin ficha */
+          n.tokens = 0;
+          stAll.push(gc4.name + ' (' + S.players[qi4].name + ')');
+        });
+      }
+      if (!stAll.length) {
+        log(c.name + ': ningun grupo coincidente tenia ficha de accion; se gasta sin efecto');
+      } else {
+        log(c.name + ': ' + stAll.length + ' grupo(s) se quedan sin ficha de accion -- ' + stAll.join(', '));
+      }
+      lastResult = { ok: true, strip: true, mode: 'strip', card: c.name,
+                     attr: eff.stripAttr || null, scope: eff.stripPlayers,
+                     rival: (tOwner >= 0 ? S.players[tOwner].name : null),
+                     stripped: stAll.length, groups: stAll };
+      break;}
+    case 'attack_boost':{
+      /* ==== L5a - ATTACK BOOST: "+N a un ataque a Destroy/Control de X" ====
+       *
+       * Las TRES cartas de esta familia empujan el MISMO dato (`A.boosts`, que
+       * `computeStrength` suma en `det.boosts`) y las tres son "+N a un ataque
+       * YA declarado", asi que comparten un unico kind. Solo cambian los
+       * CALIFICADORES, que son datos. Gramatica y declaraciones de
+       * interpretacion: bloque L5_FX de gen_cards.js. Lo que se recuerda aqui:
+       *
+       *   - el ataque debe estar ABIERTO. Las tres cartas son boosts de un
+       *     ataque, no efectos por se. Sin `S.attack` no hay nada que
+       *     solucionar y la carta se RECHAZA (no se gasta, no hace nada).
+       *   - "no se puede usar con Assassinations ni Disasters" se cumple por
+       *     construccion: un Assassination o un Disaster NO crean `S.attack`
+       *     (son ataques instantaneos de E.playPlot), de modo que aqui solo se
+       *     puede llegar con `A.type` 'control' o 'destroy'.
+       *   - "a single direct attack" (381) es de un solo uso SIN estado: el +10
+       *     vive EN el objeto del ataque, que muere con el. Mismo criterio que
+       *     el modo 'attack' de las cartas "+10" de §26.
+       *   - el valor dependiente del objetivo (415) se elige AL JUGAR LA CARTA,
+       *     leyendo el subtype del nodo objetivo, porque la eleccion oficial es
+       *     del jugador que la juega. */
+      var A=S.attack;
+      if(!A||A.resolved)throw new Error(c.name+': necesita un ataque ya declarado');
+      /* `atkType` admite 'control', 'destroy' y 'any'. El 'any' lo imprime 356
+       * Revolution! ("on any attack, either to destroy or control") y sin esta
+       * excepcion la comprobacion de abajo lo rechazaria siempre: el caso es un
+       *ico, pero el valor es un dato. La puerta (FASE 4) tambien lo admite. */
+      if(eff.atkType&&eff.atkType!=='any'&&A.type!==eff.atkType)
+        throw new Error(c.name+': solo se juega en un ataque a '+
+          (eff.atkType==='destroy'?'destruir':'controlar'));
+      /* --- calificador del ATACANTE: "from a Media group", "to your Illuminati" --- */
+      var attN=findNode(A.attackerUid);
+      var attC=attN?card(attN.cardId):null;
+      if(eff.illumOnly&&(!attC||attC.type!=='illuminati'))
+        throw new Error(c.name+': el ataque tiene que salir de tu Illuminati, y el atacante actual no lo es');
+      if(eff.attackerAttr&&(!attC||!hasAttr(attC,eff.attackerAttr,attN)))
+        throw new Error(c.name+': el ataque tiene que salir de un grupo '+eff.attackerAttr);
+      /* --- calificador del OBJETIVO: "any male Personality", "the Lawyers" --- */
+      var tgtN=A.targetUid?findNode(A.targetUid):null;
+      var tgtC=tgtN?card(tgtN.cardId):null;
+      if(eff.targetCardId){
+        var wantC=C.byId?C.byId[eff.targetCardId]:null;
+        var wantName=wantC?wantC.name:eff.targetCardId;
+        if(!tgtC||tgtC.id!==eff.targetCardId)
+          throw new Error(c.name+': el objetivo del ataque tiene que ser '+wantName+
+            (tgtC?', y es '+tgtC.name:''));
+      }
+      if(eff.targetSubtype&&(!tgtC||tgtC.subtype!==eff.targetSubtype))
+        throw new Error(c.name+': el objetivo del ataque tiene que ser '+cap(eff.targetSubtype));
+      /* --- el VALOR: fijo, o dependiente del subtype del objetivo --- */
+      var valAB=eff.boostValue;
+      if(eff.boostBySubtype){
+        var stAB=tgtC?String(tgtC.subtype||'').toLowerCase():'';
+        valAB=(stAB&&typeof eff.boostBySubtype[stAB]==='number')?eff.boostBySubtype[stAB]:eff.boostBySubtype.other;
+      }
+      /* L6 — 356 Revolution!: "+10 al ataque, o +20 contra una Dictatorship".
+       * Se lee el estado que §40 (P1-028) dejo puesto en el nodo, no el texto de
+       * la carta: la Dictatorship es un ESTADO del grupo, y §40 lo puso aqui a
+       * proposito. Si el objetivo no lleva la marca, gana el +10 normal. */
+      if(eff.boostVsDictatorship&&tgtN&&tgtN.dictatorship)valAB=eff.boostVsDictatorship;
+      if(typeof valAB!=='number'||!valAB)
+        throw new Error(c.name+': el ataque no encaja en ningun valor de bonus');
+      /* --- COSTE, siempre DESPUES de validar (P1-022: la ficha se gasta solo
+             cuando todas las comprobaciones han pasado) --- */
+      var aidAB=null;
+      if(eff.requiresActionFromAttr){
+        var anAB=opts.aidUid?findNode(opts.aidUid):null;
+        if(opts.aidUid&&(!anAB||findOwnerPid(opts.aidUid)!==pid))
+          throw new Error('El grupo que aporta la accion debe ser tuyo');
+        /* L6 — 356 Revolution!: "an action by a group OTHER THAN those actually
+         * attacking the Nation". Los que atacan son el atacante principal y los
+         * que ya estan en `A.aids`/`A.opposes` (los anoto E.addSupport). El veto
+         * va DENTRO del filtro de `firstUsableAid` y no despues: si se comprobara
+         * sobre el primer candidato y este fuese el atacante, la carta se
+         * rechazaria aunque otro grupo propio sirviera. */
+        var isAttackingAB=function(u){
+          if(A.attackerUid===u)return true;
+          var f=false;
+          A.aids.forEach(function(x){if(x.uid===u)f=true;});
+          A.opposes.forEach(function(x){if(x.uid===u)f=true;});
+          return f;
+        };
+        if(!anAB)anAB=firstUsableAid(pid,function(cc,nn){
+          if(eff.payNotTheAttackers&&isAttackingAB(nn.uid))return false;
+          return hasAttr(cc,eff.requiresActionFromAttr,nn);
+        });
+        if(!anAB)throw new Error(c.name+' necesita una accion de un grupo '+
+          eff.requiresActionFromAttr+
+          (eff.payNotTheAttackers?' que no este ya atacando':''));
+        aidAB=anAB;
+      }
+      /* L6 — 356 Revolution! NO filtra por atributo ("an action by a group other
+       * than those actually attacking the Nation"), asi que el bloque anterior no
+       * le cobra nada y la carta se jugaria gratis. Aqui se le cobra con la
+       * MISMA regla que el veto: cualquier grupo propio que no este atacando.
+       * Declarado, porque es un segundo camino de coste dentro del mismo kind:
+       * `requiresActionFromAttr` = "un grupo de este tipo"; `payNotTheAttackers`
+       * sin atributo = "cualquier grupo propio que no participe". */
+      if(!aidAB&&eff.payNotTheAttackers&&!eff.requiresActionFromAttr){
+        var isAtt2=function(u){
+          if(A.attackerUid===u)return true;
+          var f=false;
+          A.aids.forEach(function(x){if(x.uid===u)f=true;});
+          A.opposes.forEach(function(x){if(x.uid===u)f=true;});
+          return f;
+        };
+        var anAB2=opts.aidUid?findNode(opts.aidUid):null;
+        if(opts.aidUid&&(!anAB2||findOwnerPid(opts.aidUid)!==pid))
+          throw new Error('El grupo que aporta la accion debe ser tuyo');
+        if(anAB2&&isAtt2(anAB2.uid))
+          throw new Error(c.name+': el grupo que aporta la accion no puede ser uno de los que ya atacan');
+        if(!anAB2)anAB2=firstUsableAid(pid,function(cc,nn){return !isAtt2(nn.uid);});
+        if(!anAB2)throw new Error(c.name+' necesita la accion de un grupo tuyo que no este ya atacando');
+        aidAB=anAB2;
+      }
+      if(aidAB)spendGroupToken(pid,aidAB.uid);
+      A.boosts.push({name:c.name,v:valAB});
+      log(pl.name+' juega '+c.name+': +'+valAB+
+        (aidAB?(' (accion de '+card(aidAB.cardId).name+')'):'')+
+        ' al '+cap(A.type)+' de '+tgtC.name);
+      lastResult={ok:true,boost:valAB,card:c.name,attack:A.type,target:tgtC.name,
+        paidWith:aidAB?{uid:aidAB.uid,name:card(aidAB.cardId).name}:null};
+      break;}
+    case 'align_rule':{
+      /* L5b — 255 Fear and Loathing. No es un bonus: es una REGLA GLOBAL. La
+       * carta cambia la magnitud con la que las alineaciones comparadas valen
+       * (4 -> 8) y el cambio dura el resto de la partida, porque su texto no
+       * pone plazo. computeStrength lee el numero de S.alignRule, asi que aqui
+       * solo hay que dejar el estado escrito y EXPONER la carta en la mesa: un
+       * efecto en curso se queda "in play" (inwo_rules_extracted.txt:223), que
+       * es la regla de las cartas "+10" y de las Cartas de Objetivo, y P1-025
+       * saca del descarte lo que este en exposedPlots. Sin exposedPlots la
+       * carta se descartaria al jugarse, el estado seguiria puesto y el motor
+       * seria incoherente con la mesa. */
+      if(typeof eff.alignMag!=='number'||eff.alignMag<=0)
+        throw new Error(c.name+': la carta no declara la magnitud de la regla (eff.alignMag)');
+      if(S.alignRule)
+        throw new Error(c.name+' ya esta en juego: la regla de alineaciones ya fue alterada por '+S.alignRule.card);
+      S.alignRule={mag:eff.alignMag,card:c.name};
+      pl.exposedPlots.push(handIdx);
+      log(c.name+': las alineaciones identicas valen ahora +'+eff.alignMag+' al controlar y -'+eff.alignMag+
+          ' al destruir, y las opuestas al reves (regla alterada para el resto de la partida)');
+      lastResult={ok:true,alignRule:true,card:c.name,mag:eff.alignMag,exposed:pl.exposedPlots.length};
+      break;}
+    /* L5c — 189 Albino Alligators: "+10 Power or Resistance (your choice) to any
+       Weird group you control. If used with an action, it must be played when
+       that action is first declared, and counts only for that action. If used for
+       defense, the bonus lasts until the end of the current turn and does not
+       count toward Goals."
+
+       El texto pide tres cosas y solo UNA es eleccion del jugador: cual de los dos
+       parametros sube. El modo NO se elige, lo decide el CONTEXTO (interpretacion 2
+       de gen_cards.js): si hay un ataque abierto contra ese nodo es DEFENSA, si no
+       es ACCION. Por eso el dato no declara ningun campo de modo.
+
+       Interpretaciones y su por que, todas en el bloque L5C_FX de gen_cards.js:
+       1. "your choice" = `opts.stat` (power por defecto), NO un calificador: un
+          calificador que el motor nunca lee seria exactamente el defecto P1-026.
+       3. "must be played when that action is first declared": el motor declara Y
+          ejecuta una accion en el mismo paso, asi que lo mas cercano que se puede
+          exigir es que el grupo conserve su ficha. Si no la tiene, la carta se
+          RECHAZA con la razon impresa y no se gasta nada.
+       6. "does not count toward Goals" NO se implementa y se DECLARA: honrarla
+          exige saber QUE ataque uso el bonus (un registro de acciones, el mismo
+          hueco que bloquea a 377 y al "out of public life" de 415). El grupo sigue
+          muriendo por destroyGroup como cualquier otro, que es la parte del texto
+          que SI se cumple. */
+    case 'group_boost_timed':{
+      if(typeof eff.value!=='number'||!(eff.value>0))
+        throw new Error(c.name+': la carta no declara el valor del bonus (eff.value)');
+      if(typeof eff.align!=='string')
+        throw new Error(c.name+': la carta no declara el filtro de alineacion (eff.align)');
+      var tbN=findNode(targetUid);
+      if(!tbN)throw new Error(c.name+': elige un grupo objetivo');
+      var tbC=card(tbN.cardId);
+      if(!tbC)throw new Error(c.name+': el objetivo no es una carta');
+      /* "any Weird group you control" — el texto dice expressly "you control",
+         a diferencia de las cartas de L3a que dicen "all X groups". */
+      if(findOwnerPid(targetUid)!==pid)
+        throw new Error(c.name+': el texto dice "any Weird group you control", y '+tbC.name+' no es tuyo');
+      var tbA=eff.align.toLowerCase();
+      if(nodeAligns(tbN,tbC).indexOf(tbA)<0)
+        throw new Error(c.name+' solo afecta a grupos '+cap(tbA)+', y '+tbC.name+' no lo es');
+      var tbStat=(opts.stat==='resistance')?'resistance':'power';
+      /* Modo por CONTEXTO, no por eleccion del jugador. */
+      var tbMode=(S.attack&&!S.attack.resolved&&S.attack.targetUid===targetUid)?'defense':'action';
+      if(tbMode==='action'&&(!tbN.tokens||tbN.tokens<1))
+        throw new Error(c.name+': "it must be played when that action is first declared", y '+
+            tbC.name+' ya ha gastado su Action token');
+      /* La caducidad SOLO existe en modo defensa ("until the end of the current
+         turn"). En modo accion la dura "that action" y la consume
+         spendGroupToken, igual que el triple de 234. */
+      tbN.timedBoost={name:c.name,v:eff.value,stat:tbStat,mode:tbMode,
+                      untilTurn:(tbMode==='defense')?S.turn:null};
+      log(c.name+': '+tbC.name+' gana +'+eff.value+' de '+
+          (tbStat==='resistance'?'Resistencia':'Poder')+' ('+
+          (tbMode==='defense'?('hasta el final del turno '+S.turn):'solo para su proxima accion')+')');
+      lastResult={ok:true,boost:true,card:c.name,target:tbC.name,align:tbA,
+                  value:eff.value,stat:tbStat,mode:tbMode,untilTurn:tbN.timedBoost.untilTurn};
+      break;}
+    /* ================= L6 -- NEGAR UN SUCESO =================
+     * Tres cartas del mismo lote hacen tres cosas parecidas y distintas. Las dos
+     * primeras (210 Botched Contact y 359 Sabotage) comparten kind porque el
+     * EFECTO es identico -- el grupo que un rival acaba de tomar posesion
+     * automatica vuelve a su mano -- y solo cambian el coste y un efecto extra;
+     * es el mismo criterio que las 11 de TOKEN-GIFT (L1) y las 2 de L4. La
+     * tercera (259 Foiled!) es otra cosa: no responde a un suceso, obliga a un
+     * rival a descartar, asi que tiene su propio case aunque viva en el mismo
+     * lote. 278 Hex (resource_destroy) va con ellas.
+     *
+     * La ventana de SUCESO es la de §38 (P1-027). Todo lo que ya habia --abrir,
+     * `responders`, cerrar, `E.resolvePendingEvent`-- es generico; lo que faltaba
+     * era un tercer tipo de suceso (`autoTakeover`) y las ramas de abajo. */
+    case 'takeover_return':{
+      /* 210 / 359 -- "He must return that Group to his hand" (210) y "He cannot
+       * make an automatic takeover that turn" (359). Se juega DENTRO de la
+       * ventana que abre `E.autoTakeover`, y por eso el caso NO comprueba que la
+       * ventana sea del tipo correcto si no para no dejar un `S.pendingEvent`
+       * colgado: si no es el suyo, lo rechaza. */
+      var evR=S.pendingEvent;
+      if(!evR||evR.kind!=='autoTakeover')
+        throw new Error(c.name+': no hay ningun takeover automatico que anular');
+      if(evR.data.returnedBy!=null)
+        throw new Error(c.name+': ese takeover ya fue devuelto por '+evR.data.returnedBy.cardName);
+      var chkR=eventReactionAllowed(eff,pid,evR);
+      if(!chkR.ok)throw new Error(c.name+': '+chkR.why);
+      var dR=evR.data;
+      /* --- COSTE, DESPUES de validar (P1-022). 210: "an action from one of your
+       * groups", cualquiera. 359: "either your Illuminati, or group(s) with total
+       * Power of 6 or more, at least one of which shares an alignment with the
+       * Group that your rival is trying to control" -- y esa ultima parte se
+       * comprueba contra `dR.aligns`, que viaja en `data` justamente porque el
+       * nodo puede ya no existir cuando la ventana se cierra. --- */
+      var paidR=null;
+      if(eff.payAnyGroup){
+        var anR=opts.aidUid?findNode(opts.aidUid):null;
+        if(opts.aidUid&&(!anR||findOwnerPid(opts.aidUid)!==pid))
+          throw new Error('El grupo que aporta la accion debe ser tuyo');
+        if(!anR)anR=firstUsableAid(pid,function(){return true;});
+        if(!anR)throw new Error(c.name+' necesita la accion de uno de tus grupos');
+        paidR={uid:anR.uid,name:card(anR.cardId).name};
+        spendGroupToken(pid,anR.uid);
+      }else if(typeof eff.payPower==='number'){
+        if(pl.illumTokens>=1){
+          pl.illumTokens--;
+          paidR={uid:pl.illumId,name:'Illuminati'};
+        }else{
+          var accR=0;
+          var anR2=opts.aidUid?findNode(opts.aidUid):null;
+          if(opts.aidUid&&(!anR2||findOwnerPid(opts.aidUid)!==pid))
+            throw new Error('El grupo que aporta la accion debe ser tuyo');
+          if(!anR2)anR2=firstUsableAid(pid,function(cc,nn){
+            if(eff.payShareAlign){
+              var sa=nodeAligns(nn,cc);
+              var okA=false;
+              (dR.aligns||[]).forEach(function(a){if(sa.indexOf(a)>=0)okA=true;});
+              if(!okA)return false;
+            }
+            return accR<eff.payPower;
+          });
+          if(!anR2||accR>=eff.payPower)
+            throw new Error(c.name+' necesita '+eff.payPower+' de Poder de grupos'+
+              (eff.payShareAlign?' que compartan una alineacion con el grupo tomado':'')+
+              ', o una accion de tu Illuminati');
+          accR+=curPower(anR2);
+          paidR={uid:anR2.uid,name:card(anR2.cardId).name,power:accR};
+          spendGroupToken(pid,anR2.uid);
+        }
+      }else{
+        throw new Error(c.name+': el coste de esta carta no esta declarado');
+      }
+      dR.returnedBy={pid:pid,name:pl.name,cardName:c.name};
+      dR.blocked=!!eff.alsoBlocks;
+      log(pl.name+' juega '+c.name+': '+cap(dR.label||'el takeover')+
+        ' queda devuelto a la mano de '+S.players[evR.byPid].name+
+        (dR.blocked?' y no podra repetir el takeover este turno':'')+
+        ' (accion de '+paidR.name+')');
+      lastResult={ok:true,negated:true,card:c.name,kind:'autoTakeover',
+        by:S.players[evR.byPid].name,returnedLabel:dR.label,blocked:!!dR.blocked,paidWith:paidR};
+      break;}
+    case 'resource_destroy':{
+      /* 278 Hex -- "A Magic Resource controlled by a rival is destroyed. Discard
+       * its card." + "requires an action by your Illuminati, or by a Magic group
+       * with a Power of 3 or more" + "at any time EXCEPT during a privileged
+       * attack".
+       *
+       * DECLARACION (interpretacion 5 de L6): el texto dice "A Magic Resource",
+       * pero el mazo NO tiene clasificacion de Resources: 34 de los 35 tienen
+       * `subtype:null` (medido en L4, el mismo motivo por el que se solto el
+       * "Gadget Resource" de 270). El Resources se busca de un rival y ya esta;
+       * lo que SI se filtra es el COSTE, porque "a Magic group" usa el atributo
+       * `magic`, que si existe en el mazo. No se inventa ninguna categoria. */
+      if(eff.notDuringPrivileged&&S.attack&&S.attack.privilege)
+        throw new Error(c.name+': no se puede jugar durante un ataque privilegiado');
+      if(typeof eff.payAttr!=='string')
+        throw new Error(c.name+': el coste de esta carta no esta declarado (eff.payAttr)');
+      /* 278 no tiene objetivo que elegir: el texto dice "A Magic Resource
+       * controlled by a RIVAL", y el mazo no tiene clasificacion de Resources
+       * (interpretacion 5), asi que el rival se deduce. Sin `opts.rivalPid` se
+       * elige el PRIMER rival que tenga Resources, que es determinista; con el
+       * se respeta el que pase la UI. Antes el valor por defecto era `pid`, lo
+       * que hacia que la carta fuera INJUGABLE salvo que el llamante conociera un
+       * parametro que la UI no tiene forma de enviar: el mismo defecto que
+       * `alignFromTarget` resolvia en 268. */
+      var rpid=opts.rivalPid;
+      if(rpid==null){
+        for(var rq=0;rq<S.players.length;rq++){
+          if(rq!==pid&&S.players[rq].resources.length){rpid=rq;break;}
+        }
+      }
+      var rpv=S.players[rpid];
+      if(rpid==null||rpid===pid)throw new Error(c.name+': solo destruye Resources de un rival');
+      if(!rpv||!rpv.resources.length)
+        throw new Error(c.name+': '+cap(S.players[pid].name)+' no tiene ningun Resource en juego');
+      var rx=opts.resUid;
+      if(rx){
+        var hitR=false;
+        rpv.resources.forEach(function(r){if(r.uid===rx)hitR=true;});
+        if(!hitR)throw new Error(c.name+': ese Resource ya no esta en juego');
+      }
+      var anX=opts.aidUid?findNode(opts.aidUid):null;
+      if(opts.aidUid&&(!anX||findOwnerPid(opts.aidUid)!==pid))
+        throw new Error('El grupo que aporta la accion debe ser tuyo');
+      if(!anX)anX=firstUsableAid(pid,function(cc,nn){
+        if(!hasAttr(cc,eff.payAttr,nn))return false;
+        if(typeof eff.payMinPower==='number'&&curPower(nn)<eff.payMinPower)return false;
+        return true;
+      });
+      if(!anX)throw new Error(c.name+' necesita la accion de tu Illuminati o de un grupo '+
+        eff.payAttr+(typeof eff.payMinPower==='number'?(' con Poder '+eff.payMinPower+' o mas'):''));
+      spendGroupToken(pid,anX.uid);
+      var atX=-1;
+      rpv.resources.forEach(function(r,i){
+        if(atX<0&&(rx?r.uid===rx:rx==null))atX=i;
+      });
+      var entX=rpv.resources.splice(atX,1)[0];
+      S.groupDiscard.push(entX.cardId);
+      log(pl.name+' juega '+c.name+': el Resource '+card(entX.cardId).name+
+        ' de '+rpv.name+' se destruye y se descarta (accion de '+card(anX.cardId).name+')');
+      lastResult={ok:true,negated:true,card:c.name,kind:'resource_destroy',
+        target:card(entX.cardId).name,targetPid:rpid,owner:rpv.name,
+        paidWith:{uid:anX.uid,name:card(anX.cardId).name}};
+      break;}
+    case 'force_discard_exposed':{
+      /* 259 Foiled! -- "You may force any rival to discard one exposed Goal card."
+       * + "may be used at any time, but requires an action a Media group".
+       *
+       * DECLARACION (interpretacion 6 de L6): el descarte pasa por
+       * `discardPlot()`, el unico punto de entrada al descarte de Plots (P1-025).
+       * Es una consecuencia deliberada: la Plot forzadamente descartada PODRA
+       * ser robada despues por Stealing the Plans (374), que reacciona al mismo
+       * suceso `plotDiscarded`. Forzarla por el motor seria mas simple pero
+       * abriria una segunda ruta al descarte y la dejaria fuera de la ventana. */
+      if(typeof eff.requiresActionFromAttr!=='string')
+        throw new Error(c.name+': el coste de esta carta no esta declarado');
+      var fpid=opts.rivalPid!=null?opts.rivalPid:(pid===0?1:0);
+      var fpv=S.players[fpid];
+      if(!fpv)throw new Error(c.name+': ese rival no existe');
+      var exposedF=fpv.exposedPlots.filter(function(ix){
+        var cc=card(ix);
+        return cc&&cc.subtype==='goal';
+      });
+      if(!exposedF.length)
+        throw new Error(c.name+': '+cap(fpv.name)+' no tiene ninguna carta de Objetivo expuesta');
+      var fx=opts.exposedIdx;
+      if(fx!=null&&exposedF.indexOf(fx)<0)
+        throw new Error(c.name+': esa carta de Objetivo ya no esta expuesta');
+      if(fx==null)fx=exposedF[0];
+      var anF=opts.aidUid?findNode(opts.aidUid):null;
+      if(opts.aidUid&&(!anF||findOwnerPid(opts.aidUid)!==pid))
+        throw new Error('El grupo que aporta la accion debe ser tuyo');
+      if(!anF)anF=firstUsableAid(pid,function(cc,nn){
+        return hasAttr(cc,eff.requiresActionFromAttr,nn);
+      });
+      if(!anF)throw new Error(c.name+' necesita la accion de un grupo '+eff.requiresActionFromAttr);
+      spendGroupToken(pid,anF.uid);
+      var nameF=card(fx).name;
+      /* La carta sale TAMBIEN de `exposedPlots`: `discardPlot` solo la mete en el
+       * descarte de Plots, asi que sin esta linea la misma carta de Objetivo
+       * seguiria "expuesta" y 259 podria forzarla a descartar dos veces. Es el
+       * mismo motivo por el que §38 filtra `exposedPlots` al cerrar la mano. */
+      var exAt=fpv.exposedPlots.indexOf(fx);
+      if(exAt>=0)fpv.exposedPlots.splice(exAt,1);
+      discardPlot(fx,fpid);
+      log(pl.name+' juega '+c.name+': '+fpv.name+' descarta su '+nameF+
+        ' (accion de '+card(anF.cardId).name+')');
+      lastResult={ok:true,negated:true,card:c.name,kind:'force_discard_exposed',
+        target:nameF,targetPid:fpid,owner:fpv.name,
+        paidWith:{uid:anF.uid,name:card(anF.cardId).name}};
+      break;}
     case 'token_gift':{
       var gAlign=(typeof eff.giftAlign==='string')?eff.giftAlign.toLowerCase():null;
       var gAttr=(typeof eff.giftAttr==='string')?eff.giftAttr.toLowerCase():null;
@@ -3374,6 +4221,22 @@ E.discardCard=function(pid,handIdx){
   if(c.type==='plot')discardPlot(handIdx,pid);
   else S.groupDiscard.push(handIdx);
   log(pl.name+' descarta '+c.name);
+  return publicState();
+};
+
+/* P1-033 (L4) - El inverso de giveResourceTo: un Resource vuelve a la MANO
+ * del rival que lo entrega, no a su lista de Resources. Lo necesita el modo
+ * "put one Gadget Resource back in his hand" de 270 Gremlins. No existe el
+ * filtro por subtipo porque el mazo no clasifica los Resources: 34 de 35
+ * tienen subtype null, asi que un filtro gadget haria el modo INJUGABLE. */
+E.takeResourceToHand=function(fromPid,resUid,toPid){
+  var fp=S.players[fromPid]; if(!fp)throw new Error('Ese jugador no existe');
+  var k=-1;
+  for(var i=0;i<fp.resources.length;i++){ if(fp.resources[i].uid===resUid){ k=i; break; } }
+  if(k<0)throw new Error('Ese Resource no pertenece a ese jugador');
+  var res=fp.resources.splice(k,1)[0];
+  S.players[toPid].hand.push(res.cardId);
+  log(card(res.cardId).name+' vuelve a la mano de '+S.players[toPid].name);
   return publicState();
 };
 E.giveResourceTo=function(ownerPid,toPid,resUid){

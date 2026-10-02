@@ -1106,6 +1106,541 @@ function baseFromFolder(m) {
   if (m.folder === 'Illuminati') return { type: 'illuminati', subtype: null };
   return { type: 'group', subtype: 'organization' }; // Groups folder
 }
+/* ==== L3b - LAS CINCO CARTAS QUE plan.md APLAZO, Y POR QUE UNA QUEDA FUERA ====
+
+   L3a (BULK_POWER) resolvio la forma "subir/bajar el Poder de TODOS los grupos
+   X" con un modificador permanente en el nodo. Las cinco cartas de L3b tienen
+   OTRA forma cada una, y por eso cada una recibe su propio kind: el criterio de
+   plan.md §0.1 es un kind unico por mecanica, y aqui no hay ni una mecanica
+   repetida. Se declara una vez por que no se fusionan:
+
+     268 Good Polls        -> def_triple      x3 al DEFENDER, con caducidad
+     418 World Hunger      -> token_wither    dos frases: apaga fichas + -2 Poder
+     234 Currency Specul.  -> tripled_once    x3 a UN grupo, para su proxima accion
+     355 Resistance is U.. -> res_nullify     anula la Resistencia de UN grupo
+     377 Sucked Dry ...    -> (NO IMPLEMENTADA, ver el final de este bloque)
+
+   INTERPRETACIONES DECLARADAS (no existe fallos oficial para ninguna de las
+   cuatro; el texto impreso es la unica fuente):
+
+   1. ALCANCE DE 268 ("all your groups of ANY CHOSEN alignment"). El jugador
+      elige UNA alineacion, no un grupo. Pero el flujo de la UI elige un NODO,
+      no una alineacion, asi que la eleccion se hace apuntando a
+      CUALQUIERA de los grupos propios de esa alineacion y el motor toma la
+      PRIMERA de sus `nodeAligns`. Es una decision arbitraria y por eso se
+      declara: un grupo con dos alineaciones haria que "la primera" dependa del
+      orden de impresion de la carta. Alternativa rechazada: un `opts.align`
+      propio, que obligaria a construir un segundo flujo de seleccion en la UI
+      para UNA carta.
+   2. "for defense only" (268) se aplica SOLO a la defensa: en un ataque a
+      CONTROL se triplica la Resistencia, y en un ataque a DESTRUIR se triplica
+      el Poder con el que se defiende (`defenderPower`), porque ahi el objetivo
+      se defiende con su Poder y no con su Resistencia (regla de §25). NO se
+      triplica `selfDef` (la auto-defensa), declarado: es un caso que las reglas
+      mencionan aparte y la carta no lo nombra.
+   3. CADUCIDAD. No hace falta ningun campo nuevo en `S`: el motor ya lleva
+      `S.turn`, que se incrementa en `E.beginTurn`. "Until the beginning of
+      your next turn" en un turno circular es `S.turn + S.players.length`.
+   4. 234 "The Power OR Resistance (your choice)" se resuelve con
+      `opts.stat` ('power' por defecto). "for its next action or defense": el
+      x3 se borra al GASTAR la ficha del grupo (`spendGroupToken`, que es la
+      accion) y al defenderse, este ultimo solo cuando la fuerza se resuelve de
+      verdad (`computeStrength(true)`) y NO en `E.previewStrength()`, que solo
+      enseña numeros y no puede gastar una carta.
+   5. 355 "no Resistance bonus from its masters alignments or special
+      abilities" se implementa como un flag propio (`noMasterAlignDefense`) que
+      `computeStrength` consulta ANTES de sumar `closenessDefenseBonus`. NO se
+      toca `positionBonus`: los +5/+10 de proximidad al Illuminati que rigen son
+      justo lo que la carta dice que SE CONSERVA, y `positionBonus` ya los
+      calcula.
+   6. 418 "cannot get new ones or use their special abilities". Lo de las fichas
+      es un predicado NUEVO (`noTokens`) que hay que consultar en CUATRO sitios
+      (gastar ficha, buscar grupo que pueda ayudar, TOKEN-GIFT y el reparto
+      automatico de fichas de `E.beginTurn`); si se olvida el cuarto, un grupo
+      verde apagado recupera su ficha al turno siguiente. Lo de "sus especiales"
+      NO se implementa: el motor no tiene sistema de habilidades especiales por
+      grupo, asi que no hay nada que apagar. Se declara como no-op.
+   7. 418 "Groups which are Liberal and/or Nation" usa la misma gramatica de
+      clausulas de L3a (`moves`), con `scope:'all'`: el texto es
+      "have their Power reduced by 2" sin "your", asi que afecta a TODOS los
+      jugadores (interpretacion ALCANCE de L3a, pero al reves:alli se
+      restringio porque las cartas decian "all X groups" siendo cartas de
+      refuerzo propio; aqui el texto es inequivoco).
+
+   377 "Sucked Dry and Cast Aside!" NO SE IMPLEMENTA en este lote, con un motivo
+   declarado y no con una prisa: sus dos frases son "Multiply the Power of one
+   of your groups ... by 4 FOR ONE ACTION ONLY" y "It is THEN considered
+   destroyed, but does not count toward any Goal". El unico sitio donde el motor
+   sabe que un grupo ha gastado su accion es `spendGroupToken`, y ese helper se
+   llama desde DENTRO de recorridos `walk` (force_align recorre la estructura
+   gastando fichas) y desde el registro de ataques. `destroyGroup` hace
+   `detach()`, que MUTA el array `children` por el que ese `walk` esta
+   iterando: destruir ahi puede hacer que el recorrido se salte un hijo. La
+   opcion de dejar el x4 sin destruir es peor: seria una carta a medias, que es
+   exactamente lo que este audit existe para matar. Hace falta una cola de
+   destruccion diferida (`S.pendingBurstDestroy`) con un punto de vaciado claro
+   (final de `E.resolveAttack` y de `E.endTurn`), y eso es un lote propio. */
+const L3B_FX = {
+  'good polls': {
+    kind: 'def_triple',
+    mul: 3,
+    alignFromTarget: true,
+    untilNextTurn: true,
+    t: 'Play this card at any time. Until the beginning of your next turn, the Power and Resistance for all your groups of any chosen alignment is tripled, for defense only.'
+  },
+  'world hunger': {
+    kind: 'token_wither',
+    witherAttr: 'green',
+    scope: 'all',
+    moves: [
+      { align: 'liberal', power: -2 },
+      { attr: 'nation', power: -2 }
+    ],
+    t: 'All Green groups lose their Action tokens and cannot get new ones or use their special abilities! Groups which are Liberal and/or Nation have their Power reduced by 2.'
+  },
+  'currency speculation': {
+    kind: 'tripled_once',
+    targetAttr: 'bank',
+    mul: 3,
+    stat: 'choice',
+    t: 'Used this card at any time. The Power or Resistance of any one of your Bank groups is tripled for its next action or defense.'
+  },
+  'resistance is useless': {
+    kind: 'res_nullify',
+    requiresActionFromAttr: 'media',
+    untilCurrentTurn: true,
+    t: 'For the rest of the current turn, the target groups Resistance is 0. The target also gets no Resistance bonus from its masters alignments or special abilities. But proximity to its ruling Illuminati still gives the normal +5 or +10. This card must be played by Media group, and counts as the groups action. Requires Media Action'
+  }
+};
+const L3B_FXN = {};
+for (const k in L3B_FX) {
+  L3B_FXN[norm(k)] = L3B_FX[k];
+}
+
+/* ==========================================================================
+   L4 - TOKEN-STRIP. Las cartas que dejan a los grupos sin ficha de accion.
+   --------------------------------------------------------------------------
+   Solo dos cartas de este plan: 350 Reach Out . . . y 270 Gremlins.
+   203 Bigfoot, que plan.md ponia aqui, ha sido RECLASIFICADO (ver §45): es
+   type=resource, de modo que su texto impreso es su HABILIDAD ESPECIAL
+   permanente y no un robo de fichas, y sus dos clausulas ("puede cancelar
+   CUALQUIER accion de un grupo Media" y "+3 al intentar controlar un grupo
+   Green") necesitan un registro de acciones que el motor no tiene. Pasa al
+   trabajo de Resources (familia L12), no a este.
+
+   MECANICA UNICA. El efecto de las dos cartas es el mismo sin mas: poner
+   tokens = 0 en cada nodo que encaje. Por eso comparten un unico `kind` y
+   se distinguen solo por calificadores, exactamente como los 11 token_gift
+   de L1 compartian kind con un calificador de alineacion o atributo.
+   Anadir una carta a esta familia es anadir DATOS, no codigo.
+
+   CALIFICADORES
+     stripAttr      atributo exigido a los grupos (350 no exige ninguno)
+     stripPlayers   'rival+own'  el rival elegido Y tus propios grupos
+                    'all'        cualquiera, sin distincion
+     ownToo         true        obligatoriamente los grupos del controlador
+     illumAction    true        el coste es una accion del Illuminati
+     canTakeResource true       la carta tiene ademas un modo de.robo de
+                                 Resource (modo 'takeResource')
+
+   DECLARACIONES DE INTERPRETACION (no existe fallo oficial para ninguna)
+   1. ALCANCE DEL RIVAL. El flujo de seleccion de objetivo de la UI elige un
+      NODO, no un jugador, asi que el rival se deduce con
+      findOwnerPid(targetUid). 350 RECHAZA un objetivo propio, porque su
+      texto dice "of any one of your rivals"; la mitad "your own groups" es
+      automatica y no necesita objetivo. 270 no imprime ni "your" ni
+      "rivals", asi que es 'all': el mismo autor que escribe esas dos
+      frases cuando las quiere ("your own groups", "any one of your
+      rivals") demuestra que cuando no las escribe es deliberado.
+   2. RESOURCES INTOCABLES, por construccion. Un Resource nunca es un nodo de
+      la estructura: vive solo en pl.resources. Por eso 350 ya cumple su
+      "(but not the Resources)" sin tocar una linea: walk() no lo visita.
+   3. MODO 2 DE 270 PENDIENTE. "cancel its action if the action was a use of
+      its Power" es una ANULACION de una accion ya ejecutada, es decir un
+      rollback. El motor no registra que hizo un grupo, solo que gasto una
+      ficha, asi que una anulacion no tiene nada que deshacer todavia. Se
+      implementara cuando exista el registro de acciones (mismo motivo por el
+      que 377 Sucked Dry se aplaza en §44.6).
+   4. "GADGET RESOURCE" NO SE PUEDE FILTRAR. El mazo no tiene clasificacion
+      gadget/artifact: de 35 Resources, 34 tienen subtype null y 1 es
+      bulk_power. El filtro por subtipo haria el modo INJUGABLE, asi que el
+      modo 3 toma cualquier Resource del rival, y se declara aqui que el
+      calificador impreso se ha loses a proposito en vez de fingir.
+   5. "SOLO AL FINAL DE TU TURNO" DE 350 NO SE PUEDE APLICAR. El modelo de
+      fases del motor tiene setup/begin/main/attack/gameover y NO tiene
+      sub-fase de final de turno; E.endTurn exige phase==='main' y no hay
+      ningun momento posterior dentro del turno en el que jugar una Plot. Se
+      implementa lo exigible (turno propio + accion del Illuminati) y se
+      declara la restriccion impresa como NO APLICADA por el motor, no como
+      olvidada.
+   6. NINGUNA DE LAS DOS IMPRIME "at any time", asi que ninguna entra en la
+      lista instant de E.playPlot: son cartas de turno propio.
+   7. ROBO DE FICHAS != INCAPACIDAD. Se pone tokens = 0 (un valor), NO se
+      pone la marca noTokens. Un grupo al que le han robado la ficha puede
+      volver a recibirla, que es justo lo que distingue a esta familia de
+      418 World Hunger, que si deja la marca permanente.
+   ========================================================================== */
+const L4_FX = {
+  'reach out . . .': {
+    kind: 'token_strip',
+    stripPlayers: 'rival+own',
+    ownToo: true,
+    illumAction: true,
+    t: 'Reach Out . . . Remove all Action tokens from the Groups (but not the Resources) of any one of your rivals. You must also remove any remaining Action tokens from your own groups. You may play this card only at the end of your turn. It requires an action by your Illuminati. Requires Illuminati Action'
+  },
+  'gremlins': {
+    kind: 'token_strip',
+    stripAttr: 'computer',
+    stripPlayers: 'all',
+    canTakeResource: true,
+    t: 'Gremlins do not exist! This card can be used to remove the Action token from any Computer groups, or to cancel its action if the action was a use of its Power. Alternatively, play this card to force a rival to put one Gadget Resource back in his hand.'
+  }
+};
+const L4_FXN = {};
+for (const k in L4_FX) {
+  L4_FXN[norm(k)] = L4_FX[k];
+}
+/* ==== L5a - ATTACK BOOST: "+N to an Attack to Destroy/Control of X" ====
+ *
+ * plan.md lista L5 con 11 nombres, pero al medir cada carta SALEN solo
+ * TRES que sean de verdad "+N a un ataque en curso" con `E.playPlot`. El resto
+ * se reclasifico (ver §45 para el precedente de 203 Bigfoot, y §44 para 377):
+ *
+ *   189 Albino Alligators  -> NO es boost de ataque: da +10 Poder O Resistencia
+ *                              a un grupo Weird tuyo, por una accion o hasta el
+ *                              fin del turno. Es un delta de NODO con caducidad
+ *                              => su propio lote mas adelante (L5c).
+ *   205 Bimbo at Eleven    -> +5 a un ataque a destruir contra una Personality
+ *                              MASCULINA y desde un grupo Media. El mazo NO tiene
+ *                              campo `gender` en NINGUNA de sus 421 cartas, asi
+ *                              que "male" no se puede autorizar => APLAZADO
+ *                              (hallazgo de datos, ver §46).
+ *   254 Faction Fight     -> exige "played along with a duplicate card for any
+ *                              Group controlled by one of your rivals": necesita
+ *                              combinacion de cartas + registro de duplicados
+ *                              (lote L11) y su texto impreso esta TRUNCADO a
+ *                              media frase ("bul the attack is") => APLAZADO.
+ *   255 Fear and Loathing  -> cambia la aritmetica GLOBAL de alineaciones
+ *                              (+8/-8 en vez de +4/-4). No es un boost: es una
+ *                              regla permanente que modifica `computeStrength`
+ *                              => su propio lote (L5b).
+ *   311 Mercenaries,
+ *   358 Rogue Boomer,
+ *   373 Spear of Longinus -> `type=resource`: su texto es una HABILIDAD
+ *                              PERMANENTE que se usa como accion mas adelante
+ *                              ("Can act once per turn"), no un boost al jugarse.
+ *                              Se reclassifican al lote de Resources (con 203).
+ *   377 Sucked Dry...     -> sigue aplazado desde L3b (§44.6).
+ *   419 World War Three   -> `subtype=goal`, ya es `kind='goal'` => lote de Goals.
+ *
+ * LAS TRES QUE SI SON DE ESTA FAMILIA, y por que comparten UN SOLO kind:
+ * las tres son "+N a un ataque YA declarado", asi que todas empujan el mismo
+ * dato (`A.boosts`) y todas necesitan las mismas tres cosas: un ataque abierto,
+ * comprobar el calificador impreso y pagar el coste impreso. Solo cambian los
+ * CALIFICADORES, que son DATOS (mismo patron que las 11 cartas de L1 con un
+ * unico kind `token_gift`).
+ *
+ * DECLARACIONES DE INTERPRETACION (ningun arbitraje oficial existe para ellas):
+ *
+ * 1. ALCANCE DEL CALIFICADOR: se comprueba SIEMPRE, nunca se ignora. Si el
+ *    ataque no encaja, la carta se RECHAZA con el motivo oficial, no se gasta y
+ *    no hace nada. Es la misma disciplina que P1-017 en los nodos: el
+ *    calificador se evalua contra el NODO atacante/objetivo, no contra la carta
+ *    sola (un grupo que Dictatorship volvio violent sigue siendo violent).
+ * 2. "Destroy the Lawyers" (391) es un CALIFICADOR POR CARTA CONCRETA, no por
+ *    subtype: la carta 79 "Lawyers" es un group/organization concreto con
+ *    `power:null` y `align:["criminal"]`. Por eso el campo es `targetCardId` y
+ *    no `targetSubtype`.
+ * 3. "to your Illuminati" (381) se comprueba contra el TIPO de la carta del
+ *    atacante (`type==='illuminati'`), no contra un id: el mazo tiene 18
+ *    Illuminati distintos y ningun ataque lleva un id de estos.
+ * 4. "It cannot be used with Assassinations or Disasters" (415) se cumple POR
+ *    CONSTRUCCION y por eso NO se declara campo: un Assassination o un Disaster
+ *    NO crean `S.attack` (son ataques instantaneos de `E.playPlot`), asi que
+ *    `case 'attack_boost'` solo puede alcanzarse con `A.type` 'control' o
+ *    'destroy'. Un campo `noAssassination` seria decorativo.
+ * 5. "a single direct attack" (381): el +10 vive EN el objeto del ataque
+ *    (`A.boosts`), que muere con el. Por eso es de un solo uso sin estado que
+ *    limpiar, igual que las cartas "+10" de §26 (`case 'boost10'` modo
+ *    'attack'): el "+10 no se reutiliza" se cumple solo.
+ * 6. Valor dependiente del objetivo (415): "+15 ... a Personality, o +10 a
+ *    cualquier otro Group". El valor se elige AL JUGAR LA CARTA leyendo el
+ *    subtype del nodo objetivo del ataque abierto, no en el momento de tirar los
+ *    dados. Razon: la eleccion oficial es del jugador que juega la carta.
+ * 7. "he cannot be returned to play by any means" (415): el ataque con exito ya
+ *    destruye al objetivo, y eso lo hace `destroyGroup` (misma via que cualquier
+ *    destruccion). Lo que la carta AÑADE es que ese duplicado no debe volver a
+ *    jugarse nunca, y eso necesita un REGISTRO de cartas retiradas del juego
+ *    que todavia no existe: la familia que lo consumiria (220 Clone, 287
+ *    Imposter, 227 Counter-Revolution, 309 Media Blitz, "jugar un duplicado de un
+ *    grupo destruido") es L11 y esta sin implementar. Por eso NO se declara
+ *    ningun campo para esta clausula: un campo que nadie lee seria exactamente
+ *    el defecto P1-026 (`A.privilege` declarado y nunca consumido). Queda
+ *    declarado como PENDIENTE de L11.
+ */
+const L5_FX = {
+  'swiss bank account': {
+    kind: 'attack_boost', boostValue: 10, illumOnly: true,
+    t: 'Play this card at any time to give +10 Power to your Illuminati for a single direct attack. This cannot be used for Global Power.'
+  },
+  "the first thing we do, let's kill all the lawyers": {
+    kind: 'attack_boost', boostValue: 20, atkType: 'destroy', targetCardId: 'lawyers',
+    t: "Gives a +20 to any Attack to Destroy the Lawyers. The player using this card must say solemnly, Of course, many lawyers are very nice people, and they are vital to the protection of our freedoms. Try to keep a straight face."
+  },
+  'whispering campaign': {
+    kind: 'attack_boost', atkType: 'destroy', boostBySubtype: { personality: 15, other: 10 },
+    requiresActionFromAttr: 'media',
+    t: 'This card requires an Action from a Media group. It gives +15 in any Attack to Destroy a Personality, or +10 in any Attack to Destroy any other Group. It cannot be used with Assassinations or Disasters. If a Whispering Campaign succeeds against a Personality, he is considered destroyed, but not dead just permanently out of public life. Thus, he cannot be returned to play by any means! Requires Media Action'
+  },
+  'revolution!': {
+    kind: 'attack_boost', atkType: 'any', targetAttr: 'nation',
+    boostValue: 10, boostVsDictatorship: 20, payNotTheAttackers: true,
+    t: 'Play this card on any attack, either to destroy or control, against a Nation. It gives a +10 bonus to the attack, or a +20 bonus against a Dictatorship. Playing this card requires an action by a group other than those actually attacking the Nation. Requires Action'
+  }
+};
+const L5_FXN = {};
+for (const k in L5_FX) {
+  L5_FXN[norm(k)] = L5_FX[k];
+}
+/* ==== L5b - ALINE-RULE (255 Fear and Loathing) ==========================
+
+   REGLA GLOBAL DE COMBATE. No es un bonus a un ataque ni a un grupo: cambia
+   la MAGNITUD con la que las alineaciones comparadas valen, y el cambio
+   aplica a TODO el juego mientras la carta este en juego.
+
+   Texto impreso (verbatim):
+     "Paranoia increases worldwide. Identical alignments now give +8 on any
+      attempt to control, and -8 on any attempt to destroy. The reverse is
+      true for opposed alignments."
+
+   INTERPRETACIONES DECLARADAS (no existe ruling oficial sobre la durata):
+
+   1. LA MAGNITUD ES UNA CONSTANTE GLOBAL, no un bonus. La regla oficial
+      (inwo_rules_extracted.txt:487-493) dice "+4 por cada alineacion
+      identica" y "-4 por cada alineacion opuesta". Esta carta no anade una
+      cifra nueva al total: SUSTITUYE el 4 por un 8. Por eso el motor solo
+      necesita leer un numero del estado, `S.alignRule.mag`, en los DOS
+      bucles de alineaciones de computeStrength. Los SIGNOS no cambian:
+      - control: identicas +mag, opuestas -mag
+      - destroy: identicas -mag, opuestas +mag   (el "the reverse is true")
+   2. DIRECCION: el texto dice "+8 on any attempt to control, and -8 on any
+      attempt to destroy" para las IDENTICAS, y "the reverse is true for
+      opposed alignments". Es exactamente la tabla de arriba. No hay lectura
+      alternativa razonable.
+   3. DURACION: el texto no pone fecha. Las cartas que cadenan lo dicen
+      ("for the rest of the current turn", "until the beginning of your next
+      turn"). Aqui no hay plazo, asi que el efecto dura el resto de la
+      partida y la carta se EXPONE en la mesa (pl.exposedPlots) en vez de
+      ir al descarte: es la regla de inwo_rules_extracted.txt:223 ("A Plot is
+      'in play' if it is left on the table to mark an ongoing effect"), la
+      misma que usan las cartas "+10" y las Cartas de Objetivo. P1-025 ya
+      saca del descarte lo que este en exposedPlots, asi que no hace falta
+      tocar el descarte.
+   4. SIN COMPROBACION DE UNICIDAD: al exponerse, la carta sale del mazo, y
+      cada carta de este mazo es unica, asi que no puede haber una segunda
+      copia en la mano. Escribir el estado dos veces seria idempotente.
+   5. NO ES "at any time": el texto no lo dice, luego la carta exige turno
+      propio y NO entra en la lista `instant` de E.playPlot.
+   6. LIMITACION DECLARADA: los ataques instantaneos (Assassinations,
+      Disasters, E.instantAttack) NO pasan por computeStrength -- calculan
+      su fuerza en announcePlotInstantAttack / E.instantAttack y nunca
+      Incorporaron el termino de +/-4 por alineacion. Por tanto 255 no les
+      afecta. No es un olvido de esta carta: es que la alineacion nunca
+      contou ahi en este motor.
+   7. "any two Fanatic Groups are opposite to each other" (oficial,
+      :487-493 y :370-377) sigue sin implementarse en isOpposite(); queda
+      como brecha declarada desde §20 y esta carta no la arregla.
+
+   Un campo que nadie lee seria exactamente el defecto P1-026, asi que antes
+   de declararlo se comprobo que el motor lo consume en los dos bucles.  */
+const L5B_FX = {
+  'fear and loathing': {
+    kind: 'align_rule',
+    alignMag: 8,
+    t: 'Paranoia increases worldwide. Identical alignments now give +8 on any attempt to control, and -8 on any attempt to destroy. The reverse is true for opposed alignments.'
+  }
+};
+const L5B_FXN = {};
+for (const k in L5B_FX) {
+  L5B_FXN[norm(k)] = L5B_FX[k];
+}
+/* L5c - ALBINO ALLIGATORS (189) y el ULTIMO delta con caducidad por turno.
+ *
+ * ESTA CARTA NO ES UN BONUS SOBRE UN ATAQUE (eso es L5a, `attack_boost`): es
+ * un DELTA SOBRE EL PROPIO GRUPO. El plan lo decia exactamente asi ("es un
+ * DELTA sobre el grupo, no un bonus sobre un ataque") y por eso tiene su
+ * propio kind. Se apoya en los dos precedentes ya pagados:
+ *   - 268 Good Polls (`def_triple`) por la CADUCIDAD por turno en el NODO con
+ *     un unico vaciado centralizado en `expireTurnFlags()`;
+ *   - 234 Currency Speculation (`tripled`) por el consumo cuando el grupo
+ *     GASTA su ficha de accion (se limpia en `spendGroupToken`).
+ * Aqui se combinan las dos duraciones, y por eso el NODO lleva un SOLO campo
+ * `timedBoost` con `mode` en vez de dos campos casi iguales.
+ *
+ * INTERPRETACIONES DECLARADAS (7). No existe ninguna regla oficial sobre esta
+ * carta, asi que se declara cada lectura:
+ *
+ * 1) "Power or Resistance (your choice)" es ELECCION DEL JUGADOR y por eso NO
+ *    es un calificador de la carta: se elige con `opts.stat` al jugarla. Un
+ *    calificador en `gen_cards.js` que el motor nunca lee seria exactamente el
+ *    defecto P1-026 (`A.privilege`).
+ * 2) Los dos modos ("If used with an action" / "If used for defense") NO son
+ *    otra eleccion: los decide el CONTEXTO, y el contexto que el motor puede
+ *    observar es si hay un ataque abierto contra ese grupo. Con un ataque
+ *    abierto del que el grupo es el OBJETIVO, el modo es DEFENSA. En cualquier
+ *    otro caso es ACCION.
+ * 3) "must be played when that action is first declared" se implementa como:
+ *    en modo ACCION el grupo objetivo TIENE que conservar su ficha de accion.
+ *    El motor declara y ejecuta una accion en un solo paso (`E.declareAttack`
+ *    gasta la ficha y `E.resolveAttack` tira los dados), asi que no existe un
+ *    instante intermedio al que "volver" a jugar la carta. La ficha disponible
+ *    es la comprobacion mas fiel disponible, y si no la tiene la carta se
+ *    RECHAZA con el motivo impreso en vez de quedarse colgada hasta la
+ *    siguiente vez que el grupo tenga ficha.
+ * 4) "counts only for that action": el delta de modo ACCION se borra en
+ *    `spendGroupToken`, igual que hace `tripled` con 234. No puede sobrevivir a
+ *    la accion que justifico jugarla.
+ * 5) "the bonus lasts until the end of the current turn": `untilTurn=S.turn`.
+ *    Es el mismo criterio que uso 355 "Resistance is Useless!" ("For the rest
+ *    of the current turn"), y lovacianza `expireTurnFlags()` en el mismo sitio,
+ *    de modo que las tres caducidades por turno del motor se vacian juntas.
+ * 6) "does not count toward Goals" NO SE IMPLEMENTA, y se declara en vez de
+ *    inventarse un campo: para cumplirlo haria falta saber QUE ATAQUE uso este
+ *    bonus, es decir un registro de actuaciones, que es el mismo hueco que
+ *    bloquea 377 (L3b) y el "permanently out of public life" de 415 (L5a). El
+ *    grupo sigue muriendo por `destroyGroup` exactamente igual que cualquier
+ *    otro, que es la parte del texto que si se cumple.
+ * 7) "any Weird group you control": el filtro es la alineacion WEIRD (no un
+ *    atributo). El mazo tiene 13 atributos y 10 alineaciones, y `weird` es una
+ *    alineacion: 22 grupos del mazo la tienen, asi que el calificador nunca es
+ *    vacio. Es el mismo contrato que `giftAlign` de L1.
+ */
+const L5C_FX = {
+  'albino alligators': {
+    kind: 'group_boost_timed',
+    align: 'weird',
+    value: 10,
+    t: 'Play this card at any time to give +10 Power or Resistance (your choice) to any Weird group you control. If used with an action, it must be played when that action is first declared, and counts only for that action. If used for defense, the bonus lasts until the end of the current turn and does not count toward Goals.'
+  }
+};
+const L5C_FXN = {};
+for (const k in L5C_FX) {
+  L5C_FXN[norm(k)] = L5C_FX[k];
+}
+
+/* ============================================================================
+ * L6 - NEGAR UN EVENTO: las cartas que dicen "that card has no effect",
+ * "that attack becomes a failure" o "he must return it to his hand".
+ *
+ * Al escribir este bloque se ha medido el `type` de las 10 cartas de L6 y el
+ * resultado NO es el que plan.md asumia. Se reparte asi:
+ *
+ *   210 Botched Contact .................. IMPLEMENTADA (takeover_return)
+ *   359 Sabotage ......................... IMPLEMENTADA (takeover_return)
+ *   278 Hex ............................... IMPLEMENTADA (resource_destroy)
+ *   259 Foiled! .......................... IMPLEMENTADA (force_discard_exposed)
+ *   356 Revolution! ....................... ANADIDA a la familia attack_boost
+ *                                            que YA existe de L5a (§46), con
+ *                                            dos calificadores nuevos
+ *
+ *   224 Computer Security ............... se aplaza
+ *   230 Cover-Up ........................ se aplaza
+ *   283 Hoax ............................ se aplaza
+ *   363 Secrets Man Was Not Meant to Know  se aplaza
+ *   222 Combined Disasters .............. se aplaza
+ *   372 Spasm of Violence ............... se aplaza
+ *
+ * Motivo UNICO de los cuatro aplazados, y no es de este lote: las cuatro dicen
+ * "that card has no effect" sobre una Plot YA RESUELTA. Deshacer un
+ * efecto ya aplicado es exactamente el hueco que ya bloqueo la carta 276 Hat
+ * Trick en §38.5 ("necesita un undo transaccional de una Plot ya resuelta").
+ * En este motor `E.playPlot` es monofasico: el mismo `switch` que valida la
+ * carta ejecuta su efecto y solo entonces devuelve. Convertirlo en bifasico
+ * (anunciar / aplicar, como ya se hizo dos veces con los ataques en §33 y §37)
+ * es un refactor de las 25 ramas del switch con riesgo de regresion real, y
+ * ademas habria que devolver el coste de la carta anulada ("except to discard
+ * the cards and actions spent on it", inwo_rules_extracted.txt:924-931). Se
+ * declara la limitacion y se sigue; no se finge una semiproximidad.
+ *
+ * Motivo UNICO de 222 y 372: "You must play both of the Disaster cards, as
+ * well" es una combinacion de cartas en una sola jugada. El motor juega una
+ * carta por llamada. Es el mismo subsystem que necesita la carta 254 Faction
+ * Fight ("Played along with a duplicate card"), que ya esta declarado
+ * aplazado, asi que las tres van juntas al lote de duplicados.
+ *
+ * INTERPRETACIONES DECLARADAS (7):
+ *
+ *  1. "when a rival plays a Group for an automatic takeover" se engancha en
+ *     `E.autoTakeover` DESPUES de que `placeUnder` tenga exito, que es cuando
+ *     el grupo esta en la mesa y por tanto "esa Group to his hand" tiene
+ *     sentido. No se engancha al INTENTO fallido: en este motor un takeover
+ *     fallido lanza y la carta se queda en la mano del rival, asi que devolverla
+ *     seria un no-op. (La misma razon por la que 412 Vultures quedo bloqueada
+ *     en §38.5.)
+ *
+ *  2. 210 y 359 comparten `kind` porque su efecto es IDENTICO: el grupo vuelve
+ *     a la mano de quien lo puso. Solo se diferencian en el coste y en un
+ *     efecto adicional. Es el mismo criterio que las 11 cartas de L1
+ *     TOKEN-GIFT y las 2 de L4 TOKEN-STRIP.
+ *
+ *  3. 210 "pick another card for automatic takeover that turn" NO se anula el
+ *     gasto del takeover: el takeover sigue CONSUMIDO por el rival y lo que se
+ *     le permite es elegir OTRA carta. Se declara asi porque es lo que dice el
+ *     texto, y porque 359 (que si dice "cannot make an automatic takeover that
+ *     turn") es la que bloquea de verdad.
+ *
+ *  4. 359 "group(s) with total Power of 6 or more, at least one of which shares
+ *     an alignment with the Group your rival is trying to control" se comprueba
+ *     contra la CARTA que se estaba colocando, leida del nodo recien creado. Y
+ *     "either your Illuminati" se paga con UNA ficha, igual que en las nueve
+ *     cartas force_align de §40.
+ *
+ *  5. 278 "A Magic Resource" NO se puede filtrar: el mazo no tiene clasificacion
+ *     de Resources (34 de 35 tienen `subtype: null`, medido en L4). Se declara
+ *     y el objetivo es cualquier Resource del rival. Es el mismo motivo por el
+ *     que en L4 se solto el "Gadget Resource" de la carta 270. En cambio el
+ *     COSTE si es filtrable, porque "a Magic group" usa el ATRIBUTO `magic`,
+ *     que si existe en el vocabulario de 13.
+ *
+ *  6. 259 descarta por `discardPlot()`, el unico punto por el que una Plot
+ *     entra en la pila (P1-025). Consecuencia deliberada: la Plot que se ve
+ *     obligada a descartar Foiled! SI puede ser robada despues por Stealing the
+ *     Plans, que dice "immediately after someone else discards a Plot card".
+ *     By-passing el punto unico habria creado una segunda via de descarte.
+ *
+ *  7. 259 dice "one exposed Goal card", asi que el filtro es `subtype==='goal'`
+ *     DENTRO de `pl.exposedPlots`, no "cualquier Plot expuesta". Se comprueba
+ *     al responder, no al cerrar, para que la ventana pueda seguir abierta para
+ *     otro jugador igual que hace Embezzlement con su pago.
+ *
+ * LIMPIEZA DE OCR en los `t:`: se deshacen los cortes de linea ("privi-leged")
+ * y las letras duplicadas tipicas del OCR ("nval" -> "rival", "lliluminati" ->
+ * "Illuminati"). El texto impreso es el de la carta; el OCR no es la fuente.
+ * ========================================================================== */
+const L6_FX = {
+  'botched contact': {
+    kind: 'takeover_return', alsoBlocks: false, payAnyGroup: true,
+    t: 'Use this card when a rival plays a Group for an automatic takeover. He must return that Group to his hand, and pick another card for automatic takeover that turn. Playing this card requires an action from one of your groups. Requires Action'
+  },
+  'sabotage': {
+    kind: 'takeover_return', alsoBlocks: true, payPower: 6, payShareAlign: true,
+    t: 'Use this card when a rival plays a Group for an automatic takeover. He must return that Group to his hand. He cannot make an automatic takeover that turn. Playing this card requires an action(s) from either your Illuminati, or group(s) with total Power of 6 or more at least one of which shares an alignment with the Group that your rival is trying to control. Requires Action'
+  },
+  'hex': {
+    kind: 'resource_destroy', notDuringPrivileged: true, payAttr: 'magic', payMinPower: 3,
+    t: 'Play this card at any time except during a privileged attack. A Magic Resource controlled by a rival is destroyed. Discard its card. This card requires an action by your Illuminati, or by a Magic group with a Power of 3 or more. Requires Magic or Illuminati Action'
+  },
+  'foiled': {
+    kind: 'force_discard_exposed', requiresActionFromAttr: 'media',
+    t: 'You may force any rival to discard one exposed Goal card. This card may be used at any time, but requires an action from a Media group. Requires Media Action'
+  }
+};
+const L6_FXN = {};
+for (const k in L6_FX) {
+  L6_FXN[norm(k)] = L6_FX[k];
+}
+
+
 function plotSub(name) {
   const n = norm(name);
   if (n.startsWith('newworldorder') || /(^| )nwo( |$)/.test(n)) return 'nwo';
@@ -1392,7 +1927,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key];
   if (pfx) {
     rec.effect = pfx;
     rec.subtype = pfx.kind;

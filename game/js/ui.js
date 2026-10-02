@@ -810,7 +810,7 @@ function isOwnNode(uid) {
  *
  * La lista se compara contra `kind`, no contra ids de carta, por el mismo motivo
  * documentado en la lista `instant` del motor. */
-var NO_TARGET_KINDS = ['token_gift'];
+var NO_TARGET_KINDS = ['token_gift', 'attack_boost'];
 function plotNeedsTarget(c) {
   return NO_TARGET_KINDS.indexOf((c.effect || {}).kind) < 0;
 }

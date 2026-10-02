@@ -467,6 +467,208 @@ if (e.giftAttr) {
       }
     });
   }
+  if (e.witherAttr) {
+    /* L3b — 418 World Hunger: "All GREEN groups lose their Action tokens". Un
+       atributo nuevo necesita rama propia o queda SIN VALIDAR en silencio (el
+       defecto de clase "el dato existe pero vive en otro sitio"). */
+    checkedFields.witherAttr = true;
+    const n = groupsWithAttr(e.witherAttr).length;
+    ok(n > 0, 'carta "' + c.name + '" apaga las fichas de los grupos con ' + e.witherAttr +
+               ' pero ningun grupo del mazo lo tiene -> la carta no hace NADA -> INJUGABLE');
+  }
+  if (e.alignFromTarget) {
+    /* L3b — 268 Good Polls: la alineacion se saca de un grupo, asi que la
+       comprobacion de que el "cualquier alineacion elegida" tiene sentido es que
+       el mazo tiene grupos con alineaciones variedas. */
+    checkedFields.alignFromTarget = true;
+    ok(GROUPS.some(g => (g.alignments || []).length >= 1),
+       'carta "' + c.name + '" elige la alineacion a partir de un grupo, pero ningun grupo del mazo tiene alineaciones');
+  }
+  if (e.mul) {
+    /* L3b — 268/234 multiplican por un numero: tiene que ser > 1 o la carta
+       "triples" estaria multiplicando por uno. */
+    checkedFields.mul = true;
+    ok(typeof e.mul === 'number' && e.mul > 1,
+       'carta "' + c.name + '" declara mul=' + e.mul + ', que no multiplica nada');
+  }
+  /* L4 - TOKEN-STRIP. Un calificador sin rama aqui queda SILENCIOSAMENTE sin
+   * validar (la misma clase que el campo muerto A.privilege de P1-026 y que
+   * el E.playResource sin dispatch de P1-031): el gate solo comprueba los
+   * nombres que reconoce, asi que un campo nuevo sin rama no da error, no
+   * aparece en checkedFields y nadie se entera. */
+  if (typeof e.stripAttr === 'string') {
+    checkedFields.stripAttr = true;
+    ok(groupsWithAttr(e.stripAttr).length > 0,
+      'ningun grupo del mazo tiene el atributo ' + e.stripAttr + ' que la carta exige -> la carta nunca hace nada -> INJUGABLE');
+  }
+  if (typeof e.stripPlayers === 'string') {
+    checkedFields.stripPlayers = true;
+    ok(e.stripPlayers === 'all' || e.stripPlayers === 'rival+own',
+      'stripPlayers="' + e.stripPlayers + '" no es un alcance que el motor sepa ejecutar (se esperan "all" o "rival+own")');
+  }
+  if (e.canTakeResource) {
+    checkedFields.canTakeResource = true;
+    var resCount = 0;
+    for (var rc = 0; rc < C.cards.length; rc++) if (C.cards[rc] && C.cards[rc].type === 'resource') resCount++;
+    ok(resCount > 0,
+      'la carta declara un modo de robo de Resource pero el mazo no tiene ninguno -> ese modo es decorativo');
+  }
+    /* --- L5a: boost de ataque. Cada calificador se valida, porque un campo
+     * nuevo sin rama aqui NO se valida en silencio (P1-026 / P1-031). --- */
+    if (e.boostValue != null) {
+      checkedFields.boostValue = true;
+      ok(typeof e.boostValue === 'number' && e.boostValue > 0,
+        c.name + ' - boostValue debe ser un numero positivo, no ' + JSON.stringify(e.boostValue));
+    }
+    if (e.boostBySubtype && typeof e.boostBySubtype === 'object') {
+      checkedFields.boostBySubtype = true;
+      var bk = Object.keys(e.boostBySubtype);
+      ok(bk.indexOf('other') >= 0,
+        c.name + ' - boostBySubtype necesita la clave "other" para los objetivos que no son el subtypespecial, si no la carta no aplica a nada');
+      bk.forEach(function (k) {
+        if (k === 'other') return;
+        ok(groupsOfSubtype(k).length > 0,
+          c.name + ' - boostBySubtype declara el subtype "' + k + '" y el mazo no tiene ninguna carta de ese subtipo');
+        ok(typeof e.boostBySubtype[k] === 'number' && e.boostBySubtype[k] > 0,
+          c.name + ' - el valor de boostBySubtype.' + k + ' debe ser un numero positivo');
+      });
+    }
+  if (e.atkType) {
+    checkedFields.atkType = true;
+    /* 'any' es un valor IMPRESO legitimo: 356 Revolution! dice "on any attack,
+     * either to destroy or control". El motor lo respeta porque su comprobacion
+     * es `if (eff.atkType && A.type !== eff.atkType)`, y con 'any' la segunda
+     * mitad nunca se cumple. Lo que NO se permite es un valor que no exista en
+     * el vocabulario, porque entonces la carta no encajaria en nada. */
+    ok(e.atkType === 'control' || e.atkType === 'destroy' || e.atkType === 'any',
+      c.name + ' - atkType debe ser "control", "destroy" o "any", no ' + JSON.stringify(e.atkType));
+  }
+    if (e.illumOnly) {
+      checkedFields.illumOnly = true;
+      ok(C.cards.some(function (x) { return x && x.type === 'illuminati'; }),
+        c.name + ' - exige un ataque de tu Illuminati pero el mazo no tiene ninguna carta de tipo Illuminati');
+    }
+    if (e.targetCardId) {
+      checkedFields.targetCardId = true;
+      var tcId = C.cards.find(function (x) { return x && x.id === e.targetCardId; });
+      ok(!!tcId,
+        c.name + ' - el calificador nombra la carta "' + e.targetCardId + '" y esa carta no existe en el mazo -> el calificador nunca puede cumplirse');
+      ok(!tcId || tcId.type === 'group',
+        c.name + ' - el objetivo del ataque tiene que ser un grupo, y "' + e.targetCardId + '" es de tipo ' + (tcId ? tcId.type : '?'));
+    }
+    if (e.attackerAttr) {
+      checkedFields.attackerAttr = true;
+      ok(groupsWithAttr(e.attackerAttr).length > 0,
+        c.name + ' - exige que el ataque salga de un grupo ' + e.attackerAttr + ' y el mazo no tiene ninguno');
+    }
+  /* L5b -- 255 Fear and Loathing. El campo `alignMag` REEMPLAZA la constante
+   * +/-4 con la que computeStrength valora las alineaciones comparadas. Dos
+   * comprobaciones, y la segunda es la que de verdad importa:
+   *   1. que sea un numero utilizable, y
+   *   2. que sea DISTINTO del 4 por defecto. Un `alignMag: 4` seria una carta
+   *      que se juega, se expone, ocupa mesa y logged, y no cambia NADA: el
+   *      mismo defecto que P1-026 (un campo que existe y nadie lee) y que
+   *      P1-031 (un punto de entrada que no despacha). El valor tiene que
+   *      mover la aguja. */
+  if (typeof e.alignMag !== 'undefined') {
+    checkedFields.alignMag = true;
+    ok(typeof e.alignMag === 'number' && e.alignMag > 0,
+      'X - alignMag debe ser un numero positivo -> ' + JSON.stringify(e.alignMag));
+    ok(e.alignMag !== 4,
+      'X - alignMag=' + e.alignMag + ' seria igual al 4 por defecto: la carta no cambiaria la regla');
+  }
+
+  /* L5c (189 Albino Alligators) — `align` a NIVEL SUPERIOR de la carta. Ojo: las
+   * clausulas de `moves[]` ya usan `m.align`, que valida la rama de abajo; este
+   * `e.align` es un calificador de primer nivel y la puerta lo ignoraria en
+   * silencio si no tuviera rama propia (P1-026 / P1-031). Y lo que se comprueba
+   * es que ALGUN grupo del mazo lo cumpla, no solo que la palabra exista: una
+   * alineacion que nadie tiene haria la carta INJUGABLE. */
+  if (typeof e.align === 'string') {
+    checkedFields.align = true;
+    ok(groupsWithAlign(e.align).length > 0,
+      'X - la carta exige align=' + e.align + ' y ningun grupo del mazo la tiene -> INJUGABLE');
+  }
+
+    /* L6 -- los calificadores de las cartas que NIEGAN un suceso. Se comprueban
+     * todos por el mismo motivo de siempre: un calificador que el motor lee
+     * pero que la puerta no valida se puede quedar VACIO sin que nadie se entere
+     * (la clase de P1-026 / P1-031). El criterio no es "el campo existe" sino
+     * "el coste es pagable de verdad con este mazo": si ninguna carta del mazo
+     * cumple el filtro, la carta no se puede jugar nunca. */
+    if (e.payAnyGroup) {
+      checkedFields.payAnyGroup = true;
+      ok(typeof e.payAnyGroup === 'boolean', 'payAnyGroup debe ser booleano: ' + e.payAnyGroup);
+      ok(GROUPS.length > 0, c.name + ': "una accion de uno de tus grupos" no se puede pagar: el mazo no tiene grupos');
+    }
+    if (e.alsoBlocks) {
+      checkedFields.alsoBlocks = true;
+      ok(typeof e.alsoBlocks === 'boolean', 'alsoBlocks debe ser booleano: ' + e.alsoBlocks);
+    }
+    if (e.payPower) {
+      checkedFields.payPower = true;
+      ok(typeof e.payPower === 'number' && e.payPower > 0,
+        c.name + ': payPower debe ser un numero positivo (Poder total exigido), no ' + e.payPower);
+      var totalPP = 0;
+      GROUPS.forEach(function (g) { if (typeof g.power === 'number') totalPP += g.power; });
+      ok(totalPP >= e.payPower,
+        c.name + ': pide ' + e.payPower + ' de Poder en total y la suma del Poder IMPRESO de todo el mazo es ' + totalPP);
+    }
+    if (e.payShareAlign) {
+      checkedFields.payShareAlign = true;
+      /* OJO: payShareAlign es un BOOLEANO, no el nombre de una alineacion. El
+       * motor lo lee como "el grupo que paga tiene que compartir AL MENOS UNA
+       * alineacion con el grupo que el rival esta tomando posesion), y las
+       * alineaciones de referencia viajan en `ev.data.aligns` (las del grupo
+       * recien colocado), no en un calificador de la carta. Por eso el chequeo
+       * de no-vacuidad NO puede ser "esta alineacion existe en el mazo" como en
+       * el resto de calificadores: lo que tiene que existir es un par de grupos
+       * del mazo que compartan alguna alineacion, o la exigencia no la podria
+       * cumplir nunca. */
+      ok(typeof e.payShareAlign === 'boolean',
+        c.name + ': payShareAlign debe ser booleano (no el nombre de una alineacion), no ' + e.payShareAlign);
+      var sharePair = null;
+      for (var ga = 0; ga < GROUPS.length && !sharePair; ga++) {
+        for (var gb = ga + 1; gb < GROUPS.length && !sharePair; gb++) {
+          var la = GROUPS[ga].alignments || [], lb = GROUPS[gb].alignments || [];
+          for (var li = 0; li < la.length; li++) {
+            if (lb.indexOf(la[li]) >= 0) { sharePair = [GROUPS[ga].name, GROUPS[gb].name, la[li]]; break; }
+          }
+        }
+      }
+      ok(!!sharePair,
+        c.name + ': ningun par de grupos del mazo comparte alineacion, asi que "al menos uno comparte alineacion" no se puede cumplir nunca -> INJUGABLE');
+    }
+    if (e.payAttr) {
+      checkedFields.payAttr = true;
+      ok(groupsWithAttr(e.payAttr).length > 0,
+        c.name + ': payAttr="' + e.payAttr + '" no lo tiene ningun grupo del mazo -> el coste nunca se puede pagar -> INJUGABLE');
+    }
+    if (e.payMinPower) {
+      checkedFields.payMinPower = true;
+      ok(typeof e.payMinPower === 'number' && e.payMinPower > 0,
+        c.name + ': payMinPower debe ser un numero positivo, no ' + e.payMinPower);
+      var bigPP = 0;
+      GROUPS.forEach(function (g) { if (typeof g.power === 'number' && g.power >= e.payMinPower) bigPP++; });
+      ok(bigPP > 0,
+        c.name + ': ningun grupo del mazo tiene Poder impreso >= ' + e.payMinPower + ' -> el coste nunca se puede pagar -> INJUGABLE');
+    }
+    if (e.notDuringPrivileged) {
+      checkedFields.notDuringPrivileged = true;
+      ok(typeof e.notDuringPrivileged === 'boolean', 'notDuringPrivileged debe ser booleano: ' + e.notDuringPrivileged);
+    }
+    if (e.boostVsDictatorship) {
+      checkedFields.boostVsDictatorship = true;
+      ok(typeof e.boostVsDictatorship === 'number' && e.boostVsDictatorship > 0,
+        c.name + ': boostVsDictatorship debe ser un numero positivo, no ' + e.boostVsDictatorship);
+      ok(C.cards.some(function (x) { return x && x.effect && x.effect.kind === 'dictatorship'; }),
+        c.name + ': boostVsDictatorship necesita que exista el estado node.dictatorship (P1-028, §40)');
+    }
+    if (e.payNotTheAttackers) {
+      checkedFields.payNotTheAttackers = true;
+      ok(typeof e.payNotTheAttackers === 'boolean', 'payNotTheAttackers debe ser booleano: ' + e.payNotTheAttackers);
+    }
+
 if (e.targetSubtype) {
     checkedFields.targetSubtype = true;
     ok(groupsOfSubtype(e.targetSubtype).length > 0,
@@ -679,6 +881,7 @@ for (const c of C.cards) {
   (e.requireAttrAny || []).forEach(v => { if (typeof v === 'string') usedAttrs.add(v); });
   /* L1: `giftAttr` tambien es un atributo exigido por una carta clasificada. */
   if (typeof e.giftAttr === 'string') usedAttrs.add(e.giftAttr);
+if (typeof e.witherAttr === 'string') usedAttrs.add(e.witherAttr);
 }
 for (const a of Array.from(usedAttrs).sort()) {
   const n = groupsWithAttr(a).length;

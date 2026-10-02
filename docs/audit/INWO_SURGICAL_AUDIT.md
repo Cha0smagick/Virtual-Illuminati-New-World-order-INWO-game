@@ -3344,3 +3344,1245 @@ momento exacto en que esa carta deja de ser `unverified`.
 - Cerrado: F1..F4. `test_fase2_rules.js` estable en 60/60.
 - Sigue pendiente lo de §42.11 (L3b, 34 Resources, L4..L16, Fase 3, P1-DATA-03, las 5 cartas sin
   transcripcion secundaria).
+---
+
+## 44. L3b - LAS CUATRO CARTAS QUE plan.md APLAZO (y P1-032: los Illuminati no tienen alineaciones)
+
+### 44.1 Hallazgo
+
+   `plan.md` lo tenia L3b como "cinco cartas, cada una con su propio motivo". Las
+cuatro de este lote se implementaron; la quinta se declara NO implementada con un
+motivo tecnico, no por prisa (44.6). Las cuatro tienen un **kind propio** porque
+no comparten mecanica: el criterio de `plan.md` §0.1 es un kind unico por
+mecanica, y aqui no hay ni una repetida.
+
+| idx | carta | kind | que hace |
+|---|---|---|---|
+| 268 | Good Polls | `def_triple` | x3 a la DEFENSA de todos tus grupos de UNA alineacion elegida, hasta el comienzo de tu proximo turno |
+| 418 | World Hunger | `token_wither` | dos frases: los verdes pierden sus fichas y no pueden conseguir mas; los liberales y/o naciones pierden 2 de Poder |
+| 234 | Currency Speculation | `tripled_once` | x3 al Poder O a la Resistencia de UN banco tuyo, para su proxima accion o defensa |
+| 355 | Resistance is Useless! | `res_nullify` | la Resistencia del objetivo a 0 hasta el final del turno, y sin el bonus del maestro |
+| 377 | Sucked Dry and Cast Aside! | (ninguno) | x4 por una accion y luego destruido sin contar para ninguna meta: **NO implementada**, ver 44.6 |
+
+Las cuatro son `type=plot`, asi que `E.playPlot` es el punto de entrada correcto
+en los cuatro casos. (La comprobacion se hizo antes de escribir nada, porque 344
+ya demostro que una carta puede ser Resource y entonces el punto de entrada
+equivocado es `E.playResource`.)
+
+### 44.2 P1-032 - los dieciocho Illuminati no tienen alineaciones, y eso mata una regla oficial
+
+**Este es el hallazgo del lote y no lo busco nadie: loolio la regresion de 355.**
+
+355 dice textualmente "The target also gets no **Resistance bonus from its masters
+alignments** or special abilities. But **proximity to its ruling Illuminati still
+gives the normal +5 or +10**". Para poder comprobar que la carta apaga la primera
+mitad y CONSERVA la segunda, hacia falta un objetivo que de verdad tuviera bonus
+del maestro. No habia ninguno, y la causa es de datos:
+
+```
+los 18 Illuminati del mazo (idx 167-184) tienen TODOS  alignments: []
+```
+
+`closenessDefenseBonus()` (el helper que extrajo L2 del bloque en linea de
+`computeStrength`) arranca asi:
+
+```js
+  var mal=alignsOf(mc);
+  if(!mal.length)return 0;
+```
+
+Con `aligns: []` en las dieciocho cartas, ese `return 0` es SIEMPRE el que se
+ejecuta. Consecuencias, las dos verificadas:
+
+1. El **+4 por alineacion compartida con su Illuminati** -regla oficial, la
+   "proximity/defense bonus for closeness to the Illuminati" que las reglas
+   enuncian en el ataque a controlar- **no puede ocurrir jams** en este mazo.
+2. El componente "Add bonuses for its closeness to the Illuminati if it belongs
+   to a rival!" del coste de las **nueve cartas de L2** vale **siempre 0**: el
+   `case 'force_align'` suma un `closenessDefenseBonus` que nunca suma nada.
+
+O sea: el mecanismo esta escrito, tested en su forma, y es inejecutable porque
+falta el dato. Es el mismo defecto de clase que P1-026 (`A.privilege` declarado
+y nunca leido) y que P1-031 (`E.playResource` sin dispatch): **el consumidor
+existe, el dato no**. No se ha inventado aqui ningun dato: las alineaciones
+oficiales de las nueve sociedadesantau son un dato que hay que recuperar de una
+fuente fiable, y eso es trabajo de datos, no de motor. Queda declarado en 44.9.
+
+La regresion de 355 hace esto explicito y **no vacio**: durante el bloque presta
+al maestro una alineacion (`['fanatic']`), comprueba que el bonus aparece (+4),
+comprueba que 355 lo apaga (0), y despues **restaura el mazo**. Sin ese prestamo
+la asercion "el bonus del maestro es 0" pasaria siempre y no probaria nada.
+
+### 44.3 Las siete interpretaciones declaradas
+
+Ninguna de las cuatro cartas tiene un fallo oficial que la arbitrage, asi que el
+texto impreso es la unica fuente y cada decision dudosa queda escrita en el
+bloque `L3B_FX` de `gen_cards.js`:
+
+1. **Alcance de 268.** "all your groups of any **chosen** alignment": el jugador
+   elige UNA alineacion, no un grupo. Pero el flujo de la UI elige un NODO, asi
+   que la eleccion se hace apuntando a cualquiera de los grupos propios de esa
+   alineacion y el motor toma la **primera** de sus `nodeAligns`. Es arbitrario
+   y por eso se declara; la alternativa (un `opts.align` propio) obligaria a
+   construir un segundo flujo de seleccion en la UI para una sola carta.
+2. **"for defense only"** se aplica SOLO a la defensa: en un ataque a
+   **controlar** se triplica la Resistencia, y en un ataque a **destruir** se
+   triplica el Poder con el que se defiende el objetivo, porque ahi se defiende
+   con su Poder y no con su Resistencia (regla de §25). `selfDef` (la
+   auto-defensa) queda **excluido**, declarado: es un caso que las reglas
+   mencionan aparte y la carta no lo nombra.
+3. **Caducidad sin campo nuevo.** Ni 268 ni 355 necesitan un campo en `S`: el
+   motor ya lleva `S.turn`, que se incrementa en `E.beginTurn`, y en un turno
+   circular "mi proximo turno" es `S.turn + S.players.length`. Un unico
+   `expireTurnFlags()` las caduca en el **unico** sitio donde el turno avanza.
+4. **"your choice" de 234** se resuelve con `opts.stat` (`'power'` por defecto,
+   que es la primera mitad de la frase). "for its next action or defense": el
+   triple se borra al **gastar la ficha** del grupo (su accion) y al defendirse
+   de verdad, este ultimo solo con `computeStrength(true)` y **nunca** en
+   `E.previewStrength()`, que solo ensena numeros y no puede gastar una carta.
+5. **355 y el bonus del maestro** se implementa con un flag propio
+   (`noMasterAlignDefense`) que `computeStrength` consulta antes de sumar
+   `closenessDefenseBonus`. `positionBonus` **no se toca**: los +5/+10 de
+   proximidad son justo lo que la carta dice que se conserva.
+6. **418 son dos mecanismos en una carta.** Lo de las fichas es un predicado
+   NUEVO (`noTokens`) con **cuatro** consumidores (44.5). Lo de "or use their
+   special abilities" **no se implementa**: el motor no tiene sistema de
+   habilidades especiales por grupo, asi que no hay nada que apagar. Se declara
+   como no-op, no como overlook.
+7. **418 "Groups which are Liberal and/or Nation"** usa la misma gramatica de
+   clausulas de L3a (`moves`) pero con `scope:'all'`, porque el texto dice "have
+   their Power reduced by 2" **sin "your"**. Es el reverso de la interpretacion
+   ALCANCE de L3a: alli se restringio a los grupos del jugador porque las cartas
+   decia "all X groups" siendo cartas de refuerzo propio; aqui el texto es
+   inequivoco y el alcance es universal.
+
+### 44.4 Campos de nodo nuevos (y por que son seis y no uno)
+
+| campo | lo escribe | lo lee |
+|---|---|---|
+| `defTriple:{name,untilTurn}` | 268 | `computeStrength`, ramas de control y destruccion |
+| `resNullify:{name,untilTurn}` + `noMasterAlignDefense` | 355 | `nodeResistance` (PRIMERO, para ganar a un Ango) y `computeStrength` |
+| `tripled:{name,stat}` | 234 | `curPower` (stat `power`) y `nodeResistance` (stat `resistance`) |
+| `noTokens` | 418 | `noTokensFlag`, cuatro sitios |
+| `burstMul:{name,mul}` | (377, no implementado) | `curPower` |
+
+Todos van al **NODO** y no a la carta, por el mismo motivo que `powerMods` y
+`resistanceMods`: su duracion es la del grupo, y un link permanente tiene que
+poder morir con el. `resNullify` se comprueba **antes** que `resistanceOverride`
+a proposito: `resistanceOverride` es un valor absoluto (Ango pinza la
+Resistencia en 1) y "su Resistencia es 0" tiene que ganar a un pin; si no, un
+grupo con Ango seria inmune a esta carta.
+
+### 44.5 `noTokensFlag`: un predicado, cuatro consumidores
+
+El peligro de 418 no era escribir el predicado, era **olvidar un consumidor**.
+418 dice "cannot get new ones", y el sitio donde un grupo recupera ficha
+automaticamente es el reparto de `E.beginTurn` ("action token on every own group
+lacking one"). Si ese cuarto sitio no consulta el predicado, un grupo verde
+apagado **recupera su ficha al comienzo del turno siguiente** y la carta no
+dura nada. Los cuatro:
+
+1. `spendGroupToken` - no puede gastar.
+2. `firstUsableAid` - no se le ofrece como pagador.
+3. `case 'token_gift'` - no recibe el reparto de TOKEN-GIFT.
+4. `E.beginTurn` - no recupera la ficha al empezar el turno.
+
+El predicado es `noTokens||devastated||paralyzed||zapped||actionStripped`: las
+cuatro ultimas condiciones ya existian repartidas por `firstUsableAid` y
+TOKEN-GIFT, y la unica condicion nueva es `noTokens`. Unificarlo es lo que
+impide que la proxima carta que apague algocriba su propia lista.
+
+### 44.6 377 Sucked Dry and Cast Aside! - NO implementada, con motivo
+
+Su texto son dos frases que van juntas: "Multiply the Power of one of your
+groups, except the Illuminati, by 4 **for one action only**. It is **then**
+considered destroyed, but does not count toward any Goal."
+
+El unico sitio donde el motor sabe que un grupo ha gastado su accion es
+`spendGroupToken`, y ese helper se llama desde **dentro** de recorridos `walk`
+(`force_align` recorre la estructura gastando fichas) y desde el registro de
+ataques. `destroyGroup` hace `detach()`, que **muta el array `children` por el
+que ese `walk` esta iterando**: destruir ahi puede hacer que el recorrido se
+salte un hijo. Dejar el x4 sin destruir es peor: seria una carta a medias, que
+es exactamente lo que este audit existe para matar.
+
+Lo que hace falta es una cola de destruccion diferida (`S.pendingBurstDestroy`)
+con un punto de vaciado claro (final de `E.resolveAttack` y de `E.endTurn`), y
+eso es un lote propio. `curPower` ya sabe multiplicar por `burstMul`, asi que la
+mitad del trabajo esta hecha; **declarado, no olvidado**. Se declara en el backlog.
+
+### 44.7 El defecto quemetio la propia regresion (y que el motor no tiene)
+
+Sustitui el filtro de `firstUsableAid` por `noTokensFlag` y `npm test` fallo con
+`Error: Sin Action token en Texas` en un bloque de P1-009. La causa era mia y es
+sutil: `noTokensFlag` **no** incluye "no tiene fichas", porque los dos
+distribuidores de fichas (TOKEN-GIFT y el reparto de `beginTurn`) lo consultan
+justamente para **darlas**. `firstUsableAid`, en cambio, busca un grupo que
+**gaste** una ficha, asi que su "sin ficha" sigue siendo obligatorio:
+
+```js
+    if(!n.tokens||noTokensFlag(n))return;   /* el "sin ficha" va delante */
+```
+
+Leccion: cuando se centraliza un predicado que varias Familias usan con
+**sentidos distintos** (quien no puede tener vs. quien no puede gastar), el
+predicado central no puede contener la parte que solo le importa a una de ellas,
+y el sitio que si la necesita la anade explicitamente.
+
+### 44.8 Las cuatro trampas de fixture de este lote (todas de la clase §41)
+
+1. **Un banco con `power === null`.** `banks[0]` resulto ser uno de los grupos
+   sin Poder impreso, asi que la asercion "el Poder se triplica" comparaba
+   `0 === 0 * 3` y pasaba **sin comprobar nada**. Se eligio un banco con Poder
+   impreso positivo y se anadio un `ok(bankP0 > 0, ...)` de guarda, para que la
+   asercion no pueda volver a ser vacua.
+2. **`pl.illumId` es un ID, no un indice.** `C.cards[E._raw().players[1].illumId]`
+   es `undefined` y revienta. Se traduce con `idxOfId(...)`, que ya existe.
+3. **`E.beginTurn` exige `S.phase==='begin'`.** Para medir caducidades hay que
+   pasar por la API real, `E.endTurn()`. El bloque usa un `advance(n)` que
+   **comprueba que el numero de turno avanza de verdad** y devuelve `false` si
+   no: si el motor dejara de avanzar, la prueba de caducidad pasaria por falso
+   (el flag seguiria vivo "porque nadie dio vueltas") en vez de fallar.
+4. **`declareAttack` llama a `requireOwnMain` y GASTA la ficha del atacante.**
+   El primer borrador abria un ataque, resolvia, y abria otro para la segunda
+   lectura de `previewStrength`: fallaba con "Sin Action token" y, peor, dependia
+   de los dados (si el ataque ganaba, el grupo desaparecia y las aserciones se
+   quedaban sin objeto). Ahora cada escenario abre **un solo** ataque, las dos
+   lecturas se hacen con el ataque abierto y el `resolveAttack` va al final.
+
+### 44.9 Verificacion
+
+- `node --check` limpio en `gen_cards.js`, `game/js/engine.js`,
+  `test_fase2_rules.js` y `test_fase4_cards.js`; 0 caracteres CJK o U+FFFD.
+- `node gen_cards.js` -> `texto secundario recuperado del HTML de Scribd: 14` +
+  `written 421 {"group":167,"illuminati":18,"plot":201,"resource":35} verified-groups 33`.
+- **FASE 4 COVERAGE PASSED**: 107 -> **111** cartas clasificadas (exactamente +4),
+  141 -> **137** Plots/Resources sin mecanica (exactamente -4),
+  `implemented-pending-engine` 88 -> **92**, 11 cartas bloqueadas congeladas.
+  `checkedFields` 18 -> **21** campos (anadidos `witherAttr`, `alignFromTarget`,
+  `mul`, con rama propia: un calificador nuevo sin rama queda **sin validar** en
+  silencio, que es el defecto de clase de P1-026/P1-031).
+- Regresion nueva `/* ---------- L3b`: 4 escenarios, **56 aserciones**, todas en
+  verde. Reparto: 268 = 15 (los dos grupos de la alineacion, el tercero no, el
+  informe, la defensa se triplica de verdad 3 -> 9, la caducidad en dos turnos, la
+  supervivencia en el primero); 418 = 13 (marca y pierde la ficha, el rival
+  tambien, un no-verde intacto, -2 a liberal y nacion, Poder Bajado de verdad, y
+  el cuarto consumidor: al empezar el turno el verde NO recupera ficha mientras
+  el grupo de control SI); 234 = 12 (no-banco rechazado por su atributo, x3 real
+  de Poder, consumo al actuar, la vista previa NO gasta, y el consumo al
+  defenderse); 355 = 16 (P1-032 evidenciado, +4 antes, 0 despues, posBonus 10
+  conservado, caducidad al cambiar de turno, y la defensa normal restaurada).
+- `test_fase2_rules.js` **20/20** corridas consecutivas en verde; `npm test` ->
+  **ALL TESTS PASSED (10)**.
+
+### 44.10 Lecciones
+
+1. **Un consumidor sin dato es un consumidor muerto**, y el symptom no es un
+   fallo: es un `return 0` que siempre se ejecuta. P1-032 solo aparecio porque
+   una regresion necesito un caso que la regla de 355 todavia no podia
+   producir. Los datos que faltan se detectan preguntandose "que caso de
+   prueba haria fallar esto", no leyendo el codigo.
+2. **Centralizar un predicado exige decidir que parte es de todos.** Los dos
+  repartidores de fichas y el buscador de pagadores usan    "no puede tener
+   fichas" con sentidos distintos; unificarlo sin pensar eso rompio un bloque de
+   P1-009 (44.7).
+
+3. **Una caducidad necesita UN sitio de vaciado, y ese sitio es donde el
+   contador avanza.** No un chequeo en cada lector: 268 y 355 se caducan en
+   `expireTurnFlags()`, llamado justo despues de `S.turn++`, y sin ningun campo
+   nuevo en `S`.
+4. **Una asercion que compara un valor consigo mismo tres veces es vacua**
+   (0 x 3 = 0). Cuando la asercion es "se multiplico por 3", el valor de partida
+   tiene que ser veramente no nulo, y eso se comprueba con una guarda
+   explicita.
+5. **Preferir la API real al atajo.** `E.beginTurn` existe pero exige la fase
+   previa; `E.endTurn` es la puerta de verdad. Y un atajo que verifica su propia
+   precondicion (`advance(n)` comprobando que el turno avanza) convierte un
+   "pasaria por falso" en un fallo con motivo.
+
+### 44.11 Backlog
+
+- **P1-032**: recuperar de una fuente fiable las alineaciones oficiales de las
+  nueve sociedades y meterlas en las 18 cartas Illuminati. Con eso vuelven
+  -(a) el +4 de defensa por cercania y -(b) el componente de cercania del coste
+  de las 9 cartas de L2, que hoy son codigo muerto. Es trabajo de DATOS.
+- **377 Sucked Dry and Cast Aside!**: cola `S.pendingBurstDestroy` + punto de
+  vaciado, y despues el caso (44.6).
+- **418 "or use their special abilities"**: no-op declarado; si algun dia el
+  motor tiene habilidades especiales por grupo, hay que anadir `noSpecial` a la
+  lista de `noTokensFlag` (que es el sitio natural, ya centralizado).
+- Resto del plan: **L4..L16** segun `plan.md`. **137 Plots/Resources** siguen sin
+  mecanica. 11 cartas bloqueadas congeladas.
+- **Fase 3**: UX, onboarding, verificacion en navegador real, y que la IA **juegue**
+  cartas de reaccion (hoy solo cierra las ventanas).
+- **P1-DATA-03 Global Power**: bloqueado por el entorno (la red no resuelve ni
+  `cs.cmu.edu` ni `sjgames.com`).
+
+---
+
+## 45. L4 - TOKEN-STRIP: 350 Reach Out . . . y 270 Gremlins (y P1-033, dos bugs reales de motor)
+
+### 45.1 Hallazgo y RECLASIFICACION de 203 Bigfoot
+plan.md ponia tres cartas en L4: **350 Reach Out . . .**, **270 Gremlins** y
+**203 Bigfoot**. La tercera esta MAL CLASIFICADA y se sale de L4:
+
+* 203 Bigfoot es **`type=resource`** (su texto impreso va estampado
+  "Unique | ACTION"). Una carta de Resource no se juega con `E.playPlot` sino
+  con `E.playResource` -- exactamente la leccion de **P1-031**, donde 344
+  Principia Discordia resulto ser un Resource y `E.playPlot` lo rechazaba con
+  "No es una Plot card". Comprobar el `type` ANTES de asumir el punto de
+  entrada no es opcional.
+* El texto de un Resource es su **HABILIDAD ESPECIAL PERMANENTE**, no una
+  accion de un turno: "Bigfoot can cancel any action taken by any Media
+  group" y "+3 on any attempt to control a Green group" son dos efectos
+  permanentes, no un robo de fichas.
+* Ademas las **dos** clausulas necesitan un **registro de acciones**: "can
+  cancel any action taken by" solo se puede cumplir si el motor recuerda que
+  hizo el grupo, y el motor solo recuerda que gasto una ficha. Es el mismo
+  motivo tecnico por el que **377 Sucked Dry** quedo aplazado en 44.6.
+
+=> 203 pasa al trabajo de Resources (familia L12) y **L4 entrega dos cartas**,
+no tres. El deficit se declara, no se disimula.
+
+### 45.2 P1-033 - DOS bugs REALES de motor encontrados por la regresion
+La regresion de L4 fallo en su primera ejecucion con dos aserciones, y **las
+dos eran bugs mios, no fixtures**:
+
+1. **El coste se pagaba ANTES de validar el objetivo.** El bloque
+   `illumAction` estaba al principio del `case`, antes de resolver y validar el
+   rival. Consecuencia: jugar 350 con un objetivo propio lanzaba el error
+   correcto PERO habia descontado ya la ficha del Illuminati. Eso viola la
+   regla que el motor ya sigue en `E.declareAttack` desde **P1-022**: la
+   ficha se gasta solo cuando todas las validaciones han pasado, para que una
+   carta rechazada no cueste nada. Corregido moviendo el coste a despues de
+   validar, con un comentario que lo declara para que no se repita.
+2. **`E.takeResourceToHand` ponia el Resource en la mano del QUIEN_LO_TENIA, no en la
+   del que juega la carta.** La funcion se escribio con la firma
+   `(ownerPid, resUid)` y empuje la carta en `players[ownerPid].hand`, de modo
+   que "force a rival to put one Gadget Resource back in his hand" devolvia
+   el Resource **a la lista del rival que lo tenia**, que es lo contrario de
+   lo impreso. Corregida a `(fromPid, resUid, toPid)`.
+
+Ninguno de los dos habria salido con `node --check` ni con el gate: son
+fallos de **semantica de regla**, y solo los detecta una asercion que mire el
+estado observable.
+
+### 45.3 Correcciones aplicadas
+* **`gen_cards.js`**: nuevo `const L4_FX` con dos entradas y su `L4_FXN`, y
+  `|| L4_FXN[key]` anadido a la cadena de resolucion. Calificadores:
+  `stripAttr`, `stripPlayers`, `ownToo`, `illumAction`, `canTakeResource`.
+* **`game/js/engine.js`**: un unico `case 'token_strip'` para las dos cartas
+  (el efecto es identico: `tokens = 0`; solo cambian los calificadores, igual
+  que los 11 `token_gift` de L1), y el metodo nuevo
+  `E.takeResourceToHand(fromPid,resUid,toPid)`.
+* **`test_fase4_cards.js`**: tres ramas de gate nuevas (`stripAttr`,
+  `stripPlayers`, `canTakeResource`) -> `checkedFields` pasa de 21 a 24.
+* **`test_fase2_rules.js`**: bloque `L4 - TOKEN-STRIP` con 4 escenarios y 20
+  aserciones, todas observables.
+
+El `case` tiene tres ramas: modo `takeResource` (solo 270), modo `strip` con
+alcance `rival+own` (350) y modo `strip` con alcance `all` (270). El alcance
+`rival+own` recorre al rival elegido **y** tus grupos, y salta a cualquier
+tercer rival; el alcance `all` recorre a todos.
+
+### 45.4 Las siete declaraciones de interpretacion
+1. **El rival se deduce del objetivo.** El flujo de la UI elige un NODO, no un
+   jugador, asi que el rival es `findOwnerPid(targetUid)`. 350 **rechaza** un
+   objetivo propio porque su texto dice "of any one of your rivals"; la mitad
+   "your own groups" es automatica y no necesita objetivo.
+2. **`stripPlayers:'all'` en 270 esta justificado por el propio 350.** El
+   mismo autor escribe "your own groups" y "any one of your rivals" cuando las
+   quiere. 270 dice solo "any Computer groups": la omision es deliberada.
+3. **Los Resources son intocables POR CONSTRUCCION.** Un Resource nunca es un
+   nodo: vive en `pl.resources`, y `walk()` no lo visita. 350 cumple su
+   "(but not the Resources)" sin tocar una linea, y la regresion lo demuestra
+   deja el Resource del rival en su sitio.
+4. **"Solo Gadget Resource" NO se puede filtrar.** El mazo no tiene
+   clasificacion gadget/artifact: de 35 Resources, 34 tienen `subtype: null`.
+   Un filtro por subtipo haria el modo INJUGABLE, asi que el modo 3 toma
+   cualquier Resource del rival. Se declara que el calificador impreso se ha
+   perdido a proposito en vez de fingir que se cumple.
+5. **El modo 2 de 270 queda PENDIENTE.** "cancel its action if the action was
+   a use of its Power" es una anulacion de una accion ya ejecutada, es decir
+   un rollback; el motor no registra que hizo el grupo. Se implementara con el
+   registro de acciones (mismo motivo que 377).
+6. **"Solo al final de tu turno" de 350 NO se puede aplicar.** El modelo de
+   fases tiene setup/begin/main/attack/gameover y **no hay sub-fase de final
+   de turno**: `E.endTurn` exige `phase==='main'` y no existe ningun momento
+   posterior dentro del turno en el que jugar una Plot. Se implementa lo
+   exigible (turno propio + accion del Illuminati) y se declara la restriccion
+   impresa como NO APLICADA por el motor.
+7. **Robo de ficha != incapacidad.** Se pone el VALOR `tokens = 0`, no la
+   marca `noTokens`. Un grupo al que le han robado la ficha puede volver a
+   recibirla, y eso es justo lo que distingue esta familia de 418 World
+   Hunger, que si deja la marca permanente. Ninguna de las dos cartas imprime
+   "at any time", asi que ninguna entra en la lista `instant`.
+
+### 45.5 Un incidente de herramientas que casi no se ve
+Dos fallos encadenados en el mismo script de aplicacion, ambos **silenciosos**:
+
+* El indice de la segunda parche (la cadena de resolucion) se calculo sobre la
+  cadena **anterior** a insertar el bloque. Como el bloque se inserta ANTES,
+  el indice quedo corrido y la parcheada de `|| L3B_FXN[key];` cayo 19
+  caracteres mas atras, dentro de un **comentario** en espanol: el comentario
+  de "el OCR esta TRUNCADO de forma demostrable" paso a leerse
+  "el OCR|| L3B_FXN[key] || L4_FXN[key];e forma demostrable". Ni
+  `node --check` ni `node gen_cards.js` se quejan de un comentario roto.
+* El ancla era "la ultima sentencia del bucle `for`", pero la llave `}` que
+  cierra el bucle venia en la linea SIGUIENTE, asi que el bloque L4 quedo
+  **dentro** del `for (const k in L3B_FX)` y `L4_FXN` nunca se inicializo
+  (`ReferenceError: L4_FXN is not defined`), aunque `node --check` pasaba
+  porque las llaves cuadraban.
+
+**Dos lecciones**: (a) al aplicar dos parches al mismo fichero, el indice del
+segundo se calcula sobre la cadena **resultante** del primero, nunca sobre la
+original; (b) para insertar despues de un bloque hay que anclar en el token
+que lo **cierra**, no en su ultima sentencia. Y una tercera, de las mas
+baratas: un `git diff` de las lineas eliminadas es la forma mas rapida de ver
+que ha cambiado de mas.
+
+### 45.6 Verificacion
+`node --check` limpio en los cuatro ficheros. FASE 4: **113 cartas
+clasificadas** (antes 111), **135 Plots/Resources sin mecanica** (antes 137),
+`implemented-pending-engine` 92 -> 94, `checkedFields` 21 -> 24, y el
+histograma de kinds ya incluye `"token_strip":2`. FASE 2: **PASSED** con las
+20 aserciones de L4 en verde. `npm test` -> **ALL TESTS PASSED (10)**.
+
+### 45.7 Lecciones
+1. **Comprobar el `type` de la carta antes de elegir el punto de entrada** es
+   la leccion de P1-031 applied dos veces (344 y 203). Un plan puede agrupar
+   cartas por efecto y aun asi equivocarse de familia.
+2. **El texto impreso de un Resource es una habilidad permanente**, no una
+   accion; tratarlo como accion lleva a implementarlo en el sitio equivocado.
+3. **Pagarla validacion antes que el coste** (P1-022) hay que recordarlo en
+   cada `case` nuevo: es la clase de fallo que solo se ve cuando la carta se
+   RECHAZA, que es justo el camino que una prueba de exito no recorre.
+4. **Una funcion auxiliar se prueba con el caso que la motive**: `takeResourceToHand`
+   se escribio con dos parametros cuando el texto pide tres (de quien sale,
+   a quien entra) y la firma se llevo por delante la mitad de la regla.
+5. **Una restriccion impresa que el motor no puede expresar se declara, no se
+   implementa a medias**: "solo al final de tu turno" no tiene sub-fase en este
+   motor, y fingir que si habria creado una excepcion sin nombre.
+
+### 45.8 Backlog
+* **203 Bigfoot** se implementa en la familia de Resources (L12), con
+  `E.playResource` como punto de entrada y un registro de acciones previo.
+* **L5..L16** segun `plan.md`. Quedan **135 Plots/Resources sin mecanica**.
+* El **registro de acciones** (que hizo cada grupo y con que carta) es el
+  bloque que desbloquea 377, el modo 2 de 270 y buena parte de L6.
+* **P1-032** sigue abierto: los 18 Illuminati no tienen alineaciones, asi que
+  el bonus de defensa por maestro nunca ocurre en este mazo.
+* **Fase 3** (UX, onboarding, DOM en navegador, IA que juegue cartas de
+  reaccion) y **P1-DATA-03** (bloqueado por la red) siguen abiertos.
+
+---
+
+## 46. L5a - BULK BOOST DE ATAQUE: las 3 cartas que suben un ataque ya declarado, y por que de las 10 de L5 solo quedan 3
+
+### 46.1 Hallazgo: la familia se descompone otra vez al medir el `type`
+
+`plan.md` §0.1 obliga a "una familia = un lote" y a comprobar el `type` de cada carta ANTES de elegir el punto de entrada, porque 344 (L3a) y 203 (L4) demostraron que una carta puede no ser un Plot. Aplicada la comprobacion, de las 10 cartas que `plan.md` listaba para L5 **solo 3 son realmente un Plot con un boost de ataque**:
+
+| idx | carta | type medido | destino real | motivo |
+|---|---|---|---|---|
+|311|Mercenaries|**resource**|FUERA de L5|su texto es una habilidad permanente que se usa COMO ACCION mas tarde ("Can act once per turn"), no un boost en el momento de jugarla. Igual que 203 Bigfoot en L4. |
+|358|Rogue Boomer|**resource**|FUERA de L5|idem |
+|373|Spear of Longinus|**resource**|FUERA de L5|idem, y ademas "can be used as often as you wish" |
+|419|World War Three|plot, pero `subtype='goal'` y ya `kind='goal'`|lote de Goals|es un efecto permanente de meta, no un boost de un ataque |
+|189|Albino Alligators|plot|L5c| "+10 Power or Resistance (your choice) to any Weird group you control": es un DELTA sobre el grupo, con caducidad, no un bonus sobre un ataque |
+|255|Fear and Loathing|plot|L5b|cambia la aritmetica GLOBAL de alineaciones ("Identical alignments now give +8 on any attempt to control, and -8 on any attempt to destroy"), o sea modifica la regla `+/-4` de `computeStrength` de forma permanente |
+|254|Faction Fight|plot|APLAZADO|exige "Played along with a duplicate card for any Group controlled by one of your rivals" (combinacion de cartas + registro de duplicados = lote L11) **y su texto impreso esta TRUNCADO a mitad de frase** |
+|205|Bimbo at Eleven|plot|APLAZADO|exige "any **male** Personality" y una sonda demostro que el campo `gender` aparece en **CERO de las 421 cartas**. Es un HUECO DE DATOS como el P1-032, asi que NO se inventa el dato |
+|377|Sucked Dry and Cast Aside!|plot|aplazado en L3b|necesita una cola de destruccion diferida (§44.6) |
+
+Quedan 3 cartas, las 3 con el mismo mecanismo y por tanto un unico `kind`:
+
+| idx | carta | kind | calificadores |
+|---|---|---|---|
+|381|Swiss Bank Account|`attack_boost`|`boostValue:10`, `illumOnly:true` |
+|391|The First Thing We Do, Let's Kill All the Lawyers|`attack_boost`|`boostValue:20`, `atkType:'destroy'`, `targetCardId:'lawyers'` |
+|415|Whispering Campaign|`attack_boost`|`atkType:'destroy'`, `boostBySubtype:{personality:15, other:10}`, `requiresActionFromAttr:'media'` |
+
+### 46.2 Correcciones aplicadas
+
+**`gen_cards.js` (1420 -> 1708 lineas).** `const L5_FX` con las 3 entradas (cada una con `t:` = texto impreso literal) + `const L5_FXN` con su bucle `norm`, insertado justo despues de la llave `}` que CIERRA el bucle de `L4_FXN` (se localizo la linea `L4_FXN[norm(k)] = L4_FX[k];` y seahoo la siguiente linea trimmeada es `}`). `|| L5_FXN[key]` anadido DENTRO de la unica cadena de resolucion, que queda `... || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key];`. Un comentario Spanish de ~55 lineas declara la tabla de reclasificacion de 46.1 y las 7 interpretaciones de 46.3.
+
+**`game/js/engine.js` (3784 -> 3973 lineas).** Un unico `case 'attack_boost'` antes del `case 'token_gift':` de 4 espacios de sangria, en este orden:
+1. `var A=S.attack; if(!A||A.resolved) throw c.name+': necesita un ataque ya declarado'`.
+2. `eff.atkType`: si el ataque no es del tipo impreso, error que nombra "destruir" o "controlar".
+3. Atacante via `findNode(A.attackerUid)`. `eff.illumOnly` exige `attC.type==='illuminati'`. `eff.attackerAttr` exige `hasAttr(attC,...,attN)`.
+4. Objetivo via `findNode(A.targetUid)`. `eff.targetCardId` compara `tgtC.id` y el mensaje nombra la carta buscada con `C.byId[eff.targetCardId].name`.
+5. Valor = `eff.boostValue`, o `eff.boostBySubtype[subtype]`, o `.other`.
+6. **EL COSTE, deliberadamente DESPUES de todas las validaciones** (P1-022): `opts.aidUid` + `firstUsableAid(pid, cc=>hasAttr(cc,eff.requiresActionFromAttr,nn))` + `spendGroupToken`.
+7. `A.boosts.push({name:c.name,v:valAB})`, un `log` rico y `lastResult={ok:true,boost:valAB,card,attack:A.type,target:tgtC.name,paidWith:...}`.
+
+`instant`: se anadio `||eff0.kind==='attack_boost'`. Las tres cartas imprimen "at any time" o son, en el caso de 391, un ataque en curso; la 415 no lo imprime pero la restriction se cumple igualmente porque la ventana de ataque solo existe durante el turno.
+
+**`game/js/ui.js:813`.** `var NO_TARGET_KINDS = ['token_gift', 'attack_boost'];`. Estas cartas apuntan al ATAQUE, no a un grupo: si `plotNeedsTarget()` devolviera `true` la UI pediria un grupo objetivo que la carta nunca usa.
+
+**`test_fase4_cards.js` (717 -> 812 lineas).** 6 ramas nuevas de la seccion 4, spliced antes del `if (e.targetSubtype) {` que esta PEGADO A LA MARGEN IZQUIERDA con sangria cero (anclarlo con sangria falla): `boostValue` numerico positivo; `boostBySubtype` con clave `other` obligatoria (si no, la carta no aplica a nada) y cada clave restante debe ser un subtipo existente con valor positivo; `atkType` en `{'control','destroy'}`; `illumOnly` exige que el mazo tenga una carta `illuminati`; `targetCardId` exige que exista Y sea `type==='group'`; `attackerAttr` exige que exista un grupo con ese atributo. `checkedFields` pasa de 24 a 30 campos. (`attackerAttr` no aparece en la lista porque ninguna carta entregada lo usa: 205, que lo usaria, esta aplazada.)
+
+**`test_fase2_rules.js` (4096 lineas).** Bloque `/* ---------- L5a - ATTACK BOOST: 381 / 391 / 415 ---------- */` antes del ancla `Utilidad global`, con 6 escenarios y 23 aserciones, todas `ok`. Fixtures medidas: `VIO=2` (grupo violent), `MEDIA=7` (Big Media, atributo media), `PERS=1` (Al Gore, personality), `OTHER=12` (Brazil, place), carta 79 `lawyers` = organization. Los escenarios: 381 +10 desde la raiz del Illuminati; 381b RECHAZADA si el atacante no es el Illuminati (y la ficha sigue en la mano, contando COPIAS segun §43); 391 +20 contra Lawyers; 391b RECHAZADA contra un Place; 415 +15 contra una Personality pagando con la accion de Big Media (su ficha pasa 1 -> 0); 415b +10 contra un Place; 415c RECHAZADA sin ataque declarado.
+
+### 46.3 Las 7 interpretaciones declaradas
+
+1. **El calificador se comprueba SIEMPRE o la carta se rechaza.** Nunca se gasta en silencio: es la misma leccion de §43, donde un fixture mintio y el motor NO debio seguirle el juego.
+2. **El calificador de 391 es una carta CONCRETA, no un subtipo.** "the Lawyers" es la carta 79, un grupo organization con Poder nulo y Resistencia 1, alineado criminal. Por eso el campo es `targetCardId` y no `targetSubtype`.
+3. **"your Illuminati" de 381 se comprueba contra la CARTA atacante** (`type==='illuminati'`). El mazo tiene 18 Illuminati y ningun ataque transporta el id de uno, asi que la unica lectura posible es la del tipo de la carta atacante.
+4. **"It cannot be used with Assassinations or Disasters" de 415 se cumple POR CONSTRUCCION y por eso NO se declara ningun campo.** Un Assassination o un Disaster nunca crean `S.attack` (son ataques instantaneos dentro de `E.playPlot`), de modo que `attack_boost` solo es alcanzable con `A.type` 'control' o 'destroy'. Declarar `noAssassination` seria decorativo, exactamente el defecto P1-026 (un campo que nadie lee).
+5. **"a single direct attack" de 381 no necesita estado.** El +10 vive en `A.boosts`, que muere con el ataque. Es el mismo criterio que uso §26 para `boost10` en modo 'attack'.
+6. **El valor dependiente del objetivo de 415 se elige CUANDO SE JUEGA LA CARTA**, leyendo el subtipo del nodo objetivo, porque la eleccion oficial pertenece a quien juega la carta.
+7. **"he cannot be returned to play by any means" de 415 queda DECLARADO PENDIENTE de L11 y NO recibe campo.** El exito del ataque ya destruye al objetivo por `destroyGroup`; lo que falta es el registro que impediria reutilizar ese duplicado (220 Clone, 287 Imposter, 227 Counter-Revolution, 309 Media Blitz), y ese registro no existe. Escribir el campo seria repetir P1-026. (`outOfPlayOnSuccess:true` se escribio y se RETIRO con dos llamadas a `edit` precisamente por esto.)
+
+### 46.4 La campana del `instant`: dos trampas de anclaje
+
+Las tres cartas trampa al leer el `instant`, y las dos trampas que aparecieron explican por que el plan debe releer el archivo y no confiar en el anchor escrito en su nota:
+
+1. **La primera version anclo en `||eff0.kind==='token_strip'`, que NO EXISTE.** L4 decidio deliberadamente NO meter `token_strip` en `instant` porque ni 350 ni 270 imprimen "at any time". El script ABORTO antes de escribir (su `fs.writeFileSync` es la ultima sentencia, por eso no quedo nada a medias) y la puerta de FASE 4 fallo luego con 3 x "carta clasificada cuya rama NO existe en el motor: attack_boost", que es la puerta haciendo su trabajo. La cola real se localizo buscando la PRIMERA linea terminada en `);` que no sea comentario: `||eff0.kind==='def_triple'||eff0.kind==='tripled_once');`.
+2. Ademas, `L4_FXN[norm(k)] = L4_FX[k];` es la ultima SENTENCIA del bucle, no su token de cierre: la `}` esta en la linea SIGUIENTE. Anclar ahi mete el bloque DENTRO del bucle, `const L4_FXN` queda con ambito de bucle y el fallo aparece como `ReferenceError` en la cadena aunque `node --check` pase porque las llaves siguen cuadradas. Regla: **para insertar despues de un bloque, anclar en el token que lo CIERRA.**
+
+### 46.5 Tres errores de fixture, ninguno del motor
+
+1. **`gWith('violent', -1)` devolvio -1** porque `violent` es una ALINEACION, no un atributo. Los 13 atributos del mazo son bank, church, coastal, communist, computer, green, huge, magic, media, nation, science, secret, space. Se anadio un helper local `gAlign(a, skip)` que recorre `c.alignments`. `MEDIA=7` si funcionaba porque `media` SI es un atributo: los dos tipos de fixture no se pueden confundir. Ademas el mensaje de `ok(...)` ahora imprime los cuatro indices resueltos, para que un -1 se vea al instante.
+2. **La asercion de 391b pedia `/Abogados/i` y el motor nombra la carta en INGLES** (`C.byId[eff.targetCardId].name`): el mensaje real es `The First Thing We Do, Let's Kill All The Lawyers: el objetivo del ataque tiene que ser Lawyers, y es Brazil`. Corregido a `/tiene que ser Lawyers/i`. **Leccion: asercionar sobre el mensaje real del motor, que es el NOMBRE IMPRESO de la carta, no una traduccion.**
+3. **La guardia de no-ASCII del splice estaba mal dos veces.** Una version usaba `new Set([' ','\t','\n','\r','§'])`, que por supuesto rechaza toda letra ASCII; la anterior usaba una clase de caracteres NEGADA `/[ -\u4e00-\u9fff\ufffd]/g` cuyo ` -\u4e00` es un RANGO que se traga todo el ASCII imprimible. **La forma canonica es: permitir todo el ASCII imprimible y despues una lista EXPLICITA de no-ASCII permitidos** -- `for (const ch of block) { if (ch.charCodeAt(0) < 128) continue; if (ch === '§') continue; bad.push(ch); }`. Es la misma leccion de §42 (una lista de codepoints explicita, nunca una clase negada con huecos).
+
+### 46.6 Verificacion
+
+`node --check` limpio en `test_fase2_rules.js` y `game/js/ui.js`. `node test_fase2_rules.js` -> FASE 2 RULES PASSED, 0 FAIL, las 23 aserciones de L5a `ok`. `node test_fase4_cards.js` -> FASE 4 COVERAGE PASSED (116 cartas clasificadas, 132 Plots/Resources sin mecanica (techo 182), 3 ramas muertas declaradas, 11 cartas bloqueadas congeladas, 4 huecos de texto declarados) = exactamente -3 sin mecanica (135 -> 132) y 113 -> 116 clasificadas. `npm test` -> ALL TESTS PASSED (10). `checkedFields` 24 -> 30.
+
+### 46.7 Lecciones
+
+1. **La comprobacion del `type` ANTES de elegir el punto de entrada es la regla que mas cartas ha rescatado** (344, 203, 311, 358, 373). Cuatro de las diez cartas de L5 tenian un texto que no describe lo que `plan.md` creia.
+2. **Un campo que nadie lee es un defecto, no una feature.** Dos veces en este lote casi se escriben (`noAssassination`, `outOfPlayOnSuccess`) y las dos se retraitaron porque la regla se cumplia por construccion o porque el registro que lo consumiria no existe. Declarar el NO-cumplimiento honesto vale mas que el campo decorativo.
+3. **El nombre del calificador lo decide la carta, no el plan.** `targetCardId` existe porque 391 habla de una carta concreta; un `targetSubtype` habria hecho la carta INJUGABLE sin que nadie se entere.
+4. **Una puerta de cobertura que no valida un campo nuevo lo valida en silencio.** Seis ramas nuevas y `checkedFields` 24 -> 30; las seis habrian pasado inadvertidas sin ellas.
+5. **Las fixtures que dependen de la suerte siguen apareciendo** (4 en este lote). La que se produjo aqui, el -1 de `gWith`, se hizo visible en un segundo porque el mensaje de `ok` imprime los indices: ese detalle debe quedarse en todos los bloques futuros.
+
+### 46.8 Backlog
+
+- **L5b** -- 255 Fear and Loathing: modifica la regla global de alineaciones de `computeStrength` (identicas +8 al controlar y -8 al destruir; opuestas al reves), permanente mientras la carta esta en juego.
+- **L5c** -- 189 Albino Alligators: +10 de Poder o Resistencia a un grupo Weird propio, para una accion o hasta el final del turno, con la salvedad de "no cuenta para las Metas".
+- **Cola de Resources** -- 203 Bigfoot, 311 Mercenaries, 358 Rogue Boomer, 373 Spear of Longinus: los cuatro son `type=resource` y sus textos son habilidades permanentes que se usan como accion, no jugadas en mano. Necesitan un subsistema de "acciones de Resource".
+- **205 Bimbo at Eleven** -- bloqueada por un hueco de DATOS: el campo `gender` no existe en ninguna de las 421 cartas. Es el mismo tipo de hallazgo que el P1-032 (los Illuminati sin alineaciones) y queda declarado, sin inventar el dato.
+- **254 Faction Fight** -- necesita combinacion de cartas con duplicados (L11) y su texto esta truncado.
+- **377 Sucked Dry and Cast Aside!** -- cola de destruccion diferida (§44.6).
+- Resto del plan: L6..L16, Fase 3 (UX, onboarding, DOM en navegador real, y la IA que aun no JUEGA cartas de reaccion) y P1-DATA-03 Global Power (bloqueado por la red).
+
+---
+
+## 47. Novena ocurrencia de la clase "fixture que depende de la suerte": el robo de The Network
+
+### 47.1 Sintoma
+
+Tras cerrar L5a, la bateria de estabilidad fallo **1 de 20** corridas de `node test_fase2_rules.js` con:
+
+```
+FAIL - P1-009 The Network roba 2 Plot al inicio de su turno -> 2 -> 5
+```
+
+La asercion es `netPlots === basePlots + 2`. Fallo con `2 -> 5`, es decir un delta de **3** en vez de 2. Desaparecio tras 25 + 30 corridas y no se reprodujo de nuevo; el fallo era real y lo localizo la repeticion de 30.
+
+### 47.2 Causa raiz: comparaba el delta entre DOS PARTIDAS DISTINTAS
+
+El bloque hacia esto:
+
+```js
+function plotsAtFirstTurn(illu) {
+  fresh(illu, illu === 'thenetwork1' ? 'bavarianilluminati1' : 'thenetwork1');
+  var p = pidOf(illu === 'thenetwork1' ? 'thenetwork' : 'bavarianilluminati');
+  var n = 0;
+  while (E.getState().currentPid !== p && !E.getState().gameover && n++ < 8) E.endTurn();
+  return plotsOf(p);
+}
+var netPlots = plotsAtFirstTurn('thenetwork1');
+var basePlots = plotsAtFirstTurn('bavarianilluminati1');
+```
+
+El comentario del bloque justificaba la comparacion con *"el reparto inicial es identico porque ocurre antes de elegir Illuminati"*. **Eso es falso: `fresh()` llama a `E.newGame(...)`, que baraja el mazo, asi que las dos partidas reparten distinto.** La comparacion entre dos partidas solo vale si el reparto coincide, y no coincide nunca de forma garantizada. La probabilidad de que ambas handsleyan el mismo numero de Plots es alta (por eso pasaba 29 de 30 veces) pero no es 1.
+
+Es la **novena** ocurrencia de la clase que §41 (P1-029) denomino "un fixture no puede depender del reparto aleatorio". La tabla de §43.1 tiene ya ocho filas.
+
+### 47.3 Correccion aplicada: una sola partida
+
+Ahora se mide en **una unica partida**, donde el reparto es identico para los dos jugadores por construccion:
+
+```js
+fresh('thenetwork1', 'bavarianilluminati1');
+var netPid = pidOf('thenetwork');
+var rivalPid = pidOf('bavarianilluminati');
+ok(netPid >= 0 && rivalPid >= 0 && netPid !== rivalPid, '...dos Illuminati en jugadores distintos...');
+var atFirstTurn = {};
+var guardNet = 0;
+while (Object.keys(atFirstTurn).length < 2 && !E.getState().gameover && guardNet++ < 8) {
+  var curNet = E.getState().currentPid;
+  if (atFirstTurn[curNet] == null) atFirstTurn[curNet] = plotsOf(curNet);
+  E.endTurn();
+}
+var netPlots = atFirstTurn[netPid];
+var basePlots = atFirstTurn[rivalPid];
+ok(netPlots != null && basePlots != null, '...se midio el primer turno de los dos -> ' + JSON.stringify(atFirstTurn));
+ok(netPlots === basePlots + 2, 'P1-009 The Network roba 2 Plot al inicio de su turno (una sola partida) -> ...');
+```
+
+El recorrido registra el numero de Plots de cada jugador **en el instante en que empieza SU primer turno**, que es justo cuando su robo automatico ya se ha resuelto. El orden de los turnos lo deciden los dados al inicio de la partida, asi que el recorrido mide a quien toque **sin asumir quien va primero** (que era el otro supuesto fragil del bloque). Se anade la asercion `netPid !== rivalPid` porque el `pidOf` local devuelve `0` como valor de reserva y dos ceros habrian producido una comparacion `0 === 0 + 2` trivialmente falsa en vez de una comparaacion real.
+
+### 47.4 Verificacion
+
+`node --check test_fase2_rules.js` limpio. **35/35 corridas consecutivas** de `node test_fase2_rules.js` sin fallo (15 + 20), frente a 1 fallo en 20 antes de la correccion. `npm test` 3/3 ALL TESTS PASSED (10). FASE 4 sin cambios: 116 clasificadas, 132 sin mecanica, 11 bloqueadas.
+
+### 47.5 Lecciones
+
+1. **Comparar dos partidas distintas solo es valido si el reparto esta garantizado.** Un comentario que lo justifique no lo convierte en una garantia: `E.newGame` baraja.
+2. **Cuando el sujeto del test son DOS jugadores, medirlos en la MISMA partida siempre que sea posible.** Alli el reparto, el orden de la baraja y el mazo son comunes y la comparacion se vuelve determinista por construccion. La regla general es la inversa de la intuitiva: no reiniciar el mundo para medir una diferencia, sino medirla dentro de un unico mundo.
+3. **Un `pidOf` con valor de reserva (`return 0`) puede fabricar una comparacion trivialmente falsa.** Un resolvedor de ids que nunca falla necesita que el llamante verifique que encontro lo que buscaba.
+4. **Novena vez que la clase reaparece; la leccion de §41 ya es una regla permanente de `plan.md` §0 (regla 13) y sigue sin imponerse sola.** Un fixture escrito antes de la regla 13 sigue cometiendo el error; hay que cazarlos en la bateria de estabilidad, no confiar en que la regla se autoimponga.
+---
+## 48. L5b - ALIGN-RULE: 255 Fear and Loathing, la carta que no da un bonus sino que cambia la REGLA (y F6, el tercer fallo del test de The Network)
+
+### 48.1 Hallazgo
+
+De las 10 cartas que `plan.md` reunia en L5, 3 se delivering en §46 y 1 queda
+aislada aqui. 255 Fear and Loathing NO es un bonus a un ataque, y por eso
+separarla de las otras era obligatorio y no cosmetico: su texto dice
+"Identical alignments **NOW** give +8 on any attempt to control, and -8 on any
+attempt to destroy. The reverse is true for opposed alignments."
+
+La regla oficial (inwo_rules_extracted.txt:487-493) es "+4 por cada alineacion
+identica" y "-4 por cada alineacion opuesta". Lo que hace 255 es **sustituir esa
+magnitud**, no anadir una cifra al total. Y aqui hay un hallazgo de codigo: los
+dos bucles de alineaciones de `computeStrength` tienen el 4 escrito A MANO, dos
+veces:
+
+- control (L1311-1315): identicas `det.leaderMod+=4`, opuestas `det.leaderMod-=4`
+- destroy (L1352-1355): identicas `det.leaderMod-=4`, opuestas `det.leaderMod+=4`
+
+Una carta que cambia la regla tiene que tocar los dos, y tocarlos "a mano"
+seria el patron que la auditoria vieneTahOMA desterrando desde §33: duplicar
+la regla en dos sitios garantiza que un dia uno se actualice y el otro no. Por
+eso el 4 se lee ahora de un solo sitio.
+
+### 48.2 Correcciones aplicadas
+
+- `gen_cards.js` (1708 -> 1774 lineas): `const L5B_FX` con UNA entrada
+  (`'fear and loathing'`: `{kind:'align_rule', alignMag:8, t:<texto impreso
+  verbatim>}`) + `L5B_FXN`, insertada justo despues de la `}` que CIERRA el
+  bucle de `L5_FXN`, y `|| L5B_FXN[key]` anadido DENTRO de la cadena (que ya
+  terminaba en `;`: anadir despues del `;` produce `SyntaxError`).
+- `game/js/engine.js` (3973 -> 3995 lineas):
+  1. `alignRule:null` en el literal `S={...}` de `E.newGame`.
+  2. Una sola lectura antes de los dos bucles:
+     `var alignMag=(S.alignRule&&typeof S.alignRule.mag==='number')?S.alignRule.mag:4;`
+     mas una nota cuando difiere de 4. **Sin `S.alignRule` el valor es 4: el
+     comportamiento por defecto queda intacto byte a byte.**
+  3. Los dos bucles usan `alignMag` en lugar del literal 4. Los SIGNOS no se
+     tocan, que es lo que el texto exige.
+  4. `case 'align_rule'`: valida `eff.alignMag`, rechaza una segunda copia
+     ("ya esta en juego"), escribe `S.alignRule={mag,card}` y **expone la carta
+     en la mesa** con `pl.exposedPlots.push(handIdx)`.
+- `test_fase4_cards.js` (812 -> 829 lineas): rama de `alignMag`;
+  `checkedFields` 30 -> 31.
+- `test_fase2_rules.js` (~4279 lineas): bloque `/* ---------- L5b - ALIGN-RULE`
+  con 5 escenarios y 14 aserciones, todas `ok`.
+- `ui.js`: sin cambios. 255 no necesita objetivo (no es "at any time" y no
+  apunta a un grupo), asi que **tampoco entra en `NO_TARGET_KINDS`**: esa lista
+  es para cartas sin objetivo que la UI debe ejecutar de una vez, y aqui la UI
+  tiene que exigir turno propio, que es lo que ya hace la rama `else` de
+  `E.playPlot` con `requireOwnMain(pid)`.
+
+### 48.3 Las 7 interpretaciones declaradas
+
+1. **La magnitud es una constante global, no un bonus.** No existe "el ataque
+   de The Network"; existe "en este juego las alineaciones valen 8".
+2. **Los signos no cambian.** control identicas +m / opuestas -m; destroy
+   identicas -m / opuestas +m. Es exactamente lo que dice el texto, y "the
+   reverse is true for opposed alignments" cierra la tabla.
+3. **Duracion: el resto de la partida.** El texto no pone plazo, y las cartas que
+   cadenan si lo dicen ("for the rest of the current turn", "until the
+   beginning of your next turn"). Por eso la carta se EXPONE en la mesa
+   (inwo_rules_extracted.txt:223, "A Plot is 'in play' if it is left on the table
+   to mark an ongoing effect"), la misma regla que las cartas "+10" y las
+   Cartas de Objetivo. P1-025 ya saca del descarte lo que este en
+   `exposedPlots`, asi que no hizo falta tocar el descarte.
+4. **Sin comprobacion de unicidad de la carta.** Al exponerse sale del mazo, y
+   cada carta de este mazo es unica: no puede haber una segunda copia. Aun asi
+   el motor RECHAZA una segunda jugada ("ya esta en juego"), porque escribir el
+   estado dos veces no seria idempotente si las magnitudes fueran distintas. La asercion de
+   rechazo es una de las 14.
+5. **No es "at any time":** el texto no lo dice, luego exige turno propio y no
+   entra en la lista `instant`.
+6. **LIMITACION DECLARADA: los ataques instantaneos no se ven afectados.**
+   Assassinations, Disasters y `E.instantAttack` calculan su fuerza en
+   `announcePlotInstantAttack` / `E.instantAttack` y **nunca incorporaron el
+   termino de +/-4 por alineacion**, asi que 255 no les cambia. No es un olvido
+    de esta carta: es que la alineacion nunca conto ahi en este motor.
+7. **"any two Fanatic Groups are opposite to each other"** (oficial, :487-493 y
+   :370-377) sigue sin implementarse en `isOpposite()`. Brecha declarada desde
+   §20; esta carta no la arregla ni la agrava.
+
+### 48.4 La puerta de FASE 4: `alignMag` tiene que MOVER la aguja
+
+La rama comprueba dos cosas, y la segunda es la que importa:
+
+1. que `alignMag` sea un numero positivo, y
+2. **que sea DISTINTO de 4.**
+
+Un `alignMag: 4` seria una carta que se juega, se expone, ocupa mesa, escribe
+log y **no cambia nada**: exactamente el defecto de P1-026 (un campo que existe
+y nadie lee) y de P1-031 (un punto de entrada que no despacha). El generador de
+la puerta es de la familia que se refuerzo en §42.8 y §46: una clausula cuyo
+efecto podria ser vacuo tiene que probarse NO vacua.
+
+### 48.5 La regresion: 5 escenarios, 14 aserciones
+
+El par de grupos se BUSCA en el mazo en vez de escribirse a mano, y se exige
+que tenga **al menos una alineacion identica** y que `shared-opp` no sea 0. Con
+`shared==opp` el cambio se cancela y la asercion seria vacuamente cierta; con
+`shared==0` solo se ejercitaria el termino "opuesta" y pasaria aunque el motor
+hubiera invertido el signo de las identicas. El par encontrado es
+`{ai:0, ti:11, shared:1, opp:0}`, y el mazo es fijo, asi que la busqueda es
+determinista.
+
+1. **Por defecto la magnitud es 4** y `leaderMod` vale exactamente
+   `4*(shared-opp)`. Esta asercion ata el comportamiento por defecto ANTES de
+   tocar nada: si el cambio de las dos lineas hubiera roto el 4, aqui se veria.
+2. **Al jugar la carta, `leaderMod` vale el doble** (`2*4*(shared-opp)`), la
+   magnitud declarada es 8 y `lastPlotResult.alignRule===true`.
+3. **La fuerza se explica sola**: hay una nota que nombra la carta y la
+   magnitud. Sin ella un jugador veria un +4 que no sabe de donde sale.
+4. **La carta queda expuesta, no descartada**, y la regla **sigue puesta dos
+   turnos despues**.
+5. **Una segunda copia se rechaza**, y **al destruir el signo se invierte**
+   (`-4*(shared-opp)` antes, `-2*4*(shared-opp)` despues), que es la mitad del
+   texto que la que se prueba en control.
+
+Se comprueba el DELTA de `leaderMod`, que es donde caen los terminos de
+alineacion, y no el `total` completo: el `total` mezcla Poder, Resistencia,
+ posicion y bonuses, y una asercion sobre el total no distinguiria "el cambio de
+regla" de "cambio cualquier otra cosa".
+
+### 48.6 F6: el tercer fallo del test de The Network, y lo que cuesta una asercion mal planteada
+
+El bloque `P1-009 The Network roba 2 Plot` fallo OTRA vez al arrancar L5b. Es la
+tercera version de la misma asercion, y las tres fallan por motivos distintos:
+
+- **F5 (original)**: comparaba el numero de Plots de DOS PARTIDAS. El mazo se
+  baraja, asi que el reparto no es identico. Fallo ~1 de 30.
+- **F5-bis**: comparo las DOS MANOS de una partida afirmando una diferencia
+  EXACTA de 2. Fallo ~1 de 20 con el sintoma **invertido**: el rival con MAS
+  Plots que The Network, es decir, el robo sin contar.
+- **F6 (este)**: afirmo el mazo compartido `S.plotDeck`. Fallo porque **el robo
+  del PRIMER jugador ocurre DENTRO de `startGame`**, donde no existe un "antes"
+  que medir, y porque el mazo no baja entre turnos como se suponia.
+
+La version final afirma lo unico que es **cierto por construccion e
+independiente de quien salga primero**: el reparto inicial da un numero FIJO de
+Plots a cada jugador, los dos suman su propio robo de inicio (+1) y The Network
+suma ademas sus 2, asi que **al entrar en su primer turno The Network tiene
+ESTRICTAMENTE mas Plots que el rival**. La magnitud EXACTA queda sin afirmar, y
+el bloque lo DICE, con los tres intentos anteriores escritos, en vez de fijarla
+y volver a fallar dentro de un mes.
+
+**Leccion: "afirmar mas" no es "afirmar mejor".** Tres versiones de esta
+  las tres versiones pusieron un numero exacto y las tres flakearon; la que sobrevive
+afirma una desigualdad. Un test que depende del orden de los dados, del reparto
+o del punto exacto del inicio de turno no es un test fuerte: es un test que
+depende de la suerte, y la §41 ya pago por esa clase nueve veces.
+
+### 48.7 Errores propios de esta tanda (todos cazados antes de tocar el destino)
+
+- **El `put` local recibia un indice donde esperaba una carta.** El bloque
+  L5a define `put(pid, c)` que hace `c.idx`, y aqui se llamaba con el indice ya
+  resuelto -> `Carta no esta en tu mano`. Arreglado fazendo que `put` acepte
+  ambos.
+- **El primer par de grupos solo ejercitaba un termino.** Se pedia
+  `shared-opp!=0` y salio `{shared:0, opp:1}`: la mitad de "opuestas". Ahora se
+  exige `shared>=1`.
+- **Una asercion tautologica escrita sin querer:** `netPid !== netPid`, que es
+  siempre falsa. Se elimino por indice de linea en el script de empalme, y el
+  `edit` tool **no la encontro** aunque existia (verificado con un probe) --
+  la via fiable es un script que filtra lineas, no el matcher del tool.
+- **Un guard escrito al reves:** contaba "cuantas lineas hay que borrar" y
+  aborte cuando el texto ya estaba limpio. Un guard de ese tipo se rompe
+  exactamente cuando ya no hace falta. Ahora comprueba la AUSENCIA de la linea
+ rota.
+- **`node -e` con comillas y escapes anidados** -> `Invalid string escape`.
+  La trampa de siempre: bloque a `.txt` con el tool `write` y empalme con un
+  `.cjs`.
+- **Palabras basura mias**, en mis propios comentarios y mensajes: dos ideogramas CJK
+  (U+7ED9 U+51FA U+4E86) y un ideograma con un Simplificado mezclado (U+7624), mas dos
+  de codepoints antes de tocar el fichero de destino.
+
+### 48.8 Verificacion
+
+- `node --check` limpio en `gen_cards.js`, `game/js/engine.js`,
+  `test_fase2_rules.js`, `test_fase4_cards.js`.
+- `node test_fase2_rules.js` -> **FASE 2 RULES PASSED**, **30/30** corridas
+  consecutivas con F6 ya reescrito (antes 1 fallo cada ~20).
+- `node test_fase4_cards.js` -> **FASE 4 COVERAGE PASSED (117 cartas
+  clasificadas, 131 Plots/Resources sin mecanica (techo 182), 3 ramas muertas
+  declaradas, 11 cartas bloqueadas congeladas, 4 huecos de texto declarados)**,
+  `checkedFields` 30 -> 31 con `alignMag`.
+- `npm test` -> **ALL TESTS PASSED (10)**, 3/3.
+- Numeros: 116 -> 117 clasificadas, 132 -> 131 sin mecanica (exactamente -1),
+  97 -> 98 `implemented-pending-engine`, `checkedFields` 30 -> 31.
+
+### 48.9 Lecciones
+
+1. **Una regla que aparece en dos sitios debe leerse de uno solo.** Los dos
+   bucles de alineaciones traian el 4 escrito a mano; la carta obliga a tocar
+   los dos, y ese es el momento exacto en que la duplicacion se paga. El motor
+   ahora lee `alignMag` una vez y los dos bucles lo usan.
+2. **Un cambio de regla necesita su nota.** Un jugador ve `leaderMod` moverse y
+   no tiene de donde saberlo; una nota que nombre la carta y la magnitud hace el
+   numero explicable, que es la diferencia entre un motor correcto y uno
+   soupuesto.
+3. **La puerta debe rechazar el efecto vacuo, no solo el efecto mal formado.**
+   `alignMag: 4` es un valor bien formado y una carta inutil; comprobar solo
+   "es un numero positivo" habria dejado pasar la carta muerta.
+4. **Afirmar una desigualdad puede ser mas fuerte que afirmar un numero.** Tres
+- versiones de la asercion de The Network y sus tres formas de fallar
+   quedan escritas en 48.6 para que la cuarta no repita el ciclo.
+5. **Cuando una asercion se resiste, la causa suele estar en el PLAN, no en el
+   codigo.** El problema de F5/F6 nunca fue el motor: fue pedir un numero
+   exacto en un punto del juego que depende de dados.
+
+### 48.10 Backlog
+
+- **L5c**: 189 Albino Alligators (+10 Poder o Resistencia a un grupo Weird
+  propio, una accion o hasta final de turno) -> reutiliza `powerMods` /
+  `resistanceMods` con `untilTurn`; `def_triple` (268) es el precedente.
+- **Cola de Resources (4)**: 203 Bigfoot, 311 Mercenaries, 358 Rogue Boomer,
+  373 Spear of Longinus. Todas `type=resource` con una habilidad especial
+  permanente usada como accion -> hace falta un subsistema
+  `E.useResourceAbility`.
+- **L6..L16** tal como los define `plan.md`.
+- 377 Sucked Dry (cola de destruccion diferida), 205 Bimbo at Eleven (falta un
+  campo `gender` en las 421 cartas), 254 Faction Fight (texto truncado + Playing
+  along with a duplicate), 419 World War Three (es Cartas de Objetivo).
+- **131 Plots/Resources sin mecanica**, 11 `BLOCKED_CARDS` congeladas.
+- **Fase 3** (UX, onboarding, DOM en navegador real, y la IA todavia no JUEGA
+  cartas de reaccion, solo cierra ventanas) y **P1-DATA-03** (bloqueado por
+  red).
+
+---
+## 49. L5c - 189 ALBINO ALLIGATORS: +10 Poder o Resistencia a un Weird propio, con caducidad distinta por modo
+
+### 49.1 Hallazgo
+
+plan.md clasificaba 189 Albino Alligators como "L5c", separada de L5a, con una
+frase que ya avisaba de que no era lo mismo: *"es un DELTA sobre el grupo (+10
+Poder o Resistencia a un Weird propio), no un bonus sobre un ataque"*. Tenia
+razon. El texto impreso es:
+
+> Play this card at any time to give +10 Power or Resistance (your choice) to any
+> Weird group you control. If used with an action, it must be played when that
+> action is first declared, and counts only for that action. If used for defense,
+> the bonus lasts until the end of the current turn and does not count toward
+> Goals.
+
+Tres frases, tres mecanismos distintos, y **solo uno es eleccion del jugador**.
+El filtro (`weird`, una alineacion con 22 grupos en el mazo) no es eleccion: es
+el texto. El modo tampoco: lo decide el CONTEXTO.
+
+### 49.2 Correcciones aplicadas
+
+**Datos (`gen_cards.js`, 1774 -> 1837 lineas).** `const L5C_FX` con una entrada
+`'albino alligators': { kind:'group_boost_timed', align:'weird', value:10,
+t:<texto impreso literal> }`, insertada despues del `}` que CIERRA el bucle
+`L5B_FXN`, y `|| L5C_FXN[key]` anadido DENTRO de la unica cadena de resolucion
+(indice recalculado sobre el resultado del inserto: es la trampa de 45.5).
+
+**Motor (`game/js/engine.js`, 3995 -> 4036 lineas), 6 ediciones.**
+1. `curPower` suma `node.timedBoost.v` cuando `stat==='power' && mode==='action'`.
+2. `nodeResistance` suma `node.timedBoost.v` cuando `stat==='resistance'`, **sin
+   mirar el modo**: atacar nunca usa la Resistencia, asi que sumarla siempre es
+   correcto.
+3. `computeStrength`, rama de DESTRUIR, despues de
+   `det.defenseBase=tNode?defenderPower(tNode,true):0;` suma el `+10` de Poder
+   cuando el modo es DEFENSA (al defenderse de un ataque a destruir el objetivo
+   usa su Poder, no su Resistencia, por la regla de 25).
+4. `spendGroupToken` anade `if(nd.timedBoost && nd.timedBoost.mode==='action')
+   nd.timedBoost=null;` -- gastar la ficha ES la accion.
+5. `expireTurnFlags` (el UNICO sitio donde avanza el turno) anade la tercera
+   caducidad: modo DEFENSA con `S.turn>=untilTurn`.
+6. `instant` whitelist: `||eff0.kind==='group_boost_timed'`, porque el texto
+   imprime "at any time". El `case` va antes de `case 'token_gift':{`.
+
+**Un solo campo de nodo:** `node.timedBoost = {name, v, stat, mode, untilTurn}`.
+No dos campos casi iguales (`defPowerBoost` / `defResBoost`) porque la carta
+solo puede estar en un modo a la vez.
+
+**Puerta (`test_fase4_cards.js`, 829 -> 841 lineas).** Rama para `e.align` a
+NIVEL SUPERIOR de la carta: exige que ALGUN grupo del mazo tenga esa alineacion,
+no solo que la palabra exista. Sin esa rama el calificador se validaria en
+silencio (P1-026 / P1-031). Ojo: las clausulas de `moves[]` ya usan `m.align`,
+que valida la rama de abajo; este `e.align` es de primer nivel. `checkedFields`
+31 -> 32 campos.
+
+**UI: sin cambios.** La carta apunta a un GRUPO, asi que NO debe entrar en
+`NO_TARGET_KINDS` (esa lista es para cartas sin objetivo).
+
+### 49.3 Las 7 interpretaciones declaradas
+
+1. **"your choice" es `opts.stat`**, no un calificador. Un calificador que el
+   motor nunca lee seria exactamente el defecto P1-026.
+2. **El modo lo decide el CONTEXTO, no el jugador**: si hay un ataque abierto
+   contra ese nodo, es DEFENSA; si no, ACCION. Por eso el dato no declara ningun
+   campo de modo.
+3. **"must be played when that action is first declared"**: el motor declara Y
+   ejecuta una accion en el mismo paso, asi que lo mas cercano que se puede
+   exigir es que el grupo conserve su ficha. Sin ella, la carta se RECHAZA con la
+   razon impresa y no se gasta nada.
+4. **"counts only for that action"**: se consume en `spendGroupToken`, igual que
+   el triple de 234 Currency Speculation.
+5. **"until the end of the current turn"**: `untilTurn = S.turn`, INCLUSIVO. Esto
+   es lo contrario que 268 Good Polls, que dura hasta el principio del turno
+   SIGUIENTE (`untilTurn = S.turn + jugadores`). Ver 49.5.
+6. **"does not count toward Goals" NO se implementa y se DECLARA**: honrarla
+   exige saber QUE ataque uso el bonus (un registro de acciones, el mismo hueco
+   que bloquea a 377 Sucked Dry y el "out of public life" de 415). El grupo sigue
+   muriendo por `destroyGroup` como cualquier otro, que es la parte del texto que
+   SI se cumple.
+7. El filtro es la alineacion `weird` (22 grupos), mismo contrato que el
+   `giftAlign` de L1.
+
+### 49.4 La regresion: 5 escenarios, 46 aserciones
+
+Bloque `/* ---------- L5c - 189 ALBINO ALLIGATORS` en `test_fase2_rules.js`
+(4251 -> 4453 lineas). Todas las lecturas de Poder y Resistencia son
+reimplementaciones LOCALES de `curPower` y `nodeResistance` a proposito: si el
+motor y el test divergen, el test falla en vez de dar verde.
+
+1. **Modo ACCION, Poder**: el Weird propio sube +10 Poder, la Resistencia no se
+   toca, `untilTurn` es `null`, la ficha NO se gasta al jugar la carta, y al
+   `declareAttack` (que gasta la ficha) el bonus se consume y el Poder vuelve al
+   impreso.
+2. **Modo ACCION, Resistencia**: al elegir el otro parametro sube la Resistencia
+   y el Poder no se toca.
+3. **Modo DEFENSA por CONTEXTO**, con un ataque de CONTROL abierto: `defenseBase`
+   pasa de 5 a 15 en vivo, `untilTurn === S.turn`, el `total` del atacante BAJA
+   (un objetivo mas fuerte hace el ataque mas debil: -8 a -18), el bonus NO se
+   consume al jugar la carta ni al resolver el ataque, y caduca al empezar el
+   turno siguiente (`expireTurnFlags`).
+4. **Modo DEFENSA frente a un ataque a DESTRUIR**: `defenseBase` 1 -> 11, que es
+   la unica linea que ejercita el `det.defenseBase +=` nuevo.
+5. **Los tres rechazos**: un grupo propio que no es Weird, un Weird **rival** (el
+   texto dice "you control"), y modo ACCION sin ficha. En los tres la carta sigue
+   en la mano (comparando COPIAS, no `indexOf`, por 43) y ningun rechazo deja un
+   bonus puesto a medias.
+
+### 49.5 El fallo que la regresion encontro: `untilTurn > S.turn` hacia el lado equivocado
+
+La primera version de la linea de `computeStrength` comparaba
+`tNode.timedBoost.untilTurn > S.turn`, copiada del `defTriple` de 268. Con 268 es
+   correcto (alli `untilTurn = S.turn + jugadores`, "hasta el principio de tu
+proximo turno"). Con 189 es **siempre falsa**: la carta dura "hasta el FINAL del
+turno actual", asi que `untilTurn === S.turn` y la comparacion correcta es `<=`.
+
+El sintoma fue `defenseBase 1 -> 1`: el +10 no se aplicaba nunca. Y solo se
+manifestaba en el ataque a DESTRUIR, porque la rama de Resistencia no consulta el
+turno (atacar nunca usa la Resistencia), de modo que el escenario 3 pasaba en
+verde mientras la mecanica estaba muerta. **Leccion: un mismo campo de caducidad
+puede ser INCLUSIVO o EXCLUSIVO segun la frase impresa, y copiar la comparacion
+de otra carta es como se rompe.** 268 y 189 coexisten ahora con dos comparaciones
+distintas a proposito, cada una con su comentario.
+
+### 49.6 F7 - dos fixtures mios, el mismo tipo de error de siempre
+
+1. **El grupo 60 SI era Weird.** Escribi "Hackers: violent, P3 R2 - no es Weird"
+   sin medirlo, y la asercion negativa fallo. Ahora el atacante se BUSCA en el
+   mazo (`type==='group' && violent && !weird`, encontrado el 5). Es el error
+   39.4 por quinta vez: una negativa necesita una ficha que este de verdad FUERA
+   del filtro.
+2. **`E.declareAttack(1, ...)` sin turno.** Intente comprobar la defensa desde el
+   rival, pero el jugador 1 no era el turno actual: `Error: No es tu turno`. Ese
+   chequeo se movio al escenario 3, donde el ataque lo declara el jugador 0 (que si
+   tiene el turno) contra un Weird del jugador 1, y el jugador 1 juega la carta
+   fuera de turno porque `group_boost_timed` esta en `instant`.
+3. **`tbOf()` devuelve `undefined`, no `null`**, cuando el nodo existe pero nunca
+   se le puso bonus. La asercion "ningun rechazo dejo un bonus" comparaba con
+   `=== null` y fallaba sin motivo real. Ahora usa `!tbOf(...)`.
+
+Ademas, las tres primeras versiones del bloque fallaron al guard de no-ASCII por un
+`--` (raya) en un comentario: el splice lo normaliza con un `MAP` explicito
+ANTES de aplicar el guard, que es el orden que documenta 46.5.
+
+### 49.7 Verificacion
+
+- `node --check` limpio en `game/js/engine.js`, `test_fase2_rules.js`,
+  `test_fase4_cards.js`.
+- `node test_fase2_rules.js` -> **FASE 2 RULES PASSED**, **30/30** corridas
+  consecutivas, con las 46 aserciones de L5c en `ok`.
+- `npm test` -> **ALL TESTS PASSED (10)**, 3/3.
+- `node test_fase4_cards.js` -> **FASE 4 COVERAGE PASSED (118 cartas
+  clasificadas, 130 Plots/Resources sin mecanica (techo 182), 3 ramas muertas
+  declaradas, 11 cartas bloqueadas congeladas, 4 huecos de texto declarados)**,
+  `checkedFields` con 32 campos. La cifra de sin mecanica baja exactamente en 1
+  (131 -> 130), que es el criterio de 0.1.
+
+### 49.8 Lecciones
+
+1. **La caducidad puede ser inclusiva o exclusiva, y lo dice la frase impresa.**
+   "hasta el final del turno" = `untilTurn = S.turn` con `<=`; "hasta el principio
+   del turno siguiente" = `untilTurn = S.turn + jugadores` con `>`. Copiar la
+   comparacion de otra carta produce una mecanica muerta que solo se ve en una de
+   las dos ramas de combate.
+2. **Una rama puede estar muerta y la otra dar verde.** El +10 de Poder en
+   DEFENSA no se aplican nunca por el fallo anterior, y aun asi el escenario de
+   CONTROL pasaba: defenderse de un ataque a CONTROL usa la Resistencia, que va
+   por otra linea y no mira el turno. Una regresion que solo mira un camino no
+   demuestra la mecanica.
+3. **Elegir un indice de ficha "a ojo" es una bomba de reloji** (5a vez que se
+   paga). Los atacantes se BUSCAN en el mazo con un filtro explicito.
+4. **Un helper de test puede devolver `undefined` donde uno espera `null`.** Las
+   aserciones de ausencia se escriben con `!x`, no con `=== null`.
+5. **El guard de no-ASCII va DESPUES de normalizar**, nunca antes: una raya en un
+   comentario aborta la operacion entera, y el `MAP` explicito lo resuelve sin
+   tocar el texto en espanol del bloque.
+
+### 49.9 Backlog
+
+- **Cola de Resources (4 cartas): 203 Bigfoot, 311 Mercenaries, 358 Rogue Boomer,
+  373 Spear of Longinus.** Las cuatro son `type=resource` y su texto es una
+  HABILIDAD PERMANENTE que se usa como accion mas tarde ("Can act once per
+  turn", "can be used as often as you wish"), no un efecto al jugarlas. Necesitan
+  un subsistema `E.useResourceAbility` nuevo, con su propio limite de usos por
+  turno.
+- **205 Bimbo at Eleven**: exige "any **male** Personality" y `gender` no aparece
+  en NINGUNA de las 421 cartas. Es un hueco de DATOS como P1-032, no un defecto de
+  codigo; no se ha inventado ningun dato.
+- **254 Faction Fight**: necesita "Played along with a duplicate card" (registro
+  de duplicados, terreno de L11) y su texto impreso esta truncado a media frase.
+- **377 Sucked Dry and Cast Aside!**: necesita una cola de destruccion diferida,
+  porque `destroyGroup` llama a `detach()` y muta el array `children` que `walk`
+  esta iterando. `curPower` ya lee `node.burstMul` para cuando exista.
+- **255 Fear and Loathing** ya se hizo en L5b (48). 189 es esta seccion.
+- L6..L16 segun `plan.md`; quedan **130 Plots/Resources sin mecanica**.
+- **Fase 3**: UX, onboarding, verificacion en navegador real, y la IA todavia no
+  JUEGA cartas de reaccion (solo cierra las ventanas).
+- **P1-DATA-03 Global Power**: bloqueado por el entorno (la red no resuelve ni
+  `cs.cmu.edu` ni `sjgames.com`).
+
+---
+## 50. L6 - NEGAR UN EVENTO: las 5 cartas que dejan un suceso sin efecto, y P1-034 (cuatro defectos que solo vio la regresion)
+
+### 50.1 Hallazgo
+
+`plan.md` reunia en L6 diez cartas bajo el titulo "That card has no effect / becomes a
+failure / he must return it". Al medir las diez, **cinco no encajan en el mismo
+mecanismo** y tres de las que si encajan no se pueden jugar con `E.playPlot` sin tocar el motor:
+
+| idx | carta | `type` | veredicto |
+|---|---|---|---|
+|210|Botched Contact|plot|**IMPLEMENTADA** `takeover_return`|
+|359|Sabotage|plot|**IMPLEMENTADA** `takeover_return` + `alsoBlocks`|
+|278|Hex|plot|**IMPLEMENTADA** `resource_destroy`|
+|259|Foiled!|plot|**IMPLEMENTADA** `force_discard_exposed`|
+|356|Revolution!|plot|**IMPLEMENTADA** como cartas nueva de la familia `attack_boost` de §46|
+|224|Computer Security|plot|APLAZADA|
+|230|Cover-Up|plot|APLAZADA|
+|283|Hoax|plot|APLAZADA|
+|363|Secrets Man Was Not Meant to Know|plot|APLAZADA|
+|222|Combined Disasters|plot|APLAZADA|
+|372|Spasm of Violence|plot|APLAZADA|
+
+**Las cuatro APLAZADAS del primer grupo comparten un UNICO motivo.** 224, 230, 283 y 363
+dicen, todas, "that card has no effect" (o "that attack becomes a failure") sobre una carta
+de Plot **ya resuelta**. Deshacer un efecto aplicado es exactamente el hueco que ya habia
+bloqueado a 276 Hat Trick en §38.5, y la razon de fondo es que **`E.playPlot` es
+MONOFASICO**: el mismo `switch` valida y aplica. Negar limpiamente exigiria volverlo
+BIFASICO (anunciar y despues aplicar, el patron que §33 y §37 ya usaron dos veces para los
+ataques) repartido por sus 25 ramas, **mas** devolver el coste de la carta anulada, que las
+reglas exigen expresamente: *"If a Plot, special ability, or action is canceled, it has no effect
+(except to discard the cards and actions spent on it)"* (`inwo_rules_extracted.txt:924-931`).
+No se finge: se aplaza y se dice por que.
+
+**222 y 372 comparten el segundo motivo**: *"You must play both of the Disaster cards, as
+well"* es COMBINACION de cartas en una sola jugada, y el motor juega una carta por llamada.
+Es el mismo subsistema que 254 Faction Fight, ya aplazada en §46.
+
+### 50.2 Correcciones aplicadas
+
+**Datos.** `gen_cards.js` 1837 -> 1955 lineas. `L6_FX` (4 entradas) + `L6_FXN`, insertados
+despues de la `}` que CIERRA el bucle de `L5C_FXN`. **356 Revolution! se anadio DENTRO del
+objeto `L5_FX` ya existente**, porque su efecto es identico al de 381/391/415: un
+`A.boosts.push`. Solo cambian los calificadores, y anadir una carta a una familia que ya
+existe es anadir DATOS. La cadena quedo
+`... || L5C_FXN[key] || L6_FXN[key];` con el indice calculado sobre el resultado del
+inserto (la trampa de §45.5).
+
+**Motor.** engine.js 4182 -> 4375 lineas. Ocho ediciones:
+
+1. `eventReactionAllowed` gana la rama `ev.kind==='autoTakeover'`. El chequeo de
+   affordability es una **SIMULACION en seco**: nunca paga, para que la ventana pueda
+   quedar abierta para otro jugador (el mismo criterio que el pago de Embezzlement).
+2. `E.autoTakeover` abre la ventana **DESPUES** de que `placeUnder` devuelva el nodo, no
+   en un takeover fallido: en este motor un takeover fallido lanza y la carta se queda en
+   la mano del rival, asi que "devolverla" seria un no-op (el motivo por el que 412 Vultures
+   quedo bloqueada en §38.5).
+3. `E.autoTakeover` comprueba `pl.flags.autoTakeoverBlocked` antes de nada.
+4. El flag nuevo nace en el inicializador del jugador y se limpia en el bloque de
+   flags por turno, junto a los otros cinco.
+5. `closePendingEvent` gana el bloque `d.returnedBy`: `findNode` + `findNodeThatHas` +
+   `detach` + push a la mano del rival + el bloqueo de 359.
+6. `EVENT_KINDS` pasa a `['stealing_the_plans','embezzlement','takeover_return']`.
+   **Esto no es cosmetico:** `eventReactionAllowed` rechaza cualquier kind que no este en
+   esa lista, asi que sin esta entrada la rama nueva seria inalcanzable. Es la clase
+   P1-026/P1-031: el dato existe pero vive en otro sitio.
+7. La lista `instant` gana los tres kinds. 210 y 359 los juega un RIVAL dentro de la
+   ventana, 278 imprime "at any time except during a privileged attack" y 259 "may be
+   used at any time".
+8. `case 'attack_boost'` gana `boostVsDictatorship` (lee `node.dictatorship`, el estado
+   que §40/P1-028 dejo a proposito) y `payNotTheAttackers` (el veto va DENTRO del filtro
+   de `firstUsableAid`, no despues: comprobado sobre el primer candidato rechazaria la
+   carta aunque otro grupo propio sirviera).
+
+**Puerta.** `test_fase4_cards.js` 841 -> 906 lineas, `checkedFields` 32 -> 41. Las nueve
+ramas nuevas no se limitan a "el campo existe": comprueban que **el coste sea pagable de
+verdad**. `payPower` exige que la suma del Poder IMPRESO de todo el mazo llegue al total
+exigido; `payMinPower` exige que exista al menos un grupo con ese Poder; `payAttr` y
+`payShareAlign` existen en el mazo; `boostVsDictatorship` exige que exista la carta
+`dictatorship` que pone el estado que lee.
+
+### 50.3 Las siete interpretaciones declaradas
+
+1. El enganche va DESPUES de `placeUnder`, nunca sobre un takeover fallido.
+2. 210 y 359 comparten `kind` porque el efecto es identico; cambian coste y un efecto mas.
+3. 210 NO devuelve el takeover: el texto dice "pick another card for automatic takeover
+   that turn", es decir, sigue consumido y puede elegir otro. 359 es la que lo bloquea.
+4. 359 comprueba su coste contra la carta colocada, leida del nodo recien creado, y
+   "either your Illuminati" paga UNA ficha, como las nueve `force_align` de §40.
+5. 278 dice "A Magic Resource" y **el mazo no tiene clasificacion de Resources** (34 de 35
+   tienen `subtype:null`, medido en L4), el mismo motivo por el que se solto el "Gadget
+   Resource" de 270. El recurso se busca de un rival y ya esta; lo que SI se filtra es el
+   COSTE, porque "a Magic group" usa el atributo `magic`, que si existe.
+6. 259 descarta por `discardPlot()`, el unico punto de entrada al descarte de Plots
+   (P1-025). Consecuencia deliberada: esa Plot podra robarla despues Stealing the Plans.
+7. 259 filtra `subtype==='goal'` DENTRO de `pl.exposedPlots`, comprobado al responder y no
+   al cerrar, para que la ventana pueda quedar abierta para otro jugador.
+
+### 50.4 P1-034 - cuatro defectos, y los cuatro los vio solo la regresion
+
+`node --check` limpio, la puerta en verde y `npm test` en verde **no bastaron**: los cuatro
+defectos son de logica de juego y ninguno lo ve un analisis estatico.
+
+**P1-034.a - `resource_destroy` era INJUGABLE desde la interfaz.** El rival se iba a por
+defecto a `pid`, o sea el propio jugador, y la linea siguiente lanzaba
+`'solo destruye Resources de un rival'` SIEMPRE. La carta solo podia jugarse si el
+llamante pasaba un `opts.rivalPid` que la UI no tiene forma de enviar. Es el mismo defecto
+que `alignFromTarget` resolvia en 268: un calificador sin ruta de entrada. Corregido
+eligiendo el PRIMER rival que tenga Resources cuando no se pasa `opts.rivalPid`, que es
+determinista.
+
+**P1-034.b - `atkType:'any'` no lo honraba el MOTOR.** Al meter 356, la puerta fallo con
+`atkType debe ser "control" o "destroy", no "any"` y lo primero que se hizo fue **arreglar
+la puerta**. Error: la puerta tenia razon en senalar el problema, pero el problema estaba
+en el motor, que comparaba `A.type!==eff.atkType` sin excepciones, de modo que 356 no se
+podia jugar en NINGUN ataque. "Play this card on any attack, either to destroy or control"
+es un valor legitimo. Corregidos LOS DOS: el motor acepta `'any'` y la puerta lo acepta con
+un comentario que lo explica. **Leccion: cuando una puerta senala un dato invalido, la
+pregunta correcta es "quien miente, el dato o el consumidor?", y a veces mienten los dos.**
+
+**P1-034.c - 259 no quitaba la carta de `exposedPlots`.** `discardPlot` solo la mete en el
+descarte de Plots, asi que la misma carta de Objetivo seguia "expuesta" y 259 podia
+forzarla a descartar DOS veces en el mismo turno. Corregido con un splice en
+`fpv.exposedPlots` antes de llamar a `discardPlot`, que es ademas el sitio donde §38 ya
+filtra las expuestas al cerrar la mano.
+
+**P1-034.d - 356 se jugaba GRATIS.** Su texto imprime "Playing this card requires an action
+by a group other than those actually attacking the Nation", pero 356 no declara
+`requiresActionFromAttr` (no filtra por atributo), y el bloque de coste de `attack_boost`
+solo cobra cuando ese campo existe. La carta se jugaba sin pagar nada. Corregido con un
+SEGUNDO camino de coste: `payNotTheAttackers` sin atributo cobra cualquier grupo propio que
+no participe del ataque. Declarado, porque son dos caminos de coste en el mismo kind:
+`requiresActionFromAttr` = "un grupo de este tipo"; `payNotTheAttackers` sin atributo =
+"cualquier grupo propio que no participe".
+
+### 50.5 La puerta tambien se equivoco una vez: `payShareAlign` es un booleano
+
+La primera version de la rama de `payShareAlign` la trato como un NOMBRE de alineacion, y
+la puerta fallo con `payShareAlign="true" no es una alineacion del mazo`. Es que el campo
+es un **booleano**: el motor lo lee como "el grupo que paga tiene que compartir AL MENOS
+UNA alineacion con el grupo que el rival esta tomando posesion", y las alineaciones de
+referencia viajan en `ev.data.aligns` (las del grupo recien colocado), no en un calificador
+de la carta. Por eso el chequeo de no-vacuidad no puede ser "esta alineacion existe en el
+mazo" como en el resto de calificadores: lo que tiene que existir es un **par de grupos del
+mazo que compartan alguna alineacion**, o la exigencia no se podria cumplir nunca. La rama
+busca ese par y lo dice en el mensaje de fallo.
+
+### 50.6 Regresion
+
+Bloque `/* ---------- L6 - NEGAR UN EVENTO` en `test_fase2_rules.js`, cinco escenarios y 40
+aserciones, todas en verde y con **30/30 corridas consecutivas** del fichero completo. Los
+ficheros se buscan en el mazo, no se escriben a mano (`gAlign`, `gAttr`, `gSub` con
+`skip` obligatorio, o los dos fixtures salen a ser la misma carta). Aserciones observables:
+
+1. **210** - la ventana se abre, la ventana SIGUE ABIERTA tras jugar la carta (contrato de
+   dos pasos), el grupo vuelve a la mano del rival, desaparece de su estructura, el takeover
+   sigue consumido y NO queda bloqueado.
+2. **359** - pagado con grupos propios (Illuminati a 0) para ejercitar `payPower` +
+   `payShareAlign` y no el atajo del Illuminati; el grupo vuelve, el takeover queda
+   bloqueado y un takeover posterior lanza.
+3. **278** - el Resource sale de juego, va al descarte, se gasta la ficha del grupo magic
+   pagador, la carta se RECHAZA durante un ataque privilegiado y el rechazo NO destruye el
+   Resource.
+4. **259** - sin Objetivo expuesto se rechaza; con uno, sale de las expuestas y llega al
+   descarte de Plots.
+5. **356** - +10 contra una Nacion, +20 si lleva `node.dictatorship`, la ficha la paga un
+   grupo propio que no ataca, y sin ese grupo la carta se rechaza sin anadir boost.
+
+### 50.7 Verificacion
+
+- `node --check` limpio en `gen_cards.js`, `game/js/engine.js`, `test_fase2_rules.js` y
+  `test_fase4_cards.js`; 0 caracteres CJK ni U+FFFD en los cuatro.
+- `node test_fase2_rules.js` -> **FASE 2 RULES PASSED**, **30/30** corridas consecutivas.
+- `node test_fase4_cards.js` -> **FASE 4 COVERAGE PASSED (123 cartas clasificadas, 125
+  Plots/Resources sin mecanica (techo 182), 3 ramas muertas declaradas, 11 cartas
+  bloqueadas congeladas, 4 huecos de texto declarados)**. Sin mecanica 130 -> 125, exactamente
+  -5 (cuatro `L6_FX` mas 356). `checkedFields` 32 -> 41.
+- `npm test` -> **ALL TESTS PASSED (10)**.
+- La puerta fallo de verdad en el camino: 5 errores "rama NO existe en el motor" con los
+  datos puestos y el motor sin los `case`, y despues el error de `atkType:"any"` que
+  occasiono P1-034.b. Los dos son la puerta cumpliendo su trabajo.
+
+### 50.8 Lecciones
+
+1. **La puerta senala el problema, no el culpable.** Cuando un calificador nuevo hace fallar
+   la puerta, la pregunta es "quien miente?". En P1-034.b mienten los dos, y arreglar solo
+   la puerta habria dejado la carta sin jugar.
+2. **Un calificador sin ruta de entrada es un calificador decorativo.** El
+   `opts.rivalPid` de 278 no existia en la UI, y eso convertia el kind en INJUGABLE. La
+   pregunta que hay que hacerle a todo calificador nuevo es "quien me lo va a pasar y desde
+   donde".
+3. **"Se puede jugar" no es "se juega como dice el texto".** 356 se jugaba, con +20
+   incluso, y sin pagar. Un camino de coste que depende de OTRO campo del que la carta
+   tampoco habla es un camino que no se abre nunca.
+4. **Un estado que ninguna rama borra se puede usar dos veces.** `exposedPlots` era la
+   segunda via al descarte de una carta que ya estaba en el descarte.
+5. **La regresion sigue siendo la unica que mira el efecto.** Los cuatro defectos de
+   P1-034 son de logica de juego: ninguno lo ve `node --check` y ninguno lo ve la puerta
+   cuando el dato es valido. La puerta vigila que el dato no sea vacio; la regresion vigila
+   que el efecto ocurra.
+6. **La comprobacion de no-vacuidad depende de la SEMANTICA del campo, no de su nombre.**
+   `payShareAlign` No es una alineacion sino un booleano, y su no-vacuidad es un par de
+   grupos, no un vocabulario.
+
+### 50.9 Backlog
+
+- **L6 quedan 5 cartas APLAZADAS**, no implementadas: 224, 230, 283, 363 (hacen falta
+  `E.playPlot` bifasico y devolucion de coste) y 222, 372 (combinacion de cartas en una
+  jugada).
+- **Cola de Resources (4 cartas)**: 203 Bigfoot, 311 Mercenaries, 358 Rogue Boomer, 373
+  Spear of Longinus. Las cuatro son `type=resource` con una habilidad permanente usada como
+  accion, y necesitan un subsistema nuevo `E.useResourceAbility`.
+- **205 Bimbo at Eleven**: necesita un campo `gender` que no existe en NINGUNA de las 421
+  cartas. Es un hueco de DATOS, no de codigo; no se ha inventado ninguno.
+- **254 Faction Fight** (combinacion de cartas + texto truncado) y **377 Sucked Dry and
+  Cast Aside!** (cola de destruccion diferida, porque `destroyGroup` muta el array
+  `children` que `walk` esta recorriendo).
+- **419 World War Three** es una carta de Objetivo, va con las de su familia.
+- Quedan **125 Plots/Resources sin mecanica**, 11 cartas congeladas en `BLOCKED_CARDS`, y
+  el vacio de datos de §30 (Global Power) sigue bloqueado por la red.
+- **Fase 3**: UX, onboarding, verificacion en navegador real, y la IA todavia no JUEGA
+  cartas de reaccion (solo cierra ventanas).

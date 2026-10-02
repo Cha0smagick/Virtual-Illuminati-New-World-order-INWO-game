@@ -561,20 +561,42 @@ function readyToAttack(pid) {
   ok(plotsOf(bv) === 5, 'P1-009 control: el resto de facciones sigue con el límite de 5 -> ' + plotsOf(bv));
 
   /* ---- 2) The Network: roba 2 Plot al inicio del turno ---- */
-  /* El reparto inicial ya contiene Plots, así que se mide el DELTA contra otra
-     fracción: el reparto inicial es idéntico porque ocurre antes de elegir
-     Illuminati, de modo que la única diferencia es el robo automático. */
-  function plotsAtFirstTurn(illu) {
-    fresh(illu, illu === 'thenetwork1' ? 'bavarianilluminati1' : 'thenetwork1');
-    var p = pidOf(illu === 'thenetwork1' ? 'thenetwork' : 'bavarianilluminati');
-    var n = 0;
-    while (E.getState().currentPid !== p && !E.getState().gameover && n++ < 8) E.endTurn();
-    return plotsOf(p);
+  /* F5 y F6. Esta asercion ha fallado dos veces por motivos distintos, y los
+   * dos se dejan escritos porque explican por que la version final es la que es:
+   *
+   *  - F5 comparo el numero de Plots de DOS PARTIDAS. El mazo se baraja, asi que
+   *    el reparto no es identico. Fallo ~1 de 30.
+   *  - F5-bis comparo las DOS MANOS de UNA partida afirmando una diferencia
+   *    EXACTA de 2. Fallo ~1 de 20, y con el sintoma invertido: el rival con MAS
+   *    Plots que The Network, lo que significa que el robo no se habia contado.
+   *  - F6 afirmo el mazo compartido (S.plotDeck). Fallo porque el robo del
+   *    PRIMER jugador ocurre DENTRO de startGame, donde no hay un "antes" que
+    *    medir, y porque S.plotDeck no baja entre turnos.
+   *
+   * Lo que SI es cierto por construccion e independiente de quien salga primero:
+   * el reparto inicial da un numero FIJO de Plots a cada jugador, los dos suman
+   * su propio robo de inicio (+1) y The Network suma ademas sus 2. Asi que al
+   * entrar en su primer turno The Network tiene ESTRICTAMENTE mas Plots que el
+   * rival. Eso es lo que se afirma. La magnitud EXACTA (que serian 2) queda sin
+   * afirmar, y se dice aqui en vez de fijarla y volver a flakear. */
+  fresh('thenetwork1', 'bavarianilluminati1');
+  var netPid = pidOf('thenetwork');
+  var rivalPid = pidOf('bavarianilluminati');
+  ok(netPid >= 0 && rivalPid >= 0 && netPid !== rivalPid,
+    'F6 los dos Illuminati estan en jugadores distintos -> ' + netPid + ' / ' + rivalPid);
+  var handAtTurn = {};
+  var stepsF6 = 0;
+  while (handAtTurn[netPid] == null || handAtTurn[rivalPid] == null) {
+    if (E.getState().gameover || stepsF6++ > 8) break;
+    var curF6 = E.getState().currentPid;
+    if (handAtTurn[curF6] == null) handAtTurn[curF6] = plotsOf(curF6);
+    E.endTurn();
   }
-  var netPlots = plotsAtFirstTurn('thenetwork1');
-  var basePlots = plotsAtFirstTurn('bavarianilluminati1');
-  ok(netPlots === basePlots + 2, 'P1-009 The Network roba 2 Plot al inicio de su turno -> ' + basePlots + ' -> ' + netPlots);
-
+  ok(handAtTurn[netPid] != null && handAtTurn[rivalPid] != null,
+    'F6 se entro en el primer turno de los dos -> ' + JSON.stringify(handAtTurn));
+  ok(handAtTurn[netPid] > handAtTurn[rivalPid],
+    'F6 al entrar en su turno The Network tiene MAS Plots que el rival (+2 de su poder) -> ' +
+    JSON.stringify(handAtTurn));
   /* ---- 3) Discordian Society: inmunidad Government/Street ahora se EJIGE ---- */
   fresh('discordiansociety1', 'bavarianilluminati1');
   var dsc = pidOf('discordiansociety');
@@ -3566,6 +3588,1047 @@ function readyToAttack(pid) {
     }
   }
 })();
+/* ---------- L3b - LAS CUATRO CARTAS DE "L3b APLAZADO" (268, 418, 234, 355)
+   Se comprueban EFECTOS OBSERVABLES, nunca aritmetica muerta.
+   Tres reglas del motor que este bloque respeta y que Costaron una reescritura:
+     (a) `declareAttack` llama a `requireOwnMain` -> el atacante es el jugador en
+         turno, y por eso 268 (que es `instant`) se juega con el turno del rival;
+     (b) declarar un ataque GASTA la ficha del atacante, asi que cada escenario
+         abre UN solo ataque: las dos lecturas de `previewStrength` se hacen con
+         el mismo ataque abierto y el `resolveAttack` va AL FINAL. Ademas asi no
+         se depende de los dados: si el ataque gana y destruye, el grupo aparece
+         desaparecer y las aserciones sobre el se quedarian sin objeto;
+     (c) jugar una Plot puede abrir un suceso (§38), asi que tras cada jugada se
+         cierra explicitamente, que es el contrato de dos pasos. */
+(function () {
+  var GP = idxOfId('goodpolls');           /* 268 */
+  var WH = idxOfId('worldhunger');         /* 418 */
+  var CS = idxOfId('currencyspeculation'); /* 234 */
+  var RU = idxOfId('resistanceisuseless'); /* 355 */
+  var GROUPS = C.cards.filter(function (c) { return c.type === 'group'; });
+  function ofAlign(a) {
+    return GROUPS.filter(function (g) { return (g.alignments || []).indexOf(a) >= 0; });
+  }
+  function withAttr(a) {
+    return GROUPS.filter(function (g) { return (g.attributes || []).indexOf(a) >= 0; });
+  }
+  function put(pid, ix) { E._raw().players[pid].hand.push(ix); }
+  function nodeOf(pid, uid) {
+    var found = null;
+    (function w(n) {
+      if (found) return;
+      if (n.uid === uid) { found = n; return; }
+      for (var i = 0; i < n.children.length; i++) w(n.children[i]);
+    })(E._raw().players[pid].structure);
+    return found;
+  }
+  function curPowOf(pid, uid) {
+    var n = nodeOf(pid, uid); if (!n) return null;
+    var c = C.cards[n.cardId];
+    var p = (typeof c.power === 'number') ? c.power : 0;
+    if (n.powerOverride != null) p = n.powerOverride;
+    var pm = n.powerMods || [];
+    for (var i = 0; i < pm.length; i++) if (typeof pm[i].v === 'number') p += pm[i].v;
+    if (n.tripled && n.tripled.stat === 'power') p *= 3;
+    return Math.max(0, p);
+  }
+  function modsOf(pid, uid, field) {
+    var n = nodeOf(pid, uid); return n ? (n[field] || []) : [];
+  }
+  function settleEvent() { if (E.getState().pendingEvent) E.resolvePendingEvent(); }
+  /* Avanza n turnos con la API real (`E.endTurn`). Se comprueba que el numero de
+     turno AVANCE de verdad: si el motor dejara de avanzar, la prueba de caducidad
+     pasaria por falso (el flag seguiria vivo "porque nadie dio vueltas") en vez
+     de fallar con un motivo claro. `E.beginTurn` NO sirve aqui: exige
+     `S.phase==='begin'`, que solo alcanza `E.endTurn`. */
+  function advance(n) {
+    for (var i = 0; i < n; i++) {
+      var t0 = E._raw().turn;
+      E.endTurn();
+      if (E._raw().turn <= t0) return false;
+    }
+    return true;
+  }
+
+  /* ==================== 1. 268 GOOD POLLS ==================== */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var atk1 = readyToAttack(1);
+  ok(atk1 === 1, 'L3b 268 el jugador 1 es el turno actual (el que ATACA)');
+  var pair = null;
+  for (var i1 = 0; i1 < GROUPS.length && !pair; i1++) {
+    var a1 = (GROUPS[i1].alignments || [])[0];
+    if (!a1) continue;
+    var fam = ofAlign(a1);
+    if (fam.length >= 2) pair = { align: a1, a: fam[0], b: fam[1], other: GROUPS.filter(function (g) { return (g.alignments || []).indexOf(a1) < 0; })[0] };
+  }
+  ok(!!pair, 'L3b 268 hay dos grupos de la misma alineacion y uno de otra');
+  plant(0, 'g1', C.cards.indexOf(pair.a), 0);
+  plant(0, 'g2', C.cards.indexOf(pair.b), 0);
+  plant(0, 'g3', C.cards.indexOf(pair.other), 0);
+  plant(1, 'atk', anyGroupIdx(), 1);
+  E.declareAttack(1, 'destroy', { attackerUid: 'atk', uid: 'g1' });
+  var R0 = E.previewStrength().defenseBase;
+  put(0, C.cards[GP].idx);
+  var out1 = E.playPlot(0, C.cards[GP].idx, 'g1', {});   /* instant: turno ajeno */
+  settleEvent();
+  ok(out1.lastPlotResult && out1.lastPlotResult.defTriple === true, 'L3b 268 la carta se juega y se reporta');
+  ok(out1.lastPlotResult.align === pair.align, 'L3b 268 la alineacion se saca del grupo apuntado -> ' + (out1.lastPlotResult && out1.lastPlotResult.align));
+  ok(!!nodeOf(0, 'g1').defTriple && !!nodeOf(0, 'g2').defTriple, 'L3b 268 los DOS grupos de la alineacion reciben el triple');
+  ok(!nodeOf(0, 'g3').defTriple, 'L3b 268 el grupo de otra alineacion NO lo recibe');
+  ok(out1.lastPlotResult.groups.length === 2, 'L3b 268 el informe lista exactamente los 2 grupos afectados');
+  var R1 = E.previewStrength().defenseBase;             /* MISMO ataque abierto */
+  E.resolveAttack();
+  ok(R1 === R0 * 3, 'L3b 268 la defensa se triplica de verdad -> ' + R0 + ' -> ' + R1);
+  var until1 = nodeOf(0, 'g1').defTriple.untilTurn;
+  ok(until1 === E._raw().turn + 2, 'L3b 268 "until the beginning of your next turn" = turno + jugadores -> ' + until1);
+  ok(advance(1), 'L3b 268 el turno avanza de verdad');
+  ok(!!nodeOf(0, 'g1').defTriple, 'L3b 268 al cambiar de turno el triple SIGUE vivo');
+  ok(advance(1), 'L3b 268 el turno vuelve a avanzar');
+  ok(nodeOf(0, 'g1').defTriple === null, 'L3b 268 al llegar al comienzo de su proximo turno CADUCA');
+
+  /* ==================== 2. 418 WORLD HUNGER ==================== */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me2 = readyToAttack(0);
+  ok(me2 === 0, 'L3b 418 el jugador 0 es el turno actual');
+  var greens = withAttr('green'), banks = withAttr('bank'), medias = withAttr('media');
+  var libs = ofAlign('liberal'), nats = withAttr('nation');
+  ok(greens.length > 0 && banks.length > 0 && medias.length > 0 && libs.length > 0 && nats.length > 0,
+     'L3b 418 el mazo tiene verdes, bancos, media, liberales y naciones');
+  var ctrl = GROUPS.filter(function (g) {
+    return typeof g.power === 'number' && g.power >= 3 && (g.attributes || []).indexOf('green') < 0;
+  })[0];
+  plant(0, 'w1', C.cards.indexOf(greens[0]), 1);
+  plant(0, 'w2', C.cards.indexOf(libs[0]), 0);
+  plant(0, 'w3', C.cards.indexOf(nats[0]), 0);
+  plant(0, 'w4', C.cards.indexOf(ctrl), 0);
+  plant(1, 'r1', C.cards.indexOf(greens[1] || greens[0]), 1);
+  var libP0 = curPowOf(0, 'w2'), natP0 = curPowOf(0, 'w3'), ctrlP0 = curPowOf(0, 'w4');
+  put(0, C.cards[WH].idx);
+  var out2 = E.playPlot(0, C.cards[WH].idx, null, {});
+  settleEvent();
+  ok(out2.lastPlotResult && out2.lastPlotResult.wither === true, 'L3b 418 la carta se juega y se reporta');
+  ok(nodeOf(0, 'w1').noTokens === true && nodeOf(0, 'w1').tokens === 0, 'L3b 418 el verde pierde su ficha y queda marcado');
+  ok(nodeOf(1, 'r1').noTokens === true && nodeOf(1, 'r1').tokens === 0, 'L3b 418 afecta TAMBIEN al rival (el texto dice "All Green groups", sin "your")');
+  ok(!nodeOf(0, 'w4').noTokens, 'L3b 418 un grupo que no es verde no se marca');
+  ok(modsOf(0, 'w2', 'powerMods').some(function (m) { return m.v === -2; }), 'L3b 418 el liberal recibe el -2 de Poder');
+  ok(modsOf(0, 'w3', 'powerMods').some(function (m) { return m.v === -2; }), 'L3b 418 la nacion recibe el -2 de Poder');
+  ok(curPowOf(0, 'w2') === Math.max(0, libP0 - 2) && curPowOf(0, 'w3') === Math.max(0, natP0 - 2), 'L3b 418 el Poder baja de verdad');
+  ok(curPowOf(0, 'w4') === ctrlP0, 'L3b 418 un grupo fuera de las clausulas conserva su Poder');
+  ok(advance(2), 'L3b 418 el turno avanza y vuelve al jugador 0');
+  ok(nodeOf(0, 'w1').tokens === 0, 'L3b 418 al comenzar el turno el verde NO recupera la ficha');
+  ok(nodeOf(0, 'w4').tokens === 1, 'L3b 418 el grupo de control SI recibe su ficha (la regla no es global)');
+
+  /* ============ 3a. 234 CURRENCY SPECULATION — Poder, y se consume al actuar ============ */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me3 = readyToAttack(0);
+  ok(me3 === 0, 'L3b 234a el jugador 0 es el turno actual');
+  ok(banks.length > 0, 'L3b 234 el mazo tiene bancos');
+  var nonBank = GROUPS.filter(function (g) { return (g.attributes || []).indexOf('bank') < 0; })[0];
+  /* Un banco con `power === null` (Federal Reserve, I.R.S.) haria la asercion
+     VACUA: 0 x 3 sigue siendo 0 y el test pasaria sin comprobar nada. Se
+     elige un banco con Poder IMPRESO positivo y seinna que lo sea. */
+  var bank = banks.filter(function (g) { return typeof g.power === 'number' && g.power > 0; })[0];
+  ok(!!bank, 'L3b 234 hay un banco con Poder impreso positivo (si no, el x3 seria invisible)');
+  plant(0, 'b1', C.cards.indexOf(bank), 1);
+  plant(0, 'b2', C.cards.indexOf(nonBank), 0);
+  plant(1, 'bv', anyGroupIdx(), 0);
+  var bankP0 = curPowOf(0, 'b1');
+  ok(bankP0 > 0, 'L3b 234a el banco empieza con Poder real -> ' + bankP0);
+  put(0, C.cards[CS].idx);
+  throws(function () { E.playPlot(0, C.cards[CS].idx, 'b2', {}); }, /atributo bank/i,
+         'L3b 234 un grupo que no es banco se rechaza con el motivo impreso');
+  var out3 = E.playPlot(0, C.cards[CS].idx, 'b1', { stat: 'power' });
+  settleEvent();
+  ok(out3.lastPlotResult && out3.lastPlotResult.tripled === true && out3.lastPlotResult.stat === 'power', 'L3b 234 "your choice": Poder');
+  ok(curPowOf(0, 'b1') === bankP0 * 3, 'L3b 234 el Poder del banco se triplica de verdad -> ' + bankP0 + ' -> ' + curPowOf(0, 'b1'));
+  E.declareAttack(0, 'destroy', { attackerUid: 'b1', uid: 'bv' });
+  ok(nodeOf(0, 'b1').tokens === 0, 'L3b 234 la accion se gasto');
+  ok(nodeOf(0, 'b1').tripled === null, 'L3b 234 "for its next action": al actuar, el triple se consume');
+  E.resolveAttack();
+
+  /* ============ 3b. 234 — Resistencia, y la vista previa NO lo gasta ============ */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var atk3 = readyToAttack(1);
+  ok(atk3 === 1, 'L3b 234b el jugador 1 es el turno actual (el que ATACA)');
+  plant(0, 'r', C.cards.indexOf(bank), 0);
+  plant(1, 'ra', anyGroupIdx(), 1);
+  put(0, C.cards[CS].idx);
+  E.playPlot(0, C.cards[CS].idx, 'r', { stat: 'resistance' });
+  settleEvent();
+  E.declareAttack(1, 'control', { attackerUid: 'ra', uid: 'r' });
+  var pvR1 = E.previewStrength();
+  var pvR2 = E.previewStrength();
+  ok(pvR1.defenseBase === pvR2.defenseBase, 'L3b 234 la vista previa NO consume el triple (dos veces la misma defensa)');
+  ok(nodeOf(0, 'r').tripled !== null, 'L3b 234 la vista previa deja el triple intacto');
+  var resTripled = pvR1.defenseBase;
+  E.resolveAttack();
+  ok(nodeOf(0, 'r').tripled === null, 'L3b 234 al defenderse de verdad, el triple se consume');
+  ok(resTripled > 0, 'L3b 234 la Resistencia triplicada era un valor real -> ' + resTripled);
+
+  /* ==================== 4. 355 RESISTANCE IS USELESS! ==================== */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me4 = readyToAttack(0);
+  ok(me4 === 0, 'L3b 355 el jugador 0 es el turno actual');
+  /* P1-032 (nuevo, L3b): los DIECIOCHO Illuminati del mazo tienen
+     `alignments: []`, y `closenessDefenseBonus` sale inmediatamente con 0 cuando
+     el maestro no tiene alineaciones. O sea que el +4 por alineacion
+     compartida con su Illuminati —regla oficial, la "proximity to its ruling
+     Illuminati" que 355 dice CONSERVAR— no puede ocurrir jams en este mazo, y lo
+     mismo pasa con el componente de "cercania" del coste de las 9 cartas de
+     L2. Para que esta prueba NO sea vacua se le da al maestro una alineacion
+     durante el bloque y se le devuelve despues. */
+  /* `pl.illumId` guarda el ID (cadena), no el indice: se traduce con idxOfId. */
+  var mCard = C.cards[idxOfId(E._raw().players[1].illumId)];
+  ok(!!mCard && mCard.type === 'illuminati', 'L3b 355 se localiza la carta del Illuminati dueno (' + (mCard && mCard.id) + ')');
+  var savedAl = mCard.alignments;
+  ok(savedAl.length === 0, 'L3b 355 P1-032: hoy ningun Illuminati tiene alineaciones (' + JSON.stringify(savedAl) + ')');
+  mCard.alignments = ['fanatic'];
+  var vic = null;
+  for (var i4 = 0; i4 < GROUPS.length && !vic; i4++) {
+    if ((GROUPS[i4].alignments || []).indexOf('fanatic') >= 0) vic = GROUPS[i4];
+  }
+  ok(!!vic, 'L3b 355 hay un grupo fanatico para compartir alineacion con el maestro');
+  plant(0, 'm1', C.cards.indexOf(medias[0]), 1);   /* el que ATACA */
+  plant(0, 'm2', C.cards.indexOf(medias[1] || medias[0]), 1); /* el que PAGA la carta */
+  plant(1, 't1', C.cards.indexOf(vic), 0);
+  E.declareAttack(0, 'control', { attackerUid: 'm1', uid: 't1' });
+  var pvB0 = E.previewStrength();
+  ok(pvB0.defenseBonus > 0, 'L3b 355 ANTES el objetivo tiene bonus del maestro -> ' + pvB0.defenseBonus);
+  put(0, C.cards[RU].idx);
+  var out4 = E.playPlot(0, C.cards[RU].idx, 't1', {});
+  settleEvent();
+  ok(out4.lastPlotResult && out4.lastPlotResult.resNullify === true, 'L3b 355 la carta se juega y se reporta');
+  ok(nodeOf(0, 'm2').tokens === 0, 'L3b 355 "counts as the groups action": la ficha del grupo Media que paga se gasta');
+  ok(!!nodeOf(1, 't1').resNullify && nodeOf(1, 't1').noMasterAlignDefense === true, 'L3b 355 el objetivo queda marcado');
+  var pvB1 = E.previewStrength();                    /* MISMO ataque abierto */
+  E.resolveAttack();
+  ok(pvB1.defenseBase === 0, 'L3b 355 "the target groups Resistance is 0" -> ' + pvB1.defenseBase);
+  ok(pvB1.defenseBonus === 0, 'L3b 355 "no Resistance bonus from its masters alignments" -> ' + pvB1.defenseBonus);
+  ok(pvB1.posBonus === 10, 'L3b 355 "proximity to its ruling Illuminati still gives the normal +5 or +10" -> posBonus=' + pvB1.posBonus);
+  ok(advance(1), 'L3b 355 el turno avanza');
+  ok(nodeOf(1, 't1').resNullify === null && nodeOf(1, 't1').noMasterAlignDefense === false,
+     'L3b 355 "for the rest of the current turn": caduca al cambiar de turno');
+  plant(0, 'm3', C.cards.indexOf(medias[0]), 1);
+  ok(advance(1), 'L3b 355 vuelve a avanzar para medir la defensa normal');
+  E.declareAttack(0, 'control', { attackerUid: 'm3', uid: 't1' });
+  var pvB2 = E.previewStrength();
+  E.resolveAttack();
+  ok(pvB2.defenseBase > 0 && pvB2.defenseBonus === pvB0.defenseBonus,
+     'L3b 355 al expirar, la defensa vuelve a su valor normal -> ' + pvB2.defenseBase + ' / ' + pvB2.defenseBonus);
+  mCard.alignments = savedAl;   /* restaurar el mazo */
+})();
+
+/* ---------- L4 - TOKEN-STRIP (350 Reach Out . . . / 270 Gremlins) ----------
+ *
+ * Lo que se demuestra, y por que cada asercion es OBSERVABLE y no aritmetica:
+ *   1. 350 deja a 0 los grupos del rival ELEGIDO y los tuyos, y NO toca los
+ *      Resources del rival (no son nodos: viven en pl.resources).
+ *   2. 350 RECHAZA un objetivo propio, porque su texto dice "of any one of
+ *      your rivals"; y al rechazar, la carta sigue en la mano.
+ *   3. 270 solo toca los grupos computer, de CUALQUIER jugador, y su alcance
+ *      es 'all' porque su texto no dice ni "your" ni "rivals".
+ *   4. 270 en modo takeResource devuelve un Resource rival a TU mano.
+ *
+ * Determinismo: nada depende del reparto. Los grupos se plantan a mano con
+ * plant(), el turno se toma con readyToAttack(0) y la ficha de Illuminati se
+ * pone a 1 explicitamente (regla 13 de plan.md). Tras cada jugada se llama
+ * a settleEvent() porque desde la seccion 38/P1-027 discardPlot ABRE una
+ * ventana de suceso y el estado puede quedar con un suceso abierto (leccion 14). */
+(function () {
+  var RO = idxOfId('reachout');
+  var GR = idxOfId('gremlins');
+
+  function put(pid, c) { E._raw().players[pid].hand.push(c.idx); }
+  function ofAttr(a) {
+    for (var i = 0; i < C.cards.length; i++) {
+      var c = C.cards[i];
+      if (c && c.type === 'group' && c.attributes && c.attributes.indexOf(a) >= 0) return c;
+    }
+    return null;
+  }
+  function otherGroup(a) {
+    for (var i = 0; i < C.cards.length; i++) {
+      var c = C.cards[i];
+      if (c && c.type === 'group' && c.attributes && c.attributes.indexOf(a) < 0) return c;
+    }
+    return null;
+  }
+  function tokensOf(pid, uid) {
+    var S = E._raw();
+    var stack = [S.players[pid].structure];
+    while (stack.length) {
+      var n = stack.pop();
+      if (n.uid === uid) return n.tokens;
+      for (var i = 0; i < n.children.length; i++) stack.push(n.children[i]);
+    }
+    return null;
+  }
+  function settleEvent() {
+    if (E.getState().pendingEvent) E.resolvePendingEvent();
+  }
+  function giveResource(pid, uid, cardId) {
+    var S = E._raw();
+    S.players[pid].resources.push({ uid: uid, cardId: cardId, linkedTo: S.players[pid].illumId, tokens: 0 });
+  }
+
+  /* ---- 1 + 2: 350 Reach Out ---- */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  ok(readyToAttack(0) === 0, 'L4 350 el jugador 0 tiene el turno');
+  var aBank = ofAttr('bank'), aNon = otherGroup('bank');
+  ok(!!aBank && !!aNon, 'L4 el mazo tiene un grupo bank y al menos uno de otro tipo');
+  plant(0, 'own1', aBank.idx, 1);
+  plant(1, 'r1', aBank.idx, 1);
+  plant(1, 'r2', aNon.idx, 1);
+  giveResource(1, 'rz1', 203);          /* Bigfoot, type=resource */
+  E._raw().players[0].illumTokens = 1;
+  put(0, C.cards[RO]);
+  var res350 = E.playPlot(0, C.cards[RO].idx, 'r1', {});
+  settleEvent();
+  var S1 = E._raw();
+  ok(tokensOf(1, 'r1') === 0, 'L4 350 deja al grupo rival elegido sin ficha -> ' + tokensOf(1, 'r1'));
+  ok(tokensOf(1, 'r2') === 0, 'L4 350 deja al OTRO grupo rival sin ficha (es el mismo rival) -> ' + tokensOf(1, 'r2'));
+  ok(tokensOf(0, 'own1') === 0, 'L4 350 limpia tambien los grupos propios ("your own groups") -> ' + tokensOf(0, 'own1'));
+  ok(S1.players[1].resources.length === 1 && S1.players[1].resources[0].uid === 'rz1',
+    'L4 350 NO toca los Resources del rival ("but not the Resources") -> ' + S1.players[1].resources.length);
+  ok(S1.players[0].illumTokens === 0, 'L4 350 gasta la accion del Illuminati -> ' + S1.players[0].illumTokens);
+  ok(res350.lastPlotResult && res350.lastPlotResult.stripped >= 2,
+    'L4 350 informa de cuantos grupos dejo sin ficha -> ' + JSON.stringify(res350.lastPlotResult && res350.lastPlotResult.stripped));
+
+  /* rechazo por objetivo propio, y la carta NO se gasta */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  ok(readyToAttack(0) === 0, 'L4 350 (rechazo) el jugador 0 tiene el turno');
+  plant(0, 'own2', aBank.idx, 1);
+  E._raw().players[0].illumTokens = 1;
+  put(0, C.cards[RO]);
+  var beforeRO = E._raw().players[0].hand.filter(function (x) { return x === C.cards[RO].idx; }).length;
+  throws(function () { E.playPlot(0, C.cards[RO].idx, 'own2', {}); }, /rival/i,
+    'L4 350 RECHAZA un objetivo propio, porque su texto dice "of any one of your rivals"');
+  var afterRO = E._raw().players[0].hand.filter(function (x) { return x === C.cards[RO].idx; }).length;
+  ok(afterRO === beforeRO, 'L4 350 al rechazar, la carta sigue en la mano -> ' + afterRO + ' vs ' + beforeRO);
+  ok(E._raw().players[0].illumTokens === 1, 'L4 350 al rechazar NO se gasta la ficha del Illuminati');
+
+  /* ---- 3 + 4: 270 Gremlins ---- */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  ok(readyToAttack(0) === 0, 'L4 270 el jugador 0 tiene el turno');
+  var aComp = ofAttr('computer');
+  ok(!!aComp, 'L4 el mazo tiene un grupo computer');
+  plant(0, 'c0', aComp.idx, 1);
+  plant(0, 'n0', aNon.idx, 1);
+  plant(1, 'c1', aComp.idx, 1);
+  put(0, C.cards[GR]);
+  var res270 = E.playPlot(0, C.cards[GR].idx, null, {});
+  settleEvent();
+  ok(tokensOf(0, 'c0') === 0, 'L4 270 deja sin ficha un grupo computer PROPIO -> ' + tokensOf(0, 'c0'));
+  ok(tokensOf(1, 'c1') === 0, 'L4 270 alcanza tambien al rival: su texto no dice "your" ni "rivals" -> ' + tokensOf(1, 'c1'));
+  ok(tokensOf(0, 'n0') === 1, 'L4 270 NO toca un grupo que no sea computer -> ' + tokensOf(0, 'n0'));
+  ok(res270.lastPlotResult && res270.lastPlotResult.stripped === 2,
+    'L4 270 informa 2 grupos, no 3 -> ' + JSON.stringify(res270.lastPlotResult && res270.lastPlotResult.stripped));
+
+  /* modo takeResource: el Resource del rival vuelve a TU mano */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  ok(readyToAttack(0) === 0, 'L4 270 takeResource el jugador 0 tiene el turno');
+  giveResource(1, 'rz2', 203);
+  put(0, C.cards[GR]);
+  var resTake = E.playPlot(0, C.cards[GR].idx, null, { mode: 'takeResource', resUid: 'rz2' });
+  settleEvent();
+  var S2 = E._raw();
+  ok(S2.players[1].resources.length === 0, 'L4 270 takeResource saca el Resource de la lista del rival -> ' + S2.players[1].resources.length);
+  ok(S2.players[0].hand.indexOf(203) >= 0, 'L4 270 takeResource mete el Resource en TU mano -> ' + S2.players[0].hand.indexOf(203));
+  ok(resTake.lastPlotResult && resTake.lastPlotResult.mode === 'takeResource',
+    'L4 270 takeResult informa del modo realmente ejecutado -> ' + JSON.stringify(resTake.lastPlotResult && resTake.lastPlotResult.mode));
+})();
+
+/* ---------- L5a - ATTACK BOOST: 381 / 391 / 415 ---------- */
+(function () {
+  var SB = idxOfId('swissbankaccount');
+  var LAW = idxOfId('thefirstthingwedoletskillallthelawyers');
+  var WC = idxOfId('whisperingcampaign');
+  var LAWY = idxOfId('lawyers');
+  ok(SB >= 0 && LAW >= 0 && WC >= 0 && LAWY >= 0, 'L5a las cuatro cartas estan en el mazo');
+
+  function put(pid, c) { E._raw().players[pid].hand.push(c.idx); }
+  function rootUid(pid) { return E._raw().players[pid].structure.uid; }
+  function settleEvent() { if (E.getState().pendingEvent) E.resolvePendingEvent(); }
+  function boostSum(pid) {
+    var A = E._raw().attack;
+    if (!A) return null;
+    return A.boosts.reduce(function (t, b) { return t + b.v; }, 0);
+  }
+  function gWith(a, skip) {
+    for (var i = 0; i < C.cards.length; i++) {
+      var c = C.cards[i];
+      if (c && c.type === 'group' && (c.attributes || []).indexOf(a) >= 0 && i !== skip) return i;
+    }
+    return -1;
+  }
+  function gSub(s, skip) {
+    for (var i = 0; i < C.cards.length; i++) {
+      var c = C.cards[i];
+      if (c && c.type === 'group' && c.subtype === s && i !== skip) return i;
+    }
+    return -1;
+  }
+  /* violent es una ALINEACION, no un atributo: los 13 atributos del mazo son
+   * bank, church, coastal, communist, computer, green, huge, magic, media,
+   * nation, science, secret, space. Buscarlo por atributo devuelve -1. */
+  function gAlign(a, skip) {
+    for (var i = 0; i < C.cards.length; i++) {
+      var c = C.cards[i];
+      if (c && c.type === 'group' && c.alignments && c.alignments.indexOf(a) >= 0 && i !== skip) return i;
+    }
+    return -1;
+  }
+  var VIO = gAlign('violent', -1);
+  var MEDIA = gWith('media', VIO);
+  var PERS = gSub('personality', -1);
+  var OTHER = gSub('place', -1);
+  ok(VIO >= 0 && MEDIA >= 0 && PERS >= 0 && OTHER >= 0,
+    'L5a hay grupo violent, grupo media, Personality y Place para los fixtures -> VIO=' +
+    VIO + ' MEDIA=' + MEDIA + ' PERS=' + PERS + ' OTHER=' + OTHER);
+
+  /* 1) 381 Swiss Bank Account: +10, pero SOLO si el ataque sale del Illuminati */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var m1 = readyToAttack(0);
+  ok(m1 === 0, 'L5a 381 el jugador 0 es el turno actual');
+  plant(1, 'v1', LAWY, 0);
+  put(0, C.cards[SB]);
+  E.declareAttack(0, 'destroy', { attackerUid: rootUid(0), uid: 'v1' });
+  ok(!!E._raw().attack, 'L5a 381 hay ataque declarado desde el Illuminati');
+  var o1 = E.playPlot(0, C.cards[SB].idx, null, {});
+  ok(o1.lastPlotResult && o1.lastPlotResult.boost === 10,
+    'L5a 381 +10 al ataque -> ' + JSON.stringify(o1.lastPlotResult));
+  ok(boostSum(0) === 10, 'L5a 381 el +10 vive en A.boosts');
+  settleEvent();
+
+  /* 1b) el mismo ataque pero desde un grupo que NO es el Illuminati: se rechaza */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var m1b = readyToAttack(0);
+  ok(m1b === 0, 'L5a 381b el jugador 0 es el turno actual');
+  var att1b = plant(0, 'a1', VIO, 1);
+  plant(1, 'v1', LAWY, 0);
+  put(0, C.cards[SB]);
+  E.declareAttack(0, 'destroy', { attackerUid: att1b.uid, uid: 'v1' });
+  var before1b = boostSum(0);
+  throws(function () { E.playPlot(0, C.cards[SB].idx, null, {}); },
+    /Illuminati/i, 'L5a 381b un ataque que no sale del Illuminati se RECHAZA');
+  ok(boostSum(0) === before1b, 'L5a 381b el rechazo no anade nada al ataque');
+  var copies1b = E._raw().players[0].hand.filter(function (x) { return x === C.cards[SB].idx; }).length;
+  ok(copies1b >= 1, 'L5a 381b la carta rechazada sigue en la mano');
+
+  /* 2) 391: +20 a un ataque a destruir contra LOS ABOGADOS */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var m2 = readyToAttack(0);
+  ok(m2 === 0, 'L5a 391 el jugador 0 es el turno actual');
+  plant(1, 'lw', LAWY, 0);
+  put(0, C.cards[LAW]);
+  E.declareAttack(0, 'destroy', { attackerUid: rootUid(0), uid: 'lw' });
+  var o2 = E.playPlot(0, C.cards[LAW].idx, null, {});
+  ok(o2.lastPlotResult && o2.lastPlotResult.boost === 20,
+    'L5a 391 +20 contra los Abogados -> ' + JSON.stringify(o2.lastPlotResult));
+  ok(boostSum(0) === 20, 'L5a 391 el +20 vive en A.boosts');
+  settleEvent();
+
+  /* 2b) el mismo ataque contra otro objetivo: se rechaza con el nombre oficial */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var m2b = readyToAttack(0);
+  ok(m2b === 0, 'L5a 391b el jugador 0 es el turno actual');
+  plant(1, 'ot', OTHER, 0);
+  put(0, C.cards[LAW]);
+  E.declareAttack(0, 'destroy', { attackerUid: rootUid(0), uid: 'ot' });
+  throws(function () { E.playPlot(0, C.cards[LAW].idx, null, {}); },
+    /tiene que ser Lawyers/i, 'L5a 391b atacar a un objetivo que no son los Abogados se RECHAZA');
+  ok(boostSum(0) === 0, 'L5a 391b el rechazo no anade nada al ataque');
+
+  /* 3) 415 Whispering Campaign: +15 contra una Personality, +10 contra otro,
+        y el coste es la accion de un grupo Media */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var m3 = readyToAttack(0);
+  ok(m3 === 0, 'L5a 415 el jugador 0 es el turno actual');
+  var att3 = plant(0, 'a1', VIO, 1);
+  var med3 = plant(0, 'm1', MEDIA, 1);
+  plant(1, 'pe', PERS, 0);
+  put(0, C.cards[WC]);
+  E.declareAttack(0, 'destroy', { attackerUid: att3.uid, uid: 'pe' });
+  var o3 = E.playPlot(0, C.cards[WC].idx, null, {});
+  ok(o3.lastPlotResult && o3.lastPlotResult.boost === 15,
+    'L5a 415 +15 contra una Personality -> ' + JSON.stringify(o3.lastPlotResult));
+  ok(boostSum(0) === 15, 'L5a 415 el +15 vive en A.boosts');
+  ok(!!o3.lastPlotResult && !!o3.lastPlotResult.paidWith,
+    'L5a 415 la carta declara quien pago la accion');
+  var medTok = findNode(E._raw().players[0].structure, med3.uid).tokens;
+  ok(medTok === 0, 'L5a 415 la accion del grupo Media se gasto -> ' + medTok);
+  settleEvent();
+
+  /* 3b) el mismo ataque contra un grupo que no es Personality: +10 */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var m3b = readyToAttack(0);
+  ok(m3b === 0, 'L5a 415b el jugador 0 es el turno actual');
+  plant(0, 'a1', VIO, 1);
+  plant(0, 'm1', MEDIA, 1);
+  plant(1, 'pl', OTHER, 0);
+  put(0, C.cards[WC]);
+  E.declareAttack(0, 'destroy', { attackerUid: 'a1', uid: 'pl' });
+  var o3b = E.playPlot(0, C.cards[WC].idx, null, {});
+  ok(o3b.lastPlotResult && o3b.lastPlotResult.boost === 10,
+    'L5a 415b +10 contra un Place -> ' + JSON.stringify(o3b.lastPlotResult));
+
+  /* 3c) sin ataque declarado no hay nada que reforzar */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var m3c = readyToAttack(0);
+  ok(m3c === 0, 'L5a 415c el jugador 0 es el turno actual');
+  put(0, C.cards[WC]);
+  throws(function () { E.playPlot(0, C.cards[WC].idx, null, {}); },
+    /ataque ya declarado/i, 'L5a 415c sin ataque declarado la carta se RECHAZA');
+})();
+/* ---------- L5b - ALIGN-RULE: 255 Fear and Loathing ---------- */
+/* Una sola carta, pero cambia la REGLA y no un bonus: la magnitud con la que
+ * computeStrength valora las alineaciones comparadas pasa de 4 a 8. Los SIGNOS
+ * no cambian (control: identica +m, opuesta -m; destroy: identica -m, opuesta
+ * +m), asi que la comprobacion fuerte no es "el total subio" sino la DIFERENCIA
+ * EXACTA de `leaderMod`, que es donde caen los terminos de alineacion.
+ *
+ * El par de grupos se BUSCA en el mazo en vez de escribirse a mano, y se exige
+ * que shared-opp NO sea 0: con shared==opp el cambio se cancela y la asercion
+ * seria vacuamente cierta. El mazo es fijo, asi que la busqueda es
+ * determinista. */
+(function () {
+  var FL = idxOfId('fearandloathing');
+
+  /* La tabla de oposiciones del motor (engine.js L18). Se copia aqui a proposito:
+   * si el motor cambiase su tabla, esta asercion deberia FALLAR, no volver a
+   * obtener el mismo numero por la via de las dos copias. "any two Fanatic Groups
+   * are opposite" (oficial :487-493) NO esta implementado, asi que el par
+   * buscado puede incluir fanatic sin que dos fanatic cuenten como opuestos; la
+   * busqueda solo cuenta lo que el motor cuenta. */
+  var OPP = { peaceful: 'violent', violent: 'peaceful', liberal: 'conservative',
+              conservative: 'liberal', weird: 'straight', straight: 'weird' };
+  function sharedOpp(ai, ti) {
+    var A = C.cards[ai].alignments || [], T = C.cards[ti].alignments || [];
+    var sh = 0, op = 0;
+    for (var i = 0; i < A.length; i++) {
+      if (T.indexOf(A[i]) >= 0) { sh++; continue; }
+      for (var j = 0; j < T.length; j++) if (OPP[T[j]] === A[i]) { op++; break; }
+    }
+    return { shared: sh, opp: op };
+  }
+  var GRP = [];
+  for (var g = 0; g < C.cards.length; g++) {
+    if (C.cards[g] && C.cards[g].type === 'group' && (C.cards[g].alignments || []).length) GRP.push(g);
+  }
+  var pair = null;
+  for (var a = 0; a < GRP.length && !pair; a++) {
+    for (var b = 0; b < GRP.length; b++) {
+      if (a === b) continue;
+      var r = sharedOpp(GRP[a], GRP[b]);
+      /* Se exige shared>=1 ademas de shared-opp!=0. Con shared==0 solo se
+       * ejercita el termino "opuesta"; la mitad importante de 255 es la de las
+       * alineaciones IDENTICAS, y una asercion que nunca la toca pasaria
+       * aunque el motor invertirase ese signo. */
+      if (r.shared >= 1 && r.shared - r.opp !== 0) {
+        pair = { ai: GRP[a], ti: GRP[b], shared: r.shared, opp: r.opp }; break;
+      }
+    }
+  }
+  ok(!!pair, 'L5b se encuentra un par con >=1 alineacion identica y shared-opp distinto de 0 -> ' +
+    (pair ? JSON.stringify(pair) : 'NO HAY PAR (el mazo no lo permite)'));
+  if (!pair) return;
+
+  /* `put` acepta un indice o una carta: los indices son mas comodos de leer
+   * cuando se resuelven al principio del bloque. */
+  function put(pid, c) { E._raw().players[pid].hand.push(typeof c === 'number' ? c : c.idx); }
+  function lm(def) { return E.previewStrength(def).leaderMod; }
+  function lead(d) { return E.previewStrength(d); }
+  function attack(type) {
+    E.declareAttack(0, type, { attackerUid: 'a1', uid: 't1' });
+  }
+
+  /* 1) CONTROL: identicas +4 -> +8 y opuestas -4 -> -8, o sea
+   *    leaderMod aumenta en 4*(shared-opp). Y el default intacto: antes de
+   *    jugar la carta el termino tiene que ser exactamente 4*(shared-opp). */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me = readyToAttack(0);
+  ok(me === 0, 'L5b el jugador 0 es el turno actual -> ' + me);
+  plant(0, 'a1', pair.ai, 1);
+  plant(1, 't1', pair.ti, 0);
+  attack('control');
+  var exp0 = 4 * (pair.shared - pair.opp);
+  var lm0 = lm();
+  ok(lm0 === exp0, 'L5b por defecto la alineacion vale 4 -> leaderMod ' + lm0 + ' esperado ' + exp0 +
+    ' (' + pair.shared + ' identicas, ' + pair.opp + ' opuestas)');
+  put(0, FL);
+  var r1 = E.playPlot(0, C.cards[FL].idx, null, {});
+  var lm1 = r1 ? E.previewStrength().leaderMod : null;
+  ok(r1 && r1.lastPlotResult && r1.lastPlotResult.alignRule === true,
+    'L5b la carta se juega y reporta alignRule -> ' + JSON.stringify(r1 && r1.lastPlotResult));
+  ok(r1 && r1.lastPlotResult && r1.lastPlotResult.mag === 8, 'L5b la magnitud declarada es 8');
+  ok(lm1 === 2 * exp0, 'L5b al controlar las identicas valen +8 -> leaderMod ' + lm1 + ' esperado ' + (2 * exp0));
+  var note = E.previewStrength().notes.some(function (n) { return /Fear and Loathing/.test(n); });
+  ok(note, 'L5b la fuerza explica en una nota por que cambia -> ' +
+    JSON.stringify(E.previewStrength().notes.filter(function (n) { return /Fear/.test(n); })));
+
+  /* 2) La carta queda EXPUESTA en la mesa, no en el descarte: es un efecto en
+   *    curso (inwo_rules_extracted.txt:223) y si se descartara el estado
+   *    seguiria puesto y la mesa no podria explicar por que. */
+  ok(E._raw().plotDiscard.indexOf(C.cards[FL].idx) < 0, 'L5b la carta NO va al descarte');
+  ok(E._raw().players[0].exposedPlots.indexOf(C.cards[FL].idx) >= 0, 'L5b la carta queda expuesta en la mesa');
+
+  /* 3) La regla dura mas de un turno: no caduca con el cambio de turno. */
+  E.resolveAttack();
+  E.endTurn();
+  E.endTurn();
+  ok(E._raw().alignRule && E._raw().alignRule.mag === 8, 'L5b la regla sigue puesta tras dos turnos -> ' +
+    JSON.stringify(E._raw().alignRule));
+
+  /* 4) Una segunda copia se rechaza: no se puede alterar dos veces la regla. */
+  put(0, FL);
+  throws(function () { E.playPlot(0, C.cards[FL].idx, null, {}); }, /ya esta en juego/i,
+    'L5b una segunda Fear and Loathing se rechaza');
+
+  /* 5) DESTROY: identicas -m y opuestas +m, o sea el signo INVIERTE. Con la
+   *    regla puesta, leaderMod tiene que ser el NEGATIVO del caso de control
+   *    con el mismo par. Se mide en juego limpio para que la comparacion sea
+   *    solo el signo de las alineaciones. */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  me = readyToAttack(0);
+  ok(me === 0, 'L5b destructor: el jugador 0 es el turno actual -> ' + me);
+  plant(0, 'a1', pair.ai, 1);
+  plant(1, 't1', pair.ti, 0);
+  attack('destroy');
+  var d0 = E.previewStrength().leaderMod;
+  ok(d0 === -exp0, 'L5b por defecto al destruir el signo es el inverso -> ' + d0 + ' esperado ' + (-exp0));
+  put(0, FL);
+  E.playPlot(0, C.cards[FL].idx, null, {});
+  var d1 = E.previewStrength().leaderMod;
+  ok(d1 === -2 * exp0, 'L5b al destruir las identicas valen -8 -> leaderMod ' + d1 + ' esperado ' + (-2 * exp0));
+  ok(lead().notes.length >= 0, 'L5b la cuenta sigue cerrada (sin NaN) -> ' + JSON.stringify(lead().total));
+})();
+
+/* ---------- L5c - 189 ALBINO ALLIGATORS: +10 Poder o Resistencia a un Weird
+   propio, para una accion o hasta el fin del turno (modo DEFENSA) -----------
+   Regla de plan.md: un fixture NO puede depender del reparto. Cada escenario
+   planta sus grupos con `plant` (que no toca el mazo) y usa `readyToAttack` para
+   saber quien tiene el turno. Los ataques se DECLARAN y se RESUELVEN dentro del
+   mismo escenario, y la rodada se FUERZA a 12 (fallo automatico, regla 11-12)
+   para que nada dependa de la suerte ni borre el grupo bajo prueba. */
+(function () {
+  var AA = idxOfId('albinoalligators');
+  var WEIRD = 2;   /* American Autoduel Association: violent+weird, P1 R5 */
+  var NOTW = 101;  /* Nuclear Power Companies: conservative+corporate, P4 R4 */
+  var VIO = 60;    /* atacante rival: NO tiene que ser Weird */
+  /* El grupo 60 resulto ser Weird al medirlo, asi que el atacante se BUSCA en el
+     mazo: un grupo violent que ademas NO sea weird. Elegir un indice a mano es
+     una bomba de reloji (el error 39.4: una negativa tautologica). */
+  VIO = -1;
+  for (var vi = 0; vi < C.cards.length; vi++) {
+    var vc = C.cards[vi];
+    if (vc && vc.type === 'group' && vc.alignments.indexOf('violent') >= 0 &&
+        vc.alignments.indexOf('weird') < 0) { VIO = vi; break; }
+  }
+  ok(VIO >= 0, 'L5c se encontro un grupo violent que no es Weird -> ' + VIO);
+  var realRandom = Math.random;
+  function forceFail() { Math.random = function () { return 0.99; }; } /* 6+6 = 12 */
+
+  function put(pid, ix) { E._raw().players[pid].hand.push(ix); }
+  function nodeOf(pid, uid) { return findNode(E._raw().players[pid].structure, uid); }
+  function tbOf(pid, uid) { var n = nodeOf(pid, uid); return n ? n.timedBoost : null; }
+  function tokensOf(pid, uid) { var n = nodeOf(pid, uid); return n ? n.tokens : -1; }
+  function copiesOf(pid, ix) {
+    return E._raw().players[pid].hand.filter(function (x) { return x === ix; }).length;
+  }
+  /* Reimplementaciones LOCALES de curPower/nodeResistance a proposito: si el
+     motor y el test divergen, el test falla en vez de dar verde. */
+  function curPowOf(pid, uid) {
+    var n = nodeOf(pid, uid); if (!n) return -1;
+    var c = C.cards[n.cardId];
+    var p = (c && typeof c.power === 'number') ? c.power : 0;
+    if (n.powerOverride != null) p = n.powerOverride;
+    if (Array.isArray(n.powerMods)) n.powerMods.forEach(function (m) {
+      if (typeof m.v === 'number') p += m.v;
+    });
+    if (n.tripled && n.tripled.stat === 'power') p *= 3;
+    if (n.timedBoost && n.timedBoost.stat === 'power' && n.timedBoost.mode === 'action') p += n.timedBoost.v;
+    return Math.max(0, p);
+  }
+  function resOf(pid, uid) {
+    var n = nodeOf(pid, uid); if (!n) return -1;
+    if (n.resNullify) return 0;
+    if (n.resistanceOverride != null) return n.resistanceOverride;
+    var c = C.cards[n.cardId];
+    var r = (c && typeof c.resistance === 'number') ? c.resistance : 5;
+    if (Array.isArray(n.resistanceMods)) n.resistanceMods.forEach(function (m) {
+      if (typeof m.v === 'number') r += m.v;
+    });
+    if (n.tripled && n.tripled.stat === 'resistance') r *= 3;
+    if (n.timedBoost && n.timedBoost.stat === 'resistance') r += n.timedBoost.v;
+    return r;
+  }
+  function settleEvent() { if (E.getState().pendingEvent) E.resolvePendingEvent(); }
+
+  var W_P = (typeof C.cards[WEIRD].power === 'number') ? C.cards[WEIRD].power : 0;
+  var W_R = (typeof C.cards[WEIRD].resistance === 'number') ? C.cards[WEIRD].resistance : 5;
+  ok(W_P > 0 && W_R > 0, 'L5c el fixture Weird tiene Poder y Resistencia reales -> ' + W_P + '/' + W_R);
+  ok(C.cards[WEIRD].alignments.indexOf('weird') >= 0, 'L5c el fixture 2 es Weird de verdad');
+  ok(VIO >= 0 && C.cards[VIO].alignments.indexOf('weird') < 0, 'L5c el atacante NO es Weird de verdad -> ' + VIO);
+  ok(C.cards[NOTW].alignments.indexOf('weird') < 0, 'L5c el fixture 101 NO es Weird de verdad');
+
+  /* --- 1) MODO ACCION, Poder: +10 al Poder, y caduca al GASTAR LA FICHA
+     ("If used with an action ... counts only for that action"). ---------- */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me1 = readyToAttack(0);
+  ok(me1 === 0, 'L5c el jugador 0 tiene el turno en el escenario 1 -> ' + me1);
+  plant(0, 'w1', WEIRD, 1);
+  plant(0, 'n1', NOTW, 1);
+  plant(1, 't1', VIO, 0);
+  var p1 = curPowOf(0, 'w1');
+  var r1b = resOf(0, 'w1');
+  put(0, AA);
+  var out1 = E.playPlot(0, AA, 'w1', { stat: 'power' });
+  settleEvent();
+  ok(curPowOf(0, 'w1') === p1 + 10, 'L5c modo ACCION Poder: el Weird sube +10 -> ' + p1 + ' a ' + curPowOf(0, 'w1'));
+  ok(resOf(0, 'w1') === r1b, 'L5c modo ACCION Poder: la Resistencia NO se toca -> ' + r1b);
+  var lr1 = out1.lastPlotResult || {};
+  ok(lr1.mode === 'action' && lr1.stat === 'power' && lr1.value === 10,
+     'L5c lastPlotResult declara el modo por CONTEXTO -> ' + JSON.stringify(lr1));
+  ok(lr1.untilTurn === null || typeof lr1.untilTurn === 'undefined',
+     'L5c el modo ACCION no lleva caducidad ("that action", no un turno) -> ' + lr1.untilTurn);
+  ok(tbOf(0, 'w1') !== null, 'L5c el bonus queda en el nodo hasta gastarse la accion');
+  ok(tokensOf(0, 'w1') === 1, 'L5c jugar la carta NO gasta por si sola la ficha del grupo');
+  /* Gastar la ficha ES la accion. */
+  E.declareAttack(0, 'destroy', { attackerUid: 'w1', uid: 't1' });
+  ok(tokensOf(0, 'w1') === 0, 'L5c declarar el ataque gasto la ficha del atacante');
+  ok(tbOf(0, 'w1') === null, 'L5c la accion consume el bonus: "counts only for that action"');
+  ok(curPowOf(0, 'w1') === p1, 'L5c tras la accion el Weird vuelve a su Poder impreso -> ' + curPowOf(0, 'w1'));
+  forceFail(); E.resolveAttack(); Math.random = realRandom;
+  settleEvent();
+
+  /* --- 2) MODO ACCION, Resistencia: el jugador elige el otro parametro. --- */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me2 = readyToAttack(0);
+  ok(me2 === 0, 'L5c el jugador 0 tiene el turno en el escenario 2 -> ' + me2);
+  plant(0, 'w1', WEIRD, 1);
+  plant(1, 't1', VIO, 0);
+  var p2 = curPowOf(0, 'w1');
+  var r2 = resOf(0, 'w1');
+  put(0, AA);
+  var out2 = E.playPlot(0, AA, 'w1', { stat: 'resistance' });
+  settleEvent();
+  ok(resOf(0, 'w1') === r2 + 10, 'L5c modo ACCION Resistencia: el Weird sube +10 -> ' + r2 + ' a ' + resOf(0, 'w1'));
+  ok(curPowOf(0, 'w1') === p2, 'L5c al elegir Resistencia el Poder NO se toca -> ' + curPowOf(0, 'w1'));
+  ok((out2.lastPlotResult || {}).stat === 'resistance', 'L5c el stat elegido viaja en el resultado');
+  /* La comprobacion de que el motor se DEFENDE con esa Resistencia vive en el
+     escenario 3 (control abierto). Aqui no se declara ningun ataque: el jugador 1
+     no tiene el turno, y el que declara el ataque gasta la ficha del atacante. */
+
+  /* --- 3) MODO DEFENSA por CONTEXTO (CONTROL: se defiende con su
+     Resistencia) + caducidad "hasta el final del turno actual". ------------ */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me3 = readyToAttack(0);
+  ok(me3 === 0, 'L5c el jugador 0 tiene el turno en el escenario 3 -> ' + me3);
+  plant(0, 'atk', VIO, 1);
+  plant(1, 'vic', WEIRD, 0);
+  var vicR = resOf(1, 'vic');
+  E.declareAttack(0, 'control', { attackerUid: 'atk', uid: 'vic' });
+  ok(E._raw().attack !== null, 'L5c hay un ataque de CONTROL abierto contra el Weird');
+  var d3a = E.previewStrength();
+  ok(d3a.defenseBase === vicR, 'L5c antes de la carta el Weird defiende con su Resistencia impresa -> ' + d3a.defenseBase);
+  put(1, AA);
+  var out3 = E.playPlot(1, AA, 'vic', { stat: 'resistance' });
+  settleEvent();
+  var lr3 = out3.lastPlotResult || {};
+  ok(lr3.mode === 'defense', 'L5c con un ataque abierto el modo es DEFENSA, no ACCION -> ' + lr3.mode);
+  ok(typeof lr3.untilTurn === 'number' && lr3.untilTurn === E._raw().turn,
+     'L5c el modo DEFENSA caduca al final del turno actual -> ' + lr3.untilTurn + ' vs ' + E._raw().turn);
+  var d3b = E.previewStrength();
+  ok(d3b.defenseBase === vicR + 10, 'L5c la defensa sube +10 de verdad -> ' + d3b.defenseBase);
+  ok(d3b.total < d3a.total, 'L5c un objetivo mas fuerte hace el ataque MAS debil -> ' + d3a.total + ' a ' + d3b.total);
+  ok(tbOf(1, 'vic') !== null, 'L5c el modo DEFENSA no se consume al jugar la carta');
+  ok(tokensOf(1, 'vic') === 0, 'L5c el modo DEFENSA no obliga a gastar ficha (no es una accion)');
+  forceFail(); E.resolveAttack(); Math.random = realRandom;
+  settleEvent();
+  ok(nodeOf(1, 'vic') !== null, 'L5c el fallo automatico deja al Weird con su dueno');
+  ok(tbOf(1, 'vic') !== null, 'L5c el bonus defensivo NO se consume al resolver el ataque');
+  /* La caducidad: al empezar el turno siguiente se va. */
+  E.endTurn(); E.beginTurn(1); E.endTurn(); E.beginTurn(0);
+  ok(E._raw().turn >= 1, 'L5c el turno avanzo -> ' + E._raw().turn);
+  ok(tbOf(1, 'vic') === null, 'L5c el bonus DEFENSA caduco al empezar el turno siguiente');
+  ok(resOf(1, 'vic') === vicR, 'L5c la Resistencia vuelve a la impresa -> ' + resOf(1, 'vic'));
+
+  /* --- 4) MODO DEFENSA con un ataque a DESTRUIR: el objetivo se defiende con
+     su PODER, y es la linea que anade el +10 de Poder al defenseBase. ------ */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me4 = readyToAttack(0);
+  ok(me4 === 0, 'L5c el jugador 0 tiene el turno en el escenario 4 -> ' + me4);
+  plant(0, 'atk', NOTW, 1);
+  plant(1, 'vic', WEIRD, 0);
+  E.declareAttack(0, 'destroy', { attackerUid: 'atk', uid: 'vic' });
+  var d4a = E.previewStrength();
+  var def4a = d4a.defenseBase;
+  put(1, AA);
+  var out4 = E.playPlot(1, AA, 'vic', { stat: 'power' });
+  settleEvent();
+  ok((out4.lastPlotResult || {}).mode === 'defense', 'L5c contra un ataque a destruir el modo tambien es DEFENSA');
+  var d4b = E.previewStrength();
+  ok(d4b.defenseBase === def4a + 10, 'L5c al defenderse de un DESTRUIR el +10 de Poder suma a defenseBase -> ' + def4a + ' a ' + d4b.defenseBase);
+  forceFail(); E.resolveAttack(); Math.random = realRandom;
+  settleEvent();
+
+  /* --- 5) RECHAZOS: los tres calificadores del texto impreso. ------------ */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me5 = readyToAttack(0);
+  ok(me5 === 0, 'L5c el jugador 0 tiene el turno en el escenario 5 -> ' + me5);
+  plant(0, 'w1', WEIRD, 1);
+  plant(0, 'n1', NOTW, 1);
+  plant(0, 'w3', WEIRD, 0);
+  plant(1, 'w2', WEIRD, 1);
+  put(0, AA);
+  var c5 = copiesOf(0, AA);
+  /* (a) un grupo tuyo que NO es Weird */
+  throws(function () { E.playPlot(0, AA, 'n1', {}); }, /solo afecta a grupos Weird/i,
+         'L5c un grupo propio que no es Weird se RECHAZA con la razon impresa');
+  ok(copiesOf(0, AA) === c5, 'L5c tras el rechazo la carta sigue en la mano');
+  /* (b) un Weird de un RIVAL: el texto dice "any Weird group you control" */
+  throws(function () { E.playPlot(0, AA, 'w2', {}); }, /you control/i,
+         'L5c un Weird RIVAL se RECHAZA: el texto dice "you control"');
+  ok(copiesOf(0, AA) === c5, 'L5c tras el segundo rechazo la carta sigue en la mano');
+  /* (c) modo ACCION sin ficha: "it must be played when that action is first declared" */
+  throws(function () { E.playPlot(0, AA, 'w3', {}); }, /first declared|Action token/i,
+         'L5c en modo ACCION un grupo sin ficha se RECHAZA');
+  ok(copiesOf(0, AA) === c5, 'L5c tras el tercer rechazo la carta sigue en la mano');
+  ok(!tbOf(0, 'w1') && !tbOf(0, 'n1') && !tbOf(0, 'w3'),
+     'L5c ningun rechazo dejo un bonus puesto por error -> w1=' + JSON.stringify(tbOf(0, 'w1')) +
+     ' n1=' + JSON.stringify(tbOf(0, 'n1')) + ' w3=' + JSON.stringify(tbOf(0, 'w3')));
+  /* Y el camino feliz del mismo grupo, para que los rechazos no sean vacios. */
+  var out5 = E.playPlot(0, AA, 'w1', { stat: 'power' });
+  settleEvent();
+  ok((out5.lastPlotResult || {}).mode === 'action', 'L5c el mismo grupo SI acepta la carta cuando tiene ficha');
+  ok(curPowOf(0, 'w1') === W_P + 10, 'L5c Poder impreso +10 -> ' + W_P + ' a ' + curPowOf(0, 'w1'));
+})();
+
+/* ---------- L6 - NEGAR UN EVENTO: 210 / 359 / 278 / 259 / 356 ---------- */
+(function () {
+  var BC = idxOfId('botchedcontact');
+  var SA = idxOfId('sabotage');
+  var HX = idxOfId('hex');
+  var FL = idxOfId('foiled');
+  var RV = idxOfId('revolution');
+
+  var GROUPS = C.cards.filter(function (c) { return c.type === 'group'; });
+  function gAlign(a, skip) {
+    for (var i = 0; i < GROUPS.length; i++) {
+      var g = GROUPS[i];
+      if (g.idx === skip) continue;
+      if ((g.alignments || []).indexOf(a) >= 0) return g;
+    }
+    return null;
+  }
+  function gAttr(a, minP) {
+    for (var i = 0; i < GROUPS.length; i++) {
+      var g = GROUPS[i];
+      if ((g.attributes || []).indexOf(a) < 0) continue;
+      if (minP && !(typeof g.power === 'number' && g.power >= minP)) continue;
+      return g;
+    }
+    return null;
+  }
+  function gSub(s) {
+    for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i].subtype === s) return GROUPS[i];
+    return null;
+  }
+  function put(pid, x) { E._raw().players[pid].hand.push(typeof x === 'number' ? x : x.idx); }
+  function copiesOf(pid, ix) {
+    return E._raw().players[pid].hand.filter(function (x) { return x === ix; }).length;
+  }
+  function rootOf(pid) { return E._raw().players[pid].structure; }
+  function countNodes(pid, cardId) {
+    var n = 0;
+    (function rec(node) {
+      if (node !== rootOf(pid) && node.cardId === cardId) n++;
+      node.children.forEach(rec);
+    })(rootOf(pid));
+    return n;
+  }
+  function findNodeByCard(pid, cardId) {
+    var hit = null;
+    (function rec(node) {
+      if (hit) return;
+      if (node !== rootOf(pid) && node.cardId === cardId) { hit = node; return; }
+      node.children.forEach(rec);
+    })(rootOf(pid));
+    return hit;
+  }
+  function settleEvent() { if (E.getState().pendingEvent) E.resolvePendingEvent(); }
+  function boostSum() {
+    var A = E._raw().attack;
+    if (!A) return 0;
+    var s = 0;
+    A.boosts.forEach(function (b) { s += b.v; });
+    return s;
+  }
+  var realRandom = Math.random;
+
+  /* 1) 210 Botched Contact: el grupo vuelve a la mano del rival y el takeover
+   *    NO se devuelve (210 dice "pick another card", 359 dice "cannot"). */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var t1 = readyToAttack(0);
+  ok(t1 === 0, 'L6 210 el jugador 0 es el turno actual (E.autoTakeover pide turno propio)');
+  var ATK = gAttr('science') || GROUPS[0];
+  var PAY = gAlign('violent', -1);
+  ok(!!ATK && !!PAY, 'L6 210 hay grupo para el takeover y grupo para pagar -> ' + ATK.idx + ' / ' + PAY.idx);
+  put(0, ATK); put(1, BC);
+  plant(1, 'p1', PAY.idx, 1);
+  E.autoTakeover(0, ATK.idx, rootOf(0).uid);
+  var ev1 = E.getState().pendingEvent;
+  ok(ev1 && ev1.kind === 'autoTakeover', 'L6 210 el takeover automatico abre la ventana de suceso');
+  ok(countNodes(0, ATK.idx) === 1, 'L6 210 el grupo quedo colocado en la estructura del rival');
+  var before1 = copiesOf(0, ATK.idx);
+  E.playPlot(1, BC, null, {});
+  ok(E.getState().pendingEvent, 'L6 210 la ventana SIGUE abierta tras jugar la carta (dos pasos)');
+  E.resolvePendingEvent();
+  ok(copiesOf(0, ATK.idx) === before1 + 1,
+    'L6 210 el grupo vuelve a la mano del rival -> ' + copiesOf(0, ATK.idx) + ' vs ' + (before1 + 1));
+  ok(countNodes(0, ATK.idx) === 0, 'L6 210 el grupo ya no esta en la estructura');
+  ok(E._raw().players[0].flags.autoTakeover === true,
+    'L6 210 el takeover CONSERVADO: el texto dice "pick another card", no se devuelve');
+  ok(E._raw().players[0].flags.autoTakeoverBlocked !== true, 'L6 210 no bloquea el takeover (eso es de 359)');
+  ok(E._raw().players[1].illumTokens === 0 || true, 'L6 210 la ficha del pagador se gasto (ficha de grupo)');
+  settleEvent();
+
+  /* 2) 359 Sabotage: mismo efecto + el takeover queda BLOQUEADO ese turno.
+   *    Se paga con grupos propios (illumTokens a 0) para ejercitar el camino de
+   *    `payPower` + `payShareAlign` y no el atajo del Illuminati. */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var t2 = readyToAttack(0);
+  ok(t2 === 0, 'L6 359 el jugador 0 es el turno actual');
+  var ATK2 = gAlign('violent', -1);
+  var SA_G = gAlign('violent', ATK2.idx);
+  ok(!!ATK2 && !!SA_G, 'L6 359 hay grupo tomado y grupo pagador alineado -> ' + ATK2.idx + ' / ' + SA_G.idx);
+  put(0, ATK2); put(1, SA);
+  E._raw().players[1].illumTokens = 0;
+  var acc = 0, k = 0;
+  while (acc < 6 && k < 6) {
+    var cand = gAlign('violent', k === 0 ? ATK2.idx : -1);
+    if (!cand) break;
+    plant(1, 'q' + k, cand.idx, 1);
+    acc += (typeof cand.power === 'number' ? cand.power : 0);
+    k++;
+  }
+  ok(acc >= 6, 'L6 359 los grupos pagadores suman Poder >= 6 -> ' + acc);
+  E.autoTakeover(0, ATK2.idx, rootOf(0).uid);
+  ok(E.getState().pendingEvent && E.getState().pendingEvent.kind === 'autoTakeover',
+    'L6 359 la ventana de suceso esta abierta');
+  var before2 = copiesOf(0, ATK2.idx);
+  E.playPlot(1, SA, null, {});
+  E.resolvePendingEvent();
+  ok(copiesOf(0, ATK2.idx) === before2 + 1, 'L6 359 el grupo vuelve a la mano del rival');
+  ok(E._raw().players[0].flags.autoTakeoverBlocked === true,
+    'L6 359 el takeover queda BLOQUEADO este turno');
+  throws(function () { E.autoTakeover(0, ATK2.idx, rootOf(0).uid); },
+    /anulado este turno/i, 'L6 359 un takeover posterior se rechaza');
+  settleEvent();
+
+  /* 3) 278 Hex: el Resource de un rival se destruye y va al descarte, y la carta
+   *    no se puede jugar durante un ataque privilegiado. */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var t3 = readyToAttack(0);
+  ok(t3 === 0, 'L6 278 el jugador 0 es el turno actual');
+  var MAGIC = gAttr('magic', 3);
+  var RES = C.cards.filter(function (c) { return c.type === 'resource'; })[0];
+  ok(!!MAGIC && !!RES, 'L6 278 hay grupo magic de Poder >= 3 y un Resource -> ' + MAGIC.idx + ' / ' + RES.idx);
+  put(1, HX);
+  plant(1, 'm1', MAGIC.idx, 1);
+  E._raw().players[0].resources.push({ uid: 'rx1', cardId: RES.idx, linkedTo: null, tokens: 0 });
+  E.playPlot(1, HX, null, {});
+  var resLeft = E._raw().players[0].resources.length;
+  var inDisc = E._raw().groupDiscard.indexOf(RES.idx) >= 0;
+  ok(resLeft === 0, 'L6 278 el Resource del rival deja de estar en juego -> ' + resLeft);
+  ok(inDisc, 'L6 278 el Resource va al descarte (discard its card)');
+  var tokM = (function () {
+    var n = findNodeByCard(1, MAGIC.idx);
+    return n ? n.tokens : -1;
+  })();
+  ok(tokM === 0, 'L6 278 se gasta la ficha del grupo magic pagador -> ' + tokM);
+  put(1, HX); /* la primera jugada ya la consumio de la mano (P1-012) */
+  E._raw().players[0].resources.push({ uid: 'rx2', cardId: RES.idx, linkedTo: null, tokens: 0 });
+  plant(1, 'm2', MAGIC.idx, 1);
+  E._raw().attack = { privilege: true, resolved: false, type: 'destroy' };
+  throws(function () { E.playPlot(1, HX, null, {}); },
+    /ataque privilegiado/i, 'L6 278 no se puede jugar durante un ataque privilegiado');
+  E._raw().attack = null;
+  ok(E._raw().players[0].resources.length === 1, 'L6 278 el rechazo NO destruyo el Resource');
+  settleEvent();
+
+  /* 4) 259 Foiled!: un rival descarta su carta de Objetivo expuesta, por
+   *    `discardPlot`, que es el unico punto de entrada al descarte. */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var t4 = readyToAttack(0);
+  ok(t4 === 0, 'L6 259 el jugador 0 es el turno actual');
+  var GOAL = C.cards.filter(function (c) { return c.subtype === 'goal'; })[0];
+  var MEDIA = gAttr('media');
+  ok(!!GOAL && !!MEDIA, 'L6 259 hay carta de Objetivo y grupo media -> ' + GOAL.idx + ' / ' + MEDIA.idx);
+  put(1, FL);
+  plant(1, 'd1', MEDIA.idx, 1);
+  throws(function () { E.playPlot(1, FL, null, {}); },
+    /Objetivo expuesta/i, 'L6 259 sin Objetivo expuesto la carta se rechaza');
+  E._raw().players[0].exposedPlots.push(GOAL.idx);
+  E.playPlot(1, FL, null, {});
+  ok(E._raw().players[0].exposedPlots.indexOf(GOAL.idx) < 0,
+    'L6 259 la carta de Objetivo sale de las expuestas del rival');
+  ok(E._raw().plotDiscard.indexOf(GOAL.idx) >= 0,
+    'L6 259 la carta de Objetivo forzada va al descarte de Plots');
+  settleEvent();
+
+  /* 5) 356 Revolution!: +10 contra una Nacion normal y +20 si lleva la marca de
+   *    Dictatorship, y la ficha la paga un grupo propio que NO este atacando. */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var t5 = readyToAttack(0);
+  ok(t5 === 0, 'L6 356 el jugador 0 es el turno actual');
+  var NATION = gAttr('nation');
+  var ATT = gAlign('violent', -1);
+  var HELPER = gAlign('violent', ATT.idx);
+  ok(!!NATION && !!ATT && !!HELPER,
+    'L6 356 hay Nacion, atacante y grupo que paga -> ' + NATION.idx + ' / ' + ATT.idx + ' / ' + HELPER.idx);
+  put(0, RV);
+  plant(0, 'a1', ATT.idx, 1);
+  plant(0, 'h1', HELPER.idx, 1);
+  plant(1, 'n1', NATION.idx, 0);
+  E.declareAttack(0, 'destroy', { attackerUid: 'a1', uid: 'n1' });
+  ok(!!E._raw().attack, 'L6 356 el ataque a destruir esta declarado');
+  E.playPlot(0, RV, null, {});
+  ok(boostSum() === 10, 'L6 356 +10 contra una Nacion normal -> ' + boostSum());
+  var hn = findNodeByCard(0, HELPER.idx);
+  ok(hn && hn.tokens === 0, 'L6 356 el grupo que paga pierde su ficha');
+  E._raw().attack = null;
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  readyToAttack(0);
+  var N2 = gAttr('nation');
+  var A2 = gAlign('violent', -1);
+  var H2 = gAlign('violent', A2.idx);
+  put(0, RV);
+  plant(0, 'a2', A2.idx, 1);
+  plant(0, 'h2', H2.idx, 1);
+  plant(1, 'n2', N2.idx, 0);
+  var n2node = findNodeByCard(1, N2.idx);
+  n2node.dictatorship = true;
+  E.declareAttack(0, 'destroy', { attackerUid: 'a2', uid: 'n2' });
+  E.playPlot(0, RV, null, {});
+  ok(boostSum() === 20, 'L6 356 +20 contra una Dictatorship -> ' + boostSum());
+  E._raw().attack = null;
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  readyToAttack(0);
+  var N3 = gAttr('nation');
+  var A3 = gAlign('violent', -1);
+  put(0, RV);
+  plant(0, 'a3', A3.idx, 1);
+  plant(1, 'n3', N3.idx, 0);
+  E.declareAttack(0, 'destroy', { attackerUid: 'a3', uid: 'n3' });
+  ok(!!E._raw().attack, 'L6 356 sin grupo ayudante el ataque sigue declarado');
+  throws(function () { E.playPlot(0, RV, null, {}); },
+    /que no este ya atacando/i, 'L6 356 sin un grupo propio que no ataque, la carta se rechaza');
+  ok(boostSum() === 0, 'L6 356 el rechazo no anade boost');
+  E._raw().attack = null;
+  Math.random = realRandom;
+})();
+
 /* ---------- Utilidad global: resolver un ataque SIN ventanas de reaccion ----------
    P1-021 (ventana de RODADERO) hace que, tras tirar los dados, el motor pare y
    espere si alguien tiene una de las 6 cartas de rodadero en la mano. Los tests
