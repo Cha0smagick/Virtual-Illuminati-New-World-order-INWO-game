@@ -669,6 +669,31 @@ if (e.giftAttr) {
       ok(typeof e.payNotTheAttackers === 'boolean', 'payNotTheAttackers debe ser booleano: ' + e.payNotTheAttackers);
     }
 
+/* L7 - INTRUSION EN PLOTS OCULTOS. Tres calificadores nuevos.
+     * `payAttrAny` es una DISYUNCION ("a Computer group, or a Bank group"), por
+     * eso no puede usar la rama de `payAttr`: lo que hay que comprobar es que
+     * exista AL MENOS UNO de los atributos, no todos a la vez.
+     * `illumCode` no es un nombre de carta sino el `effect.code` del Illuminati
+     * que puede pagar, y tiene que existir en el mazo o la carta no tendria
+     * pagador nunca. Y un `canExposeAll` que valiera `false` dejaria la rama
+     * muerta, que es el defecto P1-026 (el dato existe y nadie lo consume). */
+    if (Array.isArray(e.payAttrAny) && e.payAttrAny.length) {
+      checkedFields.payAttrAny = true;
+      var l7Alive = e.payAttrAny.filter(function (a) { return groupsWithAttr(a).length > 0; });
+      ok(l7Alive.length > 0,
+        c.name + ': payAttrAny=[' + e.payAttrAny.join(',') + '] no lo cumple NINGUN grupo del mazo -> INJUGABLE');
+    }
+    if (e.illumCode) {
+      checkedFields.illumCode = true;
+      ok(typeof e.illumCode === 'string' && C.cards.some(function (x) {
+        return x && x.type === 'illuminati' && x.effect && x.effect.code === e.illumCode;
+      }), c.name + ': illumCode="' + e.illumCode + '" no corresponde a ningun Illuminati del mazo');
+    }
+    if (typeof e.canExposeAll !== 'undefined') {
+      checkedFields.canExposeAll = true;
+      ok(e.canExposeAll === true,
+        c.name + ': canExposeAll solo admite true; con false la rama quedaria muerta');
+    }
 if (e.targetSubtype) {
     checkedFields.targetSubtype = true;
     ok(groupsOfSubtype(e.targetSubtype).length > 0,
@@ -882,6 +907,8 @@ for (const c of C.cards) {
   /* L1: `giftAttr` tambien es un atributo exigido por una carta clasificada. */
   if (typeof e.giftAttr === 'string') usedAttrs.add(e.giftAttr);
 if (typeof e.witherAttr === 'string') usedAttrs.add(e.witherAttr);
+/* L7: `payAttrAny` son atributos exigidos por una carta clasificada, igual que `requireAttrAny`. */
+(e.payAttrAny || []).forEach(v => { if (typeof v === 'string') usedAttrs.add(v); });
 }
 for (const a of Array.from(usedAttrs).sort()) {
   const n = groupsWithAttr(a).length;

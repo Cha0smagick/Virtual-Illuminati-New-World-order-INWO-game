@@ -344,7 +344,7 @@ E.newGame=function(configs){
   S={
       phase:'setup',turn:0,round:1,currentPid:-1,turnCompleted:false,
     players:[],groupDeck:[],plotDeck:[],groupDiscard:[],plotDiscard:[],
-    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,alignRule:null,log:[],uidCounter:100,winner:null,
+    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,alignRule:null,log:[],uidCounter:100,winner:null,
     config:{goalCount:(configs.goalCount||12)},
     lastRoll:null
   };
@@ -368,11 +368,188 @@ E.newGame=function(configs){
          Aqui se guarda {uid,cardId,linkedTo} para que el cambio siga visible y
          para poder deshacer el efecto si el grupo linkeado sale de la mesa. */
       linkedPlots:[],
-      turnsCompleted:0,immuneFrom:{},pickedSecrets:[],flags:{autoTakeover:false,autoTakeoverBlocked:false,privilegedUsed:0}
+      turnsCompleted:0,immuneFrom:{},pickedSecrets:[],revealedBy:[],
+      flags:{autoTakeover:false,autoTakeoverBlocked:false,privilegedUsed:0}
     });
   }
   log('Nueva partida creada ('+S.players.length+' jugadores, meta básica '+S.config.goalCount+' grupos)');
   return clone(publicState());
+};
+
+/* ===================== L7 - INTRUSIÓN EN PLOTS OCULTOS =====================
+ *
+ * 303 Logic Bomb, 322 Mutual Betrayal, 386 The Auditor from Hell y 242
+ * Double-Cross: cuatro cartas que giran alrededor de LO QUE HAY EN LA MANO DE
+ * UN RIVAL. No son una quinta ventana de dados ni una sexta de sucesos: lo que
+ * las distingue es que aquí "mirar" NO ES UN EFECTO, es una DECISIÓN.
+ *
+ * DECLARACIÓN 2 (la importante): al jugar la carta NO se aplica nada. Se abre
+ * la ventana con la LISTA de Plot ocultas del rival y el efecto se aplica al
+ * CERRAR, con lo que el jugador haya elegido. Es el mismo contrato de dos pasos
+ * que las otras tres ventanas (§33 pendingAttack, §37 pendingRoll, §38
+ * pendingEvent): jugar la carta de reacción NO cierra la ventana, el cierre es
+ * un paso aparte. El motivo es que en el juego físico el jugador recibe las
+ * cartas y las mira, y esa decisión no se puede automatizar; en esta versión web
+ * el equivalente funcional es recibir la lista por índice y elegir.
+ *
+ * DECLARACIÓN 4 - "you must expose that card" (303): "expose" tiene dos
+ * sentidos en el juego físico (dejar la carta boca arriba en la mesa / avisar al
+ * rival de que la has cogido). Aquí sólo cabe el segundo: una carta no puede
+ * estar a la vez en la mano del que roba y boca arriba sobre la mesa, y para el
+ * primer sentido ya existe `pl.exposedPlots` (P1-025 saca del descarte las Plot
+ * que se dejan sobre la mesa). El motor no inventa un estado imposible: la carta
+ * robada va a la mano y la exposición se registra en `pl.revealedBy`, que es
+ * información que ya no se puede deshacer y por tanto no es secreta.
+ *
+ * DECLARACIÓN 6 - 242 dice "Your opponent loses the card which let him spy on
+ * you, and actions that powered it". Las dos mitades ya son ciertas sin hacer
+ * nada: la ficha se cobra al jugar la carta espía (P1-022) y la carta espía va
+ * sola a `S.plotDiscard` (P1-025). Lo único que faltaba -y lo único que esta
+ * ventana implementa- es que NO pueda ver nada. */
+var PEEK_KINDS=['peek_steal','peek_expose','peek_rob','peek_block'];
+
+/* Una Plot OCULTA es una carta de tipo plot que está en la mano del rival y que
+ * no está ya en su `exposedPlots` (es decir, no se ha dejado boca arriba). Esta
+ * función es la ÚNICA definición del término en todo el motor: si otra familia
+ * necesita "oculta", llama aquí y no reimplementa el filtro. */
+function hiddenPlotsOf(pid){
+  var pl=S.players[pid];
+  if(!pl)return [];
+  var out=[];
+  for(var i=0;i<pl.hand.length;i++){
+    if(pl.exposedPlots.indexOf(pl.hand[i])>=0)continue;
+    var cc=C.cards[pl.hand[i]];
+    if(cc&&cc.type==='plot')out.push(pl.hand[i]);
+  }
+  return out;
+}
+
+/* El rival se elige con `opts.rivalPid`; si no viene, se toma el primero que
+ * tenga al menos una Plot oculta. Es la MISMA técnica que `alignFromTarget` de
+ * 268 y que el arreglo de P1-034a para 278 Hex: se elige un objetivo que el
+ * jugador puede ver, no un selector de rival nuevo que la UI todavía no tiene. */
+function firstRivalWithHidden(pid){
+  for(var q=0;q<S.players.length;q++){
+    if(q===pid)continue;
+    if(hiddenPlotsOf(q).length)return q;
+  }
+  return -1;
+}
+
+function openPeekWindow(rd){
+  var P={kind:rd.kind,label:rd.label,byPid:rd.byPid,
+    data:{byName:S.players[rd.byPid].name,rivalPid:rd.rivalPid,
+          cards:hiddenPlotsOf(rd.rivalPid).slice()},
+    cancelledBy:null,responders:[]};
+  /* Sólo responde 242 (peek_block) y sólo el dueño de las Plot espiadas: es el
+     que el texto llama "your hidden Plot cards". Se recorre TODAS las manos,
+     igual que las otras ventanas, para que la ventana pueda seguir abierta. */
+  for(var q=0;q<S.players.length;q++){
+    if(q!==rd.rivalPid)continue;
+    var h=S.players[q].hand;
+    for(var i=0;i<h.length;i++){
+      var k=(C.cards[h[i]]||{}).effect;
+      if(k&&k.kind==='peek_block'){
+        P.responders.push({pid:q,name:S.players[q].name,cardIdx:h[i],cardName:C.cards[h[i]].name});
+        break;
+      }
+    }
+  }
+  S.pendingPeek=P;
+  log('VENTANA DE ESPIONAJE ABIERTA: '+P.label);
+  return true;
+}
+
+/* Cierra la ventana y aplica la decisión. `act` es lo que elige el jugador:
+ *   {steal:<indice>}       303 y 386, "choose one to take for yourself"
+ *   {exposeAll:true}       386, "or expose them all!"
+ *   {exposeEqual:<n>}      322, "expose any or all of them, as long as you also
+ *                          expose an equal number of your own Plots"
+ *   null / {}              no hacer nada: el texto dice "you MAY", y el motor no
+ *                          puede obligar a decidir (DECLARACIÓN 5).
+ * La verdad de lo que se ha gastado y de la carta que se ha perdido es
+ * responsabilidad de quien la jugó (P1-022 / P1-025); aquí sólo se resuelve la
+ * decisión. */
+function closePendingPeek(act){
+  var P=S.pendingPeek;
+  if(!P)return null;
+  S.pendingPeek=null;
+  var d=P.data,res=null,me=S.players[P.byPid],them=S.players[d.rivalPid];
+  if(P.cancelledBy){
+    log('DOUBLE-CROSS: '+P.cancelledBy.cardName+' de '+P.cancelledBy.name+
+        ' anula a '+me.name+': no ve ninguna de las Plot de '+them.name);
+    res={ok:false,cancelled:true,reason:'anulado por '+P.cancelledBy.cardName,by:me.name};
+  }else if(act&&act.exposeAll){
+    var nAll=0;
+    for(var i=0;i<d.cards.length;i++){
+      var ixA=d.cards[i];
+      var aA=them.hand.indexOf(ixA);
+      if(aA>=0)them.hand.splice(aA,1);
+      me.exposedPlots.push(ixA);
+      them.revealedBy.push(ixA);
+      nAll++;
+    }
+    log(me.name+' expone las '+nAll+' Plot ocultas de '+them.name);
+    res={ok:true,exposed:nAll,of:them.name};
+  }else if(act&&act.exposeEqual!=null){
+    /* DECLARACIÓN 5: se acota el número pedido al máximo que el texto permite,
+       que es `min(ocultas del rival, Plot propias sin exponer)`, y se admite el
+       cero porque el texto dice "you MAY". */
+    var mineLeft=0,jK=0;
+    for(jK=0;jK<me.hand.length;jK++){
+      if(C.cards[me.hand[jK]]&&C.cards[me.hand[jK]].type==='plot'&&
+         me.exposedPlots.indexOf(me.hand[jK])<0)mineLeft++;
+    }
+    var want=Math.max(0,Math.min(Math.floor(act.exposeEqual),d.cards.length,mineLeft));
+    var mine=0,took=0;
+    for(var j=0;j<me.hand.length&&mine<want;j++){
+      var mx=me.hand[j];
+      var mc=C.cards[mx];
+      if(mc&&mc.type==='plot'&&me.exposedPlots.indexOf(mx)<0){
+        me.exposedPlots.push(mx);
+        me.revealedBy.push(mx);
+        mine++;
+      }
+    }
+    for(var k=0;k<d.cards.length&&took<mine;k++){
+      var tx=d.cards[k];
+      var b=them.hand.indexOf(tx);
+      if(b>=0)them.hand.splice(b,1);
+      me.exposedPlots.push(tx);
+      them.revealedBy.push(tx);
+      took++;
+    }
+    log(me.name+' expone '+took+' Plot de '+them.name+' y '+mine+' propias, en número igual');
+    res={ok:true,exposedTheirs:took,exposedMine:mine,of:them.name};
+  }else if(act&&act.steal!=null){
+    var si=act.steal;
+    if(d.cards.indexOf(si)<0){
+      res={ok:false,reason:'esa Plot no estaba entre las que viste'};
+    }else{
+      var sa=them.hand.indexOf(si);
+      if(sa>=0)them.hand.splice(sa,1);
+      me.hand.push(si);
+      them.revealedBy.push(si);
+      log(me.name+' roba '+card(si).name+' de las Plot ocultas de '+them.name+' (queda expuesta)');
+      res={ok:true,stolen:card(si).name,from:them.name,to:me.name};
+    }
+  }else{
+    res={ok:true,reason:'no se ha hecho nada con lo que se vio'};
+  }
+  var outP=publicState();
+  outP.lastPlotResult=res;
+  return outP;
+}
+
+/* Cierre de la ventana desde fuera del motor (la UI y la IA). Es idempotente:
+ * llamarlo dos veces con la ventana ya cerrada no rompe nada. */
+E.resolvePendingPeek=function(act){
+  if(!S.pendingPeek){
+    var out0=publicState();
+    out0.lastPlotResult={ok:false,reason:'No hay ninguna espionaje pendiente'};
+    return out0;
+  }
+  return closePendingPeek(act||null);
 };
 
 function publicState(){
@@ -402,6 +579,16 @@ function publicState(){
       claimed:!!(S.pendingEvent.data&&S.pendingEvent.data.claimed),
       taken:!!(S.pendingEvent.data&&S.pendingEvent.data.taken),
       responders:S.pendingEvent.responders?S.pendingEvent.responders.slice():[]}:null,
+    /* L7: la ventana de ESPIONAJE. Se proyecta la lista como indices y nombres,
+     * nunca como objetos carta, y `cancelledBy` es publico porque 242 lo
+     * anula desde fuera. */
+    pendingPeek:S.pendingPeek?{kind:S.pendingPeek.kind,label:S.pendingPeek.label,
+      byPid:S.pendingPeek.byPid,byName:S.pendingPeek.data.byName,
+      rivalPid:S.pendingPeek.data.rivalPid,
+      rivalName:S.players[S.pendingPeek.data.rivalPid]?S.players[S.pendingPeek.data.rivalPid].name:'',
+      cards:S.pendingPeek.data.cards.map(function(ix){return {idx:ix,name:card(ix).name};}),
+      cancelledBy:S.pendingPeek.cancelledBy?{card:S.pendingPeek.cancelledBy.cardName,by:S.pendingPeek.cancelledBy.name}:null,
+      responders:S.pendingPeek.responders?S.pendingPeek.responders.slice():[]}:null,
     players:S.players.map(function(pl,i){
       return {
         idx:i,name:pl.name,human:pl.human,illumId:pl.illumId,
@@ -2635,7 +2822,7 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
      `eventReactionAllowed` empieza rechazando todo kind que no este en esa lista;
      sin anadirlo aqui la rama nueva que ya existe nunca se alcanzaria. Es el mismo
      motivo por el que se comparan KINDS y no listas de ids de carta. */
-  ||eff0.kind==='takeover_return'||eff0.kind==='resource_destroy'||eff0.kind==='force_discard_exposed');
+  ||eff0.kind==='takeover_return'||eff0.kind==='resource_destroy'||eff0.kind==='force_discard_exposed'||PEEK_KINDS.indexOf(eff0.kind)>=0);
   if(instant){
     if(S.phase==='setup')throw new Error('No se pueden jugar Plot cards durante la preparación');
     if(S.phase==='gameover')throw new Error('La partida ha terminado');
@@ -3867,6 +4054,124 @@ case 'bulk_power':{
       lastResult={ok:true,negated:true,card:c.name,kind:'force_discard_exposed',
         target:nameF,targetPid:fpid,owner:fpv.name,
         paidWith:{uid:anF.uid,name:card(anF.cardId).name}};
+      break;}
+    /* ================= L7 - INTRUSIÓN EN PLOTS OCULTOS (4 cartas) =================
+     * DECLARACIÓN que hace a esta familia distinta de las otras tres ventanas:
+     * aquí la ventana se abre SIEMPRE, tenga o no alguien una carta para
+     * responder. En §33/§37/§38, si nadie puede reaccionar, la ventana no se
+     * abre y el efecto se aplica en el acto; pero en L7 el efecto ES la decisión
+     * ("mira y elige"), así que no hay nada que aplicar sin ella. Que 242 esté o
+     * no en la mano del rival sólo cambia si puede anularse, no si la ventana
+     * existe. Abrir siempre es lo que hace falta para que la UI pueda listar.
+     *
+     * En los cuatro casos el orden es el mismo y por los mismos motivos:
+     *   1. el rival y sus Plot ocultas existen            (si no, la carta no hace
+     *      nada: EN 303, 322 y 386 eso es un fallo de quien la juega, no un
+     *      silencio del motor);
+     *   2. quién puede pagar el coste impreso           (se localiza, NO se paga);
+     *   3. SE PAGA, aquí y sólo aquí                    (P1-022: el coste se cobra
+     *      después de todas las validaciones, porque si se cobraría antes el
+     *      rechazo dejaría al jugador sin ficha - P1-033);
+     *   4. se abre la ventana, que aplica al cerrarse.
+     */
+    case 'peek_steal':{
+      /* 303 Logic Bomb: "one group with a Power of 6 or more". Se mira el Poder
+       * IMPRESO de la carta, no el actual: es el mismo criterio que `minPower` en
+       * las clausulas de L3a (§42.5), porque el texto habla de "un grupo con un
+       * Poder de 6 o más", que es un dato de la carta, y así el coste no cambia
+       * cuando otra carta suba el Poder del grupo. */
+      if(eff.payMinPower==null)throw new Error(c.name+': la carta no declara el Poder minimo que exige');
+      var rS1=opts.rivalPid!=null?opts.rivalPid:firstRivalWithHidden(pid);
+      if(rS1==null||rS1<0||rS1===pid)throw new Error(c.name+': elige un rival que tenga alguna Plot oculta');
+      var hidS=hiddenPlotsOf(rS1);
+      if(!hidS.length)throw new Error(c.name+': '+S.players[rS1].name+' no tiene ninguna Plot oculta');
+      var ndS=firstUsableAid(pid,function(cc){return typeof cc.power==='number'&&cc.power>=eff.payMinPower;});
+      if(!ndS)throw new Error(c.name+': necesitas la accion de un grupo con un Poder de '+eff.payMinPower+' o mas');
+      spendGroupToken(pid,ndS.uid);
+      openPeekWindow({kind:eff.kind,label:c.name+' sobre las Plot de '+S.players[rS1].name,byPid:pid,rivalPid:rS1});
+      log(c.name+': '+pl.name+' mira '+hidS.length+' Plot oculta(s) de '+S.players[rS1].name+
+          ' (accion de '+card(ndS.cardId).name+')');
+      lastResult={ok:null,pending:true,peek:true,card:c.name,rival:S.players[rS1].name,
+        hidden:hidS.length,paidWith:{uid:ndS.uid,name:card(ndS.cardId).name},
+        reason:'ventana de espionaje abierta'};
+      break;}
+    case 'peek_expose':{
+      /* 322 Mutual Betrayal: "This card requires an action by one group" - sin
+       * mas filtro, cualquier grupo propio sirve. Reutiliza `payAnyGroup`, el
+       * mismo calificador que 210 Botched Contact ya usa en §50. */
+      var rS2=opts.rivalPid!=null?opts.rivalPid:firstRivalWithHidden(pid);
+      if(rS2==null||rS2<0||rS2===pid)throw new Error(c.name+': elige un rival que tenga alguna Plot oculta');
+      var hidE=hiddenPlotsOf(rS2);
+      if(!hidE.length)throw new Error(c.name+': '+S.players[rS2].name+' no tiene ninguna Plot oculta');
+      var ndE=firstUsableAid(pid,function(){return true;});
+      if(!ndE)throw new Error(c.name+': necesita la accion de uno de tus grupos');
+      spendGroupToken(pid,ndE.uid);
+      openPeekWindow({kind:eff.kind,label:c.name+' sobre las Plot de '+S.players[rS2].name,byPid:pid,rivalPid:rS2});
+      log(c.name+': '+pl.name+' mira '+hidE.length+' Plot oculta(s) de '+S.players[rS2].name+
+          ' (accion de '+card(ndE.cardId).name+')');
+      lastResult={ok:null,pending:true,peek:true,card:c.name,rival:S.players[rS2].name,
+        hidden:hidE.length,exposeEqual:hidE.length,
+        paidWith:{uid:ndE.uid,name:card(ndE.cardId).name},
+        reason:'ventana de espionaje abierta'};
+      break;}
+    case 'peek_rob':{
+      /* 386 The Auditor from Hell: "This card may only be used by the Network or a
+       * Computer group, or by a Bank group. It counts as an action for that
+       * group." Son TRES pagadores y el texto los enumera, asi que se comprueban
+       * en ese orden: primero los grupos por atributo, despues el Illuminati por
+       * `effect.code`. Es exactamente el patron que ya uso 278 Hex en §50
+       * ("your Illuminati, or by a Magic group with a Power of 3 or more"), y por
+       * eso el calificador de atributo es `payAttrAny` (una disyuncion) y no
+       * `payAttr` (un solo atributo): "Computer group, or a Bank group" son dos. */
+      var rR1=opts.rivalPid!=null?opts.rivalPid:firstRivalWithHidden(pid);
+      if(rR1==null||rR1<0||rR1===pid)throw new Error(c.name+': elige un rival que tenga alguna Plot oculta');
+      var hidR=hiddenPlotsOf(rR1);
+      if(!hidR.length)throw new Error(c.name+': '+S.players[rR1].name+' no tiene ninguna Plot oculta');
+      var ndR=null,viaR=null;
+      if(Array.isArray(eff.payAttrAny)&&eff.payAttrAny.length){
+        ndR=firstUsableAid(pid,function(cc,nn){
+          for(var q=0;q<eff.payAttrAny.length;q++){if(hasAttr(cc,eff.payAttrAny[q],nn))return true;}
+          return false;
+        });
+        if(ndR)viaR={uid:ndR.uid,name:card(ndR.cardId).name,via:'grupo'};
+      }
+      if(!viaR&&eff.illumCode){
+        var mcR=illuCard(pid);
+        if(mcR&&mcR.effect&&mcR.effect.code===eff.illumCode&&pl.illumTokens>=1)viaR={name:mcR.name,via:'illuminati'};
+      }
+      if(!viaR)throw new Error(c.name+': solo puede usarla un grupo '+(eff.payAttrAny||[]).join(' o ')+
+          ', o tu Illuminati si es '+cap(eff.illumCode));
+      if(viaR.via==='grupo')spendGroupToken(pid,ndR.uid);else pl.illumTokens--;
+      openPeekWindow({kind:eff.kind,label:c.name+' sobre las Plot de '+S.players[rR1].name,byPid:pid,rivalPid:rR1});
+      log(c.name+': '+pl.name+' mira '+hidR.length+' Plot oculta(s) de '+S.players[rR1].name+
+          ' (accion de '+viaR.name+')');
+      lastResult={ok:null,pending:true,peek:true,card:c.name,rival:S.players[rR1].name,
+        hidden:hidR.length,canExposeAll:!!eff.canExposeAll,paidWith:viaR,
+        reason:'ventana de espionaje abierta'};
+      break;}
+    case 'peek_block':{
+      /* 242 Double-Cross: "Play this card at any time a rival uses a Plot card to
+       * look at YOUR hidden Plot cards". Quien lo juega es la VICTIMA, no un
+       * tercero: el propio texto dice "your". Por eso se exige que `pid` sea el
+       * rival espiado y no uno cualquiera.
+       *
+       * DECLARACIÓN 6: las otras dos mitades del texto ("Your opponent loses the
+       * card which let him spy on you, and actions that powered it") ya son
+       * ciertas sin hacer nada: la ficha se cobró al jugarse la carta espía
+       * (P1-022) y la carta espía va sola a `S.plotDiscard` (P1-025). Aquí NO se
+       * cierra la ventana: la cierra quien espía, y al hacerlo se encuentra con
+       * `cancelledBy` y no ve nada. Es el mismo contrato de dos pasos de §33/§37/§38,
+       * y es lo que hace que el texto "He does not get to look at (or steal) any
+       * of your cards after all" sea cierto sin ninguna otra operacion. */
+      if(!S.pendingPeek)throw new Error(c.name+': no hay ninguna espionaje anunciado que anular');
+      var pBk=S.pendingPeek;
+      if(pBk.cancelledBy)throw new Error(c.name+': esa espionaje ya fue anulada');
+      if(pid!==pBk.data.rivalPid)
+        throw new Error(c.name+': solo el dueno de las Plot espiadas puede anular la espionaje');
+      pBk.cancelledBy={pid:pid,name:pl.name,cardName:c.name};
+      log(c.name+' de '+pl.name+': '+S.players[pBk.byPid].name+' no podra ver ninguna de las Plot de '+pl.name);
+      lastResult={ok:false,cancelled:true,card:c.name,blocked:S.players[pBk.byPid].name,
+                  reason:'anulado por '+c.name};
       break;}
     case 'token_gift':{
       var gAlign=(typeof eff.giftAlign==='string')?eff.giftAlign.toLowerCase():null;

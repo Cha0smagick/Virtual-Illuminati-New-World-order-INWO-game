@@ -4586,3 +4586,283 @@ ficheros se buscan en el mazo, no se escriben a mano (`gAlign`, `gAttr`, `gSub` 
   el vacio de datos de §30 (Global Power) sigue bloqueado por la red.
 - **Fase 3**: UX, onboarding, verificacion en navegador real, y la IA todavia no JUEGA
   cartas de reaccion (solo cierra ventanas).
+---
+
+## 51. L7 - INTRUSION EN PLOTS OCULTOS: las 4 cartas que miran la mano de un rival (y P1-035)
+
+### 51.1 Hallazgo
+
+`plan.md` agrupaba L7 en 5 cartas bajo el nombre "peek_hidden_plots". Al medir cada
+carta contra el motor, cuatro de las cinco resultaban ser un mecanismo ligeramente distinto y
+una que no cabe en ninguno:
+
+| idx | carta | veredicto | kind / familia | calificadores |
+|---|---|---|---|---|
+|303|Logic Bomb|IMPLEMENTADA|`peek_steal`|`payMinPower:6`|
+|322|Mutual Betrayal|IMPLEMENTADA|`peek_expose`|(sin qualifier de coste)|
+|386|The Auditor from Hell|IMPLEMENTADA|`peek_rob`|`payAttrAny:['computer','bank']`, `illumCode:'network'`, `canExposeAll:true`|
+|242|Double-Cross|IMPLEMENTADA|`peek_block`|--|
+|304|March on Washington|**APLAZADA**|--|combinacion de cartas|
+
+Las cinco son `type=plot` (verificado PRIMERO, la leccion del 344/203), `subtype=null`,
+`attributes=[]` y `alignments=[]` antes de este lote.
+
+**304 se aplaza por una sola razon, la misma que ya aplazo a 254 Faction Fight, 222
+Combined Disasters y 372 Spasm of Violence:** su texto es "Play this card ALONG WITH a
+Plot card that requires an action or actions". El motor juega una carta por llamada, y
+combinar dos cartas en una sola jugada es un subsistema que aun no existe. No se simula
+ninguna de las dos mitades.
+
+### 51.2 Los siete textos impresos
+
+- **303 Logic Bomb** -- "Pick one rival. You may look at all his hidden Plot cards, and
+  choose one to take for yourself but you must expose that card. Play this card at any
+  time. It requires an action by one group with a Power of 6 or more. Requires Action"
+- **322 Mutual Betrayal** -- "Play this card at any time. This card requires an action by
+  one group. Pick one rival. You may look at all his hidden Plot cards. After looking, you
+  may expose any or all of them, as long as you also expose an equal number of your own
+  Plots. Requires Action"
+- **386 The Auditor from Hell** -- "This card may be played at any time. Choose one rival
+  as your target. You may look at all his hidden Plot cards, and either steal one of them,
+  or expose them all! This card may only be used by the Network or a Computer group, or by
+  a Bank group. It counts as an action for that group. Requires Network, Computer or Bank
+  Action"
+- **242 Double-Cross** -- "Play this card at any time a rival uses a Plot card to look at
+  your hidden Plot cards. Your opponent loses the card which let him spy on you, and
+  actions that powered it. He does not get to look at (or steal) any of your cards after
+  all!"
+
+### 51.3 Correcciones aplicadas
+
+#### Capa de datos (`gen_cards.js`, 1955 -> 2038 lineas)
+
+`const L7_FX` con cuatro entradas + `const L7_FXN` + `|| L7_FXN[key]` en la unica cadena de
+resolucion. La insercion va DESPUES de la llave que CIERRA el bucle de la familia anterior
+(ancla `'  L6_FXN[norm(k)] = L6_FX[k];\n}\n'`, verificada x1) y el indice de la cadena se
+calcula SOBRE EL RESULTADO de la insercion (trampa del §45.5).
+
+#### Motor (`game/js/engine.js`, 4422 -> 4727 lineas)
+
+Seis ediciones, cada una con su ancla validada:
+
+- **A** `pendingPeek:null,` en el literal `S={...}` de `E.newGame`.
+- **B** `revealedBy:[],` en el literal del jugador, inmediatamente antes de
+  `flags:{autoTakeover:false,...}` (ancla DISTINTA del `linkedPlots:[],` que fallo -- ver
+  §51.6).
+- **C** proyeccion de `pendingPeek` en `publicState()`, despues de la de `pendingEvent`.
+- **D** cola de la lista `instant`: `||PEEK_KINDS.indexOf(eff0.kind)>=0);`.
+- **E** bloque a nivel de modulo antes de `function publicState(){`: `PEEK_KINDS`,
+  `hiddenPlotsOf(pid)`, `firstRivalWithHidden(pid)`, `openPeekWindow(rd)`,
+  `closePendingPeek(act)`, `E.resolvePendingPeek(act)`.
+- **F** los cuatro `case` antes de `    case 'token_gift':{`.
+
+Elementos nuevos:
+
+- **`hiddenPlotsOf(pid)`** es la definicion UNICA de "Plot oculta": un indice del `pl.hand`
+  cuya carta es `type==='plot'` y que NO esta en `pl.exposedPlots` (esa lista guarda las
+  Plot que quedan sobre la mesa como marcador, §26).
+- **`firstRivalWithHidden(pid)`** = `opts.rivalPid` o el primer rival con al menos una
+  Plot oculta. Misma tecnica que `alignFromTarget` (268) y que la correccion P1-034a de
+  278 Hex: no se inventa un selector de jugador nuevo para la UI.
+- **`openPeekWindow(rd)`** construye `{kind,label,byPid,data:{byName,rivalPid,cards[]},
+  cancelledBy,responders}`, explora SOLO la mano de la victima buscando `peek_block`, y
+  **SIEMPRE fija `S.pendingPeek` y devuelve true -- no aborta cuando no hay respuesta.**
+  Registra `'VENTANA DE ESPIONAJE ABIERTA: '`.
+- **`closePendingPeek(act)`** ramifica en este orden: `cancelledBy` -> nada se ve;
+  `{exposeAll}` -> cada Plot oculta de la victima se saca de su mano y pasa a
+  `me.exposedPlots` + `them.revealedBy`; `{exposeEqual:n}` ->
+  `want = max(0, min(floor(n), d.cards.length, misPlotsSinExponer))`, expone `want` de las
+  MIAS primero y despues el mismo numero de las suyas; `{steal:ix}` -> valida que `ix`
+  este en `d.cards`, lo saca de la mano de la victima y lo pasa a la mia; si no, "no se ha
+  hecho nada con lo que se vio" (el texto dice "you MAY").
+- **`E.resolvePendingPeek(act)`** es el cierre idempotente, calcado de
+  `E.resolvePendingAttack`; sin ventana devuelve
+  `lastPlotResult={ok:false,reason:'No hay ninguna espionaje pendiente'}`.
+
+Los cuatro `case`, bajo una cabecera de 20 lineas que declara lo que distingue a esta
+familia y el orden fijo de cuatro pasos:
+
+- **`peek_steal` (303)** -- valida el rival y sus Plot ocultas PRIMERO; luego
+  `firstUsableAid(pid, cc => typeof cc.power==='number' && cc.power>=eff.payMinPower)` sobre
+  el Poder IMPRESO (mismo criterio que `minPower` en las clausulas `moves[]` del §42.5);
+  `spendGroupToken`; `openPeekWindow`.
+- **`peek_expose` (322)** -- misma forma, el coste es `firstUsableAid(pid,function(){return
+  true;})` (cualquier grupo propio), reutilizando el qualifier `payAnyGroup` que ya usa 210.
+- **`peek_rob` (386)** -- los tres pagadores se comprueban en el orden impreso: `firstUsableAid`
+  filtrado por `payAttrAny` (una DISYUNCION, que es justo por lo que no es `payAttr`), luego
+  `illuCard(pid).effect.code===eff.illumCode && pl.illumTokens>=1`.
+- **`peek_block` (242)** -- exige `S.pendingPeek`; rechaza si ya hay `cancelledBy`; y
+  **rechaza salvo que `pid === S.pendingPeek.data.rivalPid`**, porque juega la VICTIMA
+  (el texto dice "look at YOUR hidden Plot cards"). Fija `cancelledBy` y NO cierra la
+  ventana (contrato de dos pasos).
+
+**SIN CAMBIOS EN LA UI**: las cuatro cartas apuntan a un JUGADOR rival, no a un grupo, asi
+que NO deben entrar en `NO_TARGET_KINDS`.
+
+#### Gate (`test_fase4_cards.js`, 906 -> 952 lineas, `checkedFields` 41 -> 42)
+
+Tres ramas nuevas antes del ancla flush-left `if (e.targetSubtype) {`, con una cabecera que
+declara por que ninguna puede reutilizar una existente: `payAttrAny` es una disyuncion, asi
+que lo que hay que comprobar es que exista AL MENOS UNO de los atributos; `illumCode` no es
+un nombre de carta sino el `effect.code` del Illuminati que paga, y debe existir en el mazo
+o la carta no tendria pagador nunca; y un `canExposeAll` que valiera `false` dejaria la rama
+muerta, que es el defecto P1-026. Mas la linea de `usedAttrs` para `payAttrAny`.
+
+### 51.4 P1-035 - la rama de gate escrita ANTES de probar el dato encuentra un bug de DATOS
+
+La primera ejecucion del gate con las ramas nuevas fallo:
+
+```
+FASE 4 COVERAGE FAILED (1)
+X - The Auditor from Hell: illumCode="thenetwork" no corresponde a ningun Illuminati del mazo
+```
+
+**Causa raiz:** escribi el qualifier de 386 adivinando a partir del nombre de la carta. El
+**id** de la carta es `thenetwork1` pero su **`effect.code` es `network`**. Los 18
+`effect.code` reales, medidos sobre `cards.js` (idx 167-184, nueve sociedades x dos cartas):
+
+```
+adepts  bavarian  bermuda  discordian  gnomes  cthulhu  shangrila  network  ufos
+```
+
+y ademas **`attributes:[]` en los dieciocho** (P1-032 otra vez). Corregido con dos llamadas
+a `edit` en `gen_cards.js` (el comentario de la linea 1713 y el valor de la linea 1720). Un
+`grep` de repositorio confirmo que las demas apariciones de `thenetwork` estan en
+`test_fase2_rules.js` y son **ids de carta** (`fresh('thenetwork1',...)`,
+`pidOf('thenetwork')`), correctas.
+
+**Dos lecciones.** Primera: una rama de gate escrita antes de probar el dato ejercita el gate
+Y el dato; es la primera vez que una rama nueva falla por el dato y no por una rama de motor
+ausente (las de `moves` en §42 y `requireAttrAny` en §37 fueron al reves). Segunda: la
+confusion id/code es una trampa recurrente -- **el motor compara `effect.code`, nunca el id**.
+
+### 51.5 La regresion
+
+49 aserciones en 7 escenarios, en `test_fase2_rules.js`, con anclaje
+`/* ---------- L7 - INTRUSION EN PLOTS OCULTOS (303, 322, 386, 242) ---------- */` antes de
+`/* ---------- Utilidad global:`. Observables, nunca aritmetica:
+
+1. **303 roba** -- paga con la ficha de C.I.A., la ventana lista 3 cartas y nada se ha movido
+   todavia; `resolvePendingPeek({steal:botin[1]})` mueve exactamente una carta (rival -1,
+   mio +1 por CONTEO DE COPIAS), las otras dos siguen, `revealedBy` lo registra.
+2. **322 expone igual** -- `exposedMine === exposedTheirs === 2`, cuatro cartas quedan como
+   marcador sobre la mesa, la mano del rival se queda sin Plot.
+3. **242 anula** -- la ventana SIGUE ABIERTA despues de jugarla, `cancelledBy.by === 'B'`, y
+   cerrarla deja intactos todos los conteos y ambos `exposedPlots`.
+4. **386 paga con el Illuminati** (`fresh('thenetwork1',...)`, `illumTokens=1`, sin grupo
+   computer/bank) y luego `exposeAll` expone 2.
+5. **386 paga con un grupo Computer** (la disyuncion `payAttrAny`, `illumTokens=0`).
+6. **Los rechazos impresos** -- 303 sin pagador de Poder 6 (y el rechazo no cuesta ni ficha ni
+   carta), 303 dos veces por "no hay Plot ocultas" (una sin `opts.rivalPid` y otra con el),
+   242 sin ventana.
+7. **242 jugado por el ESPIA** se rechaza con `/solo el dueno/`, y cerrar con `null` es
+   legal (el texto dice "you MAY").
+
+Helpers propios (porque `give`/`giveHere` viven dentro de otros IIFE): `raw()`,
+`fromDeck(ix)` (saca el indice de `S.plotDeck` antes de ponerlo en una mano -- regla 13 de
+plan.md), `put`, `copiesOf`, `setHand`, `lootInto`, `ownPlots`, `nodeOf`, `settleEvent`,
+`peekNow`, y `CIA()` que BUSCA en el mazo `type==='group' && power>=6` en vez de fijar un
+indice a mano.
+
+### 51.6 El splice roto y la metodologia de anclas que queda
+
+La primera version del splice del motor uso `      linkedPlots:[],` como ancla del literal
+del jugador. Esa cadena **aparece tambien dentro de un comentario en espanol** sobre las
+Plot linkeadas, asi que la insercion cayo dentro del comentario, la linea 369 quedo
+corrupta y `node --check` fallo:
+
+```
+game/js/engine.js:409  var PEEK_KINDS=[...];
+                                        ^
+SyntaxError: Unexpected identifier 'PEEK_KINDS'
+```
+
+`git diff --stat game/js/engine.js` demostro que el splice era la UNICA modificacion sin
+commitear de ese fichero (317 inserciones / 6 borrados), asi que `git checkout --
+game/js/engine.js` fue SEGURO y devolvio la version de 4422 lineas. Esta es la UNICA
+legitima usacion de `git checkout` en este proyecto: **verificar primero con
+`git diff --stat <fichero>` que el fichero no contiene otro trabajo sin commitear.**
+
+La metodologia que queda, y que es ahora la regla:
+
+- **`countOf(needle) === 1` NO basta.** Una unica aparicion dentro de un comentario lo
+  supera. Eso fue exactamente el fallo de L7.
+- La forma segura es **(a) `countOf === 1` Y (b) el texto previo a la aguja en su linea es
+  solo espacios**.
+- El chequeo opcional de `commentDepth === 0` hubo que **descartarse para anclas que son
+  ellas mismas apertura de comentario** (la profundidad es 1 por construccion), y ademas un
+  escaner ingenuo de `commentDepth` se desincroniza antes en un fichero lleno de regex y
+  plantillas: reporto `depth 1` antes de un ancla legitima de primer nivel. Por eso
+  `_l7splice.cjs` usa `countOf === 1` + inicio de linea limpio, que es la forma que todos
+  los lotes anteriores usaron con exito.
+
+### 51.7 Seis trampas de fixture (todas mias, todas atrapadas)
+
+1. **`C` en `test_fase2_rules.js` es `window.INWO_CARDS`, NO el array** --
+   `C.findIndex is not a function`. Se usa el `idxOfId(id)` de ambito de modulo para las
+   cuatro cartas y `C.cards[...]` / `C.cards.findIndex` en todas partes.
+2. `ownPlots(0).length === 2` era falso: `fresh()` reparte una mano real que ya contiene
+   Plot (medido 6). Cambiado a `>= 2`, porque lo que el texto exige es la IGUALDAD, que se
+   comprueba por separado.
+3. La regex de "el rival no tiene Plot ocultas" esperaba el segundo guardia, pero sin
+   `opts.rivalPid` se dispara el primero. Dividido en DOS `throws`, uno por ruta.
+4. **Double-Cross no estaba en la mano del espia** porque el escenario 3 ya lo habia jugado
+   en otra partida. Anadido `put(0, DC)`.
+5. **`Error: Sin Action token en C.I.A.`** -- dos subescenarios plantaron el pagador bajo el
+   MISMO uid `'p2'`, asi que las aserciones no podian saber cual habia pagado. Cada uno
+   recibio su uid (`pA`, `pB`).
+6. El borrador contenia basura propia: una expresion sobrante
+   `out322.lastPropResult === undefined ? '' : ''` dentro del mensaje de un `ok`, el
+   error tipografico `Plot sua`, y un `id === 'cia'` fijado a mano -- este ultimo sustituido
+   por una busqueda en tiempo de ejecucion, porque cinco hechos de fixture escritos a mano
+   ya han resultado falsos (§39.4, §44.8, §49.6).
+
+### 51.8 Verificacion
+
+- `node --check` limpio en `gen_cards.js`, `game/js/engine.js`, `test_fase4_cards.js`,
+  `test_fase2_rules.js`.
+- `node test_fase2_rules.js` -> **FASE 2 RULES PASSED**, **30/30** corridas seguidas.
+- `node test_fase4_cards.js` -> **FASE 4 COVERAGE PASSED (127 cartas clasificadas, 121
+  Plots/Resources sin mecanica (techo 182), 3 ramas muertas declaradas, 11 cartas
+  bloqueadas congeladas, 4 huecos de texto declarados)**. Sin mecanica 125 -> **121
+  (exactamente -4)**, clasificadas 123 -> 127, `implemented-pending-engine` 104 -> 108,
+  `checkedFields` 41 -> 42.
+- `node gen_cards.js` -> `texto secundario recuperado del HTML de Scribd: 14` +
+  `written 421 {"group":167,"illuminati":18,"plot":201,"resource":35} verified-groups 33`.
+- `npm test` -> **ALL TESTS PASSED (10)**.
+
+### 51.9 Lecciones
+
+1. **Un identificador unico no es un ancla segura.** La unicidad no dice nada sobre si el
+   texto esta en codigo o dentro de un comentario. Anclar en algo que solo pueda existir
+   como codigo (una llave, un `case`, un flags) es mas robusto que anclar en algo legible.
+2. **Agrupar por nombre de plan hides heterogeneidad.** "5 cartas de intrusion" eran cuatro
+   efectos distintos mas una combinacion de cartas; 4 de 5 implementables, no 5 de 5.
+3. **La cuarta ventana de reaccion es la primera que se abre SIEMPRE.** En §33/§37/§38 no
+   abrir ventana sin respuesta era lo correcto; aqui el efecto ES una decision, asi que sin
+   decision no hay nada que aplicar. Una familia nueva puede invertir la regla sin que sea
+   un error.
+4. **Exponer no es quitar de la mano.** El texto impreso usa "expose" con dos sentidos
+   (dejar sobre la mesa / simplemente saberlo). El motor ya tiene `exposedPlots` para el
+   primero (§26), asi que 303 usa el segundo y lo registra en `pl.revealedBy`. Registrar la
+   exposicion es lo que hace que "no se puede deshacer" y por tanto "no es secreto".
+5. **El gate escrito antes del dato encuentra bugs de datos.** P1-035 solo existia porque
+   la rama se escribio y se ejecuto en el mismo minuto; el valor correcto (`network`) estaba
+   en `cards.js` desde el principio.
+
+### 51.10 Backlog
+
+- **304 March on Washington** -- combinacion de cartas en una jugada (mismo subsistema que
+  254 Faction Fight, 222 Combined Disasters y 372 Spasm of Violence).
+- **Cola de Resources (4)**: 203 Bigfoot, 311 Mercenaries, 358 Rogue Boomer, 373 Spear of
+  Longinus -- las cuatro `type=resource` con habilidad permanente usada como accion;
+  necesitan el subsistema `E.useResourceAbility`.
+- 205 Bimbo at Eleven (hueco de DATOS: `gender` no existe en ninguna de las 421 cartas);
+  377 Sucked Dry (cola de destruccion diferida); 224/230/283/363 (`E.playPlot` bifasico +
+  devolucion de coste); 419 World War Three (una Goal).
+- **121 Plots/Resources sin mecanica**  -  11 `BLOCKED_CARDS` congeladas  -  5 cartas sin
+  `textFull` (185, 195, 206, 229, 331) y 232/258 cuyo OCR es mas largo que la fuente.
+- **Fase 3**: UX, onboarding, verificacion DOM en navegador real, y la IA que aun no
+  *juega* cartas de reaccion (solo cierra ventanas).
+- **P1-DATA-03 Global Power**: bloqueado por entorno.
+- **P1-032** sigue abierto: los dieciocho Illuminati sin `alignments` ni `attributes`.

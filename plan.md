@@ -5,7 +5,7 @@ impreso transcrito pero ninguna mecanica ejecutable en el motor, sin romper ning
 reglas ya auditadas (P0-001..P0-007, P1-001..P1-027) y sin inventar reglas que el reglamento
 no dice.
 
-Referencia de estado: `docs/audit/INWO_SURGICAL_AUDIT.md` (ultima seccion ejecutada: §50).
+Referencia de estado: `docs/audit/INWO_SURGICAL_AUDIT.md` (ultima seccion ejecutada: §51).
 Referencia de metricas: `node test_fase4_cards.js` imprime
 `FASE 4 COVERAGE PASSED (N cartas clasificadas, M Plots/Resources sin mecanica, ... implemented-pending-engine: K)`.
 
@@ -373,19 +373,56 @@ Kind `align_rule`, unica cualificadora `alignMag`.
   asi que **ninguna entra en `NO_TARGET_KINDS`**.
 
 
-## [ ] L7 - INTRUSION EN PLOTS OCULTOS
+## [x] L7 - INTRUSION EN PLOTS OCULTOS: "look at all his hidden Plot cards" - CERRADO en parte
+  (4 cartas; 123->127 clasificadas; 125->121 sin mecanica; 104->108 implemented-pending-engine;
+  checkedFields 41->42; auditoria seccion 51; P1-035)
 
-- **Cartas (5)**: 303 Logic Bomb · 322 Mutual Betrayal · 386 The Auditor from Hell ·
-  242 Double-Cross · 304 March on Washington.
-- **Mecanica**: `peek_hidden_plots`. El motor necesita una vista de los Plots ocultos de un
-  rival; hoy `pl.exposedPlots` solo lleva los expuestos, asi que este lote anade la lectura de
-  la mano rival (el motor ya es servidor-side: el azar es la UI).
-- **Interpretaciones declaradas**: "look at" en el juego fisico significa el jugador la mira; en
-  esta version web se implementa como revelacion y eleccion por indice, que es el equivalente
-  funcional, y se declara.
-- **Aceptacion**: rival con 3 Plots ocultos; 303 permite elegir uno y termina en la mano del
-  jugador que la uso, y el rival queda **expuesto** segun el texto impreso.
-
+- **Cartas entregadas (4 de las 5 de L7)**: 303 Logic Bomb  -  322 Mutual Betrayal  - 
+  386 The Auditor from Hell  -  242 Double-Cross. Las cuatro verificadas `type=plot` PRIMERO
+  (la leccion del 344/203: una carta puede ser Resource y entonces `E.playPlot` es el punto
+  de entrada equivocado).
+- **APLAZADA (1)**: **304 March on Washington** - "Play this card ALONG WITH a Plot card"
+  es combinacion de cartas en una sola jugada y el motor juega una carta por llamada. Mismo
+  subsistema que ya aplazo a 254 Faction Fight, 222 Combined Disasters y 372 Spasm of
+  Violence. Ninguna de las dos mitades se simula.
+- **RECLASIFICACION**: las 4 cartas no son un mecanismo unico sino tres efectos distintos mas
+  una negacion, asi que **cuatro kinds distintos** y no uno:
+  - `peek_steal` (303) - `payMinPower:6`, roba UNA de las Plot ocultas y la mano del rival
+    pierde exactamente una carta.
+  - `peek_expose` (322) - sin qualifier de coste (cualquier grupo propio paga),
+    `exposeEqual` expone el mismo numero de las mias que de las suyas.
+  - `peek_rob` (386) - `payAttrAny:['computer','bank']` + `illumCode:'network'` +
+    `canExposeAll:true`; tres pagadores comprobados en el orden impreso.
+  - `peek_block` (242) - la VICTIMA juega la carta y marca `cancelledBy`; **no cierra la
+    ventana** (contrato de dos pasos), asi que "he does not get to look at (or steal) any of
+    your cards after all" se cumple sin ninguna otra operacion.
+- **La cuarta ventana de reaccion: `S.pendingPeek`** con `PEEK_KINDS`, `hiddenPlotsOf(pid)`
+  (definicion unica de Plot oculta: indice del `pl.hand` con `type==='plot'` que NO esta en
+  `pl.exposedPlots`), `firstRivalWithHidden(pid)` (tecnica `alignFromTarget`/P1-034a, sin
+  selector de jugador nuevo), `openPeekWindow`, `closePendingPeek(act)` y
+  `E.resolvePendingPeek(act)`. Proyeccion en `publicState()` con indices y nombres, nunca
+  objetos carta. Nuevo `pl.revealedBy` para registrar la exposicion.
+  **DECLARACION QUE INVIERTE LA REGLA DE LAS OTRAS TRES VENTANAS**: aqui la ventana se
+  abre SIEMPRE, incluso sin respuesta, porque el efecto ES una decision; en §33/§37/§38 no
+  abrir sin respuesta era lo correcto.
+- **SIN CAMBIOS EN LA UI**: las cuatro apuntan a un JUGADOR rival, no a un grupo, asi que NO
+  entran en `NO_TARGET_KINDS`.
+- **P1-035**: la rama de gate de `illumCode` escrita antes de probar el dato encontro un bug
+  de DATOS - el **id** de la carta es `thenetwork1` pero su **`effect.code` es `network`**.
+  Los 18 codigos reales: `adepts, bavarian, bermuda, discordian, gnomes, cthulhu, shangrila,
+  network, ufos` (y los dieciocho siguen con `attributes:[]`, P1-032). El motor compara
+  `effect.code`, nunca el id.
+- **Metodologia de ancla que queda (importante para todo lo que viene)**: `countOf(needle)
+  === 1` **NO basta**, porque una unica aparicion DENTRO DE UN COMENTARIO lo supera - asi se
+  rompio el primer splice de este lote. La forma segura es `countOf === 1` **Y** que el texto
+  previo a la aguja en su linea sea solo espacios. El chequeo `commentDepth === 0` hay que
+  descartarlo cuando el ancla es ella misma una apertura de comentario.
+- **Regresion**: 49 aserciones / 7 escenarios. 303 roba (conteos de copias, nunca
+  `indexOf(...)<0`), 322 expone 2 y 2, 242 anula sin revelar nada, 386 paga con el
+  Illuminati y con un grupo Computer, y los rechazos impresos con sus mensajes exactos.
+  **30/30** corridas seguidas de FASE 2.
+- **Aceptacion cumplida**: rival con 3 Plot ocultas, 303 deja elegir una, termina en mi mano y
+  `pl.revealedBy` registra la exposicion.
 ## [ ] L8 - MANIPULACION DE MAZO Y ROBO
 
 - **Cartas (8)**: 191 An Offer You Can't Refuse (2 Plots extra que no son de tu mazo) ·

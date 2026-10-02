@@ -4629,6 +4629,247 @@ function readyToAttack(pid) {
   Math.random = realRandom;
 })();
 
+/* ---------- L7 - INTRUSION EN PLOTS OCULTOS (303, 322, 386, 242) ---------- */
+(function () {
+  /* `C` es window.INWO_CARDS, no el array: por eso los indices se piden con el
+   * helper de modulo `idxOfId` y el array se toca siempre como `C.cards`. */
+  var LB = idxOfId('logicbomb');
+  var MB = idxOfId('mutualbetrayal');
+  var AR = idxOfId('theauditorfromhell');
+  var DC = idxOfId('doublecross');
+  ok(LB >= 0 && MB >= 0 && AR >= 0 && DC >= 0,
+    'L7 las cuatro cartas de espionaje estan en el mazo -> ' + [LB, MB, AR, DC].join(','));
+
+  /* --- helpers propios: `give`/`giveHere` viven dentro de otros IIFE --- */
+  function raw() { return E._raw(); }
+  /* REGLA 13 de plan.md: la carta se SACA del mazo cuando se pone en la mano,
+   * para que el reparto no dependa de la suerte y el mazo siga coherente. */
+  function fromDeck(ix) {
+    var s = raw(), k = s.plotDeck.indexOf(ix);
+    if (k >= 0) s.plotDeck.splice(k, 1);
+  }
+  function put(pid, ix) { fromDeck(ix); raw().players[pid].hand.push(ix); }
+  /* REGLA 13 otra vez: para "la carta salio de la mano" se comparan COPIAS,
+   * nunca `indexOf(...) < 0`, porque el reparto pudo traer otra copia. */
+  function copiesOf(pid, ix) {
+    return raw().players[pid].hand.filter(function (x) { return x === ix; }).length;
+  }
+  function setHand(pid, list) { raw().players[pid].hand = list.slice(); }
+  /* Botin: tres Plots medidas en el mazo que NO son cartas de L7, para que el
+   * contenido de la mano del rival sea exactamente el que el test decide. */
+  var LOOT = [185, 186, 187];
+  function lootInto(pid, n) {
+    var out = LOOT.slice(0, n);
+    out.forEach(fromDeck);
+    setHand(pid, out);
+    return out;
+  }
+  function ownPlots(pid) {
+    return raw().players[pid].hand.filter(function (ix) { return C.cards[ix] && C.cards[ix].type === 'plot'; });
+  }
+  function nodeOf(pid, uid) {
+    var found = null;
+    (function walk(n) {
+      if (found) return;
+      if (n.uid === uid) { found = n; return; }
+      n.children.forEach(walk);
+    })(raw().players[pid].structure);
+    return found;
+  }
+  /* §38: jugar una Plot puede abrir una ventana de suceso. Se cierra para que no
+   * ensucie las aserciones de L7. */
+  function settleEvent() { if (E.getState().pendingEvent) E.resolvePendingEvent(); }
+  function peekNow() { return E.getState().pendingPeek; }
+  /* El pagador de 303 tiene que existir CON Poder IMPRESO >= 6. Se busca por
+   * nombre y se comprueba el dato, no se escribe de memoria: las fichas de una
+   * carta se han equivocado cinco veces ya (§39.4, §44.8, §49.6). */
+  function CIA() {
+    return C.cards.findIndex(function (x) {
+      return x && x.type === 'group' && typeof x.power === 'number' && x.power >= 6;
+    });
+  }
+
+  /* ================= 1) 303 LOGIC BOMB: roba una de las Plot ocultas ======== */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  readyToAttack(0);
+  var cia = CIA();
+  ok(cia >= 0 && typeof C.cards[cia].power === 'number' && C.cards[cia].power >= 6,
+    'L7 303 el pagador del test tiene Poder IMPRESO >= 6 -> ' + (cia >= 0 ? C.cards[cia].name + ' P' + C.cards[cia].power : 'no encontrado'));
+  plant(0, 'p1', cia, 1);
+  put(0, LB);
+  var botin = lootInto(1, 3);
+  ok(ownPlots(1).length === 3, 'L7 303 el rival tiene exactamente 3 Plot ocultas -> ' + ownPlots(1).length);
+  var bRival0 = copiesOf(1, botin[1]), bMine0 = copiesOf(0, botin[1]);
+
+  var out303 = E.playPlot(0, LB, null, {});
+  settleEvent();
+  ok(out303.lastPlotResult && out303.lastPlotResult.pending === true,
+    'L7 303 al jugarla la carta queda PENDIENTE (no se aplica en el acto)');
+  ok(out303.lastPlotResult.hidden === 3,
+    'L7 303 el motor ve 3 Plot ocultas -> ' + (out303.lastPlotResult && out303.lastPlotResult.hidden));
+  var w303 = peekNow();
+  ok(!!w303, 'L7 303 la ventana de espionaje esta abierta');
+  ok(w303 && w303.cards.length === 3, 'L7 303 la ventana lista 3 cartas -> ' + (w303 && w303.cards.length));
+  ok(w303 && w303.rivalPid === 1, 'L7 303 la ventana apunta al rival correcto');
+  ok(nodeOf(0, 'p1').tokens === 0, 'L7 303 la accion del pagador se ha gastado');
+  ok(copiesOf(1, botin[1]) === bRival0, 'L7 303 todavia no se ha robado nada: la mano del rival intacta');
+
+  var res303 = E.resolvePendingPeek({ steal: botin[1] });
+  ok(peekNow() === null, 'L7 303 cerrar la ventana la deja en null');
+  ok(res303.lastPlotResult && res303.lastPlotResult.stolen === C.cards[botin[1]].name,
+    'L7 303 el resultado dice que Plot se robo -> ' + (res303.lastPlotResult && res303.lastPlotResult.stolen));
+  ok(copiesOf(1, botin[1]) === bRival0 - 1, 'L7 303 la Plot robada SALE de la mano del rival');
+  ok(copiesOf(0, botin[1]) === bMine0 + 1, 'L7 303 la Plot robada llega a MI mano');
+  ok(copiesOf(1, botin[0]) === 1 && copiesOf(1, botin[2]) === 1,
+    'L7 303 las otras dos Plot del rival NO se tocan (solo se elige una)');
+  ok(raw().players[1].revealedBy.indexOf(botin[1]) >= 0,
+    'L7 303 la Plot robada queda registrada como expuesta (visible para el rival)');
+
+  /* ================= 2) 322 MUTUAL BETRAYAL: expone en numero igual ========= */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  readyToAttack(0);
+  plant(0, 'p1', 12, 1);
+  put(0, MB);
+  lootInto(1, 2);
+  put(0, LOOT[0]); put(0, LOOT[1]);
+  var mine322 = ownPlots(0).length;
+  /* NO se exige un numero exacto: `fresh()` reparte una mano real y el rival puede
+   * traer Plots consigo. Lo que el texto exige es la IGUALDAD, y eso se
+   * comprueba mas abajo sobre los numeros que el motor devuelve. */
+  ok(mine322 >= 2, 'L7 322 yo tengo al menos 2 Plot propias que pueda exponer -> ' + mine322);
+  var exp322 = raw().players[0].exposedPlots.length;
+  var out322 = E.playPlot(0, MB, null, {});
+  settleEvent();
+  ok(out322.lastPlotResult && out322.lastPlotResult.exposeEqual === 2,
+    'L7 322 el texto permite exponer como maximo las 2 ocultas del rival -> ' +
+    (out322.lastPlotResult && out322.lastPlotResult.exposeEqual));
+  var res322 = E.resolvePendingPeek({ exposeEqual: 2 });
+  ok(res322.lastPlotResult && res322.lastPlotResult.exposedMine === 2,
+    'L7 322 expone 2 Plot PROPIAS -> ' + (res322.lastPlotResult && res322.lastPlotResult.exposedMine));
+  ok(res322.lastPlotResult && res322.lastPlotResult.exposedTheirs === 2,
+    'L7 322 expone 2 Plot DEL RIVAL -> ' + (res322.lastPlotResult && res322.lastPlotResult.exposedTheirs));
+  ok(res322.lastPlotResult && res322.lastPlotResult.exposedMine === res322.lastPlotResult.exposedTheirs,
+    'L7 322 el texto exige "an equal number of your own Plots" y se cumple');
+  ok(raw().players[0].exposedPlots.length === exp322 + 4,
+    'L7 322 las 4 Plot quedan sobre la mesa como marcadores -> ' + raw().players[0].exposedPlots.length);
+  ok(ownPlots(1).length === 0, 'L7 322 las Plot del rival dejan su mano -> ' + ownPlots(1).length);
+
+  /* ================= 3) 242 DOUBLE-CROSS: el rival anula la espionaje ===== */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  readyToAttack(0);
+  plant(0, 'p1', CIA(), 1);
+  put(0, LB);
+  var botin3 = lootInto(1, 3);
+  put(1, DC);
+  var b3 = copiesOf(1, botin3[0]), b3m = copiesOf(0, botin3[0]);
+  E.playPlot(0, LB, null, {});
+  settleEvent();
+  ok(!!peekNow(), 'L7 242 la espionaje esta abierta antes de que el rival la anule');
+  var outDC = E.playPlot(1, DC, null, {});
+  settleEvent();
+  ok(!!peekNow(), 'L7 242 jugar Double-Cross NO cierra la ventana (contrato de dos pasos)');
+  ok(peekNow() && peekNow().cancelledBy && peekNow().cancelledBy.by === 'B',
+    'L7 242 la ventana queda marcada como anulada por el rival -> ' + (peekNow() && peekNow().cancelledBy && peekNow().cancelledBy.card));
+  ok(outDC.lastPlotResult && outDC.lastPlotResult.cancelled === true,
+    'L7 242 el resultado dice que se anulo');
+  var res242 = E.resolvePendingPeek({ steal: botin3[0] });
+  ok(res242.lastPlotResult && res242.lastPlotResult.cancelled === true,
+    'L7 242 al cerrar, el espia se encuentra la ventena anulada y NO ve nada');
+  ok(copiesOf(1, botin3[0]) === b3, 'L7 242 ninguna Plot del rival se movio');
+  ok(copiesOf(0, botin3[0]) === b3m, 'L7 242 no me quedo ninguna Plot del rival');
+  ok(raw().players[0].exposedPlots.length === 0 && raw().players[1].exposedPlots.length === 0,
+    'L7 242 no se expuso nada de ninguna parte');
+
+  /* ================= 4) 386 THE AUDITOR FROM HELL: paga el Illuminati ======= */
+  fresh('thenetwork1', 'servantsofcthulhu1');
+  readyToAttack(0);
+  raw().players[0].illumTokens = 1;
+  put(0, AR);
+  var botin4 = lootInto(1, 2);
+  var out386a = E.playPlot(0, AR, null, {});
+  settleEvent();
+  ok(out386a.lastPlotResult && out386a.lastPlotResult.paidWith && out386a.lastPlotResult.paidWith.via === 'illuminati',
+    'L7 386 sin grupo Computer ni Bank paga el Illuminati (The Network) -> ' + (out386a.lastPlotResult && out386a.lastPlotResult.paidWith && out386a.lastPlotResult.paidWith.via));
+  ok(raw().players[0].illumTokens === 0, 'L7 386 se gasta la ficha del Illuminati');
+  ok(out386a.lastPlotResult && out386a.lastPlotResult.canExposeAll === true,
+    'L7 386 el motor declara que tambien puede exponerlas todas');
+  var res386 = E.resolvePendingPeek({ exposeAll: true });
+  ok(res386.lastPlotResult && res386.lastPlotResult.exposed === 2,
+    'L7 386 "or expose them all" expone las 2 -> ' + (res386.lastPlotResult && res386.lastPlotResult.exposed));
+  ok(ownPlots(1).length === 0, 'L7 386 las Plot espiadas dejan la mano del rival');
+  ok(raw().players[1].revealedBy.length === 2, 'L7 386 el rival ve cuales son sus Plot: ' + raw().players[1].revealedBy.length);
+
+  /* ================= 5) 386 pagada por un grupo Computer (payAttrAny) ======= */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  readyToAttack(0);
+  raw().players[0].illumTokens = 0;
+  var gore = C.cards.findIndex(function (x) {
+    return x && x.type === 'group' && Array.isArray(x.attributes) && x.attributes.indexOf('computer') >= 0;
+  });
+  ok(gore >= 0, 'L7 386 hay un grupo computer en el mazo para el pagador -> idx ' + gore);
+  plant(0, 'p1', gore, 1);
+  put(0, AR);
+  lootInto(1, 2);
+  var out386b = E.playPlot(0, AR, null, {});
+  settleEvent();
+  ok(out386b.lastPlotResult && out386b.lastPlotResult.paidWith && out386b.lastPlotResult.paidWith.via === 'grupo',
+    'L7 386 con un grupo computer paga con el grupo (payAttrAny es disyuncion)');
+  ok(nodeOf(0, 'p1').tokens === 0, 'L7 386 se gasta la ficha del grupo computer');
+  E.resolvePendingPeek({ steal: 0 });
+  settleEvent();
+
+  /* ================= 6) los cuatro rechazos impresos ======================== */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  readyToAttack(0);
+  plant(0, 'p1', 12, 1); /* Brazil, Poder impreso 5: NO cumple el 6 de 303 */
+  put(0, LB);
+  lootInto(1, 2);
+  var tok = nodeOf(0, 'p1').tokens, cpLB = copiesOf(0, LB);
+  throws(function () { E.playPlot(0, LB, null, {}); }, /Poder de 6 o mas/i,
+    'L7 303 sin un grupo de Poder 6 o mas se RECHAZA con el motivo impreso');
+  ok(nodeOf(0, 'p1').tokens === tok, 'L7 303 el rechazo NO ha costado la ficha del grupo');
+  ok(copiesOf(0, LB) === cpLB, 'L7 303 el rechazo NO ha gastado la carta');
+
+  /* Si el rival NO tiene Plot ocultas no hay quien espiar. Sin `opts.rivalPid` el
+   * motor no puede elegir a nadie y dice exactamente eso; el mensaje "no tiene
+   * ninguna Plot oculta" es el del segundo guardia, que solo se alcanza cuando
+   * el rival viene indicado. Los dos rechazos son correctos. */
+  setHand(1, []);
+  throws(function () { E.playPlot(0, LB, null, {}); }, /Plot oculta/i,
+    'L7 303 si el rival no tiene Plot ocultas se RECHAZA con el motivo impreso');
+  throws(function () { E.playPlot(0, LB, null, { rivalPid: 1 }); }, /no tiene ninguna Plot oculta/i,
+    'L7 303 con el rival indicado el motivo es el segundo, mas concreto');
+
+  put(1, DC);
+  throws(function () { E.playPlot(1, DC, null, {}); }, /no hay ninguna espionaje/i,
+    'L7 242 sin ninguna espionaje abierta se RECHAZA');
+
+  /* A partir de aqui hace falta un pagador valido, porque la ventana de
+   * espionaje si tiene que abrirse. Cada parte planta su propio grupo con un
+   * uid DISTINTO: reutilizar un uid hace que dos nodos compartan nombre y las
+   * aserciones dejan de poder decir cual de los dos se gasto la ficha. */
+  plant(0, 'pA', CIA(), 1);
+  lootInto(1, 2);
+  put(0, LB);
+  E.playPlot(0, LB, null, {});
+  settleEvent();
+  put(0, DC);
+  throws(function () { E.playPlot(0, DC, null, {}); }, /solo el dueno/i,
+    'L7 242 el espia NO puede anular su propia espionaje: el texto dice "your"');
+  E.resolvePendingPeek(null);
+  settleEvent();
+
+  /* cerrar sin decidir es legal: el texto dice "you MAY" */
+  plant(0, 'pB', CIA(), 1);
+  put(0, LB);
+  lootInto(1, 2);
+  E.playPlot(0, LB, null, {});
+  settleEvent();
+  var resNull = E.resolvePendingPeek(null);
+  ok(resNull.lastPlotResult && /no se ha hecho nada/.test(resNull.lastPlotResult.reason || ''),
+    'L7 322 cerrar sin decidir es legal porque el texto dice "you MAY"');
+  ok(ownPlots(1).length === 2, 'L7 al cerrar sin decidir no se movio ninguna Plot');
+})();
 /* ---------- Utilidad global: resolver un ataque SIN ventanas de reaccion ----------
    P1-021 (ventana de RODADERO) hace que, tras tirar los dados, el motor pare y
    espere si alguien tiene una de las 6 cartas de rodadero en la mano. Los tests

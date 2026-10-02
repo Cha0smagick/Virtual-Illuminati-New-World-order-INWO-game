@@ -1640,6 +1640,89 @@ for (const k in L6_FX) {
   L6_FXN[norm(k)] = L6_FX[k];
 }
 
+/* ==== L7 - INTRUSION EN PLOTS OCULTOS ====
+ *
+ * Estas cuatro cartas hacen lo mismo en essence: dan acceso a las Plot cards
+ * ocultas de un rival. Lo que cambia es QUE PUEDES HACER con lo que ves, y eso
+ * es lo que las separa en tres `kind` distintos mas una carta que se juega
+ * DENTRO de la ventana para impedirla:
+ *
+ *   peek_steal  (303 Logic Bomb)        robar UNA Plot oculta, y EXPONERLA
+ *   peek_expose (322 Mutual Betrayal)   exponer tantas de el como tuyas
+ *   peek_rob    (386 The Auditor...)    robar UNA o exponerlas TODAS
+ *   peek_block  (242 Double-Cross)      la juega un RIVAL para cancelar el espionaje
+ *
+ * 304 March on Washington queda FUERA de este lote: "Play this card along with
+ * a Plot card that requires an action or actions" es COMBINACION de cartas en
+ * una sola jugada, y el motor juega una carta por llamada. Mismo subsistema que
+ * ya dejo fuera a 254 Faction Fight, 222 Combined Disasters y 372 Spasm of
+ * Violence. No se falsea ninguna de las dos mitades.
+ *
+ * INTERPRETACIONES DECLARADAS (no hay regla oficial que las resuelva):
+ *
+ * 1. QUE ES "UNA Plot OCULTA". En el juego fisico son las Plot cards de la
+ *    mano de un rival que NO estan exposed. Aqui `pl.exposedPlots` es la lista
+ *    de Plot cards dejadas sobre la mesa como marcador, y la mano es `pl.hand`,
+ *    asi que "oculta" = cualquier indice de `S.players[rivalPid].hand` cuya
+ *    carta sea `type==='plot'` y que no este en su `exposedPlots`.
+ *
+ * 2. "LOOK AT" ES UNA ELECCION, NO UN EFECTO. En el juego fisico el jugador
+ *    mira el abanico con la mano. En esta version web la revelacion no puede existir tal cual
+ *    (el azar y las manos rivales no se dibujan para quien las mira), y
+ *    la traduccion funcional es la que declara plan.md: REVELAR LA LISTA por
+ *    indice y que el jugador elija. Por eso la ventana `S.pendingPeek` no
+ *    aplica nada al jugarse la carta: la aplica al CERRARSE, con la eleccion
+ *    que el jugador ha hecho. Es el mismo contrato de dos pasos que las otras
+ *    tres ventanas de reaccion del motor.
+ *
+ * 3. EL RIVAL SE ELIGE POR `opts.rivalPid`, y si no se pasa se toma el primer
+ *    rival que tenga al menos una Plot oculta. Es la MISMA tecnica que 268 Good
+ *    Polls (`alignFromTarget`) y que la correccion P1-034a de 278 Hex
+ *    (elegir deterministamente cuando la UI no puede pasar el objetivo). No se
+ *    inventa un selector de jugadores nuevo.
+ *
+ * 4. 303 "you must expose that card". En el juego fisico "expose" tiene
+ *    dos significados: dejar la carta sobre la mesa, o simplemente hacer que
+ *    el rival se entere de lo que has cogido. Aqui solo cabe el segundo: una
+ *    carta no puede estar a la vez en la mano de quien la robo y expuesta
+ *    sobre la mesa. Ademas el motor ya tiene `pl.exposedPlots` para el primer
+ *    significado (una Plot que se deja como marcador de un efecto continuo,
+ *    y P1-025 la saca de la mano del todo). Se DECLARA que la carta robada se
+ *    entrega a la mano del jugador y que la exposicion se registra en el
+ *    registro publico `pl.revealedBy`, porque es informacion que ya no se
+ *    puede deshacer con una carta distinta y por tanto no es informacion
+ *    secreta. Se declara porque el texto impreso obliga a algo y esta es la
+ *    unica lectura que el motor puede sostener de verdad.
+ * 5. 322 "expose any or all of them, as long as you also expose an equal
+ *    number of your own Plots": se declara EXPONER COMO MINIMO una si el rival
+ *    tiene Plot ocultas, porque la eleccion es del jugador y el motor no puede
+ *    exigirle una decision; el limite superior es min(ocultas del rival, Plots
+ *    propias sin exponer). Exponer cero de ambos lados es legal: "you MAY".
+ *
+ * 6. 242 Double-Cross "Your opponent loses the card which let him spy on you,
+ *    and actions that powered it": el motor ya cobra el coste de la carta
+ *    espia en el momento de jugarla (P1-022), asi que "pierde las acciones que
+ *    la Movieron" ya es cierto y no hay que devolver nada. Perder la carta
+ *    espia tambien es automatico: una carta jugada va a `S.plotDiscard` por
+ *    `discardPlot` (P1-025). Lo que hace 242 es CANCELAR la ventana antes de
+ *    que se revele nada, que es su unico efecto real ("He does not get to look
+ *    at (or steal) any of your cards after all").
+ *
+ * 7. 386 "This card may only be used by the Network or a Computer group, or by
+ *    a Bank group": son TRES pagadores distintos, dos por atributo (`computer`,
+ *    `bank`) y uno por Illuminati (la Network, `effect.code==='network'`).
+ *    El mismo patron que 278 Hex, donde el atributo filtra y el Illuminati paga
+ *    un token.
+ */
+const L7_FX = {
+  'logic bomb': { kind: 'peek_steal', payMinPower: 6, t: 'Pick one rival. You may look at all his hidden Plot cards, and choose one to take for yourself but you must expose that card. Play this card at any time. It requires an action by one group with a Power of 6 or more. Requires Action' },
+  'mutual betrayal': { kind: 'peek_expose', t: 'Play this card at any time. This card requires an action by one group. Pick one rival. You may look at all his hidden Plot cards. After looking, you may expose any or all of them, as long as you also expose an equal number of your own Plots. Requires Action' },
+  'the auditor from hell': { kind: 'peek_rob', payAttrAny: ['computer', 'bank'], illumCode: 'network', canExposeAll: true, t: 'This card may be played at any time. Choose one rival as your target. You may look at all his hidden Plot cards, and either steal one of them, or expose them all! This card may only be used by the Network or a Computer group, or by a Bank group. It counts as an action for that group. Requires Network, Computer or Bank Action' },
+  'double-cross': { kind: 'peek_block', t: 'Play this card at any time a rival uses a Plot card to look at your hidden Plot cards. Your opponent loses the card which let him spy on you, and actions that powered it. He does not get to look at (or steal) any of your cards after all!' }
+};
+const L7_FXN = {};
+for (const k in L7_FX) { L7_FXN[norm(k)] = L7_FX[k]; }
+
 
 function plotSub(name) {
   const n = norm(name);
@@ -1927,7 +2010,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key];
   if (pfx) {
     rec.effect = pfx;
     rec.subtype = pfx.kind;
