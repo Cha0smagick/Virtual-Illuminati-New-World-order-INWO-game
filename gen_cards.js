@@ -1714,6 +1714,67 @@ for (const k in L6_FX) {
  *    El mismo patron que 278 Hex, donde el atributo filtra y el Illuminati paga
  *    un token.
  */
+/* ---------------- L8a — MANIPULACION DE MAZO Y ROBO (361, 388, 411) ----------------
+ *
+ * Las tres cartas viven en la misma familia de motor (`deck_manip`) pero son tres
+ * operaciones distintas sobre el mazo de Plot / el de Groups. Se agrupan aqui porque
+ * comparten las dos piezas que hay que construir y que hasta §51 no existian:
+ *
+ *  A) TOP OF DECK. En este motor "la cima" es `pop()` (ver drawFrom, ~1054): el mazo
+ *     se llena con unshift y se reparte con pop. 411 saca de la CIMA de SU mazo de
+ *     Plot cards y las QUEMA ("removing them permanently from play" = fuera del
+ *     juego, NO al descarte); 388 saca de la CIMA del mazo de Groups y las DESCARTA
+ *     (al descarte, que si se rebaraja). El helper nuevo es `topOfDeck` y lo decide
+ *     el llamante, porque las dos salidas son distintas.
+ *
+ *  B) TOKEN DE ACCION EXTRA. 388 y 411 imprimen, ambas: "For each [Group|Plot] you
+ *     discard, you may place one extra Action token on one of your own Groups. No
+ *     Group may get more than one extra Action token from this card." El motor ya
+ *     GASTABA fichas de grupo (spendGroupToken) y las PONIA al empezar el turno
+ *     (beginTurn, ~1015), pero no tenia ninguna forma de darMAS: las fichas extra
+ *     eran un hueco total. Nace aqui `placeBonusAction`, y con ella la segunda
+ *     ficha por grupo que exige la letra ("no more than one ... from this card").
+ *
+ * DECISIONES DE LECTURA (imprescindibles para no perderlas):
+ *
+ * 1. 361 Savings & Loan Scam: "Play this card at ANY TIME. Using this card is an
+ *    action for ONE GROUP." Es decir, no es el turno de quien la juega: la gasta
+ *    una ficha de grupo YA colocada, de ahi `anyTime:true` + `payGroupAction:true`
+ *    y no entra en la lista `instant` por su cuenta... salvo que el gate de
+ *    `E.playPlot` solo mira el KIND. Por eso la anado a la lista instant CON
+ *    CONDICION (`deck_manip && anyTime`), no a pelo: si la metiera sin condicion,
+ *    388 y 411 (ownTurn) quedarian jugables fuera de turno.
+ *
+ * 2. "Discard this card" (361) no necesita codigo propio: el final de `E.playPlot`
+ *    manda toda Plot jugada al descarte (`discardPlot`, P1-025). Se cumple solo.
+ *
+ * 3. 388/411 imprimen "just after you place Action tokens". El motor no lleva
+ *    bandera de "ya coloque las fichas de este turno", asi que lo que se exige es
+ *    lo unico comprobable: fase principal y turno propio (`ownTurn:true`, que cae
+ *    en el `requireOwnMain` del gate). Queda anotado en el backlog del §52.
+ *
+ * 4. 388: "You may ALSO discard the top card(s) from your Groups deck, as long as
+ *    the TOTAL is ten or less." El techo de 10 es SUMA de mano + cima, no de cada
+ *    fuente: por eso el dato es `maxTotal` y no `maxHand`/`maxDeck`.
+ *
+ * 5. 388: "For each GROUP you discard" cuenta los Groups descartados de la mano Y
+ *    los de la cima del mazo (todos Groups de salida), y NO cuenta los Resources
+ *    descartados de la mano ("Groups and/or Resources" da token; "each Group" no).
+ *    Los Resources descartados van igualmente a `S.groupDiscard`, porque en el
+ *    motor los Resources son fichas de grupo (`group`/`resource` se reparten del
+ *    mismo `S.groupDeck`) y ese es el unico descarte que existe para ellos.
+ *
+ * 6. "you MAY place" = opcional, asi que `opts.bonusUids` puede venir vacio y el
+ *    motor no obliga a colocar nada; lo que obliga es el techo (uno por grupo).
+ */
+const L8A_FX = {
+  'savingsloanscam': { kind: 'deck_manip', mode: 'draw', anyTime: true, payGroupAction: true, drawPlot: 3, t: 'Play this card at any time. Using this card is an action for one group. Discard this card and draw three Plot cards from your deck. Requires Action' },
+  'thebigsellout': { kind: 'deck_manip', mode: 'sellout', ownTurn: true, handTypes: ['group', 'resource'], maxTotal: 10, bonusMaxPerGroup: 1, t: 'Play this card during your own turn, just after you place Action tokens. You may pick up to ten Groups and/or Resources from your hand and discard them. You may also discard the top card(s) from your Groups deck, as long as the total is ten or less. For each Group you discard, you may place one extra Action token on one of your own Groups. No Group may get more than one extra Action token from this card. Requires Discard' },
+  'voodooeconomics': { kind: 'deck_manip', mode: 'burn', ownTurn: true, burnMax: 10, bonusMaxPerGroup: 1, t: 'Play this card during your own turn, just after you place Action tokens. You may discard up to ten Plot Cards from the top of your deck, removing them permanently from play. For each one you discard, you may place one extra Action token on one of your own Groups. No Group may get more than one extra Action token from this card. Requires Discard' }
+};
+const L8A_FXN = {};
+for (const k in L8A_FX) { L8A_FXN[norm(k)] = L8A_FX[k]; }
+
 const L7_FX = {
   'logic bomb': { kind: 'peek_steal', payMinPower: 6, t: 'Pick one rival. You may look at all his hidden Plot cards, and choose one to take for yourself but you must expose that card. Play this card at any time. It requires an action by one group with a Power of 6 or more. Requires Action' },
   'mutual betrayal': { kind: 'peek_expose', t: 'Play this card at any time. This card requires an action by one group. Pick one rival. You may look at all his hidden Plot cards. After looking, you may expose any or all of them, as long as you also expose an equal number of your own Plots. Requires Action' },
@@ -2010,7 +2071,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key];
   if (pfx) {
     rec.effect = pfx;
     rec.subtype = pfx.kind;

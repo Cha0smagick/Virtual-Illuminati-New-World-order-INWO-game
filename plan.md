@@ -423,19 +423,28 @@ Kind `align_rule`, unica cualificadora `alignMag`.
   **30/30** corridas seguidas de FASE 2.
 - **Aceptacion cumplida**: rival con 3 Plot ocultas, 303 deja elegir una, termina en mi mano y
   `pl.revealedBy` registra la exposicion.
-## [ ] L8 - MANIPULACION DE MAZO Y ROBO
+## [x] L8a - MANIPULACION DE MAZO Y ROBO (361, 388, 411) - CERRADO en §52
 
-- **Cartas (8)**: 191 An Offer You Can't Refuse (2 Plots extra que no son de tu mazo) ·
-  361 Savings & Loan Scam (descarta esta carta y roba 3) · 388 The Big Sellout ·
-  395 The Internet Worm (las 3 primeras de su mazo) · 405 Unlucky 13 (no roba Plots) ·
-  282 Hitler's Brain · 411 Voodoo Economics (descarta hasta 10 Plots) ·
-  233 Crystal Skull / 367 Shroud of Turin (al robar un Plot).
-- **Mecanica**: `deck_manip`, sobre `drawFrom` y un nuevo helper `topOfDeck`.
-- **Interpretaciones declaradas**: 405 requiere un flag de jugador (`noPlotUntilTurnEnd`) que se
-  limpia solo; 191 requiere un mazo virtual aparte ("not from your deck"), que se implementa con
-  `S.outsidePlots`.
-- **Aceptacion**: rival sin Plots y con `405` activo; el robo de Plot de su turno falla con
-  mensaje y **no** le roba nada.
+> **La agrupacion de este lote era incorrecta y se ha deshecho midiendo carta por
+> carta** (2a vez que pasa, ver §51). Queda anotado para que no se repita:
+> - **L8a (hecho, §52)**: 361 + 388 + 411. `deck_manip` con `mode:'draw'|'burn'|'sellout'`,
+>   `topOfDeck(deck,n)`, y `placeBonusAction` — que creo el subsistema de token de
+>   accion EXTRA, que no existia de ninguna forma en el motor (P1-036).
+> - **L8b (pendiente)**: 233 Crystal Skull + 367 Shroud of Turin. No son `deck_manip`:
+>   son ganchos en `drawFrom`, otra superficie.
+> - **L8c (pendiente)**: 405 Unlucky 13. Ventana de reactivo al principio del turno ajeno
+>   + bandera auto-limpiante de "no roba Plot cards".
+> - **BLOQUEADAS (P1-038)**: 191 y 395. El juego real tiene un mazo de Plot POR JUGADOR
+>   y este motor tiene UN `S.plotDeck` compartido. Congeladas en `BLOCKED_CARDS`.
+> - **REASIGNADA**: 282 Hitler's Brain NO es de mazo (disparador al destruir + restriccion
+>   Peaceful). Va con las de disparo permanente.
+
+- **Mecanica**: `deck_manip` + `topOfDeck` + `applyBonusUids`; caducado en `expireTurnFlags`.
+- **Interpretaciones declaradas**: el techo de 10 de 388 es la SUMA de mano + cima (P1-039);
+  los Resources descartados no bonifican token porque el texto dice "each Group" (P1-040);
+  411 QUEMA (fuera de juego, ni al descarte) y 388 DESCARTA (al descarte rebarajable).
+- **Leccion de la tanda**: `firstUsableAid` pasa `(carta,nodo)` al predicado, no el nodo
+  solo (P1-037) — un filtro de nodo hace que la carta se rechace siempre, en silencio.
 
 ## [ ] L9 - EDITAR ALINEACIONES
 

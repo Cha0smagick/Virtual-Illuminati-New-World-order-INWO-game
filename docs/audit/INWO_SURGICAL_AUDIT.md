@@ -4866,3 +4866,180 @@ La metodologia que queda, y que es ahora la regla:
   *juega* cartas de reaccion (solo cierra ventanas).
 - **P1-DATA-03 Global Power**: bloqueado por entorno.
 - **P1-032** sigue abierto: los dieciocho Illuminati sin `alignments` ni `attributes`.
+
+
+## 52. L8a - MANIPULACION DE MAZO Y ROBO (361, 388, 411)
+
+### Hallazgo
+
+El plan agrupa 8 cartas en "L8 MANIPULACION DE MAZO Y ROBO" y las mete a todas en
+`deck_manip`. Al medir una por una contra el motor, **ese grupo era hetero**(la
+leccion de §51 se repite): solo 3 de las 8 son de verdad la misma familia, 2 son
+enganos que apuntan a otra cosa, y 2 no son jugables por un motivo estructural.
+
+Medicion real, carta por carta:
+
+| # | Carta | Tipo | Texto impreso (extracto) | Veredicto |
+|---|-------|------|--------------------------|-----------|
+| 361 | Savings & Loan Scam | plot | "Play this card at any time. Using this card is an action for one group. Discard this card and draw three Plot cards from your deck." | **L8a - resoluble** |
+| 388 | The Big Sellout | plot | "You may pick up to ten Groups and/or Resources from your hand and discard them. You may also discard the top card(s) from your Groups deck, as long as the total is ten or less. For each Group you discard, you may place one extra Action token on one of your own Groups." | **L8a - resoluble** |
+| 411 | Voodoo Economics | plot | "You may discard up to ten Plot Cards from the top of your deck, removing them permanently from play. For each one you discard, you may place one extra Action token..." | **L8a - resoluble** |
+| 233 | Crystal Skull | resource | "Whenever you draw a Plot card, you may look at the top three cards in your deck and pick the one you want." | L8b - gancho en `drawFrom`, otra superficie |
+| 367 | Shroud of Turin | resource | "Whenever you draw a Plot or Group card, you may look at the top card... take the bottom card instead" | L8b - idem |
+| 405 | Unlucky 13 | plot | "Play this card on a rival at the very beginning of his turn. He can draw no Plot cards, for any reason..." | L8c - ventana de reactivo + bandera |
+| 282 | Hitler's Brain | resource | "Draw an extra Plot card, or hide all your exposed Plots, any time you destroy a group. You may not take control of any Peaceful group while you have this" | **Reasignada**: disparador al destruir + restriccion Peaceful. NO es manipulacion de mazo |
+| 191 | An Offer You Can't Refuse | plot | "You may draw two extra Plot cards not from your deck, but from the deck of a rival!" | **BLOQUEADA** (P1-038) |
+| 395 | The Internet Worm | plot | "Pick one of your rivals to suffer your wrath. The top three undrawn cards in his Plot deck are discarded." | **BLOQUEADA** (P1-038) |
+
+Comprobacion de que el desglose no es una opinion: un grep de la frase "extra
+Action token" en las 421 cartas devuelve exactamente 6 - 12 Brazil, 61 Hawaii
+(ambos `[group]`, Corporate), 215 Center for Weird Studies, 335 Perpetual Motion
+Machine (`[resource]`), 388 y 411. **Ninguno de los cuatro primeros aparece una
+sola vez en engine.js**.
+
+### Correcciones
+
+**1. El token de accion extra no existia (P1-036).** El motor sabia GASTAR fichas de
+grupo (`spendGroupToken`) y saber las PONIA al empezar el turno (`E.beginTurn`),
+pero no tenia ninguna forma de darMAS. Las seis cartas de arriba dependian de el.
+Nace `placeBonusAction(pid,uid,cardName)`, que escribe `n.tokens++` y deja una
+ETIQUETA por turno en `n.bonusAction` (`{from,turn}`). La etiqueta, y no un
+contador suelto, es lo que permite que `expireTurnFlags` caduque exactamente lo que
+puso este efecto y no las fichas que el grupo puso por su cuenta; caduca al empezar
+el turno del dueno, con `Math.max(0,…)` porque el grupo puede haber gastado ya su
+propia ficha.
+
+**2. `topOfDeck(deck,n)`.** En este motor la cima ES `pop()` (los mazos se llenan
+con `unshift` y se reparten con `pop`, ver `drawFrom`), asi que `topOfDeck` saca
+las n cartas de cima SIN decidir su destino y lo decide el llamante. Devuelve cartas
+y no indices a proposito: un indice de mazo no sobrevive al reshuffle que hace
+`drawFrom` cuando el mazo se vacia. Y los dos llamantes hacen cosas DISTINTAS, que
+es justo lo que imprime el texto: 411 las QUEMA (fuera de juego, ni al descarte - si
+fueran al descarte, "permanently from play" seria falso porque `drawFrom` las
+rebarajaria) y 388 las DESCARTA (al descarte, que si se rebaraja).
+
+**3. Rama `case 'deck_manip':`** con tres modos leidos del dato (`mode`):
+`draw` (361), `burn` (411) y `sellout` (388). Regla de oro del caso: **se valida y
+se cuenta TODO antes de tocar nada**, porque las salidas son irreversibles (una carta
+quemada no vuelve) y validar despues perderia cartas de un jugador por un error de
+interfaz. El descarte de la mano se hace al final y en orden DESCENDENTE de indice,
+porque al borrar el mayor se desplazan todos los menores.
+
+**4. `applyBonusUids(pid,uids,earn,cardName,maxPerGroup)`** aplica el techo impreso:
+como mucho `earn` tokens (porque son opcionales, "you MAY") y nunca dos del mismo
+grupo para la misma carta ("No Group may get more than one extra Action token FROM
+THIS CARD"). El dato `bonusMaxPerGroup` lo lleva la carta, no el motor.
+
+**5. La puerta `instant` se abrio CON CONDICION**, no a pelo: 361 imprime "at any
+time" y 388/411 imprimen "during your OWN turn", y las tres comparten `kind`. Como
+el gate de `E.playPlot` solo mira el KIND, meter el kind entero habria hecho
+jugables 388 y 411 en el turno de cualquiera: defecto de clase "el dato existe pero se
+comparo contra la etiqueta equivocada".
+
+**6. UI.** Por primera vez una carta pide una cantidad, una lista de cartas y una
+eleccion de grupos. El menu de cartas es de eleccion simple, asi que el propio menu
+hace de maquina de estados: `sel.mode='deckCount'` acumula y volver a pulsar la carta
+reabre el menu con lo ya recogido; `handPick` (el modo que ya existia para el takeover
+y los recursos) recoge las cartas de la mano de 388; y `bonusPick` reparte los tokens
+extra clic en los grupos propios, **uno por grupo, con tope**, que es la eleccion que
+el texto exige y que un `plotTarget` de un solo clic no puede expresar. El boton
+"✨ Jugar Plot ahora" generico se apaga para estas tres cartas: ese camino llama a
+`onPlayPlot` sin `opts`, que aqui significaria jugar siempre el caso minimo (0
+descartes). Y `deck_manip` entra en `NO_TARGET_KINDS` porque no tienen grupo OBJETIVO.
+
+### Hallazgos P1
+
+- **P1-036** - El token de accion extra no existia en el motor. Seis cartas lo
+  imprimen (12 Brazil, 61 Hawaii, 215 Center for Weird Studies, 335 Perpetual Motion
+  Machine, 388, 411) y ninguna estaba implementada; los cuatro primeros no aparecen
+  ni una vez en engine.js. **Corregido para 388/411**; los otros cuatro quedan en el
+  backlog porque son Groups/Resources con su propia forma de pagarlos.
+- **P1-037** - `firstUsableAid(pid,filter)` pasa `(carta, nodo)` al predicado, NO el
+  nodo solo (`engine.js` ~2453). Un filtro escrito como `nd => nd.tokens >= 1` no
+  casa nunca y la carta se rechaza SIEMPRE, sin error ni aviso: el motor mas
+  sobreescrito del repo, y un fallo silencioso de clase "firme donde habia un
+  predicado". Lo cazó la regresion de L8a (motor verde, test rojo). 361 ya no pasa
+  filtro ninguno: `firstUsableAid` descarta de entrada lo que no tiene ficha y lo que
+  no puede tenerla, que es el requisito impreso.
+- **P1-038** - 191 y 395 estan BLOQUEADAS por una subspecies de motor que falta: el
+  juego real reparte Plot cards de un mazo POR JUGADOR ("a rival's Plot deck", "his
+  Plot deck") y este motor tiene UN solo `S.plotDeck` compartido. No es un texto sin
+  transcribir: "miro el mazo de ese rival" no tiene nada que mirar. Congeladas en
+  `BLOCKED_CARDS` (11 -> 13) con el motivo escrito.
+- **P1-039** - 388: "as long as the TOTAL is ten or less" es un techo SUMA de mano +
+  cima del mazo, no de cada fuente. Implementado como `maxTotal`; leerlo como dos
+  techos independientes habria permitido 20 descartes.
+- **P1-040** - 388: "For each GROUP you discard" cuenta los Groups de la mano y los de
+  la cima, y NO cuenta los Resources descartados de la mano. El texto de la primera
+  frase es "Groups and/or Resources" (que si se descartan) y el de la bonificacion es
+  "each Group" (que no bonifica un Resource). Los Resources descartados van igualmente
+  a `S.groupDiscard`, porque en este motor los Resources son fichas de grupo
+  (`group`/`resource` se reparten del mismo `S.groupDeck`) y ese es el unico
+  descarte que existe para ellos.
+
+### Verificacion
+
+- `node --check` limpio en `gen_cards.js`, `engine.js`, `ui.js`, `app.js`,
+  `test_fase2_rules.js` y `test_fase4_cards.js`.
+- `node gen_cards.js` -> `written 421 {"group":167,"illuminati":18,"plot":201,"resource":35} verified-groups 33`.
+  Las 3 cartas quedan `implemented-pending-engine`, `effect.kind='deck_manip'`, con
+  `text` = texto impreso verbatim.
+- Las 10 suites en verde: P0 REGRESSION, FASE 2 RULES, FASE 4 COVERAGE, SMOKE, RESPOND,
+  CARD RESEARCH MANIFEST, y `flow`/`ai_vs_ai`/`appflow`/`ui` con salida 0.
+- FASE 4: 127 -> **130** cartas clasificadas (`deck_manip: 3`), "Plots/Resources sin
+  mecanica" 121 -> **118**, techo 182 -> **179**, minimo implementado 47 -> **50**,
+  bloqueadas 11 -> **13**. Sin ramas huerfanas y sin cartas clasificadas sin rama.
+- Regresion nueva en `test_fase2_rules.js`: **9 escenarios / 39 aserciones** bajo el
+  ancla `/* ---------- L8a - MANIPULACION DE MAZO Y ROBO (361, 388, 411) ---------- */`.
+  Cada escenario arranca con su propio `fresh()`. Cubre: robo de 3 y gasto de ficha
+  (S1), rechazo sin ficha (S2), quema que NO llega al descarte (S3), caducidad del
+  token extra (S4), techos de 10 y de uno-por-grupo con no-mutacion en el rechazo (S5),
+  "your own turn" para 388 y 411 (S6), techo SUMA de 388 (S7), "por cada GROUP" (S8) y
+  el ciclo completo de 388 con descarte de mano y de cima (S9).
+- **30/30 corridas consecutivas** de `test_fase2_rules` + `test_fase4_cards` +
+  `test_p0_invariants` (90 ejecuciones, 0 fallos), mas 60/60 de `test_fase2_rules`
+  solo mientras se huntaba un intermitente.
+
+### Lecciones
+
+1. **La regresion es la que encuentra los fallos, no el motor.** P1-037 era un rechazo
+   con mensaje perfecto y motor en verde: solo lo ve un test que intenta JUGAR la
+   carta y comprobar el efecto. Un `node --check` no lo ve.
+2. **`countOf(needle)===1` y el filtro con la firma equivocada son el mismo fallo de
+   clase**: el motor acepta el codigo, el dato existe, y la combinacion concreta no
+   hace nunca lo que parece. Se cazan los dos con la mismaBATALLA: leer la firma real
+   (`filter(c,n)`) antes de escribir el filtro, y probar el camino feliz del
+   ejecutable, no solo sus rechazos.
+3. **`indexOf(x) < 0` sobre la mano es una assertion invalida desde que existe un
+   helper que mete cartas en la mano** (`pull`). Si la carta ya venia repartida,
+   `put` la duplica, el descarte borra una copia y `indexOf` sigue viendo la otra:
+   el test falla ~1 de cada 20 veces (aparecio en la corrida 21 de 30). Arreglo:
+   comparar COPIAS antes/despues.
+4. **`handIdx` es un indice de `C.cards`, no una posicion en la mano**, y la mano
+   guarda indices de mazo. Los 9 primeros `playPlot` de esta tanda lo tenían mal y
+   fallaron con el engañosamente claro "Carta no esta en tu mano".
+5. **Dos salidas distintas para "sacar de la cima".** 411 quema y 388 descarta, y la
+   diferencia es si la carta vuelve al juego por el rebarajado del descarte. Por eso
+   `topOfDeck` NO decide el destino: la decision es del llamante.
+
+### Backlog
+
+- **L8b** - 233 Crystal Skull y 367 Shroud of Turin: ganchos en `drawFrom` (la
+  superficie es `drawFrom`, no `playPlot`).
+- **L8c** - 405 Unlucky 13: ventana de reactivo al PRINCIPIO del turno ajeno +
+  bandera auto-limpiante de "no roba Plot cards". Ninguna otra carta del mazo necesita
+  un subsistema de "muy al principio del turno": un grep de esa frase (`very beginning|beginning
+  of his turn|no Plot cards`) casa solo con 405.
+- **P1-041 (nuevo, hueco de motor)** - Mazos de Plot POR JUGADOR. Desbloquea 191 y 395
+  y es la misma subspecies que necesitan las cartas de "robar del mazo de un rival" en
+  general. Es una decision de arquitectura, no un arreglo local: `S.plotDeck` es
+  global y lo usan `drawFrom`, `E.drawPlot`, `E.exchangeForPlot`, el reparto inicial
+  y `publicState().deckCounts`.
+- **Desviacion preexistente, NO tocada aqui** - `E.beginTurn` solo sube las fichas a
+  1 y nunca las pone a 0, asi que las fichas de accion sin gastar se arrastran de un
+  turno al siguiente. El juego oficial dice que se pierden al final del turno. El
+  caducado de `bonusAction` de §52 es lo mas cerca que se puede estar sin tocar el
+  reparto de base; arreglarlo de raiz es un lote propio.
+- **Los otros 4 PRINT de token extra** (12 Brazil, 61 Hawaii, 215 Center for Weird
+  Studies, 335 Perpetual Motion Machine) siguen sin mecanismo: `placeBonusAction` ya
+  existe y les sirve, pero cada una necesita su propia condicion de pago.

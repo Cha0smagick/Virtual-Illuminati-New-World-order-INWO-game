@@ -108,8 +108,8 @@ const DEAD_BRANCHES = {
  * mecanica alguna. La cifra honesta son 182 = 147 Plots pendientes + 35 Resources
  * pendientes. Los 167 Groups que siguen con status 'unverified' no son deuda: son
  * grupos normales y jugables, y por eso ya NO entran en este techo. */
-const MAX_PENDING_PLR = 182;            // medido: 147 plots + 35 resources sin mecanica
-const MIN_IMPLEMENTED = 47;            // medido: implemented-pending-engine
+const MAX_PENDING_PLR = 179;            // medido tras L8a: 144 plots + 35 resources sin mecanica
+const MIN_IMPLEMENTED = 50;            // medido tras L8a: implemented-pending-engine
 
 /* Groups sin texto mostrable. Californa, Margaret Thatcher, Ollie North y Vatican
  * City tienen `text`/`ocrText` de 0 caracteres pero `referenceText` de 126-155
@@ -136,6 +136,13 @@ const BLOCKED_CARDS = {
   /* §38 — las 5 de la familia de reaccion inmediata que NO tienen mecanica que las
      sostenga. No es pereza: cada motivo esta comprobado contra el motor. */
   'andstaydead': '§38 sin mecanica de resurreccion en el motor, asi que "gone forever" no seria observable (INJUGABLE)',
+  /* L8a: las dos cartas de L8 que habian quedado fuera NO por su texto sino por una
+   * limitacion estructural del motor. El juego real reparte Plot cards de un mazo
+   * POR JUGADOR ("a rival's Plot deck" / "his Plot deck"); este motor tiene UN solo
+   * mazo compartido (S.plotDeck), asi que "miro el mazo de ese rival" no tiene nada
+   * que mirar. No es un texto sin transcribir: es una subspecies de motor que falta. */
+  'anofferyoucantrefuse': '§52 "two extra Plot cards not from your deck, but from the deck of a rival" — el motor tiene UN S.plotDeck compartido, no mazos de Plot por jugador (INJUGABLE)',
+  'theinternetworm': '§52 "the top three undrawn cards in HIS Plot deck are discarded" — mismo hueco: no existe mazo de Plot de un rival que The Internet Worm pueda destruir (INJUGABLE)',
   'counterspell': '§38 un Resource no puede atacar ni ayudar a un ataque (esta en pl.resources con tokens:0 y sin nodo), asi que "any Magic Resource used to attack you" nunca ocurre',
   'hattrick': '§38 exigiria deshacer una Plot ya resuelta de forma transaccional',
   'ilied': '§38 el motor no tiene tratos que cumplir, luego el marcador no lo consumiria nadie (INJUGABLE)',

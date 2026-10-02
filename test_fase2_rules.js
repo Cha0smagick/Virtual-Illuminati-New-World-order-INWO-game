@@ -4870,6 +4870,208 @@ function readyToAttack(pid) {
     'L7 322 cerrar sin decidir es legal porque el texto dice "you MAY"');
   ok(ownPlots(1).length === 2, 'L7 al cerrar sin decidir no se movio ninguna Plot');
 })();
+/* ---------- L8a - MANIPULACION DE MAZO Y ROBO (361, 388, 411) ---------- */
+(function () {
+  /* `C` es window.INWO_CARDS: los indices se piden con `idxOfId` y el array se toca
+   * como `C.cards`. TRES LECCIONES DE FIXTURE que esta tanda respeta y que ya han
+   * costado una hora cada una:
+   *  1. `handIdx` de E.playPlot, y los `handIx` de `deck_manip`, son indices de
+   *     `C.cards`, NO posiciones dentro de la mano. La mano guarda indices del mazo.
+   *  2. Cada escenario arranca con su propio `fresh()`. Compartir partida entre
+   *     escenarios hace que el grupo plantado por uno siga dando fichas al siguiente.
+   *  3. Regla 13 (P1-029): los fixtures NO dependen del reparto aleatorio; `pull`
+   *     saca la carta del mazo que le toca antes de meterla en la mano.
+   * Regla 9: se comprueba EFECTO OBSERVABLE (cartas que salen del mazo, a que pila
+   * van, quantos tokens quedan en el nodo), nunca aritmetica suelta. */
+  var SL = idxOfId('savingsloanscam');
+  var BS = idxOfId('thebigsellout');
+  var VE = idxOfId('voodooeconomics');
+
+  function raw() { return E._raw(); }
+  function idOf(ix) { return C.cards[ix].id; }
+  /* Un grupo con Poder >= 3 y sin noTokensFlag: anyGroupIdx() devuelve el PRIMER
+   * grupo del mazo y hay grupos que el motor marca como incapaces de tener ficha,
+   * asi que plantarlos deja a firstUsableAid sin candidatos. Mismo criterio que CIA(). */
+  function tokenedGroup() {
+    for (var i = 0; i < C.cards.length; i++) {
+      var c = C.cards[i];
+      if (c.type === 'group' && (c.power || 0) >= 3) return i;
+    }
+    return null;
+  }
+  function firstOfType(type) {
+    for (var i = 0; i < C.cards.length; i++) if (C.cards[i].type === type) return i;
+    return null;
+  }
+  /* roba la carta del mazo que le corresponde y la mete en la mano del jugador */
+  function pull(pid, ix, which) {
+    var pl = raw().players[pid];
+    var deck = which === 'group' ? raw().groupDeck : raw().plotDeck;
+    var pile = which === 'group' ? raw().groupDiscard : raw().plotDiscard;
+    var at = deck.indexOf(ix);
+    if (at >= 0) deck.splice(at, 1);
+    else if (pile.indexOf(ix) >= 0) pile.splice(pile.indexOf(ix), 1);
+    pl.hand.push(ix);
+    return ix;
+  }
+  function putPlot(pid, ix) { return pull(pid, ix, 'plot'); }
+  function putGroup(pid, ix) { return pull(pid, ix, 'group'); }
+  function nodeOf(pid, uid) { return findNode(raw().players[pid].structure, uid); }
+  /* CUANTAS copias de un indice de mazo hay en una lista. Regla 13: cuando un helper
+   * mete una carta en la mano, esa carta puede DUPLICAR la que ya repartio el inicio, y
+   * entonces `indexOf(...)<0` jamas se cumple aunque el descarte sea correcto. Comparar
+   * COPIAS antes/despues es la unica forma honesta de decir "la carta salio de la mano". */
+  function copiesOf(list, ix) {
+    var n = 0;
+    for (var i = 0; i < list.length; i++) if (list[i] === ix) n++;
+    return n;
+  }
+  function myMain(pid) {
+    for (var g = 0; g < 8; g++) {
+      var s = E.getState();
+      if (s.gameover) return false;
+      if (s.phase === 'main' && s.currentPid === pid) return true;
+      E.endTurn();
+    }
+    return false;
+  }
+  /* Cada entrada de `log` es un OBJETO {t,p,msg} (engine ~22), no una cadena, asi que
+   `String(l)` daria "[object Object]". Regla 14: se busca con .some(...) y nunca se
+   mira solo la ultima linea. */
+  function said(re) {
+    return E.getState().log.some(function (l) {
+      var s2 = l && l.msg != null ? l.msg : l;
+      return re.test(String(s2));
+    });
+  }
+  var GD = tokenedGroup();
+
+  /* --- S1: 361 roba 3 Plot cards de SU mazo, gasta una ficha y se descarta --- */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(myMain(0), 'S1 fixture: el jugador 0 llega a su fase principal');
+  putPlot(0, SL);
+  plant(0, 'gS1', idOf(GD), 1);
+  var deck0 = raw().plotDeck.length;
+  E.playPlot(0, SL, null, {});
+  ok(raw().plotDeck.length === deck0 - 3,
+    'S1 361 saca 3 Plot cards de su mazo -> ' + deck0 + ' -> ' + raw().plotDeck.length);
+  ok(said(/roba 3 Plot card\(s\) de su mazo/), 'S1 361 deja rastro en el registro');
+  ok(raw().plotDiscard.indexOf(SL) >= 0, 'S1 361 se descarta a si misma ("Discard this card")');
+  ok(nodeOf(0, 'gS1').tokens === 0,
+    'S1 361 gasta la ficha del grupo que la geno ("using this card is an action for one group")');
+
+  /* --- S2: 361 sin ningun grupo con ficha se rechaza ----------------------- */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(myMain(0), 'S2 fixture: turno del 0 sin grupos colocados');
+  putPlot(0, SL);
+  throws(function () { E.playPlot(0, SL, null, {}); }, /ficha de accion disponible/,
+    'S2 361 sin ningun grupo con ficha NO se puede jugar');
+
+  /* --- S3: 411 QUEMA cartas del mazo (no al descarte) y da token extra ------- */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(myMain(0), 'S3 fixture: turno del 0 para 411');
+  putPlot(0, VE);
+  plant(0, 'gV', idOf(GD), 3);
+  var pd0 = raw().plotDeck.length, pdi0 = raw().plotDiscard.length;
+  /* pop() ES la cima, asi que las 3 ultimas del array son las 3 primeras que salen */
+  var quemadas = raw().plotDeck.slice(pd0 - 3);
+  E.playPlot(0, VE, null, { n: 3, bonusUids: ['gV'] });
+  ok(raw().plotDeck.length === pd0 - 3,
+    'S3 411 saca 3 Plot cards de la cima -> ' + pd0 + ' -> ' + raw().plotDeck.length);
+  var alDescarte = quemadas.filter(function (c) { return raw().plotDiscard.indexOf(c) >= 0; }).length;
+  ok(alDescarte === 0,
+    'S3 411 las QUEMA: ninguna acaba en el descarte ("permanently from play") -> ' + alDescarte);
+  /* +1 y no +0: al final de E.playPlot la carta JUGADA va al descarte (P1-025), y 411
+   * misma es una Plot jugada. Lo que no puede pasar es que entren las 3 quemadas. */
+  ok(raw().plotDiscard.length === pdi0 + 1,
+    'S3 al descarte solo entra la propia 411, no las quemadas -> ' + pdi0 + ' -> ' + raw().plotDiscard.length);
+  ok(nodeOf(0, 'gV').tokens === 4,
+    'S3 411 coloca 1 token extra por Plot descartado -> tokens ' + nodeOf(0, 'gV').tokens);
+  ok(nodeOf(0, 'gV').bonusAction.length === 1,
+    'S3 411 deja etiqueta de token extra (caduca por turno)');
+
+  /* --- S4: el token extra caduca al empezar el turno del dueno ------------- */
+  var antes = nodeOf(0, 'gV').tokens;
+  ok(antes === 4, 'S4 fixture: el token extra sigue vivo en el turno en que se coloco');
+  E.endTurn();
+  E.endTurn();
+  ok(nodeOf(0, 'gV').bonusAction.length === 0,
+    'S4 el token extra de 411 caduca al empezar de nuevo el turno del dueno');
+  ok(nodeOf(0, 'gV').tokens === antes - 1,
+    'S4 caducar el token extra descuenta la ficha del grupo -> ' + antes + ' -> ' + nodeOf(0, 'gV').tokens);
+
+  /* --- S5: 411 respeta el techo impreso de diez y el de uno por grupo ------- */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(myMain(0), 'S5 fixture: turno del 0 para los techos de 411');
+  putPlot(0, VE);
+  plant(0, 'gV', idOf(GD), 1);
+  var pd1 = raw().plotDeck.length;
+  throws(function () { E.playPlot(0, VE, null, { n: 11 }); }, /no puedes descartar mas de 10 Plot cards/,
+    'S5 411 no quema mas de 10 Plot cards');
+  ok(raw().plotDeck.length === pd1, 'S5 el rechazo de 411 no quita ninguna carta del mazo');
+  putPlot(0, VE);
+  throws(function () { E.playPlot(0, VE, null, { n: 2, bonusUids: ['gV', 'gV'] }); },
+    /no da mas de 1 token extra de accion al mismo grupo/,
+    'S5 411 no da dos tokens extra al mismo grupo');
+
+  /* --- S6: 388/411 son "during your own turn": el rival no puede jugarlas --- */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(myMain(0), 'S6 fixture: es el turno del 0');
+  putPlot(1, VE);
+  putPlot(1, BS);
+  throws(function () { E.playPlot(1, VE, null, { n: 1 }); }, /No es tu turno/,
+    'S6 411 exige el turno propio');
+  throws(function () { E.playPlot(1, BS, null, {}); }, /No es tu turno/,
+    'S6 388 exige el turno propio');
+
+  /* --- S7: 388 el techo de diez es la SUMA de mano + cima del mazo ---------- */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(myMain(0), 'S7 fixture: turno del 0 para 388');
+  var GI = firstOfType('group');
+  putPlot(0, BS);
+  putGroup(0, GI);
+  throws(function () { E.playPlot(0, BS, null, { handIx: [GI], n: 10 }); },
+    /maximo 10 cartas entre la mano y la cima/,
+    'S7 388 cuenta juntas la mano y la cima ("as long as the TOTAL is ten or less")');
+  ok(raw().players[0].hand.indexOf(GI) >= 0, 'S7 el rechazo de 388 no tira cartas de la mano');
+  ok(raw().groupDeck.length > 0 && raw().players[0].hand.indexOf(BS) >= 0,
+    'S7 el rechazo de 388 no gasta la carta ni toca el mazo de Groups');
+
+  /* --- S8: 388 el techo de tokens es "por cada GROUP", no por cada carta ----- */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(myMain(0), 'S8 fixture: turno del 0 limpio');
+  var GI8 = firstOfType('group');
+  putPlot(0, BS);
+  putGroup(0, GI8);
+  plant(0, 'gB1', idOf(GD), 1);
+  plant(0, 'gB2', idOf(GD), 1);
+  throws(function () { E.playPlot(0, BS, null, { handIx: [GI8], n: 0, bonusUids: ['gB1', 'gB2'] }); },
+    /como maximo un token extra de accion/,
+    'S8 un solo Group descartado da como mucho un token extra, aunque apunten dos');
+
+  /* --- S9: 388 descarta de la mano y de la cima, y paga con tokens extra ----- */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(myMain(0), 'S9 fixture: turno del 0 para el 388 valido');
+  var GI9 = firstOfType('group');
+  putPlot(0, BS);
+  putGroup(0, GI9);
+  plant(0, 'gB1', idOf(GD), 1);
+  var gdeck0 = raw().groupDeck.length, gdisc0 = raw().groupDiscard.length;
+  var cima = raw().groupDeck[gdeck0 - 1];
+  var copiasAntes = copiesOf(raw().players[0].hand, GI9);
+  E.playPlot(0, BS, null, { handIx: [GI9], n: 1, bonusUids: ['gB1'] });
+  ok(copiesOf(raw().players[0].hand, GI9) === copiasAntes - 1,
+    'S9 388 descarta UNA copia del Group elegido de la mano -> copias ' + copiasAntes + ' -> ' + copiesOf(raw().players[0].hand, GI9));
+  ok(raw().groupDeck.length === gdeck0 - 1,
+    'S9 388 descarta 1 carta de la cima del mazo de Groups -> ' + gdeck0 + ' -> ' + raw().groupDeck.length);
+  ok(raw().groupDiscard.indexOf(cima) >= 0,
+    'S9 la carta de la cima de 388 va al descarte (a diferencia de las quemadas por 411)');
+  ok(raw().groupDiscard.length === gdisc0 + 2,
+    'S9 entran al descarte las dos cartas de 388, la de la mano y la de la cima');
+  ok(nodeOf(0, 'gB1').tokens === 2,
+    'S9 388 coloca el token extra sobre el grupo que el jugador eligio -> ' + nodeOf(0, 'gB1').tokens);
+})();
+
 /* ---------- Utilidad global: resolver un ataque SIN ventanas de reaccion ----------
    P1-021 (ventana de RODADERO) hace que, tras tirar los dados, el motor pare y
    espere si alguien tiene una de las 6 cartas de rodadero en la mano. Los tests

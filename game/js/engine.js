@@ -977,6 +977,24 @@ function expireTurnFlags(){
         n.timedBoost=null;
         log(tbG+' pierde el bonus defensivo de '+tbC+' (caduca en el turno '+S.turn+')');
       }
+      /* L8a — los tokens EXTRA de accion de 388/411 ("one extra Action token ... from
+       * this card") caducan cuando empieza el turno del dueno: son fichas de este
+       * turno, no un poder permanente del grupo. Se guardan en `n.bonusAction` (una
+       * entrada por token) precisamente para poder caducar SOLO esos y no contar
+       * como caducado el resto de las fichas del grupo, que las pone beginTurn y que
+       * en este motor arrastran entre turnos (desviacion preexistente, anotada en el
+       * backlog del §52). El `Math.max(0,…)` es a proposito: si el grupo ya gasto la
+       * ficha de su cuenta, `nd.tokens` puede ser menor que las etiquetas que quedan,
+       * y caducar nunca debe dejar un contador negativo. */
+      if(n.bonusAction&&n.bonusAction.length){
+        var bk=0;
+        while(bk<n.bonusAction.length&&S.turn>n.bonusAction[bk].turn)bk++;
+        if(bk>0){
+          n.bonusAction=n.bonusAction.slice(bk);
+          if(n.tokens!=null)n.tokens=Math.max(0,n.tokens-bk);
+          log(card(n.cardId).name+' pierde '+bk+' token(s) extra(s) de accion (caducan en el turno '+S.turn+')');
+        }
+      }
     });
   }
 }
@@ -1114,6 +1132,58 @@ E.exchangeForPlot=function(pid,payment){
     throw err;
   }
 };
+/* ---------------- L8a: manipulacion de mazo y robo (361, 388, 411) ----------------
+ * TOP OF DECK. En este motor "la cima" es `pop()` (ver drawFrom, ~1054): los mazos
+ * se llenan con unshift y se reparten con pop. Por eso topOfDeck devuelve las n
+ * cartas de cima SIN decidir su destino, y lo decide el llamante: 411 las QUEMA
+ * ("removing them permanently from play" = fuera del juego, ni al descarte) y 388
+ * las manda a `S.groupDiscard`, que si se rebaraja. Se devuelven cartas y no
+ * indices a proposito: un indice de mazo no sobrevive a un reshuffle, que es lo que
+ * hace drawFrom cuando el mazo se vacia. */
+function topOfDeck(deck,n){
+  var out=[];
+  for(var i=0;i<n&&deck.length>0;i++)out.push(deck.pop());
+  return out;
+}
+/* TOKEN DE ACCION EXTRA (388/411). El motor ya sabia GASTAR fichas de grupo
+ * (spendGroupToken) y ya las PONIA al empezar el turno (beginTurn, ~1015), pero no
+ * tenia ninguna forma de darMAS: las fichas extra eran un hueco total de motor.
+ * Se guarda como ETIQUETA por turno (`n.bonusAction`, una entrada por token) y no
+ * como un contador suelto, para que expireTurnFlags pueda caducar exactamente lo que
+ * puso este efecto y no las fichas que el grupo puso por su cuenta. El gasto de esas
+ * fichas en particular lo hace spendGroupToken, que ya respeta `nd.tokens`. */
+function placeBonusAction(pid,uid,cardName){
+  var pl=S.players[pid];
+  if(!pl)throw new Error(cardName+': jugador desconocido');
+  var nd=findNode(uid)||findInTree(pl.structure,uid);
+  if(!nd||findOwnerPid(nd.uid)!==pid)
+    throw new Error(cardName+': los tokens extra de accion deben ir a uno de TUS grupos');
+  if(nd.tokens==null)nd.tokens=0;
+  nd.tokens++;
+  if(!nd.bonusAction)nd.bonusAction=[];
+  nd.bonusAction.push({from:cardName,turn:S.turn});
+  return nd;
+}
+/* Coloca los tokens extra de una sola vez aplicando el techo impreso: "For each
+ * [Group|Plot] you discard, you MAY place one extra Action token on one of your own
+ * Groups. No Group may get more than one extra Action token FROM THIS CARD." O sea:
+ * como mucho `earn` tokens en total (porque son opcionales, 0 es legal) y nunca dos
+ * del mismo grupo para la misma carta. `maxPerGroup` se pasa porque las dos cartas
+ * que lo usan imprimen 1, pero el dato lo lleva la carta y no el motor. */
+function applyBonusUids(pid,uids,earn,cardName,maxPerGroup){
+  if(!Array.isArray(uids))uids=[];
+  if(uids.length>earn)
+    throw new Error(cardName+': cada carta descartada da como maximo un token extra de accion, y solo has descartado '+earn);
+  var seen={},placed=[];
+  for(var i=0;i<uids.length;i++){
+    var u=uids[i];
+    seen[u]=(seen[u]||0)+1;
+    if(seen[u]>maxPerGroup)
+      throw new Error(cardName+': esta carta no da mas de '+maxPerGroup+' token extra de accion al mismo grupo ('+u+')');
+    placed.push(placeBonusAction(pid,u,cardName).uid);
+  }
+  return placed;
+}
 function requireOwnMain(pid){
   if(S.phase!=='main')throw new Error('Fuera de la fase principal');
   if(pid!==S.currentPid)throw new Error('No es tu turno');
@@ -2822,7 +2892,15 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
      `eventReactionAllowed` empieza rechazando todo kind que no este en esa lista;
      sin anadirlo aqui la rama nueva que ya existe nunca se alcanzaria. Es el mismo
      motivo por el que se comparan KINDS y no listas de ids de carta. */
-  ||eff0.kind==='takeover_return'||eff0.kind==='resource_destroy'||eff0.kind==='force_discard_exposed'||PEEK_KINDS.indexOf(eff0.kind)>=0);
+  ||eff0.kind==='takeover_return'||eff0.kind==='resource_destroy'||eff0.kind==='force_discard_exposed'||PEEK_KINDS.indexOf(eff0.kind)>=0
+  /* L8a: 361 (deck_manip) imprime "Play this card at any time", asi que se juega
+     fuera de turno gastando una ficha de grupo YA colocada ("using this card is an
+     action for one group"). 388 y 411 tienen el MISMO kind pero imprimen "during
+     your OWN turn", asi que NO pueden entrar a pelo en esta lista: por eso la
+     condicion mira `eff0.anyTime` y no el kind. Sin ese matiz las dos ownTurn
+     quedarian jugables en el turno de cualquiera (defecto de clase "el dato existe
+     pero se comparo contra la etiqueta equivocada"). */
+  ||(eff0.kind==='deck_manip'&&!!eff0.anyTime));
   if(instant){
     if(S.phase==='setup')throw new Error('No se pueden jugar Plot cards durante la preparación');
     if(S.phase==='gameover')throw new Error('La partida ha terminado');
@@ -4074,6 +4152,98 @@ case 'bulk_power':{
      *      rechazo dejaría al jugador sin ficha - P1-033);
      *   4. se abre la ventana, que aplica al cerrarse.
      */
+    case 'deck_manip':{
+      /* L8a — 361 Savings & Loan Scam / 388 The Big Sellout / 411 Voodoo Economics.
+       * Las tres son una sola rama porque las tres manipulan MAZOS, pero cada una
+       * hace una operacion distinta, y el dato `mode` es lo que decide cual.
+       * `ownTurn` NO se revalida aqui: el gate `instant` de E.playPlot ya aplico
+       * `requireOwnMain` porque solo 361 trae `anyTime`.
+       *
+       * REGLA DE ORO DEL CASO: todo se VALIDA y se cuenta ANTES de tocar nada, y las
+       * salidas son irreversibles (411 QUEMA cartas). Validar despues de quitar seria
+       * perder cartas de un jugador por un error de interfaz. */
+      var plD=S.players[pid], dm=eff;
+      /* 361 "Using this card is an action for one group": gasta una ficha de grupo ya
+       * puesta. No es lo mismo que una accion de grupo nueva (que pondria beginTurn),
+       * asi que se busca un grupo con ficha DISPONIBLE, no cualquiera. */
+      if(dm.payGroupAction){
+        /* OJO: el predicado de firstUsableAid recibe (carta, nodo), NO el nodo solo
+         * (engine ~2453), asi que un filtro que mire `nd.tokens` nunca casa y la carta
+         * se rechazaria siempre. Aqui no hace falta filtro ninguno: firstUsableAid ya
+         * descarta lo que no tiene ficha y lo que no puede tenerla (noTokensFlag), que
+         * es exactamente el requisito impreso de 361. */
+        var payerD=firstUsableAid(pid);
+        if(!payerD)throw new Error(c.name+': no tienes ningun grupo con una ficha de accion disponible para "using this card is an action for one group"');
+        spendGroupToken(pid,payerD.uid);
+      }
+      var outD={mode:dm.mode,discarded:[],burned:[],drawn:[],bonus:[]};
+      if(dm.mode==='draw'){
+        var nD=dm.drawPlot|0,got=0;
+        for(var qD=0;qD<nD;qD++){var dcD=drawFrom(S.plotDeck,S.plotDiscard,'plot');if(!dcD)break;plD.hand.push(dcD);got++;}
+        if(got===0)throw new Error(c.name+': tu mazo de Plot cards esta vacio: no hay nada que robar');
+        outD.drawn=got;
+        log('— '+plD.name+': '+c.name+' roba '+got+' Plot card(s) de su mazo');
+      }else if(dm.mode==='burn'){
+        /* 411: "discard up to ten Plot Cards from the top of your deck, REMOVING THEM
+         * PERMANENTLY FROM PLAY". Quemar = sacar sin mandar al descarte: si fuera al
+         * descarte, drawFrom lo rebarajaria y el "permanently" seria falso. */
+        var wantD=(opts.n==null?0:opts.n)|0;
+        if(wantD<0)throw new Error(c.name+': el numero de Plot cards a descartar no puede ser negativo');
+        var maxD=Math.min(dm.burnMax|0,S.plotDeck.length);
+        if(wantD>maxD)throw new Error(c.name+': no puedes descartar mas de '+dm.burnMax+' Plot cards, y ahora mismo tu mazo solo tiene '+S.plotDeck.length);
+        var burnD=topOfDeck(S.plotDeck,wantD);
+        if(burnD.length!==wantD)throw new Error(c.name+': tu mazo de Plot cards esta vacio');
+        for(var bD=0;bD<burnD.length;bD++){/* las quemadas salen de circulacion, no al descarte */}
+        outD.burned=burnD;
+        log('— '+plD.name+': '+c.name+' saca '+burnD.length+' Plot card(s) de su mazo permanentemente');
+        outD.bonus=applyBonusUids(pid,opts.bonusUids,burnD.length,c.name,dm.bonusMaxPerGroup|0||1);
+        if(outD.bonus.length)log('— tokens extra de accion en '+outD.bonus.join(', '));
+      }else if(dm.mode==='sellout'){
+        /* 388: "pick up to ten Groups and/or Resources from your hand ... You may also
+         * discard the top card(s) from your Groups deck, as long as the TOTAL is ten or
+         * less." El techo es SUMA, no de cada fuente. Y "For each GROUP you discard"
+         * cuenta los Groups de la mano y los de la cima, pero NO los Resources. */
+        var selD=Array.isArray(opts.handIx)?opts.handIx:[];
+        var seenD={},earD=0,idxD=[];
+        for(var sD=0;sD<selD.length;sD++){
+          var hD=selD[sD];
+          if(seenD[hD])throw new Error(c.name+': la misma carta de tu mano no se puede descartar dos veces');
+          seenD[hD]=1;
+          var ciD=plD.hand.indexOf(hD);
+          if(ciD<0)throw new Error(c.name+': esa carta ya no esta en tu mano');
+          var hcD=card(hD);
+          if(dm.handTypes.indexOf(hcD.type)<0)throw new Error(c.name+': solo puedes descartar Groups y/o Resources de tu mano (esa carta es de tipo "'+hcD.type+'")');
+          idxD.push(hD);
+          if(hcD.type==='group')earD++;
+        }
+        var dWantD=(opts.n==null?0:opts.n)|0;
+        if(dWantD<0)throw new Error(c.name+': el numero de cartas a descartar de la cima de tu mazo no puede ser negativo');
+        if(idxD.length+dWantD>dm.maxTotal)
+          throw new Error(c.name+': puedes descartar como maximo '+dm.maxTotal+' cartas entre la mano y la cima de tu mazo (has pedido '+(idxD.length+dWantD)+')');
+        var deckD=topOfDeck(S.groupDeck,dWantD);
+        if(deckD.length!==dWantD)throw new Error(c.name+': tu mazo de Groups esta vacio');
+        for(var gD=0;gD<deckD.length;gD++){
+          /* Resources y Groups comparten mazo en este motor (ambos salen de
+           * S.groupDeck), asi que `S.groupDiscard` es el unico descarte que existe
+           * para los dos, y el rebarajado de drawFrom tambien los devuelve. */
+          S.groupDiscard.push(deckD[gD]);
+          if(card(deckD[gD]).type==='group')earD++;
+        }
+        outD.discarded=idxD;outD.deckTop=deckD;
+        log('— '+plD.name+': '+c.name+' descarta '+idxD.length+' carta(s) de su mano y '+deckD.length+' de la cima de su mazo');
+        outD.bonus=applyBonusUids(pid,opts.bonusUids,earD,c.name,dm.bonusMaxPerGroup|0||1);
+        if(outD.bonus.length)log('— tokens extra de accion en '+outD.bonus.join(', '));
+        /* Los indices de mano dejan de ser validos en cuanto se borran, asi que el
+         * descarte se hace al final y en orden DESCENDENTE: si no, al borrar el mayor
+         * se desplazan todos los menores y elucle se vuelve a borrar. */
+        idxD.sort(function(a,b){return b-a;});
+        for(var dD=0;dD<idxD.length;dD++){plD.hand.splice(idxD[dD],1);S.groupDiscard.push(card(idxD[dD]));}
+      }else{
+        throw new Error(c.name+': modo de manipulacion de mazo desconocido ("'+dm.mode+'")');
+      }
+      lastResult=outD;
+      break;
+    }
     case 'peek_steal':{
       /* 303 Logic Bomb: "one group with a Power of 6 or more". Se mira el Poder
        * IMPRESO de la carta, no el actual: es el mismo criterio que `minPower` en

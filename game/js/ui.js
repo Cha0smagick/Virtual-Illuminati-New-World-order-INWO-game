@@ -810,7 +810,103 @@ function isOwnNode(uid) {
  *
  * La lista se compara contra `kind`, no contra ids de carta, por el mismo motivo
  * documentado en la lista `instant` del motor. */
-var NO_TARGET_KINDS = ['token_gift', 'attack_boost'];
+var NO_TARGET_KINDS = ['token_gift', 'attack_boost', 'deck_manip'];
+/* L8a — MENU DE MANIPULACION DE MAZO (361 Savings & Loan Scam, 388 The Big Sellout,
+ * 411 Voodoo Economics).
+ *
+ * Son las tres primeras cartas de INWO que piden al jugador una cantidad y una lista
+ * de cartas, y ademas una ELECCION de sobre que grupos reciben el token extra. El menu
+ * de cartas es de eleccion simple (`prompt(...).then(v=>…)`), asi que no cabe en una
+ * sola pulsacion: el propio menu hace de maquina de estados. `sel.mode='deckCount'`
+ * guarda lo accumulator, y volver a pulsar la misma carta reabre el menu con el estado
+ * ya recogido. El motor NO inventa nada: sin `opts` juega el caso minimo legal (0
+ * descartes, 0 tokens), que es lo que permite el "you MAY" del texto impreso.
+ *
+ * OJO con los indices: la mano y los Mazos guardan indices de `INWO_CARDS.cards`, NO
+ * posiciones, asi que lo que se acumula y lo que se manda son indices de mazo. */
+function showDeckMenu(ix) {
+  var c = cardOf(ix), EFF = c.effect || {}, mode = EFF.mode, d = sel.data;
+  var me = curState.players[curState.currentPid];
+  var chosen = (d.handIx || []).slice();
+  var dc = curState.deckCounts || {};
+  var left = mode === 'burn' ? (dc.plot || 0) : (dc.group || 0);
+  var CAP = mode === 'burn' ? (EFF.burnMax || 10) : (EFF.maxTotal || 10);
+  /* Cuantos tokens extra SE PUEDEN ganar con lo elegido ahora mismo. 411 da uno por
+   * Plot quemada; 388 da uno por cada GROUP descartado, y los Resources de la mano no
+   * cuentan (el texto dice "For each Group you discard", no "for each card"). */
+  var earn = mode === 'burn'
+    ? d.n
+    : chosen.filter(function (z) { return cardOf(z).type === 'group'; }).length + d.n;
+  var bonus = (d.bonus || []).slice();
+  var acts = [];
+  if (mode === 'burn') {
+    for (var k = 0; k <= Math.min(CAP, left); k++) {
+      acts.push({ label: k === 0 ? '⛔ No quemar ninguna Plot card' : '⛔ Quemar ' + k + ' Plot card(s) de la CIMA de tu mazo', value: 'n' + k });
+    }
+  } else {
+    acts.push({ label: '🃏 +1 carta de la CIMA de tu mazo de Groups (' + d.n + '/' + CAP + ')', value: 'deckPlus' });
+    acts.push({ label: '🃏 -1 carta de la cima del mazo de Groups', value: 'deckMinus' });
+    acts.push({ label: '🗑 ELEGIR Groups/Resources de mi mano para descartar (' + chosen.length + '/' + CAP + ')', value: 'pickHand' });
+    chosen.forEach(function (z, i) { acts.push({ label: '↩ Quitar de la lista: ' + cardOf(z).name, value: 'unpick' + i }); });
+  }
+  if (earn > 0) {
+    acts.push({ label: '⭐ ASIGNAR los ' + earn + ' token(s) extra(s) de acción (clic en tus grupos)', value: 'deckBonus' });
+    if (bonus.length) acts.push({ label: '⭐ Ya asignados: ' + bonus.join(', ') + ' — ✔ CONFIRMAR y jugar ' + esc(c.name), value: 'deckGo' });
+    else acts.push({ label: '✔ CONFIRMAR y jugar ' + esc(c.name) + ' sin tokens extra (el texto dice «you MAY»)', value: 'deckGo' });
+  } else {
+    acts.push({ label: '✔ CONFIRMAR y jugar ' + esc(c.name), value: 'deckGo' });
+  }
+  acts.push({ label: 'Cancelar', value: null });
+  prompt('<b>' + esc(c.name) + '</b><small class="pm">PLOT · ' + (mode === 'burn' ? 'QUEMAR PLOT CARDS' : mode === 'sellout' ? 'DESCARTAR HASTA 10' : 'ROBAR PLOT CARDS') + '</small>', acts)
+    .then(function (v) {
+      if (v === null) { clearSel(); log('↩ ' + c.name + ': cancelado.'); render(curState); return; }
+      if (v === 'deckPlus') { sel.data.n = Math.min(CAP, d.n + 1); }
+      else if (v === 'deckMinus') { sel.data.n = Math.max(0, d.n - 1); }
+      else if (v === 'pickHand') {
+        sel = { mode: 'handPick', data: { for: 'deckSellout', cardIx: ix, handIx: chosen, n: d.n, bonus: bonus } };
+        log('🗑 PASO 1/2 — pulsa los Groups/Resources de tu mano que quieras descartar con ' + c.name + '. Vuelve a pulsar la carta cuando termines.');
+        render(curState); return;
+      }
+      else if (v && v.indexOf('unpick') === 0) { chosen.splice(parseInt(v.slice(6), 10), 1); sel.data.handIx = chosen; }
+      else if (v && v.indexOf('n') === 0 && mode === 'burn') { sel.data.n = parseInt(v.slice(1), 10); }
+      else if (v === 'deckBonus') {
+        sel = { mode: 'bonusPick', data: { cardIx: ix, handIx: chosen, n: d.n, bonus: bonus, earn: earn } };
+        log('⭐ PASO 2/2 — haz clic en TUS grupos para repartir ' + earn + ' token(s) extra(s) de acción (máximo uno por grupo). Vuelve a pulsar ' + c.name + ' para confirmar.');
+        render(curState); return;
+      }
+      else if (v === 'deckGo') {
+        var opts = {};
+        if (mode === 'burn') opts.n = d.n;
+        else { opts.handIx = chosen; opts.n = d.n; }
+        opts.bonusUids = bonus.slice();
+        clearSel();
+        log('🃏 ' + c.name + ': ' + (mode === 'burn' ? 'quema ' + d.n + ' Plot card(s) de la cima.' : 'descarta ' + chosen.length + ' de la mano y ' + d.n + ' de la cima del mazo.') + (bonus.length ? ' Tokens extra en ' + bonus.join(', ') + '.' : ' Sin tokens extra.'));
+        try { CB.onPlayDeckManip(ix, opts); } catch (e) { log('⚠ ' + e.message); }
+        return;
+      }
+      render(curState);
+    });
+}
+/* 388 necesita dos fuentes distintas (mano y cima del mazo) y el menu de cartas solo
+ * admite una pulsacion, asi que se reaprovecha el modo `handPick` que YA existe para el
+ * takeover y los recursos: se acumulan cartas y se vuelve al menu con un clic mas. */
+function deckHandClick(ix) {
+  var c = cardOf(ix), dd = sel.data;
+  var list = (dd.handIx || []).slice();
+  if (c.type === 'plot') { log('⚠ Esa carta es un PLOT. 388 solo descarta Groups y/o Resources de tu mano.'); return; }
+  if (list.indexOf(ix) >= 0) { list.splice(list.indexOf(ix), 1); log('↩ ' + c.name + ' sale de la lista.'); }
+  else if (list.length + dd.n >= (dd.maxTotal || 10)) { log('⚠ 388 permite como mucho ' + (dd.maxTotal || 10) + ' cartas entre la mano y la cima (ya llevas ' + (list.length + dd.n) + ').'); }
+  else list.push(ix);
+  sel = { mode: 'deckCount', data: { cardIx: dd.cardIx, handIx: list, n: dd.n, bonus: dd.bonus || [] } };
+  render(curState);
+}
+function startDeckFlow(ix, EFF) {
+  sel = { mode: 'deckCount', data: { cardIx: ix, handIx: [], n: 0, bonus: [], maxTotal: EFF.maxTotal || 10 } };
+  log(EFF.mode === 'burn'
+    ? '⛔ ' + cardOf(ix).name + ': elige cuantas Plot cards de la CIMA de tu mazo vas a quemar (0-10), y reparte los tokens extra.'
+    : '🗑 ' + cardOf(ix).name + ': elige hasta 10 cartas entre tu mano y la cima de tu mazo de Groups, y reparte los tokens extra.');
+  render(curState);
+}
 function plotNeedsTarget(c) {
   return NO_TARGET_KINDS.indexOf((c.effect || {}).kind) < 0;
 }
@@ -826,6 +922,18 @@ function route(uid) {
     else if (m === 'plotTarget') { clearSel(); CB.onPlayPlot(d.handIdx, uid); }
     else if (m === 'aid') { clearSel(); CB.onSupport({ uid: uid, oppose: false }); }
     else if (m === 'oppose') { clearSel(); CB.onSupport({ uid: uid, oppose: true }); }
+    /* L8a — 388 y 411 dan "one extra Action token on one of your own Groups": el
+     * jugador ELIGE esos grupos, y pueden ser varios distintos (uno por carta
+     * descartada, con el tope de uno por grupo). Por eso no caben en el `plotTarget`
+     * de un solo clic: son un sub-menú propio (showDeckMenu) donde se acumulan. */
+    else if (m === 'bonusPick') {
+      if (!isOwnNode(uid)) { log('⚠ El token extra de acción tiene que ir a uno de TUS grupos.'); render(curState); return; }
+      var bl = d.bonus, at = bl.indexOf(uid);
+      if (at >= 0) { bl.splice(at, 1); log('↩ ' + uid + ' deja de recibir un token extra de esta carta.'); }
+      else if (bl.length >= d.earn) log('⚠ Esta carta da ' + d.earn + ' token(s) extra(s) y ya los has repartido todos. Quita alguno de la lista si quieres cambiar.');
+      else { bl.push(uid); log('✔ ' + uid + ' recibirá un token extra de acción.'); }
+      render(curState);
+    }
     else render(curState);
   } catch (e) { log('\u26A0 ' + e.message); clearSel(); render(curState); }
 }
@@ -858,6 +966,12 @@ function handClick(ix) {
   if (sel.mode === 'target' && c.type !== 'plot') {
     var d = sel.data; clearSel(); CB.onDeclareAttack(d.type, d.attackerUid, { handIdx: ix }); return;
   }
+  if (sel.mode === 'handPick' && sel.data.for === 'deckSellout') { deckHandClick(ix); return; }
+  if (sel.mode === 'deckCount' && sel.data.cardIx === ix) { showDeckMenu(ix); return; }
+  if (sel.mode === 'bonusPick' && sel.data.cardIx === ix) {
+    sel = { mode: 'deckCount', data: sel.data };
+    showDeckMenu(ix); return;
+  }
   /* P1-010: una carta Goal NO se juega, se revela declarando victoria. Por eso
      el menu ofrece "Revelar" en lugar de "Jugar", y no pide objetivo. */
   var isGoal = c.type === 'plot' && c.effect && c.effect.kind === 'goal';
@@ -882,6 +996,16 @@ function handClick(ix) {
   var isRollCard = c.type === 'plot' && c.effect && ROLL_UI.indexOf(c.effect.kind) >= 0;
   var rollPend = (curState && curState.pendingRoll) ? curState.pendingRoll : null;
   var canReact = isRollCard && rollPend && !rollPend.cancelled && !rollPend.reroll;
+  /* L8a — 361/388/411: llevan su propio menu (showDeckMenu) porque piden una cantidad
+   * y una lista de cartas. Se anaden aqui SUS botones de entrada, y se apaga el
+   * "Jugar Plot ahora" generico: ese camino llama a onPlayPlot sin `opts`, que para
+   * estas tres cartas significaria jugar siempre el caso minimo (0 descartes). */
+  var isDeck = c.type === 'plot' && c.effect && c.effect.kind === 'deck_manip';
+  var deckEntry = isDeck
+    ? (c.effect.mode === 'draw'
+      ? { label: '🃏 Gastar la acción de un grupo y ROBAR 3 Plot cards de mi mazo', value: 'deckDraw' }
+      : { label: c.effect.mode === 'burn' ? '⛔ Quemar Plot cards de la cima de mi mazo' : '🗑 Descartar hasta 10 cartas (mi mano + cima del mazo)', value: 'deckOpen' })
+    : null;
   prompt('<b>' + esc(c.name) + '</b><small class="pm">' + esc(c.type === 'plot' ? 'PLOT' : c.type === 'resource' ? 'RECURSO' : 'GRUPO · P' + c.power + '/R' + c.resistance) + '</small>', [
     { label: c.type === 'resource' ? '📦 Colocar recurso junto a mi Illuminati (1★)' : '🎁 Colocar GRATIS en mi estructura (takeover)', value: 'place' },
     isGoal ? { label: '🏆 Revelar esta carta Goal (intento de victoria)', value: 'goalVictory' } : null,
@@ -891,7 +1015,8 @@ function handClick(ix) {
     canReactEvent ? { label: '⚡ REACCIONAR a ' + esc(evPend.label || 'un suceso'), value: 'reactEvent' } : null,
     isEventCard && !canReactEvent ? { label: '❓ ¿Cuándo sirve esta carta?', value: 'infoEvent' } : null,
     isCancelCard && !canCancel ? { label: 'ℹ ¿Cuándo sirve esta carta?', value: 'infoCancel' } : null,
-    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
+    deckEntry,
+    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
     c.type === 'plot' ? { label: 'ℹ ¿Cuándo sirven los Plots?', value: 'info' } : null,
     c.type !== 'illuminati' ? { label: '🗑 Descartar', value: 'discard' } : null,
     { label: 'Cancelar', value: null }
@@ -940,6 +1065,12 @@ function handClick(ix) {
         render(curState);
       }
     }
+    else if (v === 'deckDraw') {
+      clearSel();
+      log('🃏 ' + c.name + ': gastas la ficha de UN grupo y robas 3 Plot cards de tu mazo (la carta se descarta).');
+      try { CB.onPlayDeckManip(ix, {}); } catch (e) { log('⚠ ' + e.message); }
+    }
+    else if (v === 'deckOpen') { startDeckFlow(ix, c.effect || {}); }
     else if (v === 'goalVictory') {
       clearSel();
       log('🏆 Declaras victoria con ' + c.name + '. Si el objetivo NO se cumple, la carta vuelve a tu mano EXPUESTA.');

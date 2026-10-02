@@ -137,6 +137,16 @@ var CB = {
     try { E.playPlot(E.getState().currentPid, handIdx, null, opts || {}); after('Carta de suceso jugada: ahora aplica el resultado'); }
     catch (e) { log('! ' + e.message); }
   },
+  /* L8a — 361/388/411 (deck_manip). `opts` trae lo que el jugador eligio en el menu
+     de showDeckMenu: `{n}` para la cima del mazo, `{handIx}` para las cartas de la
+     mano y `{bonusUids}` para los grupos que reciben el token extra. Se pasan como
+     4º argumento igual que onPlayEventCard; el objetivo de mesa es `null` porque estas
+     cartas no tienen un grupo OBJETIVO (los que reciben el token se eligen a mano y ya
+     viajan dentro de `opts`). */
+  onPlayDeckManip: function (handIdx, opts) {
+    try { E.playPlot(E.getState().currentPid, handIdx, null, opts || {}); after('Plot de manipulacion de mazo jugado'); }
+    catch (e) { log('! ' + e.message); }
+  },
   onResolvePendingEvent: function () {
     var st = E.resolvePendingEvent();
     var r = st.lastPlotResult || {};
