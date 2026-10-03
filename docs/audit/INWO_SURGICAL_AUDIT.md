@@ -5684,3 +5684,146 @@ base y compararla en vez de suponer 3. Verificado con 60 corridas consecutivas s
 - Sigue abierto (de antes): P1-041 (mazos de Plot por jugador, desbloquea 191 y 395); la
   desviacion preexistente de las fichas de accion (se arrastran entre turnos); los otros 4
   PRINT de token extra (12, 61, 215, 335).
+---
+
+## 57. P1-058 Y P1-059 - DESCARTE POR IDENTIDAD VS POSICION (388 The Big Sell-Out y la cola de playPlot)
+
+### Hallazgo
+
+Este lote cierra el HALLAZGO ABIERTO que §56 dejo sin diagnosticar: un flake de ~1/100 en el
+escenario S9 de `test_fase2_rules.js`. La hipotesis de partida era "fragilidad de test" (la misma
+que rompio Car Bomb en §33.5). **Era un bug de motor real, de dos clases distintas**, ambas
+derivadas del mismo error de concepto: `pl.hand` es un array de **indices de catalogo**
+(identidades de carta), pero hay codigo que lo trata como un array de **posiciones**.
+
+**P1-058 - la rama `sellout` de 388 empuja identidades donde `splice` exige posiciones.**
+
+388 = `thebigsellout`, declarado en `gen_cards.js:1771-1774` dentro de `L8A_FX`:
+`{ kind:'deck_manip', mode:'sellout', ownTurn:true, handTypes:['group','resource'], maxTotal:10,
+bonusMaxPerGroup:1 }`. Su unico consumidor es `engine.js:4419 case 'deck_manip'`, rama
+`mode==='sellout'`. El codigo defectuoso (lineas 4475-4509):
+
+```js
+var ciD=plD.hand.indexOf(hD);        /* calcula la POSICION ... */
+if(ciD<0)throw new Error('...esa carta ya no esta en tu mano');
+...
+idxD.push(hD);                       /* ... y la TIRA: guarda la IDENTIDAD */
+...
+for(var dD=0;dD<idxD.length;dD++){plD.hand.splice(idxD[dD],1);S.groupDiscard.push(card(idxD[dD]));}
+```
+
+`handIx` son identidades, `hand.indexOf(hD)` devuelve una posicion, y el codigo guardaba la
+identidad. El `splice` recibia entonces una identidad donde esperaba una posicion: borraba la
+carta que **ocupaba** esa posicion (que no era necesariamente la elegida) mientras `card(idxD[dD])`
+anadia al descarte la carta **correcta**. Resultado: la mano conservaba la copia elegida, el
+descarte ganaba una copia, y el mazo de cartas **ganaba una carta duplicada**. Las otras
+aserciones de S9 (`groupDeck.length`, `groupDiscard.indexOf(cima)`, `groupDiscard.length`) pasaban
+siempre, porque el descarte global si recibia las cartas correctas; solo la asercion de la mano
+fallaba, y solo cuando la posicion coincidia con el indice de catalogo.
+
+**P1-059 - la cola de `E.playPlot` descarta la carta jugada con un indice obsoleto (clase MAS AMPLIA).**
+
+`E.playPlot` empieza en `engine.js:3061`. En `engine.js:3140` hace
+`var i=pl.hand.indexOf(handIdx);` — capturado **ANTES** del switch de efectos. Cualquier efecto
+que mute la mano del actor durante ese switch (la propia rama sellout de 388 hace
+`plD.hand.splice(ciD,1)`) desplaza el array, y cuando la cola llega a `engine.js:4871` y ejecuta
+`pl.hand.splice(i,1)`, ese `i` ya no apunta a la carta jugada. La carta jugada se quedaba en la
+mano **y** entraba al descarte (duplicacion), mientras una carta vecina desaparecia de la mano.
+
+Traza que reproduce el sintoma exacto del flake (`copias 2 -> 0` en vez de `2 -> 1`), con mano
+`[.., GI9@p, BS@b, GI9@b+1]`: el sellout quita `p`, asi que BS pasa a `b-1` y el segundo GI9 pasa
+a `b`; la cola hace `splice(b,1)` y borra el segundo GI9.
+
+El arreglo es **por identidad**, no por posicion, y es coherente con las dos lineas siguientes
+(4896-4897) que ya usan `handIdx` como identidad para `linkedPlots` / `exposedPlots`. Si el efecto
+ya se llevo la carta, el `indexOf` da -1 y no se borra nada, que es lo correcto: nunca hay que
+compensar a mano un borrado que otro ya hizo.
+
+### Correcciones
+
+1. **`gen_cards.js` / nada.** No hubo cambio de datos: 388 ya declaraba correctamente sus
+   parametros (`handTypes`, `maxTotal`, `bonusMaxPerGroup`).
+2. **`game/js/engine.js`, rama sellout de `deck_manip`**: `idxD` pasa a guardar **posiciones**
+   (`idxD.push(ciD)`) y se introduce `disD[]` con las **identidades** elegidas, que es lo que debe
+   viajar a la UI: `outD.discarded=disD`. El bucle final empuja lo que `splice` **devuelve** (la
+   identidad real que ocupaba esa posicion) en vez de `card(idxD[dD])`. Como efecto lateral
+   correcto, el `idxD.sort` descendente deja de ser un no-op sobre identidades y pasa a ser
+   necesario para no invalidar las posiciones ya resueltas.
+3. **`game/js/engine.js`, cola de `E.playPlot`**: `pl.hand.splice(i,1)` sustituido por una
+   busqueda por identidad en el momento de uso.
+
+### P1 findings (corregidos en este lote)
+
+- **P1-058**: identidad usada como posicion en la rama sellout de 388 (duplicacion de cartas).
+- **P1-059**: indice de mano obsoleto en la cola de `E.playPlot` (afecta a cualquier efecto que
+  mute la mano del actor, no solo a 388).
+
+### Blast radius
+
+- **P1-058**: acotado a la rama `mode:'sellout'` de `deck_manip` (388). El resto de `deck_manip`
+  (`draw`, y las ramas de la cima) no toqueaba `hand`. El cambio de `outD.discarded` afecta al
+  contrato de datos que ve la UI para **esta** carta; antes enviaba posiciones, ahora identidades,
+  que es lo coherente con el resto de `lastPlotResult` y con lo que `ui.js` ya espera.
+- **P1-059**: mas amplio en principio (todo `playPlot` cuyo efecto mute la mano), pero en la
+  practica el unico caso real era 388 porque es la unica carta cuyo efecto borra cartas de la mano
+  del actor. El cambio es **estrictamente mas correcto**: `i` no se usaba en ningun otro sitio
+  entre las lineas 4872 y 4960 (verificado con barrido de token).
+
+### Verificacion
+
+- `node --check` -> 0 en `game/js/engine.js`, `gen_cards.js`, `test_fase2_rules.js`.
+- `node gen_cards.js` -> `written 421 {"group":167,"illuminati":18,"plot":201,"resource":35}
+  verified-groups 33` — sin deriva de catalogo.
+- **10/10 suites: `SUITES FALLIDAS=0 de 10`**, todas con el binario `node` real.
+- **Flake: 90 ejecuciones (30 x `test_fase2_rules` + `test_fase4_cards` + `test_p0_invariants`),
+  0 fallos**, con el binario `node` real. S9 y S9b dependen del reparto aleatorio, asi que son
+  justo los bloques que mas conviene repetir.
+- **Regresion S9b** (nuevo bloque en `test_fase2_rules.js`, 7 aserciones) con dos copias del grupo
+  elegido en la mano, para que el defecto no pueda esconderse en el caso de una sola copia:
+  `copB0 >= 2` · `2 -> 1` (P1-058) · la Plot jugada sale de la mano `1 -> 0` (P1-059) · la cima
+  sigue saliendo `181 -> 180` · entran EXACTAMENTE 2 cartas al descarte (detecta la duplicacion) ·
+  `discarded` lleva la identidad. Los contadores son **relativos** al estado previo, no
+  hardcodeados, por el motivo de S7 (§56): el reparto inicial es aleatorio.
+
+### Las 4 lecciones duras de este lote
+
+1. **`ctx_execute(language:"javascript")` corre BUN, no Node.** `process.execPath` resuelve a
+   `Bun v1.3.14`. Peor: **`bun --check` no valida sintaxis, ejecuta el fichero** y revienta en
+   `engine.js:9` con `ReferenceError: window is not defined`, lo que se confunde con un error de
+   sintaxis inexistente. Toda la verificacion de este lote se ha repetido con
+   `C:/Program Files/nodejs/node.exe`.
+2. **Una sonda que solo cuenta "casos raros" y se salta los errores no puede distinguir "no pasa"
+   de "todo fallo antes de llegar".** Una sonda anterior reporto `anomalias=0` sobre 2500
+   iteraciones cuando las 2500 habian fallado con error: el contador de anomalias exigia
+   `err===null` y por eso nunca se incrementaba. Es un **verde por vacio**. Toda sonda debe
+   afirmar tambien el camino feliz con su conteo explicito.
+3. **Las mediciones de la primera ronda de este lote (`600/600`, `8/600`) son INVALIDAS** por (1) y
+   (2) y no deben citarse como evidencia. El diagnostico que se sostiene es el de **inspeccion de
+   codigo**, que es independiente del interprete: `ciD` se calculaba y se descartaba; `i` se
+   capturaba antes del switch y se usaba despues.
+4. **No afirmar contra una API que no se ha confirmado que existe.** Dos aserciones mia fallaron
+   aqui: primero por usar `raw().lastResult` / `getState().lastPlotResult` cuando
+   `lastPlotResult` viaja **en el valor devuelto por `playPlot`** (`engine.js:4913`:
+   `if(lastResult)out.lastPlotResult=lastResult;`, con `lastResult` como variable **local** de
+   `playPlot`); despues por exigir `id === 'thebigsellout'` cuando el fixture juegaba el indice de
+   catalogo 0. La segunda se reescribio para afirmar el invariante real — identidad, no posicion —
+   y su mensaje mas legible del lote es `IDENTIDAD de catalogo (GI9b=0) ... posicion que ocupaba
+   en la mano (pos=14) -> [0]`.
+
+### Limites declarados
+
+- S9b reutiliza `firstOfType('group')`, que resuelve al indice de catalogo 0. Es correcto (lo que
+  importa es la distincion identidad/posicion) pero hace el mensaje del test dependiente del
+  catalogo. Si el orden del catalogo cambia, el mensaje dira otro numero; la asercione no.
+- El filtro de salida de `test_fase2_rules.js` marca las lineas `ok -` como fallos con un patron
+  ingenuo `/FAIL|not ok|- /`. Hay que filtrar `^ok\b` antes de buscar fallos.
+
+### Backlog
+
+- **Cerrado**: el HALLAZGO ABIERTO de S9 que §56 documento sin diagnosticar.
+- **Candidato a barrido**: la clase "identidad tratada como posicion" puede tener mas_instances.
+  El barrido de `.hand.splice` ya se hizo (todos los sitios: 487, 517, 530 son `them.hand` de otros
+  jugadores; 1395, 1490, 1721, 4863-4871, 4971 mas la rama sellout). Lo que **no** se ha barrido es
+  el patron inverso: `indexOf` guardado en una variable y usado despues de un efecto que muta la
+  estructura. `playPlot:3140` era el ultimo sitio de ese patron en la cola de Plots.
+</content>

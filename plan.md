@@ -489,6 +489,16 @@ Kind `align_rule`, unica cualificadora `alignMag`.
 >   S9 (carta 388, de §52) que NO se ha diagnosticado: se documento en §56 en vez de
 >   taparlo a ciegas.
 >
+> - **§57 (hecho): P1-058 + P1-059 - identidad vs posicion al descartar.**
+>   El flake de S9 (388 The Big Sell-Out) NO era fragilidad de test: eran dos bugs de motor.
+>   `P1-058`: la rama `mode:'sellout'` empujaba identidades de catalogo donde `hand.splice`
+>   exige posiciones -> duplicacion de cartas. `P1-059`: la cola de `E.playPlot` descartaba la
+>   carta jugada con un indice capturado ANTES del switch de efectos, obsoleto si el efecto
+>   mutila la mano -> la carta jugada se quedaba en la mano y entraba al descarte.
+>   Cerrado por el HALLAZGO ABIERTO que §56 dejo. Regresion S9b con 2 copias para que el
+>   defecto no se esconda en el caso de 1 sola. Verificado con Node real: 10/10 suites y
+>   90/90 flake. **Leccion permanente: `ctx_execute(language:"javascript")` corre BUN,
+>   no Node — usar `C:/Program Files/nodejs/node.exe`.**
 ## [ ] L9 - EDITAR ALINEACIONES
 
 - **Cartas (4)**: 332 Orbital Mind Control Lasers (anade / quita / invierte un alineamiento) ·

@@ -5070,6 +5070,46 @@ function readyToAttack(pid) {
     'S9 entran al descarte las dos cartas de 388, la de la mano y la de la cima');
   ok(nodeOf(0, 'gB1').tokens === 2,
     'S9 388 coloca el token extra sobre el grupo que el jugador eligio -> ' + nodeOf(0, 'gB1').tokens);
+
+  /* --- S9b (P1-058 + P1-059): indice de IDENTIDAD donde splice exige POSICION ------
+   * P1-058: la rama mode:'sellout' guardaba en idxD la identidad de catalogo de la
+   * carta elegida y luego la usaba como posicion de hand.splice, asi que borraba la
+   * carta que OCUPABA ese hueco y anadia al descarte la elegida. El resto de
+   * aserciones de S9 pasaba porque la posicion solia contener otra copia identica.
+   * P1-059 (clase MAS AMPLIA): pl.hand.splice(i,1) al final de E.playPlot usaba un i
+   * capturado ANTES del switch de efectos, asi que en cuanto un efecto mutila la mano
+   * del actor el indice queda obsoleto y borra una carta vecina mientras la Plot
+   * jugada se queda en la mano Y entra al descarte (duplicacion de carta).
+   * S9 es exactamente el caso que dispara las dos: su propio efecto desplaza la mano
+   * del actor. Por eso aqui hay DOS copias: con una sola el splice posicional soltaba
+   * por casualidad y el bug se escondia (~1/100).
+   */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(myMain(0), 'S9b fixture: turno del 0 limpio');
+  var GI9b = firstOfType('group');
+  putPlot(0, BS);
+  putGroup(0, GI9b);
+  putGroup(0, GI9b);
+  plant(0, 'gB1', idOf(GD), 1);
+  var copB0 = copiesOf(raw().players[0].hand, GI9b);
+  var bsB0 = copiesOf(raw().players[0].hand, BS);
+  var deckB0 = raw().groupDeck.length, discB0 = raw().groupDiscard.length;
+  var posB0 = raw().players[0].hand.indexOf(GI9b);
+  var outB = E.playPlot(0, BS, null, { handIx: [GI9b], n: 1, bonusUids: ['gB1'] });
+  var copB1 = copiesOf(raw().players[0].hand, GI9b);
+  ok(copB0 >= 2, 'S9b el fixture mete DOS copias del Group elegido -> ' + copB0);
+  ok(copB1 === copB0 - 1,
+    'S9b P1-058 con 2+ copias en la mano el descarte quita EXACTAMENTE una -> ' + copB0 + ' -> ' + copB1);
+  ok(copiesOf(raw().players[0].hand, BS) === bsB0 - 1,
+    'S9b P1-059 la Plot jugada sale de la mano aunque su propio efecto la haya desplazado -> ' + bsB0 + ' -> ' + copiesOf(raw().players[0].hand, BS));
+  ok(raw().groupDeck.length === deckB0 - 1,
+    'S9b la cima del mazo de Groups sigue saliendo (1) -> ' + deckB0 + ' -> ' + raw().groupDeck.length);
+  ok(raw().groupDiscard.length === discB0 + 2,
+    'S9b entran al descarte EXACTAMENTE 2 cartas (la elegida + la cima), ni una de mas -> ' + discB0 + ' -> ' + raw().groupDiscard.length);
+  var dscB = ((outB && outB.lastPlotResult) || {}).discarded;
+  ok(Array.isArray(dscB) && dscB.length === 1 && dscB[0] === GI9b && !!C.cards[dscB[0]],
+    'S9b P1-058 discarded lleva la IDENTIDAD de catalogo de la carta elegida (GI9b=' + GI9b
+      + '), no la posicion que ocupaba en la mano (pos=' + posB0 + ') -> ' + JSON.stringify(dscB));
 })();
 
 /* ---------- L8b - GANCHOS DE ROBO (233 Crystal Skull, 367 Shroud of Turin) ---------- */

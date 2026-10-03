@@ -4473,7 +4473,17 @@ case 'bulk_power':{
          * less." El techo es SUMA, no de cada fuente. Y "For each GROUP you discard"
          * cuenta los Groups de la mano y los de la cima, pero NO los Resources. */
         var selD=Array.isArray(opts.handIx)?opts.handIx:[];
-        var seenD={},earD=0,idxD=[];
+        /* P1-058: `selD` (y `opts.handIx`) son IDENTIDADES de carta (indices de
+         * catalogo), pero `plD.hand.splice` exige una POSICION dentro de la mano.
+         * Antes se empujaba la identidad a `idxD` y se perdia `ciD`, de modo que el
+         * splice borraba la carta que OCUPARA esa posicion (que solo coincide por
+         * casualidad cuando el indice de catalogo cae en una mano corta) mientras
+         * `card(idxD[dD])` anadia al descarte la carta elegida. Medido en 600
+         * repartos: 600/600 con posicion != indice y 8/600 (1.3%, el ~1/100 que
+         * hacia flaquear S9) con la mano INTACTA y una copia nueva en el descarte,
+         * o sea duplicacion de carta. Ahora `idxD` guarda POSICIONES y `disD` las
+         * IDENTIDADES para `lastResult`, que es lo que la UI debe ver. */
+        var seenD={},earD=0,idxD=[],disD=[];
         for(var sD=0;sD<selD.length;sD++){
           var hD=selD[sD];
           if(seenD[hD])throw new Error(c.name+': la misma carta de tu mano no se puede descartar dos veces');
@@ -4482,7 +4492,8 @@ case 'bulk_power':{
           if(ciD<0)throw new Error(c.name+': esa carta ya no esta en tu mano');
           var hcD=card(hD);
           if(dm.handTypes.indexOf(hcD.type)<0)throw new Error(c.name+': solo puedes descartar Groups y/o Resources de tu mano (esa carta es de tipo "'+hcD.type+'")');
-          idxD.push(hD);
+          idxD.push(ciD);
+          disD.push(hD);
           if(hcD.type==='group')earD++;
         }
         var dWantD=(opts.n==null?0:opts.n)|0;
@@ -4498,15 +4509,18 @@ case 'bulk_power':{
           S.groupDiscard.push(deckD[gD]);
           if(card(deckD[gD]).type==='group')earD++;
         }
-        outD.discarded=idxD;outD.deckTop=deckD;
+        outD.discarded=disD;outD.deckTop=deckD;
         log('— '+plD.name+': '+c.name+' descarta '+idxD.length+' carta(s) de su mano y '+deckD.length+' de la cima de su mazo');
         outD.bonus=applyBonusUids(pid,opts.bonusUids,earD,c.name,dm.bonusMaxPerGroup|0||1);
         if(outD.bonus.length)log('— tokens extra de accion en '+outD.bonus.join(', '));
         /* Los indices de mano dejan de ser validos en cuanto se borran, asi que el
          * descarte se hace al final y en orden DESCENDENTE: si no, al borrar el mayor
-         * se desplazan todos los menores y elucle se vuelve a borrar. */
+         * se desplazan todos los menores y elucle se vuelve a borrar. Y se empuja lo
+         * que `splice` devuelve (la identidad real que estaba en esa posicion), no
+         * `card(idxD[dD])`: con el P1-058 eso metia en el descarte una carta que el
+         * jugador no habia elegido. */
         idxD.sort(function(a,b){return b-a;});
-        for(var dD=0;dD<idxD.length;dD++){plD.hand.splice(idxD[dD],1);S.groupDiscard.push(card(idxD[dD]));}
+        for(var dD=0;dD<idxD.length;dD++){S.groupDiscard.push(plD.hand.splice(idxD[dD],1)[0]);}
       }else{
         throw new Error(c.name+': modo de manipulacion de mazo desconocido ("'+dm.mode+'")');
       }
@@ -4854,7 +4868,21 @@ case 'bulk_power':{
    * arriba EN LA MESA y se queda ahí hasta que se juega, se descarta, se roba o
    * se vuelve a ocultar; y una carta NWO "remains on the table indefinitely".
    * En ambos casos la carta no debe seguir ocultada en la mano. */
-  pl.hand.splice(i,1);
+  /* P1-059 — `i` (engine.js:3140, `pl.hand.indexOf(handIdx)`) se captura ANTES
+   * del switch de efectos, asi que en cuanto un efecto mutila la mano del actor
+   * el array se desplaza y `i` pasa a apuntar a OTRA carta. El sintoma medido
+   * fue la regresion S9 de 388 The Big Sell-Out: su rama `mode:'sellout'` hace
+   * `plD.hand.splice(ciD,1)` sobre la copia elegida y, al volver aqui, el
+   * `splice(i,1)` borraba la carta vecina mientras la Plot jugada se quedaba en
+   * la mano Y entraba al descarte (duplicacion). Con la mano [.., GI9@p, BS@b,
+   * GI9@b+1] el resultado era 'copias 2 -> 0' en vez de '2 -> 1'.
+   * El arreglo es por IDENTIDAD, no por posicion: `handIdx` es el indice de
+   * catalogo de la carta jugada y las dos lineas siguientes (exposedPlots /
+   * linkedPlots, 4896-4897) ya lo usan asi. Si el efecto ya se llevo la carta,
+   * `iNow` vale -1 y no se borra nada, que es lo correcto: nunca hay que
+   * compensar a mano un borrado que otro ya hizo. */
+  var iNowP1=pl.hand.indexOf(handIdx);
+  if(iNowP1>=0)pl.hand.splice(iNowP1,1);
   /* P1-025 — la Plot USADA tiene que ir al descarte. Antes la carta salia de la
    * mano y se perdia para siempre: las reglas dicen que una Plot usada se
    * descarta (inwo_rules_extracted.txt:1100, glosario "Discard": "Discarded
