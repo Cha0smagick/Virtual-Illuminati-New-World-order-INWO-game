@@ -2988,6 +2988,62 @@ function readyToAttack(pid) {
     ok(E.getState().pendingEvent === null, 'P1-027 la ventana quedo cerrada');
   })();
 
+/* ==== 6b) P1-060 — ROLLBACK DEL EMBEZZLEMENT (249) POR IDENTIDAD, NO POR POSICION ====
+     P1-059 fijo el mismo patron (identidad vs posicion) en la cola de E.playPlot.
+     El barrido §58 dejo ESTA como la ultima fragilidad viva del patron: el rollback
+     del cierre de la ventana usaba hand.pop(), que quita "la ultima carta de la mano"
+     y hoy resulta ser la carta correcta SOLO por casualidad posicional (entre el push
+     y el pop no hay ningun otro push a esa mano). Con identidad el rollback no puede
+     llevarse nunca una carta distinta.
+     Aqui se fuerza la rama `if (at3 < 0)` haciendo desaparecer el pago de la mano del
+     reclamante ENTRE los dos pasos de la ventana, y se comprueba el invariante REAL:
+     la Plot en disputa acaba exactamente UNA vez entre las dos manos —ni duplicada en
+     las dos, ni perdida. El primer ok es el control del camino feliz: sin ventana
+     abierta el resto de la prueba no probaria nada (leccion de la sonda verde-por-vacio
+     de §57). ==== */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var me = readyToAttack(0);
+    var EMB = C.cards[idx('embezzlement')];
+    ok(!!EMB && EMB.effect.kind === 'embezzlement', 'P1-060 la carta 249 esta clasificada');
+    if (!EMB) return;
+    var resp = 1 - me;
+    put(resp, EMB);
+    E._raw().plotDeck = E._raw().plotDeck.filter(function (ix) { return ix !== EMB.idx; });
+    var res = E.drawPlot(me);
+    var filler = C.cards.filter(function (c) {
+      return c.type === 'plot' && c.idx !== EMB.idx && c.idx !== res.idx;
+    })[0];
+    put(resp, filler);
+    ok(!!E.getState().pendingEvent, 'P1-060 la ventana de SUCESO esta abierta (control del camino feliz)');
+    if (!E.getState().pendingEvent) return;
+    E.playPlot(resp, EMB.idx, null, { payment: filler.idx });
+    ok(!!E._raw().pendingEvent, 'P1-060 jugar la carta dejo la ventana en el segundo paso');
+    if (!E._raw().pendingEvent) return;
+    /* Se saca el pago de la mano del reclamante ANTES de cerrar el evento: eso mete
+     * al motor en la rama `if (at3 < 0)`, que es exactamente el rollback que P1-060
+     * endurece. Con el pop() viejo esta mano tiene mas de una carta y el pop se
+     * llevaria la equivocada, duplicando la Plot en las dos manos. */
+    var rh = E._raw().players[resp].hand;
+    var payPos = rh.indexOf(filler.idx);
+    ok(payPos >= 0, 'P1-060 el pago estaba en la mano del reclamante antes de romperlo');
+    if (payPos < 0) return;
+    rh.splice(payPos, 1);
+    E.resolvePendingEvent();
+    var raw = E._raw();
+    var enResp = raw.players[resp].hand.filter(function (x) { return x === res.idx; }).length;
+    var enMe = raw.players[me].hand.filter(function (x) { return x === res.idx; }).length;
+    ok(enResp + enMe === 1,
+      'P1-060 tras el rollback la Plot en disputa existe exactamente UNA vez entre las dos manos -> resp=' + enResp + ' robber=' + enMe + ' manoReclamante=' + raw.players[resp].hand.join(','));
+    ok(enMe === 1,
+      'P1-060 el rollback devuelve la Plot a quien la habia robado, no se la queda el reclamante -> ' + enMe);
+    ok(raw.players[resp].hand.indexOf(filler.idx) < 0,
+      'P1-060 el pago NO sigue en la mano del reclamante');
+    ok(raw.plotDiscard.indexOf(filler.idx) < 0,
+      'P1-060 el pago roto no entra al descarte de Plots');
+    ok(E.getState().pendingEvent === null, 'P1-060 la ventana quedo cerrada tras el rollback');
+  })();
+
   /* ==== 7) P1-027 — STOLING THE PLANS (374) ==== */
   (function () {
     fresh('bavarianilluminati1', 'servantsofcthulhu1');

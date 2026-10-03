@@ -5826,4 +5826,117 @@ compensar a mano un borrado que otro ya hizo.
   jugadores; 1395, 1490, 1721, 4863-4871, 4971 mas la rama sellout). Lo que **no** se ha barrido es
   el patron inverso: `indexOf` guardado en una variable y usado despues de un efecto que muta la
   estructura. `playPlot:3140` era el ultimo sitio de ese patron en la cola de Plots.
-</content>
+</content>---
+
+## 58. BARRIDO DEL PATRON INVERSO DE P1-059 Y P1-060 (EL ROLLBACK DEL EMBEZZLEMENT)
+
+### Hallazgo
+
+§57 cerro P1-059 (un `hand.indexOf` capturado **antes** del switch de efectos en `E.playPlot`, que luego se usaba como posicion de `splice` y apuntaba a otra carta en cuanto un efecto mutilaba la mano). Dejo en backlog una pregunta concreta: **¿existe el mismo patron en otro sitio?** Es decir, un `indexOf` guardado en una variable y usado despues de que una operacion intermedia haya mutado la estructura.
+
+La respuesta es **NO, y ese es el hallazgo**: el barrido se hizo, se clasifico sitio por sitio, y **no hay ninguna instancia viva fuera de la cola de `playPlot`**. Pero el propio barridoavana destapando una fragilidad residual de la misma clase, que es la unica que quedaba viva.
+
+El barrido: sobre 5.220+ lineas de `engine.js`, **26 capturas de posicion** (`var X = <arr>.indexOf(`) y **43 usos posteriores** de esas variables como indice.
+
+### Los 4 candidatos reales, verificados uno a uno: los 4 son seguros
+
+De las 26 capturas, solo **4** sobrevivieron al descarte de falsos positivos, y las 4 se leyeron y verificaron individualmente:
+
+| Sitio | Captura → uso | Mutacion intermedia | Veredicto |
+|---|---|---|---|
+| `placeUnder` L1387 | `var hi=pl.hand.indexOf(handIdx)` → `splice(hi,1)` L1395 | `parentNode.children.push(nd)` L1394: muta el **arbol de nodos**, no la mano | **SEGURO** |
+| cierre de EMBEZZLEMENT L2244 | `var at3=hp.indexOf(pay)` → `hp.splice(at3,1)` L2251 | L2247-2248 estan en la rama `at3<0`, **mutuamente excluyente** con el `else` que llega a L2251 | **SEGURO** |
+| `E.addBoost` L1713 | `var i=...` → uso posterior | L1714-1720 son puro `if`/validacion/lectura (`C.cards[idx]`, `c.effect.kind`) | **SEGURO** |
+| STOLING THE PLANS L2212 | `var at=...` → uso posterior | L2213-2216 son `if` + `log` | **SEGURO** |
+
+**Conclusion con evidencia: el backlog de §57 se cierra.** El patron inverso de P1-059 no existe vivo fuera de `playPlot`.
+
+### P1-060 — la ultima fragilidad viva del patron
+
+Al verificar el candidato L2244 se vio algo que el barrido de texto no puede ver: **el rollback de esa rama no usaba `splice`, usaba `pop()`**.
+
+```js
+// ANTES (engine.js:2246-2248, dentro de if (at3 < 0) {)
+S.players[P.claimedTo].hand.pop();
+```
+
+`pop()` quita "la ultima carta de la mano". Hoy esa carta **es** la correcta, pero **solo por casualidad posicional**: entre el `push(ixQ)` de L2239 y el `pop()` de L2248 no hay ningun otro push a esa mano. Es exactamente la misma clase que P1-059 —**una posicion asumida en lugar de la identidad**— y era el **unico `pop()` vivo del motor**.
+
+El riesgo no es teorico: si alguna vez se abre una ventana de reaccion entre el `push` y el `pop`, el `pop()` se llevaria una carta DISTINTA y `ixQ` quedaria **duplicada en dos manos**.
+
+**Correccion** (por identidad, igual que P1-058 y P1-059):
+
+```js
+var ixBack = S.players[P.claimedTo].hand.indexOf(ixQ);
+if (ixBack >= 0) S.players[P.claimedTo].hand.splice(ixBack, 1);
+```
+
+### Los falsos positivos del barrido (dos clases, ya conocidas)
+
+Casi todos los "ALTO RIESGO" del barrido eran falsos positivos, y **ambos proceden de metodos de medicion que ya habian fallado antes** (§54 P1-050, §56 P1-056/P1-057):
+
+1. **Shadowing.** `var i` declarado en una funcion se empareja con loops `for (var i = ...)` de **otras** funciones. El barrido por tokens no ve el ambito de funcion. Produce cruces como L1489→L1701/L1766/L1825/L2023, L3140→L4738/L5007, L516→L4985.
+2. **Matching contra el texto del propio audit.** Los comentarios que documentan P1-059 contienen literalmente `pl.hand.splice(ciD,1)` y `splice(i,1)`, asi que L1489→L4863/L4876, L4491→L4875 y L862→L4875 son matches contra **COMENTARIOS**, no codigo. Documentar el defecto tambien crea su propio falso positivo.
+
+**Esta es la tercera repeticion de la misma leccion de medicion** (§54, §56, §58): contar o emparejar con grep/texto **no es un detector valido** de este patron. Un barrido de este tipo sirve para **generar candidatos**, nunca para **concluir**. Cada candidato tiene que leerse en su flujo real.
+
+### P1 findings (corregidos en este lote)
+
+- **P1-060** — el rollback del cierre de la ventana de EMBEZZLEMENT (249, `kind:'embezzlement'`, implementado en P1-027) devolvia la carta con `hand.pop()`, o sea por posicion asumida. Corregido a `indexOf(ixQ)` + `splice`. La rama `if (at3 < 0)` **es alcanzable**: la ventana se abre con un `pay` valido (`engine.js:4804-4807` lanza si no hay ninguna Plot propia del reclamante), y si esa carta sale de su mano antes de cerrar el evento, `at3` da `-1` y entra el rollback.
+
+### Regresion nueva: bloque `6b) P1-060` en `test_fase2_rules.js`
+
+Anadido junto al bloque P1-027 de EMBEZZLEMENT (fichero: 5.646 → **5.703 lineas**). **9 aserciones**, todas verdes:
+
+```
+ok - P1-060 la carta 249 esta clasificada
+ok - P1-060 la ventana de SUCESO esta abierta (control del camino feliz)
+ok - P1-060 jugar la carta dejo la ventana en el segundo paso
+ok - P1-060 el pago estaba en la mano del reclamante antes de romperlo
+ok - P1-060 tras el rollback la Plot en disputa existe exactamente UNA vez entre las dos manos -> resp=0 robber=1 manoReclamante=263,218,191,155,89,115,80,106,413,48,157,145,13
+ok - P1-060 el rollback devuelve la Plot a quien la habia robado, no se la queda el reclamante -> 1
+ok - P1-060 el pago NO sigue en la mano del reclamante
+ok - P1-060 el pago roto no entra al descarte de Plots
+ok - P1-060 la ventana quedo cerrada tras el rollback
+```
+
+Como se fuerza la rama: se reproduce el fixture del bloque `6)` y, **entre los dos pasos de la ventana**, se saca el pago de la mano del reclamante (`hand.splice(payPos,1)`) antes de llamar a `E.resolvePendingEvent()`. Eso mete al motor en `if (at3 < 0)`.
+
+El invariante afirmado es el real, no un detalle de implementacion: la Plot en disputa acaba **exactamente una vez** entre las dos manos. Con el `pop()` viejo, esa mano tiene mas de una carta (`manoReclamante=263,218,191,...` en el log) y el `pop()` se llevaria la ultima, que no es `ixQ`.
+
+**Nota de diseno conforme a la leccion de §57**: la primera asercion es el **control del camino feliz** (la ventana esta abierta). Una sonda o un bloque que solo mide el caso raro no puede distinguir "no pasa" de "todo fallo antes de llegar" — el verde-por-vacio de §57.
+
+### Blast radius
+
+- **Motor:** un unico cambio, dentro de una rama de rollback (`if (at3 < 0)`). El camino feliz (`else`: `hp.splice(at3,1)` + `plotDiscard.push(pay)`) **no se toca**. El `S.players[P.byPid].hand.push(ixQ)` de L2247 tampoco.
+- **Datos:** ninguno. No se toco `gen_cards.js` ni `cards.js`.
+- **UI:** ninguno. `lastResult`/`lastPlotResult` no cambian de forma.
+- **Comportamiento observable:** identico en el caso feliz. Solo cambia el caso en que la mano del reclamante tuviera mas de una carta al llegar al rollback, donde antes el resultado dependia del orden de insercion.
+
+### Verificacion (Node real: `C:/Program Files/nodejs/node.exe`)
+
+- `node --check` -> status **0** en `game/js/engine.js` y `test_fase2_rules.js`.
+- `node gen_cards.js` -> status 0: `texto secundario recuperado del HTML de Scribd: 14` / `written 421 {"group":167,"illuminati":18,"plot":201,"resource":35} verified-groups 33` — **sin deriva**.
+- **10/10 suites: `SUITES FALLIDAS=0 de 10`**.
+- **Flake: `FLAKE (Node real): 90 ejecuciones, fallos=0`** (30 iteraciones x `test_fase2_rules` + `test_fase4_cards` + `test_p0_invariants`).
+
+### Lecciones
+
+1. **Un barrido de texto genera candidatos, no conclusiones.** Los 22 de 26 "riesgos" del barrido eran falsos positivos, y por dos motivos **ya documentados** en §54 y §56 (shadowing de ambito, y matching contra comentarios). La leccion no es "tener cuidado": es que este tipo de barrido **no puede usarse como veredicto**, y el intento de hacerlo fue exactamente el error que §54 y §56 ya habia corregido.
+2. **Un resultado NEGATIVO es un resultado, y se documenta con la misma evidencia que uno positivo.** El valor de §58 es cerrar un backlog con los 4 candidatos leidos uno a uno, no con un script que dice "0".
+3. **Documentar un defecto crea sus propios falsos positivos.** Los comentarios de §57 se emparejaron con el barrido como si fueran codigo. Los comentarios que describen codigo son codigo para cualquier herramienta de texto.
+4. **El invariante correcto para "quitar una carta" es la identidad.** Tres lotes seguidos (P1-058, P1-059, P1-060) por el mismo motivo: `hand` es un array de identidades de catalogo, y `splice`/`pop` exigen posicion. Cuando la posicion se captura antes de una mutacion intermedia, el bug es silencioso y depende del reparto aleatorio.
+
+### Limites declarados
+
+- El barrido cubrio **`engine.js`**. No se reviso `ai.js`/`ui.js`/`app.js` por si tuvieran el mismo patron; `publicState` no muta manos, pero no esta medido.
+- La regresion cubre la rama de rollback reached de forma **forzada** (rompiendo el pago a proposito). No hay cobertura del caso en que la ventana se cierra normalmente **con** un rollback disparado por la IA; el camino es el mismo, pero la IA no ha sido ejercitada en esta rama.
+- `hand.pop()` no se elimino del motor entero: el barrido de `pop()` no se hizo (solo el de `indexOf`+`splice`). Queda como candidto para §59.
+
+### Backlog
+
+- **Barrido de `hand.pop()`** en todo `engine.js` (el de §58 fue de `indexOf`→`splice`). Es la unica variante del patron identidad-vs-posicion que no se ha barrido.
+- **P1-041** (mazos de Plot por jugador; desbloquea 191 y 395) — decision de arquitectura, sigue abierto.
+- Desviacion preexistente de las fichas de accion: se arrastran entre turnos, el juego oficial dice que se pierden al final del turno.
+- Los 4 PRINT de token extra (12 Brazil, 61 Hawaii, 215 Center for Weird Studies, 335 Perpetual Motion Machine) usan `placeBonusAction` pero necesitan su propia condicion de pago.
+- Lotes de `plan.md`: L9 (ya no bloqueante para 405), L10, L11, L12, L13, L14, L15, L16, L17.

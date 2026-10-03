@@ -499,6 +499,11 @@ Kind `align_rule`, unica cualificadora `alignMag`.
 >   defecto no se esconda en el caso de 1 sola. Verificado con Node real: 10/10 suites y
 >   90/90 flake. **Leccion permanente: `ctx_execute(language:"javascript")` corre BUN,
 >   no Node — usar `C:/Program Files/nodejs/node.exe`.**
+> - **§58 (hecho): barrido del patron inverso de P1-059 + P1-060 (rollback del EMBEZZLEMENT por identidad).**
+>   El backlog de §57 se **CIERRA con evidencia**: sobre 26 capturas de posicion en `engine.js` (`var X = <arr>.indexOf(`), los 4 candidatos reales se leyeron uno a uno y **los 4 son seguros** (placeUnder L1387, cierre de EMBEZZLEMENT L2244, `E.addBoost` L1713, STOLING THE PLANS L2212). **0 instancias vivas** del patron fuera de la cola de `playPlot`.
+>   **P1-060**: el rollback de la rama `if (at3 < 0)` usaba `hand.pop()` (posicion asumida en vez de identidad, correcto hoy solo por casualidad posicional) — era el **unico `pop()` vivo del motor**. Corregido a `indexOf(ixQ)` + `splice`. Regresion: bloque `6b) P1-060` en `test_fase2_rules.js` (9 aserciones, fichero 5.646 → 5.703 lineas) que fuerza la rama sacando el pago de la mano del reclamante entre los dos pasos de la ventana.
+>   **Leccion permanente**: un barrido de texto **genera candidatos, no conclusiones** — 22 de 26 "riesgos" eran falsos positivos por shadowing de ambito y por matching contra los comentarios del propio audit (3a repeticion de la leccion de §54/§56). Y **documentar un defecto crea sus propios falsos positivos**: los comentarios de §57 se emparejaron como codigo.
+>   **LECCION PERMANENTE (heredada de §57, aplica a todo lo que viene):** `ctx_execute(language:"javascript")` corre **BUN**, no Node. `process.execPath` NO es node y `bun --check` **no valida sintaxis** (ejecuta el fichero y revienta en `engine.js:9` con `window is not defined`). Usar siempre `C:/Program Files/nodejs/node.exe`.
 ## [ ] L9 - EDITAR ALINEACIONES
 
 - **Cartas (4)**: 332 Orbital Mind Control Lasers (anade / quita / invierte un alineamiento) ·

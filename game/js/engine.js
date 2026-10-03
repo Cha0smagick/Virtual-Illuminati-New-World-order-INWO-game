@@ -2244,9 +2244,17 @@ function closePendingEvent(){
       var at3=hp.indexOf(pay);
       if(at3<0){
         log('EMBEZZLEMENT: ya no hay Plot que descartar; la carta robada se devuelve');
-        S.players[P.byPid].hand.push(ixQ);
-        S.players[P.claimedTo].hand.pop();
-        res={ok:false,reason:'no quedo una Plot propia para descartar'};
+S.players[P.byPid].hand.push(ixQ);
+      /* P1-060 — rollback del EMBEZZLEMENT. `pop()` quitaba "la ultima carta de la
+       * mano", que hoy ES `ixQ` solo por casualidad posicional: lo unico que se
+       * empujo a esa mano fue la linea 2239. Es la MISMA clase que P1-059 (un
+       * indice de mano asumido en lugar de la identidad) y el barrido §58 lo
+       * dejo como la ultima fragilidad viva del patron. Si alguna vez se abre
+       * una ventana de reaccion entre el push y el pop, `pop()` se llevaria una
+       * carta DISTINTA y `ixQ` quedaria duplicada en dos manos. Por identidad. */
+      var ixBack=S.players[P.claimedTo].hand.indexOf(ixQ);
+      if(ixBack>=0)S.players[P.claimedTo].hand.splice(ixBack,1);
+      res={ok:false,reason:'no quedo una Plot propia para descartar'};
       }else{
         hp.splice(at3,1);
         S.plotDiscard.push(pay);
