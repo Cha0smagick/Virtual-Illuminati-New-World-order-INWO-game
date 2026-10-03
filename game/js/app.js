@@ -165,6 +165,17 @@ var CB = {
     try { E.resolvePendingDraw(act || {}); after('Eleccion de robo resuelta'); }
     catch (e) { log('! ' + e.message); }
   },
+  /* L8c — 405 Unlucky 13: la ventana de comienzo de turno se cierra desde aqui.
+   * El play usa humanPid(), NO currentPid: durante la ventana currentPid apunta
+   * al jugador cuyo turno va a empezar (el objetivo), no al que reacciona. */
+  onTurnStartPlay: function (handIdx) {
+    try { E.playPlot(humanPid(), handIdx, null, {}); after('Unlucky 13 jugado'); }
+    catch (e) { log('! ' + e.message); }
+  },
+  onTurnStartPass: function () {
+    try { E.resolvePendingTurnStart({ pass: true }); after('Los rivales dejan pasar el comienzo del turno'); }
+    catch (e) { log('! ' + e.message); }
+  },
   onMoveGroup: function (uid, newParentUid) { E.moveGroup(E.getState().currentPid, uid, newParentUid); after('Grupo movido'); },
   onEndTurn: function () { endTurnFlow(); }
 };
@@ -271,6 +282,10 @@ function afterAdvance() {
   if (checkOver(st)) return;
   var cur = st.players[st.currentPid];
   if (!cur) return;
+  /* L8c — 405: igual que maybeRunAI: la ventana de comienzo de turno bloquea el
+   * turno del proximo jugador; endTurn abre la ventana y retorna sin beginTurn,
+   * asi que aqui el turno del IA no puede arrancar todavia (P1-047). */
+  if (st.pendingTurnStart) return;
   if (!cur.human) { runAI(st.currentPid); return; }
   if (countHumans(st) > 1) window.UI.showCurtain('Pasa el dispositivo a ' + cur.name, function () { refresh(); });
 }
@@ -323,6 +338,10 @@ function finishAITurn(pid) {
 function maybeRunAI() {
   var st = E.getState();
   if (st.phase === 'gameover' || busyAI) return;
+  /* L8c — 405: la ventana de comienzo de turno bloquea el turno del proximo
+   * jugador hasta que el humano decida. Sin esta guarda runAI arrancaria el
+   * turno del IA con la ventana abierta y 405 seria injugable (P1-047). */
+  if (st.pendingTurnStart) return;
   var cur = st.players[st.currentPid];
   if (cur && !cur.human) runAI(st.currentPid);
 }

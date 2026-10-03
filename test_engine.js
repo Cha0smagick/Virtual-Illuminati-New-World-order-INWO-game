@@ -11,7 +11,10 @@ function assert(c, m) { if (!c) { console.error('FAIL: ' + m); process.exitCode 
 
 assert(window.INWO_CARDS.cards.length === 421, '421 cards loaded');
 
-var st = E.newGame([{ name: 'Alice', human: false }, { name: 'Bob', human: true }]);
+/* L8c (P1-053): Bob human:false — ningun assert lee el flag, y con human:true la
+   405 del reparto inicial aleatorio abria la ventana de comienzo de turno
+   (S.pendingTurnStart) a mitad del smoke test y rompia la simulacion. */
+var st = E.newGame([{ name: 'Alice', human: false }, { name: 'Bob', human: false }]);
 assert(st.players.length === 2, 'newGame ok');
 
 var avail = E.availableIlluminati();

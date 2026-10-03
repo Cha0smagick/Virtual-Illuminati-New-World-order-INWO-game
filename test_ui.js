@@ -22,7 +22,11 @@ global.alert = m => console.log('[alert]', m);
 require('./game/js/ui.js');
 
 try {
-  E.newGame([{ name: 'P1', human: true }, { name: 'IA', human: false }]);
+  /* L8c (P1-053): human:false — la 405 del reparto inicial aleatorio abria la
+     ventana de comienzo de turno (S.pendingTurnStart) a mitad del smoke test y
+     rompia su supuesto de fase. El render funciona sin humanos (hp=-1 salta el
+     bloque de mano) y takeTurn se llama por currentPid igual. */
+  E.newGame([{ name: 'P1', human: false }, { name: 'IA', human: false }]);
   const av = E.availableIlluminati();
   E.setIlluminati(0, av.filter(c => c.id.indexOf('bavarianilluminati') === 0)[0].id);
   E.setIlluminati(1, av.filter(c => c.id.indexOf('servantsofcthulhu') === 0)[0].id);

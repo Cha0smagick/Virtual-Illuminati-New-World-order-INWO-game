@@ -622,6 +622,29 @@ function attackPanel(st) {
     }
     $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar">' + dh + '</div>');
   }
+  /* L8c — 405 Unlucky 13: ventana de COMIENZO DE TURNO. A diferencia de las otras
+   * ventanas, aqui el efecto ES la decision: jugar la carta o dejar pasar. El motor
+   * solo la abre si un HUMANO distinto del jugador del turno tiene 405 en mano, y
+   * bloquea el turno hasta que se resuelva (E.endTurn y maybeRunAI/afterAdvance la
+   * respetan). El objetivo no se elige a mano: es el jugador cuyo turno va a
+   * empezar. La mano propia ya esta proyectada, asi que el boton se decide aqui
+   * buscando la 405 en las manos humanas. */
+  var TS = st.pendingTurnStart;
+  if (TS) {
+    var tsP = -1, tsIx = -1;
+    for (var tsQ = 0; tsQ < st.players.length; tsQ++) {
+      if (!st.players[tsQ].human || tsQ === TS.forPid) continue;
+      var tsHand = st.players[tsQ].hand || [];
+      for (var tsR = 0; tsR < tsHand.length; tsR++) {
+        if (C.cards[tsHand[tsR]] && C.cards[tsHand[tsR]].id === 'unlucky13') { tsP = tsQ; tsIx = tsHand[tsR]; break; }
+      }
+      if (tsP >= 0) break;
+    }
+    var tsHtml = '<b>⏳ Comienzo del turno de ' + esc(TS.forName) + '</b>: los rivales pueden reaccionar. ';
+    if (tsP >= 0) tsHtml += '<button data-act="turnstartplay" data-i="' + tsIx + '" title="Requiere la accion de un grupo Magic">Jugar Unlucky 13</button> ';
+    tsHtml += '<button data-act="turnstartpass" title="Dejar comenzar el turno sin reaccionar">Pasar</button>';
+    $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar">' + tsHtml + '</div>');
+  }
   var P = st.pendingAttack;
   if (P) {
     $('actionBtns').insertAdjacentHTML('afterbegin',
@@ -842,7 +865,10 @@ function isOwnNode(uid) {
  *
  * La lista se compara contra `kind`, no contra ids de carta, por el mismo motivo
  * documentado en la lista `instant` del motor. */
-var NO_TARGET_KINDS = ['token_gift', 'attack_boost', 'deck_manip'];
+/* L8c — 'turn_start_block' (405 Unlucky 13) se anade: apunta a un rival JUGADOR
+ * (el cuyo turno va a empezar), no a un grupo; su boton vive en el panel de la
+ * ventana de comienzo de turno, no en el selector de objetivo. */
+var NO_TARGET_KINDS = ['token_gift', 'attack_boost', 'deck_manip', 'turn_start_block'];
 /* L8a — MENU DE MANIPULACION DE MAZO (361 Savings & Loan Scam, 388 The Big Sellout,
  * 411 Voodoo Economics).
  *
@@ -1033,6 +1059,11 @@ function handClick(ix) {
    * "Jugar Plot ahora" generico: ese camino llama a onPlayPlot sin `opts`, que para
    * estas tres cartas significaria jugar siempre el caso minimo (0 descartes). */
   var isDeck = c.type === 'plot' && c.effect && c.effect.kind === 'deck_manip';
+  /* L8c — 405: lleva SU boton en el panel de la ventana de comienzo de turno, no
+   * aqui: fuera de la ventana "Jugar Plot ahora" siempre fallaria (no hay
+   * S.pendingTurnStart) y el objetivo no se elige a mano (es el jugador cuyo
+   * turno va a empezar). */
+  var isTurnStart = c.type === 'plot' && c.effect && c.effect.kind === 'turn_start_block';
   var deckEntry = isDeck
     ? (c.effect.mode === 'draw'
       ? { label: '🃏 Gastar la acción de un grupo y ROBAR 3 Plot cards de mi mazo', value: 'deckDraw' }
@@ -1048,7 +1079,7 @@ function handClick(ix) {
     isEventCard && !canReactEvent ? { label: '❓ ¿Cuándo sirve esta carta?', value: 'infoEvent' } : null,
     isCancelCard && !canCancel ? { label: 'ℹ ¿Cuándo sirve esta carta?', value: 'infoCancel' } : null,
     deckEntry,
-    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
+    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck && !isTurnStart) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
     c.type === 'plot' ? { label: 'ℹ ¿Cuándo sirven los Plots?', value: 'info' } : null,
     c.type !== 'illuminati' ? { label: '🗑 Descartar', value: 'discard' } : null,
     { label: 'Cancelar', value: null }
@@ -1298,6 +1329,8 @@ function bindEvents() {
     else if (act === 'drawrestbot') { drawRest = 'bottom'; render(curState); }
     else if (act === 'drawpick') { clearSel(); CB.onResolveDraw({ pick: parseInt(btn.getAttribute('data-i'), 10), rest: drawRest }); }
     else if (act === 'drawtake') { clearSel(); CB.onResolveDraw({ take: btn.getAttribute('data-v') }); }
+    else if (act === 'turnstartplay') { clearSel(); CB.onTurnStartPlay(parseInt(btn.getAttribute('data-i'), 10)); }
+    else if (act === 'turnstartpass') { clearSel(); CB.onTurnStartPass(); }
     else if (act === 'privilege') { CB.onTogglePrivilege(); }
       else if (act === 'aid') { sel = { mode: 'aid', data: {} }; render(curState); }
       else if (act === 'oppose') { sel = { mode: 'oppose', data: {} }; render(curState); }

@@ -5278,6 +5278,225 @@ function readyToAttack(pid) {
     'L8b S6 la ventana es idempotente: un segundo cierre no hace nada');
 })();
 
+/* ---------- L8c - VENTANA DE COMIENZO DE TURNO (405 Unlucky 13) ---------- */
+(function(){
+  function rawL8c(){ return E._raw(); }
+  function copiesOfL8c(list,ix){ var n=0; for(var i=0;i<list.length;i++) if(list[i]===ix)n++; return n; }
+  function saidL8c(re){ return rawL8c().log.some(function(l){ return (l.msg||'').match(re); }); }
+  function freshL8c(illu0,illu1){
+    E.newGame([{name:'Tu',human:true},{name:'Rival'}]);
+    E.setIlluminati(0,illu0||firstOf('ufos'));
+    E.setIlluminati(1,illu1||firstOf('adepts'));
+    E.startGame();
+  }
+  function toHumanTurnL8c(){
+    for(var g=0;g<12;g++){
+      var st=E.getState();
+      if(st.phase==='main'&&st.currentPid===0)return;
+      E.endTurn();
+    }
+    throw new Error('no se alcanzo el turno del humano');
+  }
+  function pullPlotL8c(pid,ix){
+    var r=rawL8c();
+    if(r.plotDeck.indexOf(ix)<0){
+      /* el reparto inicial es aleatorio: la carta puede haber caido en una mano,
+         expuesta o en el descarte. Consolidarla en el mazo antes de moverla
+         (regla 13: un fixture no puede depender del reparto aleatorio). */
+      for(var p=0;p<r.players.length;p++){
+        var h=r.players[p].hand;
+        var hi=h.indexOf(ix);
+        if(hi>=0){h.splice(hi,1);r.plotDeck.push(ix);break;}
+        var xpi=(r.players[p].exposedPlots||[]).indexOf(ix);
+        if(xpi>=0){r.players[p].exposedPlots.splice(xpi,1);r.plotDeck.push(ix);break;}
+      }
+      var dxi=r.plotDiscard.indexOf(ix);
+      if(r.plotDeck.indexOf(ix)<0&&dxi>=0){r.plotDiscard.splice(dxi,1);r.plotDeck.push(ix);}
+    }
+    var di=r.plotDeck.indexOf(ix);
+    if(di<0)throw new Error('la carta no esta en el mazo de plots');
+    r.plotDeck.splice(di,1);
+    r.players[pid].hand.push(ix);
+  }
+  function deckOnlyL8c(ix){ /* devuelve la carta al mazo si el reparto la dejo en una mano, expuesta o en el descarte */
+    var r=rawL8c();
+    if(r.plotDeck.indexOf(ix)>=0)return;
+    for(var p=0;p<r.players.length;p++){
+      var h=r.players[p].hand;
+      var hi=h.indexOf(ix);
+      if(hi>=0){h.splice(hi,1);r.plotDeck.push(ix);return;}
+      var xpi=(r.players[p].exposedPlots||[]).indexOf(ix);
+      if(xpi>=0){r.players[p].exposedPlots.splice(xpi,1);r.plotDeck.push(ix);return;}
+    }
+    var dxi=r.plotDiscard.indexOf(ix);
+    if(dxi>=0){r.plotDiscard.splice(dxi,1);r.plotDeck.push(ix);}
+  }
+  function plotsOfL8c(pid){ return rawL8c().players[pid].hand.filter(function(ix){return C.cards[ix].type==='plot';}).length; }
+
+  /* P1-050: no existe NINGUN pagador Magic en el mazo (0 grupos con 'magic' en
+   * 421 cartas, las 18 Illuminati con alignments vacias = P1-032, 0 recursos con
+   * 'magic'). El test double permite probar la MECANICA del coste (que un grupo
+   * Magic SI puede pagar) sin inventar datos de cartas: se muta la alineacion de
+   * un grupo real durante los escenarios y se RESTAURA al final (try/finally). */
+  var mgIdxL8c=-1;
+  for(var mgL8c=0;mgL8c<C.cards.length;mgL8c++){
+    var mgCardL8c=C.cards[mgL8c];
+    if(mgCardL8c.type==='group'&&(mgCardL8c.power|0)>=3){ mgIdxL8c=mgL8c; break; }
+  }
+  var mg2IdxL8c=-1;
+  for(var mg2L8c=0;mg2L8c<C.cards.length;mg2L8c++){
+    if(C.cards[mg2L8c].type==='group'&&mg2L8c!==mgIdxL8c){ mg2IdxL8c=mg2L8c; break; }
+  }
+  var mgOrigL8c=C.cards[mgIdxL8c].alignments;
+  C.cards[mgIdxL8c].alignments=['magic'];
+  try{
+    /* L8c S1: la ventana SOLO se abre si un rival HUMANO tiene 405; sin 405 en
+       juego, endTurn corre beginTurn sincrono como siempre (blast radius cero). */
+    freshL8c();
+    /* la 405 puede haber caido en una mano por el reparto inicial aleatorio:
+       devolverla al mazo para que "sin 405 en ninguna mano" sea cierto. */
+    deckOnlyL8c(idxOfId('unlucky13'));
+    var tS0=rawL8c().turn;
+    E.endTurn();
+    ok(E.getState().phase==='main'&&!E.getState().pendingTurnStart&&rawL8c().turn===tS0+1,
+      'L8c S1 sin 405 en ninguna mano: endTurn corre beginTurn sincrono, sin ventana');
+    toHumanTurnL8c();
+    var ixU1=idxOfId('unlucky13');
+    pullPlotL8c(0,ixU1);
+    var tS1=rawL8c().turn;
+    E.endTurn();
+    ok(!!E.getState().pendingTurnStart&&E.getState().pendingTurnStart.forPid===1,
+      'L8c S1 el humano con 405 abre la ventana para el rival (forPid=1)');
+    ok(E.getState().phase==='begin'&&E.getState().currentPid===1&&rawL8c().turn===tS1,
+      'L8c S1 la ventana bloquea: phase=begin, currentPid=1, el turno NO avanzo');
+    /* S1b: el humano NO puede bloquear el comienzo de su PROPIO turno. */
+    E.resolvePendingTurnStart({pass:true});
+    E.endTurn();
+    ok(E.getState().phase==='main'&&E.getState().currentPid===0&&!E.getState().pendingTurnStart,
+      'L8c S1b el comienzo del turno del humano no abre ventana (no auto-bloqueo)');
+
+    /* L8c S2: jugar 405 paga una accion Magic, pone la bandera y el rival no roba. */
+    freshL8c();
+    toHumanTurnL8c();
+    plant(0,'nL8cMG',mgIdxL8c,1);
+    pullPlotL8c(0,idxOfId('unlucky13'));
+    E.endTurn();
+    ok(!!E.getState().pendingTurnStart,'L8c S2 la ventana esta abierta tras endTurn');
+    /* el jugador inicial de startGame es ALEATORIO: los valores de turno son
+       relativos al turno de la ventana (tw), nunca absolutos. */
+    var twS2=rawL8c().turn;
+    E.playPlot(0,idxOfId('unlucky13'),null,{});
+    ok(rawL8c().players[1].flags.noPlotUntilTurnEnd===twS2+1,
+      'L8c S2 la bandera del rival vale el turno que va a empezar ('+(twS2+1)+')');
+    ok(rawL8c().players[0].structure.children[0].tokens===0,
+      'L8c S2 el grupo Magic pago la accion (ficha 1 -> 0)');
+    ok(E.getState().phase==='main'&&E.getState().currentPid===1&&rawL8c().turn===twS2+1,
+      'L8c S2 el turno del rival empezo (beginTurn corrio dentro del case)');
+    throws(function(){E.drawPlot(1);},/Unlucky 13/,
+      'L8c S2 el rival bloqueado no puede robar Plot cards');
+    throws(function(){E.drawPlot(1);},/Unlucky 13/,
+      'L8c S2 segunda intentona de robo tambien bloqueada');
+    ok(copiesOfL8c(rawL8c().players[0].hand,idxOfId('unlucky13'))===0&&rawL8c().plotDiscard.indexOf(idxOfId('unlucky13'))>=0,
+      'L8c S2 la 405 se descarto al jugarse (P1-025: el tail de playPlot)');
+
+    /* L8c S3: pasar cierra la ventana y el turno corre normal, sin bandera. */
+    freshL8c();
+    toHumanTurnL8c();
+    pullPlotL8c(0,idxOfId('unlucky13'));
+    E.endTurn();
+    var twS3=rawL8c().turn;
+    E.resolvePendingTurnStart({pass:true});
+    var stS3=E.getState(), trS3=rawL8c().turn;
+    ok(stS3.phase==='main'&&stS3.currentPid===1&&trS3===twS3+1,
+      'L8c S3 pasar deja correr el turno del rival -> phase='+stS3.phase+' pid='+stS3.currentPid+' turn='+trS3+' (era '+twS3+')');
+    ok(!E.getState().pendingTurnStart&&!rawL8c().players[1].flags.noPlotUntilTurnEnd,
+      'L8c S3 sin bandera: el rival puede robar');
+    E.drawPlot(1);
+    ok(rawL8c().players[1].flags.plotDrawn===true,
+      'L8c S3 el rival robo su Plot normal');
+
+    /* L8c S4: la bandera caduca al empezar un turno posterior al bloqueado. */
+    freshL8c();
+    toHumanTurnL8c();
+    plant(0,'nL8cMG',mgIdxL8c,1);
+    pullPlotL8c(0,idxOfId('unlucky13'));
+    E.endTurn();
+    E.playPlot(0,idxOfId('unlucky13'),null,{});
+    E.endTurn();
+    ok(rawL8c().players[1].flags.noPlotUntilTurnEnd===0,
+      'L8c S4 la bandera se limpio al empezar el turno siguiente');
+    ok(saidL8c(/puede volver a robar Plot cards/),
+      'L8c S4 el log declara la caducidad');
+    E.endTurn();
+    E.drawPlot(1);
+    ok(rawL8c().players[1].flags.plotDrawn===true,
+      'L8c S4 en su siguiente turno el rival vuelve a robar Plot cards');
+
+    /* L8c S5: fuera de la ventana el case rechaza con su razon y no toca nada. */
+    freshL8c();
+    toHumanTurnL8c();
+    pullPlotL8c(0,idxOfId('unlucky13'));
+    throws(function(){E.playPlot(0,idxOfId('unlucky13'),null,{});},/no hay ventana/,
+      'L8c S5 fuera de la ventana el case rechaza');
+    ok(copiesOfL8c(rawL8c().players[0].hand,idxOfId('unlucky13'))===1,
+      'L8c S5 la 405 sigue en la mano (el throw no ejecuta el tail)');
+    ok(!rawL8c().players[1].flags.noPlotUntilTurnEnd,
+      'L8c S5 sin bandera: nada se toco');
+
+    /* L8c S6: "for any reason" alcanza a 361 (deck_manip draw) y al canje, pero
+       NO a drawGroup. El chequeo de 405 va ANTES del coste de 361. */
+    freshL8c();
+    toHumanTurnL8c();
+    plant(0,'nL8cMG',mgIdxL8c,1);
+    plant(1,'nL8cR1',mg2IdxL8c,1);
+    pullPlotL8c(0,idxOfId('unlucky13'));
+    E.endTurn();
+    E.playPlot(0,idxOfId('unlucky13'),null,{});
+    var ix361=idxOfId('savingsloanscam');
+    pullPlotL8c(1,ix361);
+    throws(function(){E.playPlot(1,ix361,null,{});},/Unlucky 13/,
+      'L8c S6 361 (for any reason) tambien queda bloqueada');
+    ok(rawL8c().players[1].structure.children[0].tokens===1&&copiesOfL8c(rawL8c().players[1].hand,ix361)===1,
+      'L8c S6 el chequeo va antes del coste: la ficha del grupo de R1 no se gasto y la 361 sigue en la mano');
+    E.drawGroup(1);
+    ok(rawL8c().players[1].flags.groupDrawn===true,
+      'L8c S6 drawGroup NO esta bloqueada (solo Plots)');
+    throws(function(){E.exchangeForPlot(1,{illum:true});},/Unlucky 13/,
+      'L8c S6 el canje de tokens por Plot tambien queda bloqueado');
+    ok(rawL8c().players[1].illumTokens>0,
+      'L8c S6 el canje rechazo ANTES de cobrar (nada que devolver)');
+
+    /* L8c S7: el autoDraw de The Network TAMBIEN respeta el bloqueo (P1-048). */
+    freshL8c(firstOf('ufos'),firstOf('network'));
+    /* idem S1: la 405 del reparto inicial abre la ventana y bloquearia el turno de
+       R1 antes del control positivo. Al mazo primero. */
+    deckOnlyL8c(idxOfId('unlucky13'));
+    toHumanTurnL8c();
+    /* el jugador inicial es aleatorio: R1 puede no haber tomado el turno 1. Se
+       le da un turno propio (endTurn) para que el autoDraw dispare AL MENOS una
+       vez, y el control positivo busca el log sin importar el turno. */
+    E.endTurn();
+    ok(saidL8c(/Plot cards al inicio del turno \(The Network\)/),
+      'L8c S7 control positivo: el turno de R1 robo 2 Plots al inicio');
+    var rL8c=rawL8c();
+    var movedL8c=0;
+    for(var hqL8c=rL8c.players[1].hand.length-1;hqL8c>=0&&movedL8c<2;hqL8c--){
+      if(C.cards[rL8c.players[1].hand[hqL8c]].type==='plot'){ rL8c.plotDeck.push(rL8c.players[1].hand[hqL8c]); rL8c.players[1].hand.splice(hqL8c,1); movedL8c++; }
+    }
+    ok(movedL8c===2&&plotsOfL8c(1)===3,
+      'L8c S7 el rival Network queda con 3 Plots en mano (limite 5)');
+    plant(0,'nL8cMG',mgIdxL8c,1);
+    pullPlotL8c(0,idxOfId('unlucky13'));
+    E.endTurn();
+    E.endTurn();
+    E.playPlot(0,idxOfId('unlucky13'),null,{});
+    ok(plotsOfL8c(1)===3,
+      'L8c S7 el autoDraw de Network quedo BLOQUEADO (3 -> 3; sin bandera seria 3 -> 5)');
+  } finally {
+    C.cards[mgIdxL8c].alignments=mgOrigL8c;
+  }
+})();
+
 /* ---------- Utilidad global: resolver un ataque SIN ventanas de reaccion ----------
    P1-021 (ventana de RODADERO) hace que, tras tirar los dados, el motor pare y
    espere si alguien tiene una de las 6 cartas de rodadero en la mano. Los tests

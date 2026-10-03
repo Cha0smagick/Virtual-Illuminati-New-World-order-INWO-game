@@ -5187,3 +5187,195 @@ descartes). Y `deck_manip` entra en `NO_TARGET_KINDS` porque no tienen grupo OBJ
   Weird Studies, 335 Perpetual Motion Machine) siguen sin mecanismo:
   `placeBonusAction` ya existe y les sirve, pero cada una necesita su propia
   condicion de pago.
+
+---
+
+## 54. L8c 405 UNLUCKY 13 (P1-047, P1-048, P1-050, P1-053)
+
+### Hallazgo
+
+**405 Unlucky 13** (OCR, texto impreso verbatim):
+
+> Play this card on a rival at the very beginning of his turn. He can draw no
+> Plot cards, for any reason, until after his current turn ends. This requires
+> an action. Requires Magic Action
+
+Es la primera carta del mazo cuya ventana de reaccion NO es "durante el turno
+de alguien" sino "en el instante ANTERIOR a que empiece el turno de otro". El
+motor no tenia ninguna superficie para eso: las cinco ventanas que ya existian
+(`S.pendingDraw`, `S.pendingSteal`, `S.pendingExpose`, `S.pendingRob`,
+`S.pendingBlock`) se abren todas desde dentro de un turno ya empezado y se
+cierran todas en `E.endTurn`.
+
+Tres razones por las que 405 no cabía en ningun `kind` existente:
+
+1. El objetivo no es un grupo, es el JUGADOR cuyo turno va a empezar. Otra
+   subspecies de objetivo, como la de las cartas que apuntan a una mano.
+2. El timing es una ventana nueva (`S.pendingTurnStart`) que se abre desde
+   `E.endTurn` ANTES de `E.beginTurn`, no despues.
+3. El efecto es una NEGACION DE ROBO ("for any reason"), no una manipulacion de
+   mazo. No es `deck_manip`, no es `draw_hook`, no es `event_negation`.
+
+`kind` nuevo: **`turn_start_block`**.
+
+### Correcciones
+
+- **engine.js**
+  - `S.pendingTurnStart = null` en `E.newGame`.
+  - `publicState()` proyecta la ventana como `{forPid, forName}` SOLO. No
+    filtra ninguna mano: la UI busca el 405 dentro de la mano que ya tiene
+    proyectada, no necesita ninguna mano ajena.
+  - Helper `plotDrawBlocked(pid)`: `flags.noPlotUntilTurnEnd && S.turn <= flag`.
+  - `E.resolvePendingTurnStart(act)`: idempotente (sin ventana devuelve
+    `publicState()` sin tocar nada), loguea que los rivales dejan pasar el
+    comienzo, pone `phase='begin'` y llama a `E.beginTurn(W.forPid)`.
+  - Guard en `E.drawPlot` **antes** del check de `plotDrawn`.
+  - Guard en `E.exchangeForPlot` **antes** de cobrar nada: "for any reason"
+    incluye el canje de estrella.
+  - Guard en `case 'deck_manip'` cuando `mode==='draw'`, tambien antes del
+    coste: "for any reason" incluye la 361.
+  - `E.beginTurn`: el `autoDraw` de The Network ahora es
+    `if (autoDraw && !plotDrawBlocked(pid))`. La bandera se pone ANTES de llamar
+    a `beginTurn`, y esa es justo la razon: el bloqueo tiene que cubrir tambien
+    el robo sincrono del comienzo (P1-048).
+  - `expireTurnFlags`: limpia `noPlotUntilTurnEnd` cuando `S.turn > flag`,
+    logueando `<nombre> puede volver a robar Plot cards (Unlucky 13 caduca)`.
+  - `E.endTurn`: tras el guard de gameover y de calcular `next`, busca entre los
+    jugadores un HUMANO `!= next` con `id==='unlucky13'` en mano. Si lo hay,
+    pone `S.pendingTurnStart={forPid:next}`, `S.currentPid=next`,
+    `S.phase='begin'`, loguea y **devuelve SIN llamar a `beginTurn`**. Si no lo
+    hay, corre la ruta sincrona de siempre.
+  - `E.playPlot`: el gate `instant` acepta `eff0.kind==='turn_start_block'`.
+  - `case 'turn_start_block'`: valida TODO antes de mutar (sin ventana ->
+    throw; objetivo que no es el dueño de la ventana -> throw; sin grupo con
+    `alignments` que incluya `'magic'` -> throw con la razón oficial). Luego
+    `spendGroupToken`, pone `tgtTS.flags.noPlotUntilTurnEnd = S.turn+1`, loguea,
+    limpia `S.pendingTurnStart`, `phase='begin'`, `E.beginTurn(W2.forPid)` y
+    `lastResult={blocked,turn}`. Llamar a `beginTurn` dentro del case es seguro:
+    no toca la mano del actor, y el tail de `playPlot` que descarta la carta
+    jugada corre despues.
+- **ui.js**: barra propia de la ventana con dos botones, `data-act="turnstartplay"`
+  (con `data-i`) y `data-act="turnstartpass"`; `NO_TARGET_KINDS` gana
+  `'turn_start_block'`; `handClick` suprime la entrada generica "Jugar Plot
+  ahora" para ese kind, porque fuera de la ventana fallaria siempre.
+- **app.js**: `onTurnStartPlay(handIdx)` y `onTurnStartPass()`, con el mismo
+  patron try/catch + `after(...)` que el resto de acciones. `afterAdvance()` y
+  `maybeRunAI()` hacen `return` temprano con la ventana abierta, para que ni la
+  IA ni el telon de privacidad avancen el estado.
+- **gen_cards.js**: bloque `L8C_FX` / `L8C_FXN` con el texto verbatim, enganchado
+  a la cadena de resolucion de prefijos del manifiesto.
+
+### P1 findings (corregidos en este lote)
+
+- **P1-047** - La ventana se abre con `phase='begin'`, asi que `requireOwnMain`
+  rechaza el 405 SIEMPRE: sin tocar el gate, la carta era literalmente
+  injugable. El kind tiene que entrar por la puerta `instant`. Y el otro lado del
+  mismo hallazgo: `afterAdvance()` y `maybeRunAI()` avanzan el estado, de modo
+  que sin `return` temprano la partida se resuelve sola antes de que el humano
+  decida, o se queda colgada.
+- **P1-048** - Un bloqueo declarado "al principio del turno" no cubria el
+  `autoDraw` de The Network, porque `E.beginTurn` roba en ese mismo instante.
+  Poner la bandera antes de `beginTurn` es lo que lo cubre. Regresion S7, con
+  control positivo: sin la bandera el log seria `3 -> 5`.
+- **P1-050** - **El coste "Requires Magic Action" es IMPAGABLE en el mazo real.**
+  Hay 0 grupos con `'magic'` en `alignments`, las 18 Illuminati tienen
+  `alignments` vacias (P1-032) y hay 0 Resources con `'magic'`. La mecanica
+  queda implementada y el coste fallara con su razon oficial ("Requires Magic
+  Action") hasta que P1-032 rellene las alineaciones. La regresión NO inventa
+  data: toma un grupo real con `power>=3`, le pone `alignments=['magic']`
+  temporalmente como doble de test y lo restaura en un `finally`.
+- **P1-053** - El reparto inicial es aleatorio y puede dejar el 405 en la mano de
+  un HUMANO; entonces `E.endTurn` abria la ventana a mitad de un test
+  automatizado que asume `phase='main'` al cerrar turno. Cinco suites tocadas
+  (`test_p0_invariants`, `test_appflow`, `test_engine`, `test_ui`, y el caso base
+  de la regresion) ponen ese asiento en `human:false`. El arreglo correcto NO es
+  estabilizar el test ni sembrar el mazo: es que un test de motor no declare un
+  humano que no va a decidir nada. `test_appflow` ademas simula al humano
+  pulsando Pass cuando la ventana aparece.
+
+### Blast radius
+
+**CERO** para toda partida sin 405. `E.endTurn` solo abre la ventana si encuentra
+el id en la mano de un humano distinto del siguiente jugador; si no, corre la
+ruta sincrona de siempre. Por eso 5190 lineas de motor y las 10 suites siguen
+intactas salvo por una rama. El primer turno NO abre la ventana porque
+`startGame` no es un punto de reaccion ("regla 10": el jugador que/setup no puede
+reaccionar a si mismo).
+
+### Verificacion
+
+- `node --check` limpio en los 12 archivos tocados o relacionados: `engine.js`,
+  `ui.js`, `app.js`, `ai.js`, `cards.js`, `gen_cards.js`, `test_fase2_rules.js`,
+  `test_fase4_cards.js`, `test_p0_invariants.js`, `test_appflow.js`,
+  `test_engine.js`, `test_ui.js`.
+- `node gen_cards.js` -> `texto secundario recuperado del HTML de Scribd: 14` /
+  `written 421 {"group":167,"illuminati":18,"plot":201,"resource":35}
+  verified-groups 33`. Identico a §53: sin deriva de datos.
+- Las 10 suites en verde. Gate de FASE 4 recalibrado para el lote:
+  **133 clasificadas** (antes 132), **115 Plots/Resources sin mecanica**
+  (antes 116), techo `MAX_PENDING_PLR` 176, minimo implementado 53.
+- Regresion nueva en `test_fase2_rules.js`: **7 escenarios** bajo el ancla
+  `/* ---------- L8c - 405 UNLUCKY 13 ---------- */`. Cada escenario arranca con
+  su propio `freshL8c()`: S1 blast radius cero (sin 405 la ventana nunca se abre;
+  con 405 se abre para el rival correcto), S3 paso de los rivales, S4 caducidad
+  del flag y el robo normal se restablece, S5 jugar fuera de la ventana lanza y NO consume
+  la carta ni el flag, S6 "for any reason" (361 `deck_manip draw` lanza SIN
+  gastar el token y sin sacar la carta de la mano, `drawGroup` sigue funcionando,
+  `exchangeForPlot` lanza sin cobrar la illumination), S7 el autoDraw del Network
+  respeta el bloqueo con control positivo `3 -> 3` (sin bandera seria `3 -> 5`).
+- **30/30 corridas consecutivas** de `test_fase2_rules` + `test_fase4_cards` +
+  `test_p0_invariants` (90 ejecuciones, 0 fallos).
+
+### Limites declarados
+
+- **Hot-seat.** `humanPid()` (`app.js:28`) devuelve el PRIMER jugador con
+  `human:true` (siempre 0 en hot-seat), limitacion preexistente de toda la app y
+  documentada en `app.js:34-36` para el camino del telon. `onTurnStartPlay` la
+  hereda. Como solo hay una copia del 405, hay como mucho un titular, pero en un
+  hot-seat de 2 humanos su identidad puede quedar mal atribuida. No es una
+  regresion de L8c: queda anotado como limitacion conocida.
+
+### Lecciones
+
+1. **Una ventana nueva es una puerta nueva dentro de `E.endTurn`, y `E.endTurn`
+   es el UNICO sitio donde se puede abrir.** El trabajo no era el motor de la
+   carta: era que el hook tenia que ir antes de `beginTurn` y no despues, y que
+   cualquier otra superficie que robe en ese mismo instante (el autoDraw del
+   Network) respete la bandera.
+2. **La fase durante la ventana importa tanto como la ventana.** `phase='begin'`
+   mas `requireOwnMain` es una carta inyectada. La puerta `instant` existe
+   justamente para las cartas cuya legitimidad depende del MOMENTO y no del turno
+   del actor; sin ella, 405 era injugable y nadie lo notaba porque no habia
+   ninguna prueba que la jugara.
+3. **Un coste que el mazo no puede pagar se DECLARA, no se perdona.** Con 0
+   fuentes de Magic, relajar el requisito habria sido inventar una regla para que
+   la carta pareciese funcionar. Lo correcto es implementar la mecanica completa y
+   dejar que el fallo diga la verdad oficial.
+4. **Un test automatizado que asume la fase se rompe solo con un reparto
+   aleatorio.** La tentacion es estabilizar el test sembrando el mazo; el
+   arreglo correcto es que el test de motor no declare un humano que no va a
+   decidir nada.
+5. **"Blast radius cero" hay que PROBARLO, no declararlo.** La comprobacion
+   "¿alguien tiene 405?" dentro de `E.endTurn` es lo que permite que un lote de
+   este tamano no toque el comportamiento de ninguna partida que no juegue la
+   carta.
+
+### Backlog
+
+- **P1-041 (abierto, hueco de motor)** - Mazos de Plot POR JUGADOR. Desbloquea
+  191 y 395 y es la misma subspecies que necesitan las cartas de "robar del mazo
+  de un rival" en general. Decision de arquitectura, no arreglo local:
+  `S.plotDeck` es global y lo usan `drawFrom`, `E.drawPlot`,
+  `E.exchangeForPlot`, el reparto inicial y `publicState().deckCounts`.
+- **P1-032 / L9 - EDITAR ALINEACIONES pasa a ser BLOQUEANTE de 405.** Con 0
+  grupos, 0 Resources y 0 Illuminati con `'magic'`, el 405 no se puede pagar en
+  una partida real. L9 era "pendiente"; ahora es la unica palanca que convierte
+  la mecanica de 405 en jugable de verdad.
+- **Desviacion preexistente, NO tocada aqui** - `E.beginTurn` solo sube las
+  fichas a 1 y nunca las pone a 0, asi que las fichas de accion sin gastar se
+  arrastran de un turno al siguiente. El juego oficial dice que se pierden al
+  final del turno; arreglarlo de raiz es un lote propio.
+- **Los otros 4 PRINT de token extra** (12 Brazil, 61 Hawaii, 215 Center for
+  Weird Studies, 335 Perpetual Motion Machine) siguen sin mecanismo:
+  `placeBonusAction` ya existe y les sirve, pero cada una necesita su propia
+  condicion de pago.

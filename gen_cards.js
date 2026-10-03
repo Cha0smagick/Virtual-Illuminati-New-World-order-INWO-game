@@ -1799,6 +1799,20 @@ const L8B_FX = {
 };
 const L8B_FXN = {};
 Object.keys(L8B_FX).forEach(function (k) { L8B_FXN[k] = L8B_FX[k]; });
+/* L8c — 405 Unlucky 13: "Play this card on a rival at the very beginning of his
+ * turn. He can draw no Plot cards, for any reason, until after his current turn
+ * ends. This requires an action. Requires Magic Action" (OCR, sin transcripcion
+ * secundaria). kind 'turn_start_block': el timing ES la ventana (S.pendingTurnStart,
+ * que abre E.endTurn entre turnos). P1-050: hoy el coste es IMPAGABLE en un juego
+ * real (0 grupos con 'magic' en todo el mazo, las 18 Illuminati con alignments
+ * vacias = P1-032, 0 recursos con 'magic'); la mecanica queda implementada y el
+ * coste fallara con su razon oficial hasta que P1-032 rellene las alineaciones. */
+const L8C_FX = {
+  'unlucky13': { kind:'turn_start_block', magicAction:true,
+    t:'Play this card on a rival at the very beginning of his turn. He can draw no Plot cards, for any reason, until after his current turn ends. This requires an action. Requires Magic Action' }
+};
+const L8C_FXN = {};
+Object.keys(L8C_FX).forEach(function (k) { L8C_FXN[k] = L8C_FX[k]; });
 for (const k in L8A_FX) { L8A_FXN[norm(k)] = L8A_FX[k]; }
 
 const L7_FX = {
@@ -2097,7 +2111,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key];
   if (pfx) {
     rec.effect = pfx;
     rec.subtype = pfx.kind;

@@ -56,8 +56,13 @@ for (var round = 0; round < 8; round++) {
 
   var beforePid = pid;
   E.endTurn(); /* el motor avanza SOLO — igual que app.js corregido */
-  endTurns++;
+  /* L8c (P1-053): si la 405 del reparto inicial cayo en la mano del Humano,
+     endTurn abre la ventana de comienzo de turno (S.pendingTurnStart) y retorna
+     SIN avanzar el turno — igual que el app real, donde la UI espera la decision.
+     El test simula al humano que pulsa "Pasar". */
   var st3 = E.getState();
+  if (st3.pendingTurnStart) { E.resolvePendingTurnStart({ pass: true }); st3 = E.getState(); }
+  endTurns++;
   if (st3.phase !== 'gameover') {
     assert(st3.currentPid === (beforePid + 1) % 2,
       'endTurn avanza EXACTAMENTE al siguiente (era p' + beforePid + ', ahora p' + st3.currentPid + ') — SIN doble beginTurn');

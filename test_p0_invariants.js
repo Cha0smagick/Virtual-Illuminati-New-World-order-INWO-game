@@ -33,7 +33,10 @@ function run(name, fn) {
 function start(goalCount) {
   E.newGame([
     { name: 'Alice', human: false, goalCount: goalCount || 100 },
-    { name: 'Bob', human: true, goalCount: goalCount || 100 }
+    /* L8c (P1-053): human:false — ningun test p0 lee el flag, y con human:true la
+     405 del reparto inicial aleatorio abria la ventana de comienzo de turno
+     (S.pendingTurnStart) a mitad de los tests y rompia sus supuestos de fase. */
+  { name: 'Bob', human: false, goalCount: goalCount || 100 }
   ]);
   E.setIlluminati(0, 'bavarianilluminati1');
   E.setIlluminati(1, 'servantsofcthulhu2');

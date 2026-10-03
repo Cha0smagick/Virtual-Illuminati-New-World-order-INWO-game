@@ -423,7 +423,7 @@ Kind `align_rule`, unica cualificadora `alignMag`.
   **30/30** corridas seguidas de FASE 2.
 - **Aceptacion cumplida**: rival con 3 Plot ocultas, 303 deja elegir una, termina en mi mano y
   `pl.revealedBy` registra la exposicion.
-## [x] L8a - MANIPULACION DE MAZO Y ROBO (361, 388, 411) - CERRADO en §52
+## [x] L8a - MANIPULACION DE MAZO Y ROBO (361, 388, 411) - CERRADO en §52-§54
 
 > **La agrupacion de este lote era incorrecta y se ha deshecho midiendo carta por
 > carta** (2a vez que pasa, ver §51). Queda anotado para que no se repita:
@@ -437,8 +437,19 @@ Kind `align_rule`, unica cualificadora `alignMag`.
 >   de estrella no consume el robo normal), P1-043 (validar antes de cerrar la ventana),
 >   P1-044 (el robo sincrono no admite decisiones), P1-045 (`E.playResource` con if/else
 >   invisible para el gate de FASE 4), P1-046 (la IA no podia cerrar la quinta ventana).
-> - **L8c (pendiente)**: 405 Unlucky 13. Ventana de reactivo al principio del turno ajeno
->   + bandera auto-limpiante de "no roba Plot cards".
+> - **L8c (hecho, §54)**: 405 Unlucky 13. Ventana de reactivo al principio del turno ajeno
+>   + bandera auto-limpiante de "no roba Plot cards". `kind` nuevo
+>   `turn_start_block`: la ventana `S.pendingTurnStart` la abre `E.endTurn` ANTES de
+>   `beginTurn` (blast radius cero: solo se abre si un humano con el 405 en mano
+>   No es el siguiente jugador). El bloqueo se pone antes de `beginTurn` a proposito,
+>   para cubrir tambien el autoDraw del Network. Hallazgos P1-047 (la fase 'begin'
+>   + `requireOwnMain` hacian la carta injugable: tiene que entrar por `instant`;
+>   `afterAdvance`/`maybeRunAI` tienen que hacer return temprano), P1-048 (el
+>   autoDraw del Network no respetaba el bloqueo), P1-050 (el coste "Requires Magic
+>   Action" es IMPAGABLE: 0 grupos y 0 Resources con 'magic', 18 Illuminati con
+>   alignments vacias = P1-032 -> hace L9 BLOQUEANTE para 405) y P1-053 (el reparto
+>   aleatorio dejaba el 405 en mano de un humano y abria la ventana a mitad de
+>   tests automatizados).
 > - **BLOQUEADAS (P1-038)**: 191 y 395. El juego real tiene un mazo de Plot POR JUGADOR
 >   y este motor tiene UN `S.plotDeck` compartido. Congeladas en `BLOCKED_CARDS`.
 > - **REASIGNADA**: 282 Hitler's Brain NO es de mazo (disparador al destruir + restriccion
@@ -505,9 +516,9 @@ Kind `align_rule`, unica cualificadora `alignMag`.
 
 ## [ ] L14 - MANIPULACION DE TURNO
 
-- **Cartas (5)**: 364 Seize the Time! (roba el turno de otro) · 405 Unlucky 13 (ya en L8, aqui
-  solo el efecto de bloqueo de turno) · 408 Upheaval! · 354 Reorganization ·
-  298 / 299 Let's Get Organized (flechas de control).
+- **Cartas (5)**: 364 Seize the Time! (roba el turno de otro) · 405 Unlucky 13 (ENTREGADA
+  entera en L8c/§54, no queda nada de bloqueo de turno pendiente aqui) ·
+  408 Upheaval! · 354 Reorganization · 298 / 299 Let's Get Organized (flechas de control).
 - **Mecanica**: `turn_control`.
 - **Interpretaciones declaradas**: 364 "becomes your turn instead" se implementa como
   `S.currentPid = rival` + avanzar su contador de turno, que es el unico sentido literal posible;

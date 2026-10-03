@@ -344,7 +344,7 @@ E.newGame=function(configs){
   S={
       phase:'setup',turn:0,round:1,currentPid:-1,turnCompleted:false,
     players:[],groupDeck:[],plotDeck:[],groupDiscard:[],plotDiscard:[],
-    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,alignRule:null,log:[],uidCounter:100,winner:null,
+    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,alignRule:null,log:[],uidCounter:100,winner:null,
     config:{goalCount:(configs.goalCount||12)},
     lastRoll:null
   };
@@ -598,6 +598,10 @@ function publicState(){
    mode:S.pendingDraw.pick>1?'choose3':'choose1',exchanged:!!S.pendingDraw.exchanged,
    cards:S.pendingDraw.pool.map(function(ix){return {idx:ix,name:card(ix).name};})
  }:null):null,
+    /* L8c — 405: la ventana de comienzo de turno se proyecta SIN la mano de nadie:
+     * el UI decide su boton desde SU propia mano (que ya esta proyectada). */
+    pendingTurnStart:S.pendingTurnStart?{forPid:S.pendingTurnStart.forPid,
+      forName:S.players[S.pendingTurnStart.forPid]?S.players[S.pendingTurnStart.forPid].name:'?'}:null,
     players:S.players.map(function(pl,i){
       return {
         idx:i,name:pl.name,human:pl.human,illumId:pl.illumId,
@@ -1005,6 +1009,15 @@ function expireTurnFlags(){
         }
       }
     });
+    /* L8c — 405 Unlucky 13: la bandera de bloqueo de robo de Plots es a nivel de
+     * JUGADOR (no de nodo) y caduca cuando empieza un turno POSTERIOR al bloqueado:
+     * "He can draw no Plot cards ... until after his current turn ends". El chequeo
+     * doble (S.turn <= flag) en los puntos de robo hace el resto (plotDrawBlocked). */
+    var qpL8c=S.players[q];
+    if(qpL8c.flags&&qpL8c.flags.noPlotUntilTurnEnd&&S.turn>qpL8c.flags.noPlotUntilTurnEnd){
+      qpL8c.flags.noPlotUntilTurnEnd=0;
+      log(qpL8c.name+' puede volver a robar Plot cards (Unlucky 13 caduca)');
+    }
   }
 }
 E.beginTurn=function(pid,isFirst){
@@ -1060,7 +1073,10 @@ E.beginTurn=function(pid,isFirst){
      parte del inicio del turno, y se respeta el límite de Plots en mano de la
      facción (plotHandLimitOf: Gnomes de Zurich admite 6). */
   var autoDraw=illuEff(pid).drawPlotAtStart;
-  if(autoDraw){
+  /* L8c — 405: el autoDraw de The Network TAMBIEN respeta el bloqueo. La ventana se
+   * abre ANTES de beginTurn, asi que la bandera ya esta puesta cuando llega aqui:
+   * un bloqueo a mitad de turno no cubriria este camino (P1-048). */
+  if(autoDraw&&!plotDrawBlocked(pid)){
     var lim=plotHandLimitOf(pid);
     var got=0;
     for(var d=0;d<autoDraw;d++){
@@ -1086,6 +1102,10 @@ function drawFrom(deck,discard,kind){
 E.drawPlot=function(pid){
   requireOwnMain(pid);
   var pl=S.players[pid];
+  /* L8c — 405 Unlucky 13: "He can draw no Plot cards, for any reason, until after
+   * his current turn ends". Va delante del chequeo de plotDrawn: bloquear no es lo
+   * mismo que haber robado, y el mensaje debe decirlo. */
+  if(plotDrawBlocked(pid))throw new Error('Unlucky 13: no puedes robar Plot cards este turno');
   if(pl.flags.plotDrawn)throw new Error('Ya robaste tu carta de Plot este turno');
   if(S.pendingDraw)throw new Error('Primero resuelve la eleccion de robo pendiente');
   /* L8b: 233/367. El robo se APLAZA (las cartas ya estan en S.pendingDraw.pool) y el
@@ -1121,6 +1141,9 @@ E.drawGroup=function(pid){
 E.exchangeForPlot=function(pid,payment){
   requireOwnMain(pid);
   var pl=S.players[pid];
+  /* L8c — 405: "for any reason" incluye el canje. Va antes del pago: si el robo
+   * va a estar bloqueado, nada se gasta y no hay nada que devolver. */
+  if(plotDrawBlocked(pid))throw new Error('Unlucky 13: no puedes robar Plot cards este turno');
   var spentIllum=false;
   var spentGroups=[];
   try{
@@ -1329,6 +1352,30 @@ E.resolvePendingDraw=function(act){
   }
   return publicState();
 };
+/* ---------------- L8c: ventana de comienzo de turno (405 Unlucky 13) ---------------- */
+/* El bloqueo de robo de Plots: la bandera vale el NUMERO DE TURNO bloqueado; el
+ * chequeo doble (S.turn <= flag) es semantica precisa + higiene de expiracion:
+ * expireTurnFlags la limpia al empezar un turno posterior. Cuatro consumidores:
+ * E.drawPlot, E.exchangeForPlot, el modo draw de deck_manip y el autoDraw de
+ * The Network (P1-048). */
+function plotDrawBlocked(pid){
+  var plq=S.players[pid];
+  return !!(plq.flags&&plq.flags.noPlotUntilTurnEnd&&S.turn<=plq.flags.noPlotUntilTurnEnd);
+}
+/* PASS del comienzo de turno: nadie reacciona y el turno del proximo jugador corre.
+ * El PLAY de 405 NO va por aqui: va por E.playPlot (case 'turn_start_block'), que
+ * paga la accion Magic, pone la bandera y despues llama beginTurn. */
+E.resolvePendingTurnStart=function(act){
+  act=act||{};
+  var W=S.pendingTurnStart;
+  if(!W)return publicState(); /* idempotente: sin ventana no hay nada que hacer */
+  S.pendingTurnStart=null;
+  log('Los rivales dejan pasar el comienzo del turno de '+S.players[W.forPid].name);
+  S.phase='begin';
+  E.beginTurn(W.forPid);
+  return publicState();
+};
+
 function requireOwnMain(pid){
   if(S.phase!=='main')throw new Error('Fuera de la fase principal');
   if(pid!==S.currentPid)throw new Error('No es tu turno');
@@ -3060,7 +3107,12 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
      condicion mira `eff0.anyTime` y no el kind. Sin ese matiz las dos ownTurn
      quedarian jugables en el turno de cualquiera (defecto de clase "el dato existe
      pero se comparo contra la etiqueta equivocada"). */
-  ||(eff0.kind==='deck_manip'&&!!eff0.anyTime));
+  ||(eff0.kind==='deck_manip'&&!!eff0.anyTime)
+  /* L8c — 405 Unlucky 13: "Play this card on a rival at the very beginning of his
+   * turn". El timing ES la ventana (S.pendingTurnStart) y lo valida su case. Sin
+   * esta puerta requireOwnMain la rechazaria SIEMPRE: durante la ventana la fase
+   * es 'begin', no 'main' (P1-047). */
+  ||eff0.kind==='turn_start_block');
   if(instant){
     if(S.phase==='setup')throw new Error('No se pueden jugar Plot cards durante la preparación');
     if(S.phase==='gameover')throw new Error('La partida ha terminado');
@@ -4312,6 +4364,32 @@ case 'bulk_power':{
      *      rechazo dejaría al jugador sin ficha - P1-033);
      *   4. se abre la ventana, que aplica al cerrarse.
      */
+    case 'turn_start_block':{
+      /* L8c — 405 Unlucky 13. El timing ES la ventana: solo es jugable cuando
+       * S.pendingTurnStart esta abierto (lo abre E.endTurn, entre turnos), y el
+       * objetivo es el jugador cuyo turno va a empezar. REGLA DEL CASO: se valida
+       * TODO antes de tocar nada; beginTurn dentro del case es seguro porque nada
+       * toca la mano del actor y el tail de playPlot (descartar la carta jugada)
+       * corre despues. El coste "Requires Magic Action" se busca con
+       * firstUsableAid con filtro de alineacion Magic (SOLO grupos: la root
+       * Illuminati esta excluida por firstUsableAid; la cuestion de si la propia
+       * Illuminati puede pagar si es Magic queda para el lote de P1-032). */
+      var plTS=S.players[pid];
+      var W2=S.pendingTurnStart;
+      if(!W2)throw new Error(c.name+': solo es jugable al comienzo del turno de un rival (no hay ventana de reaccion abierta)');
+      if(W2.forPid===pid)throw new Error(c.name+': no puedes bloquear el comienzo de tu propio turno');
+      var aidTS=firstUsableAid(pid,function(cTS){return cTS.alignments&&cTS.alignments.indexOf('magic')>=0;});
+      if(!aidTS)throw new Error(c.name+': Requires Magic Action: se necesita la accion de un grupo Magic');
+      spendGroupToken(pid,aidTS.uid);
+      var tgtTS=S.players[W2.forPid];
+      tgtTS.flags.noPlotUntilTurnEnd=S.turn+1;
+      log(c.name+': '+plTS.name+' bloquea el robo de Plot cards de '+tgtTS.name+' hasta el final de su turno');
+      S.pendingTurnStart=null;
+      S.phase='begin';
+      E.beginTurn(W2.forPid);
+      lastResult={blocked:tgtTS.name,turn:tgtTS.flags.noPlotUntilTurnEnd};
+      break;
+    }
     case 'deck_manip':{
       /* L8a — 361 Savings & Loan Scam / 388 The Big Sellout / 411 Voodoo Economics.
        * Las tres son una sola rama porque las tres manipulan MAZOS, pero cada una
@@ -4323,6 +4401,11 @@ case 'bulk_power':{
        * salidas son irreversibles (411 QUEMA cartas). Validar despues de quitar seria
        * perder cartas de un jugador por un error de interfaz. */
       var plD=S.players[pid], dm=eff;
+      /* L8c — 405: "He can draw no Plot cards, for any reason": "any reason"
+       * incluye 361. El chequeo va ANTES del coste (regla de oro del caso: validar
+       * antes de mutar) — si el robo va a estar bloqueado, la ficha no se gasta. */
+      if(dm.mode==='draw'&&plotDrawBlocked(pid))
+        throw new Error(c.name+': Unlucky 13 bloquea el robo de Plot cards este turno');
       /* 361 "Using this card is an action for one group": gasta una ficha de grupo ya
        * puesta. No es lo mismo que una accion de grupo nueva (que pondria beginTurn),
        * asi que se busca un grupo con ficha DISPONIBLE, no cualquiera. */
@@ -4928,6 +5011,27 @@ E.endTurn=function(){
   checkVictory();
   if(S.phase==='gameover')return publicState();
   var next=(pid+1)%S.players.length;
+  /* L8c — 405 Unlucky 13: "Play this card on a rival at the very beginning of his
+   * turn." La ventana se abre AQUI, entre endTurn y beginTurn: es el unico punto
+   * donde "muy al principio del turno" es observable ANTES de que el autoDraw de
+   * Network corra (un bloqueo dentro de beginTurn llegaria tarde: P1-048). Solo se
+   * abre si un HUMANO distinto del jugador del turno tiene 405 en mano; si nadie
+   * puede reaccionar, beginTurn corre sincrono como siempre (blast radius cero:
+   * las partidas sin 405 nunca ven la ventana). El primer turno del juego no abre
+   * ventana (startGame no es punto de reaccion, regla 10). */
+  var tsHolder=-1;
+  for(var tsq=0;tsq<S.players.length;tsq++){
+    var tsp=S.players[tsq];
+    if(!tsp.human||tsq===next)continue;
+    if(tsp.hand.some(function(tshx){return C.cards[tshx]&&C.cards[tshx].id==='unlucky13';})){tsHolder=tsq;break;}
+  }
+  if(tsHolder>=0){
+    S.pendingTurnStart={forPid:next};
+    S.currentPid=next;
+    S.phase='begin';
+    log('Comienzo del turno de '+S.players[next].name+': los rivales pueden reaccionar');
+    return publicState();
+  }
   S.phase='begin';
   E.beginTurn(next);
   return publicState();
