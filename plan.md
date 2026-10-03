@@ -472,6 +472,23 @@ Kind `align_rule`, unica cualificadora `alignMag`.
 - **Leccion de la tanda**: `firstUsableAid` pasa `(carta,nodo)` al predicado, no el nodo
   solo (P1-037) — un filtro de nodo hace que la carta se rechace siempre, en silencio.
 
+> - **§56 (hecho): P1-055 - una sola ortografia del coste de accion por atributo.** Barrido
+>   sistematico de atributos. El motor tenia dos campos casi identicos
+>   (`requireActionFromAttr` sin s, en el gate generico; `requiresActionFromAttr` con s, en los
+>   gates por kind) y nada impedia que una carta declarase uno y su kind no leyese ese
+>   (coste de accion GRATIS en silencio, la clase de P1-054). Fix en 3 capas: datos
+>   canonicalizados a la ortografia sin s, guard estructural en `gen_cards.js` que LANZA si
+>   alguien reintroduce el alias o declara el campo en un kind sin gate, y helper
+>   `actionCostAttr(eff)` en el motor para que los 5 gates lean igual. El guard se probo
+>   **empiricamente** (reinyectar el alias -> el generador lanza). Dos falsos positivos del
+>   barrido descartados por error de medicion (P1-056 `ifAttr`/`attr` SI se leian; P1-057 los
+>   ids de `gen_cards.js` pueden llevar espacios normalizados por `norm()`). Resultado
+>   positivo: **P1-018 esta estructuralmente CONTAINED** (solo 3 sitios de `engine.js` tocan
+>   `.alignments` y dos son comentarios). El protocolo 30x encontro ademas un bug de test
+>   (S7 de L8c hardcodeaba 3 Plots) ya corregido, y dejo **ABIERTO** un flake de ~1/100 en
+>   S9 (carta 388, de §52) que NO se ha diagnosticado: se documento en §56 en vez de
+>   taparlo a ciegas.
+>
 ## [ ] L9 - EDITAR ALINEACIONES
 
 - **Cartas (4)**: 332 Orbital Mind Control Lasers (anade / quita / invierte un alineamiento) ·

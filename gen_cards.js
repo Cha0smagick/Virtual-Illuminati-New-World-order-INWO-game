@@ -1207,7 +1207,7 @@ const L3B_FX = {
   },
   'resistance is useless': {
     kind: 'res_nullify',
-    requiresActionFromAttr: 'media',
+    requireActionFromAttr: 'media',
     untilCurrentTurn: true,
     t: 'For the rest of the current turn, the target groups Resistance is 0. The target also gets no Resistance bonus from its masters alignments or special abilities. But proximity to its ruling Illuminati still gives the normal +5 or +10. This card must be played by Media group, and counts as the groups action. Requires Media Action'
   }
@@ -1389,7 +1389,7 @@ const L5_FX = {
   },
   'whispering campaign': {
     kind: 'attack_boost', atkType: 'destroy', boostBySubtype: { personality: 15, other: 10 },
-    requiresActionFromAttr: 'media',
+    requireActionFromAttr: 'media',
     t: 'This card requires an Action from a Media group. It gives +15 in any Attack to Destroy a Personality, or +10 in any Attack to Destroy any other Group. It cannot be used with Assassinations or Disasters. If a Whispering Campaign succeeds against a Personality, he is considered destroyed, but not dead just permanently out of public life. Thus, he cannot be returned to play by any means! Requires Media Action'
   },
   'revolution!': {
@@ -1631,7 +1631,7 @@ const L6_FX = {
     t: 'Play this card at any time except during a privileged attack. A Magic Resource controlled by a rival is destroyed. Discard its card. This card requires an action by your Illuminati, or by a Magic group with a Power of 3 or more. Requires Magic or Illuminati Action'
   },
   'foiled': {
-    kind: 'force_discard_exposed', requiresActionFromAttr: 'media',
+    kind: 'force_discard_exposed', requireActionFromAttr: 'media',
     t: 'You may force any rival to discard one exposed Goal card. This card may be used at any time, but requires an action from a Media group. Requires Media Action'
   }
 };
@@ -1827,6 +1827,20 @@ const L7_FX = {
 };
 const L7_FXN = {};
 for (const k in L7_FX) { L7_FXN[norm(k)] = L7_FX[k]; }
+/* P1-055 — kinds cuyo gate en engine.js COBRA un `requireActionFromAttr`
+ * ("debes gastar la acción de un grupo tuyo con el atributo X"). Lista cerrada a
+ * propósito: un kind nuevo con ese coste debe registrarse aquí Y traer su gate, para
+ * que "carta que declara coste" y "gate que lo cobra" no puedan separarse en
+ * silencio. Antes de P1-055 el campo tenía dos ortografías casi idénticas
+ * (`requireActionFromAttr` y `requiresActionFromAttr`), cada una con SUS
+ * consumidores, y nada impedía que una carta declarase una y su kind leyese la otra:
+ * el coste quedaba gratis sin error — la clase exacta que produjo P1-054.
+ *   disaster              → gate genérico en computeStrength (engine.js ~2703)
+ *   res_nullify           → engine.js ~3849
+ *   attack_boost          → engine.js ~4023
+ *   force_discard_exposed → engine.js ~4311
+ *   turn_start_block      → engine.js ~4387 (L8c) */
+const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block'];
 
 
 function plotSub(name) {
@@ -2117,6 +2131,14 @@ for (const m of manifest) {
    * in BOOST10_FX, transcribed the same way off the same card faces. */
     const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key];
   if (pfx) {
+    /* P1-055 — red de generación: imposible que una carta con coste por atributo
+     * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias
+     * (actionCostAttr), así que el modo de fallo pasa de "coste gratis en silencio"
+     * a "el generador se niega a emitir el catálogo". */
+    if (pfx.requiresActionFromAttr)
+      throw new Error('gen_cards: "'+key+'" usa el alias retirado `requiresActionFromAttr`; declara `requireActionFromAttr`');
+    if (pfx.requireActionFromAttr && ACTION_COST_KINDS.indexOf(pfx.kind) < 0)
+      throw new Error('gen_cards: "'+key+'" (kind '+pfx.kind+') declara requireActionFromAttr pero ningun gate de ese kind lo cobra; añade el kind a ACTION_COST_KINDS y su gate en engine.js');
     rec.effect = pfx;
     rec.subtype = pfx.kind;
     rec.verifiedMechanic = true;

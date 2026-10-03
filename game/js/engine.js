@@ -2576,6 +2576,22 @@ function hasAttr(c,attr,node){
   if(node&&nodeAttrs(node,c).some(function(a){return String(a).toLowerCase()===t;}))return true;
   return attrList(c).some(function(a){return String(a).toLowerCase()===t;});
 }
+/* P1-055 — unica lectura del atributo que backs "debes gastar la acción de un grupo
+ * tuyo con el atributo X". Existian DOS campos casi identicos con consumidores
+ * separados: `requireActionFromAttr` (gate generico en computeStrength y
+ * turn_start_block) y `requiresActionFromAttr` (res_nullify, attack_boost,
+ * force_discard_exposed). Cinco cartas declaraban uno y su kind leia el otro sin
+ * que nada lo comprobara: el coste se volvia gratis EN SILENCIO, que es la clase
+ * exacta de P1-054. Ahora los datos declaran solo la forma canonica
+ * (`requireActionFromAttr`, que es la que usa gen_cards.js y su guard
+ * ACTION_COST_KINDS) y TODOS los gates leen por aqui. El alias se acepta a proposito:
+ * si alguien reintroduce la ortografia retirada, el coste se cobra igual de duro y
+ * el generador se niega a emitir el catálogo, en vez de dejar pasar una carta gratis.
+ * El atributo se lee SIEMPRE en el plano de ATRIBUTOS via hasAttr — nunca en
+ * `.alignments` (P1-018). */
+function actionCostAttr(eff){
+  return (eff&&(eff.requireActionFromAttr||eff.requiresActionFromAttr))||null;
+}
 /* P1-018 (encontrado por el gate test_fase4_cards.js, no por una prueba que
    fallara) — el campo `mayAddPowerFromAligns` miente en dos cartas.
    "Poison" (338) declara ['criminal','magic'] y "Withering Curse" (416) declara
@@ -2700,12 +2716,13 @@ function announcePlotInstantAttack(pid,pc,tUid,opts){
   var ibPlot=illuAttackBonus(pid,'destroy',nd,tc);
   if(ibPlot){power+=ibPlot;notes.push('+'+ibPlot+' por '+illuCard(pid).name);}
 
-  if(eff.requireActionFromAttr){
+  var needActAttr=actionCostAttr(eff);
+  if(needActAttr){
     var an=opts.aidUid?findNode(opts.aidUid):null;
     if(opts.aidUid&&(!an||findOwnerPid(opts.aidUid)!==pid))
       throw new Error('El grupo que aporta la acción debe ser tuyo');
-    if(!an)an=firstUsableAid(pid,function(c,n){return hasAttr(c,eff.requireActionFromAttr,n);});
-    if(!an)throw new Error(pc.name+' necesita un grupo tuyo con acción de tipo '+eff.requireActionFromAttr);
+    if(!an)an=firstUsableAid(pid,function(c,n){return hasAttr(c,needActAttr,n);});
+    if(!an)throw new Error(pc.name+' necesita un grupo tuyo con acción de tipo '+needActAttr);
     var ac=card(an.cardId);
     spendGroupToken(pid,an.uid);
     if(eff.addSummonerPower){var ap=curPower(an);power+=ap;notes.push('+'+ap+' de '+ac.name);}
@@ -3846,8 +3863,8 @@ case 'bulk_power':{
       var ndR0=findNode(targetUid);
       if(!ndR0)throw new Error(c.name+': elige el grupo cuya Resistencia quieres anular');
       if(findOwnerPid(targetUid)===pid)throw new Error(c.name+': no tiene sentido anular la Resistencia de un grupo tuyo');
-      var wantR0=String(eff.requiresActionFromAttr||'').toLowerCase();
-      if(!wantR0)throw new Error(c.name+': la carta no declara de que grupo saca la accion (eff.requiresActionFromAttr vacio)');
+      var wantR0=String(actionCostAttr(eff)||'').toLowerCase();
+      if(!wantR0)throw new Error(c.name+': la carta no declara de que grupo saca la accion (requireActionFromAttr vacio)');
       var anR0=opts.aidUid?findNode(opts.aidUid):null;
       if(opts.aidUid&&(!anR0||findOwnerPid(opts.aidUid)!==pid))
         throw new Error('El grupo que aporta la accion debe ser tuyo');
@@ -4020,7 +4037,8 @@ case 'bulk_power':{
       /* --- COSTE, siempre DESPUES de validar (P1-022: la ficha se gasta solo
              cuando todas las comprobaciones han pasado) --- */
       var aidAB=null;
-      if(eff.requiresActionFromAttr){
+      var needActAB=actionCostAttr(eff);
+      if(needActAB){
         var anAB=opts.aidUid?findNode(opts.aidUid):null;
         if(opts.aidUid&&(!anAB||findOwnerPid(opts.aidUid)!==pid))
           throw new Error('El grupo que aporta la accion debe ser tuyo');
@@ -4039,10 +4057,10 @@ case 'bulk_power':{
         };
         if(!anAB)anAB=firstUsableAid(pid,function(cc,nn){
           if(eff.payNotTheAttackers&&isAttackingAB(nn.uid))return false;
-          return hasAttr(cc,eff.requiresActionFromAttr,nn);
+          return hasAttr(cc,needActAB,nn);
         });
         if(!anAB)throw new Error(c.name+' necesita una accion de un grupo '+
-          eff.requiresActionFromAttr+
+          needActAB+
           (eff.payNotTheAttackers?' que no este ya atacando':''));
         aidAB=anAB;
       }
@@ -4051,9 +4069,9 @@ case 'bulk_power':{
        * le cobra nada y la carta se jugaria gratis. Aqui se le cobra con la
        * MISMA regla que el veto: cualquier grupo propio que no este atacando.
        * Declarado, porque es un segundo camino de coste dentro del mismo kind:
-       * `requiresActionFromAttr` = "un grupo de este tipo"; `payNotTheAttackers`
+       * `requireActionFromAttr` = "un grupo de este tipo"; `payNotTheAttackers`
        * sin atributo = "cualquier grupo propio que no participe". */
-      if(!aidAB&&eff.payNotTheAttackers&&!eff.requiresActionFromAttr){
+      if(!aidAB&&eff.payNotTheAttackers&&!needActAB){
         var isAtt2=function(u){
           if(A.attackerUid===u)return true;
           var f=false;
@@ -4308,7 +4326,8 @@ case 'bulk_power':{
        * ser robada despues por Stealing the Plans (374), que reacciona al mismo
        * suceso `plotDiscarded`. Forzarla por el motor seria mas simple pero
        * abriria una segunda ruta al descarte y la dejaria fuera de la ventana. */
-      if(typeof eff.requiresActionFromAttr!=='string')
+      var needActF=actionCostAttr(eff);
+      if(typeof needActF!=='string')
         throw new Error(c.name+': el coste de esta carta no esta declarado');
       var fpid=opts.rivalPid!=null?opts.rivalPid:(pid===0?1:0);
       var fpv=S.players[fpid];
@@ -4327,9 +4346,9 @@ case 'bulk_power':{
       if(opts.aidUid&&(!anF||findOwnerPid(opts.aidUid)!==pid))
         throw new Error('El grupo que aporta la accion debe ser tuyo');
       if(!anF)anF=firstUsableAid(pid,function(cc,nn){
-        return hasAttr(cc,eff.requiresActionFromAttr,nn);
+        return hasAttr(cc,needActF,nn);
       });
-      if(!anF)throw new Error(c.name+' necesita la accion de un grupo '+eff.requiresActionFromAttr);
+      if(!anF)throw new Error(c.name+' necesita la accion de un grupo '+needActF);
       spendGroupToken(pid,anF.uid);
       var nameF=card(fx).name;
       /* La carta sale TAMBIEN de `exposedPlots`: `discardPlot` solo la mete en el
@@ -4384,7 +4403,8 @@ case 'bulk_power':{
       var W2=S.pendingTurnStart;
       if(!W2)throw new Error(c.name+': solo es jugable al comienzo del turno de un rival (no hay ventana de reaccion abierta)');
       if(W2.forPid===pid)throw new Error(c.name+': no puedes bloquear el comienzo de tu propio turno');
-      var aidTS=firstUsableAid(pid,function(cTS,nTS){return hasAttr(cTS,eff.requireActionFromAttr,nTS);});
+      var needActTS=actionCostAttr(eff);
+      var aidTS=firstUsableAid(pid,function(cTS,nTS){return hasAttr(cTS,needActTS,nTS);});
       if(!aidTS)throw new Error(c.name+': Requires Magic Action — se necesita la acción de un grupo tuyo con el atributo magic');
       spendGroupToken(pid,aidTS.uid);
       var tgtTS=S.players[W2.forPid];

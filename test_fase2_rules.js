@@ -5489,15 +5489,22 @@ function readyToAttack(pid) {
     for(var hqL8c=rL8c.players[1].hand.length-1;hqL8c>=0&&movedL8c<2;hqL8c--){
       if(C.cards[rL8c.players[1].hand[hqL8c]].type==='plot'){ rL8c.plotDeck.push(rL8c.players[1].hand[hqL8c]); rL8c.players[1].hand.splice(hqL8c,1); movedL8c++; }
     }
-    ok(movedL8c===2&&plotsOfL8c(1)===3,
-      'L8c S7 el rival Network queda con 3 Plots en mano (limite 5)');
+    ok(movedL8c===2,
+      'L8c S7 se retiran 2 Plots de la mano de Network para dejarle margen al autoDraw');
+    /* NO se hardcodea CUANTOS Plots quedan. El reparto inicial es ALEATORIO y el
+       autoDraw solo rellena hasta el limite si ya havia Plot cards, asi que el
+       numero final depende de la mano que le toco a R1 (la misma fragilidad que
+       rompio Car Bomb en §33.5). Se MIDE la linea base y se compara. Tras retirar
+       2 cartas la mano de R1 tiene >=2 huecos libres, asi que sin la bandera el
+       autoDraw dibujaria 2: la asercion sigue siendo convalidante con base=0. */
+    var basePlotsL8c=plotsOfL8c(1);
     plant(0,'nL8cMG',mgIdxL8c,1);
     pullPlotL8c(0,idxOfId('unlucky13'));
     E.endTurn();
     E.endTurn();
     E.playPlot(0,idxOfId('unlucky13'),null,{});
-    ok(plotsOfL8c(1)===3,
-      'L8c S7 el autoDraw de Network quedo BLOQUEADO (3 -> 3; sin bandera seria 3 -> 5)');
+    ok(plotsOfL8c(1)===basePlotsL8c,
+      'L8c S7 el autoDraw de Network quedo BLOQUEADO ('+basePlotsL8c+' -> '+plotsOfL8c(1)+'; sin bandera seria '+basePlotsL8c+' -> '+(basePlotsL8c+2)+')');
 })();
 
 /* ---------- Utilidad global: resolver un ataque SIN ventanas de reaccion ----------
@@ -5537,6 +5544,57 @@ function sealedInstantAttack(pid, power, targetUid, opts) {
   if (E.getState().pendingRoll) out = E.resolvePendingRoll();
   return out;
 }
+
+/* ---------- §56 P1-055 - UNA sola ortografia del coste de accion por atributo ----------
+ * P1-054 leyo 'Requires Magic Action' como si 'magic' fuera una ALINEACION. §55 lo
+ * arreglo declarando el campo canonico 'requireActionFromAttr'. El barrido §56
+ * entonces encontro la TRAMPA LATENTE que quedaba: el motor tenia DOS ortografias
+ * casi identicas del mismo campo ('requireActionFromAttr' y 'requiresActionFromAttr'),
+ * cada una con sus propios gates por kind, y NADA impedia que una carta declarase una
+ * y su kind no cobrase esa -> coste de accion GRATIS en silencio, la clase exacta de
+ * P1-054. Este bloque es el ESPEJO EN TEST del guard estructural del generador, y es
+ * GENERICO: recorre el catalogo real, no lista ids, asi que sigue valiendo cuando
+ * entren cartas nuevas. */
+var ACTION_COST_KINDS_EXPECTED = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block'];
+var actionCostCards = [];
+var aliasUsers = [];
+C.cards.forEach(function(card) {
+  var e = card.effect || {};
+  if (e.requiresActionFromAttr) aliasUsers.push(card.id);
+  if (e.requireActionFromAttr) actionCostCards.push(card);
+});
+ok(aliasUsers.length === 0,
+   'P1-055 ninguna carta real declara el alias retirado \u0060requiresActionFromAttr\u0060 (alias: ' + JSON.stringify(aliasUsers) + ')');
+ok(actionCostCards.length > 0,
+   'P1-055 el mazo real declara al menos un coste de accion por atributo (contrato vivo, no trivial)');
+var badKind = actionCostCards
+  .map(function(c) { return (c.effect || {}).kind; })
+  .filter(function(k) { return ACTION_COST_KINDS_EXPECTED.indexOf(k) < 0; });
+ok(badKind.length === 0,
+   'P1-055 todo kind que declara requireActionFromAttr tiene gate en engine.js (fuera: ' + JSON.stringify(badKind) + ')');
+/* Anti-P1-050 GENERICO: P1-050 afirmo que el coste de 405 era impagable porque "no hay
+ * grupos magic". El error fue medir el plano equivocado. Este bucle lo haria visible
+ * para CUALQUIER atributo usado como coste de accion: si nadie puede pagarlo, el gate
+ * es codigo muerto aunque exista. */
+var neededAttrs = actionCostCards
+  .map(function(c) { return String((c.effect || {}).requireActionFromAttr).toLowerCase(); })
+  .filter(function(v, i, a) { return a.indexOf(v) === i; });
+neededAttrs.forEach(function(attr) {
+  var payers = C.cards.filter(function(c) {
+    return c.type === 'group' && (c.power | 0) >= 1 &&
+      (c.attributes || []).some(function(a) { return String(a).toLowerCase() === attr; });
+  });
+  ok(payers.length > 0,
+     'P1-055 anti-P1-050: el coste de accion por atributo "' + attr + '" tiene al menos un Grupo real que puede pagarlo (' + payers.length + ')');
+});
+/* El atributo del coste se lee SIEMPRE en el plano de ATRIBUTOS. Si alguna vez alguien
+ * lo declara tambien como alineacion, el gate podria acabar leyendo .alignments y
+ * volveriamos a P1-018. */
+ok(actionCostCards.every(function(c) {
+  var e = c.effect || {};
+  var attr = String(e.requireActionFromAttr).toLowerCase();
+  return !(c.alignments || []).some(function(a) { return String(a).toLowerCase() === attr; });
+}), 'P1-055 ninguna carta declara el atributo de coste tambien como alineacion (regresion de P1-018/P1-054)');
 
 console.log('');
 if (failures.length) {

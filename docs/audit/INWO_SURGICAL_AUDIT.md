@@ -5543,3 +5543,144 @@ entra al juego. Las 10 suites siguen verdes con el catalogo identico
   pero el motor depende de que cada quien use `nodeAligns`/`hasAttr` bien. P1-018
   ya salio dos veces; un grep con asercion sobre el plano correcto lo haria
   imposible la tercera.
+
+## 56. BARRIDO SISTEMATICO DE ATRIBUTOS Y P1-055 (UNA SOLA ORTOGRAFIA DEL COSTE DE ACCION)
+
+### Hallazgo
+
+Secion 55 dejo en backlog un "barrido automatico" de `indexOf('magic')` sobre `.alignments`
+porque la clase P1-018 (leer un ATRIBUTO como si fuera una ideologia) ya habia salido dos
+veces. El barrido se ejecuto y se amplio a la superficie de DECLARACION, que es donde
+P1-054 nacio de verdad. Resultado: **un solo hallazgo real**, mas dos falsos positivos
+que fueron culpa de mi propio metodo de medicion.
+
+**P1-055 - dos ortografias del mismo campo de coste de accion.** El motor tenia dos
+nombres casi identicos para "esta accion hay que pagarla con un grupo que tenga este
+atributo":
+
+- SIN-s `requireActionFromAttr` - gate GENERICO de `computeStrength` + `turn_start_block`.
+  Lo declaraban `plagueofdemons` (kind `disaster`) y `unlucky13` (kind `turn_start_block`).
+- CON-s `requiresActionFromAttr` - gates POR KIND. Lo declaraban `resistance is useless`
+  (kind `res_nullify`), `whispering campaign` (kind `attack_boost`) y `foiled`
+  (kind `force_discard_exposed`).
+
+Las 5 declaraciones cruzaban un sitio de lectura, asi que **NO hay clausula muerta viva
+hoy**. El defecto es una **trampa latente**: nada impedia que una carta declarase una
+ortografia y su kind no leyese esa, dejando el coste de la accion GRATIS en silencio.
+Es exactamente la clase que produjo P1-054. Ejemplo del fallo futuro: una carta nueva de
+kind `disaster` que declarase `requiresActionFromAttr` (con s) NO pasaria por el gate
+generico (que lee sin s) y su coste no se cobraria nunca, sin error ni aviso.
+
+### Correcciones (3 capas)
+
+1. **DATOS canonicalizados.** Las 3 declaraciones CON-s de `gen_cards.js`
+   (`resistance is useless`, `whispering campaign`, `foiled`) pasan a la ortografia SIN-s.
+   Las 5 cartas del mazo declaran ahora una sola ortografia.
+2. **GENERADOR con guard estructural.** Nueva constante `ACTION_COST_KINDS` (los 5 kinds
+   que cobran el coste) mas un guard en el bucle de manifest que LANZA si una carta declara
+   el alias retirado, y tambien si declara el campo canonico con un kind que ningun gate
+   cobra. Esto es lo que impide que la clase reaparezca.
+3. **MOTOR tolerante.** Nuevo helper `actionCostAttr(eff)` que devuelve
+   `eff.requireActionFromAttr || eff.requiresActionFromAttr`, y los 5 gates se rewiren para
+   leer por el helper. La tolerancia al alias es intencionada: cartas ya generadas siguen
+   funcionando aunque el catalogo se regenere de una version antigua.
+
+### P1 findings (corregidos en este lote)
+
+**P1-055** - ortografia unica del coste de accion por atributo, con guard de generador.
+
+### Dos falsos positivos del barrido (metodo, no codigo)
+
+- **P1-056 (descartado) - `attr` e `ifAttr` "nunca leidos": FALSO.** `ifAttr` SI se consume,
+  en `plotPowerFor()` con `var okAttr=!e.ifAttr||hasAttr(tc,e.ifAttr,node);`, leido como
+  `e.ifAttr` sobre la ENTRADA de la tabla `power:[]`, no como `eff.ifAttr`. Las 6 cartas que
+  lo declaran (`atomicmonster`, `earthquake`, `hurricane`, `nuclearaccident`, `giantkudzu`,
+  `tidalwave`) funcionan. Y `attr` no es un campo de efecto: aparece en tablas de poder
+  legacy (`double:{...}`) y en objetos spec/fixture.
+- **P1-057 (descartado) - dos cartas "sin ninguna declaracion": FALSO.** Los ids en
+  `gen_cards.js` pueden llevar ESPACIOS y se normalizan despues con `norm()`: la clave es
+  `'resistance is useless'` -> `resistanceisuseless`, y `'whispering campaign'` ->
+  `whisperingcampaign`. Buscar el literal sin espacio no las encuentra. NO inflan el conteo
+  de "133 clasificadas".
+
+### Resultado positivo: P1-018 esta estructuralmente CONTAINED
+
+El barrido confirmo que la clase "atributo leido como alineacion" ya no puede colarse por
+ese lado: **solo 3 sitios de `engine.js` tocan `.alignments`** y dos de ellos son comentarios
+(2587, 3699) sobre P1-018. El tercero es el accessor `alignsOf` (228). O sea que TODAS las
+lecturas de alineacion pasan por accessors (`alignsOf`, `nodeAligns`, `hasAnyAlign`), no por
+lectura directa del array. No es suerte: es contencion estructural.
+
+### Leccion dura: contar lecturas con grep NO es un detector de dato muerto
+
+Los dos falsos positivos tienen la misma causa, y es una recurrencia del error de medicion
+de §54 (P1-050 afirmo "0 grupos con magic" por medir solo el plano de alineaciones):
+
+1. un campo puede leerse con OTRO nombre de variable (`e.ifAttr` vs `eff.ifAttr`);
+2. los ids de `gen_cards.js` pueden llevar espacios normalizados por `norm()`.
+
+Regla que sale de aqui: antes de declarar un campo "muerto", hay que resolver el mapa
+declaracion -> consumidor **por semantica y por clase de kind**, no por conteo de grep.
+Y un test que fabrica data imposible para que un gate pase no prueba la mecanica: la
+desactiva (ver P1-050).
+
+### Bug de test encontrado por el protocolo de flake: S7 de L8c
+
+La corrida 30x del protocolo (90 ejecuciones) fallo 1 vez en `test_fase2_rules.js`. El
+bloque S7 (autoDraw de The Network, P1-048) **hardcodeaba** que el rival quedaba con 3
+Plots en mano. Falso: el reparto inicial es aleatorio y el autoDraw solo rellena hasta el
+limite si ya habia Plot cards, asi que el numero final depende de la mano que le toco al
+rival - la misma fragilidad que rompio Car Bomb (§33.5). Corregido para **medir** la linea
+base y compararla en vez de suponer 3. Verificado con 60 corridas consecutivas sin fallos.
+
+### HALLAZGO ABIERTO (NO corregido): flake de S9 (carta 388, de §52)
+
+`S9 388 descarta UNA copia del Group elegido de la mano -> copias 1 -> 1`.
+
+- Asercion que falla: `copiesOf(hand, GI9) === copiasAntes - 1` (~linea 5063 de
+  `test_fase2_rules.js`).
+- Las OTRAS aserciones de S9 PASAN: el mazo de Groups baja 1, el descarte sube 2, y la
+  carta de la cima esta en el descarte. O sea que entro al descarte una carta de mas que no
+  salio de la mano.
+- Frecuencia medida: ~1 de cada 100 corridas. **Es PREEXISTENTE de §52 (commit 9b7943b), no
+  lo introdujo este lote**; §52 y §54 lo pasaron en su 30x por suerte.
+- NO diagnosticado. La busqueda del mensaje "maximo 10 cartas entre la mano y la cima" en
+  `engine.js` no devuelve nada (se compone por partes), asi que la implementacion de 388
+  sigue sin localizar. **No se fixe a ciegas**: tapar la asercion sin entender por que el
+  descarte de la mano no ocurre seria esconder un posible bug de motor.
+- Proximo paso: localizar el gate de 388 en `engine.js` y leer si el descarte "de la mano"
+  puede caer a la rama "de la cima" cuando la carta elegida no aparece en la mano.
+
+### Blast radius
+
+- **Motor**: 5 gates releidos a traves de un helper. Ningun cambio de comportamiento: las
+  5 cartas ya se cobraban. La prueba es que las 10 suites pasan sin tocar una sola
+  asercion previa.
+- **Datos**: 3 lineas renombradas en `gen_cards.js`; el catalogo regenerado es identico
+  (421 cartas, mismos conteos por tipo).
+- **Tests**: 6 aserciones nuevas y genericas (recorren el catalogo real, no listan ids), mas
+  el arreglo de S7.
+- El guard del generador se probo **empiricamente**: se reinyecto el alias en `foiled`, el
+  generador lanzo (status 1) con el mensaje exacto, y al restaurar el fichero volvio a dar
+  status 0. El guard muerde de verdad.
+
+### Verificacion
+
+- `node --check` en `gen_cards.js`, `game/js/engine.js`, `test_fase2_rules.js`: OK.
+- `node gen_cards.js`: OK, `written 421 {"group":167,"illuminati":18,"plot":201,"resource":35}
+  verified-groups 33`. Catalogo sin deriva.
+- **10/10 suites en verde.**
+- **Flake: 60/60 corridas consecutivas de `test_fase2_rules` sin fallos** tras el arreglo de
+  S7 (antes fallaba ~1 de cada 20-40).
+- Nueva asercion anti-P1-050, que habria atrapado el error de §54: para cada atributo usado
+  como coste de accion debe existir al menos un Grupo real que pueda pagarlo. Hoy `media`
+  tiene 13 pagadores y `magic` 8 (con Poder>=1).
+
+### Backlog
+
+- **ABIERTO**: el flake de S9 (388). Ver "HALLAZGO ABIERTO" arriba.
+- Cerrado el backlog de §55: el barrido de `indexOf('magic')` sobre `.alignments` esta
+  hecho y salio limpio.
+- Sigue abierto (de antes): P1-041 (mazos de Plot por jugador, desbloquea 191 y 395); la
+  desviacion preexistente de las fichas de accion (se arrastran entre turnos); los otros 4
+  PRINT de token extra (12, 61, 215, 335).
