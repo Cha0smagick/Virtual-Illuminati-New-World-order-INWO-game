@@ -1803,12 +1803,16 @@ Object.keys(L8B_FX).forEach(function (k) { L8B_FXN[k] = L8B_FX[k]; });
  * turn. He can draw no Plot cards, for any reason, until after his current turn
  * ends. This requires an action. Requires Magic Action" (OCR, sin transcripcion
  * secundaria). kind 'turn_start_block': el timing ES la ventana (S.pendingTurnStart,
- * que abre E.endTurn entre turnos). P1-050: hoy el coste es IMPAGABLE en un juego
- * real (0 grupos con 'magic' en todo el mazo, las 18 Illuminati con alignments
- * vacias = P1-032, 0 recursos con 'magic'); la mecanica queda implementada y el
- * coste fallara con su razon oficial hasta que P1-032 rellene las alineaciones. */
+ * que abre E.endTurn entre turnos). P1-054 (corrige P1-050): "Requires Magic Action"
+ * NO es un tipo de accion con nombre — los Action Tokens son genericos. Segun el
+ * glosario, Magic es un ATRIBUTO de carta, asi que el coste se declara con el
+ * patron ya existente 'requireActionFromAttr' (ver plagueofdemons). Los 9 grupos
+ * con atributo magic (druids, ninjas, reformedchurchofsatan, rosicrucians,
+ * stonehenge, templars, vampires, voudonistas, witch) son pagadores reales; leerlo
+ * como alineacion (P1-018) era CODIGO MUERTO. Nota: los Illuminati nunca tienen
+ * atributos ni alineaciones (glosario), asi que el pagador es siempre un Grupo. */
 const L8C_FX = {
-  'unlucky13': { kind:'turn_start_block', magicAction:true,
+  'unlucky13': { kind:'turn_start_block', requireActionFromAttr:'magic',
     t:'Play this card on a rival at the very beginning of his turn. He can draw no Plot cards, for any reason, until after his current turn ends. This requires an action. Requires Magic Action' }
 };
 const L8C_FXN = {};

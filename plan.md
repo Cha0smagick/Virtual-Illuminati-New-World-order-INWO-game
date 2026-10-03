@@ -445,11 +445,21 @@ Kind `align_rule`, unica cualificadora `alignMag`.
 >   para cubrir tambien el autoDraw del Network. Hallazgos P1-047 (la fase 'begin'
 >   + `requireOwnMain` hacian la carta injugable: tiene que entrar por `instant`;
 >   `afterAdvance`/`maybeRunAI` tienen que hacer return temprano), P1-048 (el
->   autoDraw del Network no respetaba el bloqueo), P1-050 (el coste "Requires Magic
->   Action" es IMPAGABLE: 0 grupos y 0 Resources con 'magic', 18 Illuminati con
->   alignments vacias = P1-032 -> hace L9 BLOQUEANTE para 405) y P1-053 (el reparto
+>   autoDraw del Network no respetaba el bloqueo), P1-053 (el reparto
 >   aleatorio dejaba el 405 en mano de un humano y abria la ventana a mitad de
 >   tests automatizados).
+> - **P1-050 RETIRADO / P1-054 (55)**: el P1-050 de 54 era una premisa mala, no un
+>   hueco real. "Magic" NO es una alineacion, es un ATRIBUTO de carta (glosario
+>   Magic; ya lo habia detectado 31.2 con P1-018): hay 0 grupos con 'magic' en
+>   `alignments` pero 9 con el ATRIBUTO magic (druids, ninjas,
+>   reformedchurchofsatan, rosicrucians, stonehenge, templars, vampires,
+>   voudonistas, witch). El coste de 405 se declara con el patron ya existente
+>   `requireActionFromAttr:'magic'` y se paga con un grupo real. Ademas las 18
+>   Illuminati con alineaciones vacias NO son un hueco de datos (el glosario dice
+>   que nunca tienen alineaciones ni atributos), asi que **L9 NO es bloqueante para
+>   405**: L9 sigue pendiente solo por su propia aceptacion de `align_edit`. La
+>   regresion ya no fabrica data imposible (`alignments=['magic']`); busca un grupo
+>   real del catalogo con atributo magic y Poder>=3 y lo juega.
 > - **BLOQUEADAS (P1-038)**: 191 y 395. El juego real tiene un mazo de Plot POR JUGADOR
 >   y este motor tiene UN `S.plotDeck` compartido. Congeladas en `BLOCKED_CARDS`.
 > - **REASIGNADA**: 282 Hitler's Brain NO es de mazo (disparador al destruir + restriccion

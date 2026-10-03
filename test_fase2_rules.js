@@ -5333,23 +5333,29 @@ function readyToAttack(pid) {
   }
   function plotsOfL8c(pid){ return rawL8c().players[pid].hand.filter(function(ix){return C.cards[ix].type==='plot';}).length; }
 
-  /* P1-050: no existe NINGUN pagador Magic en el mazo (0 grupos con 'magic' en
-   * 421 cartas, las 18 Illuminati con alignments vacias = P1-032, 0 recursos con
-   * 'magic'). El test double permite probar la MECANICA del coste (que un grupo
-   * Magic SI puede pagar) sin inventar datos de cartas: se muta la alineacion de
-   * un grupo real durante los escenarios y se RESTAURA al final (try/finally). */
+  /* P1-054 (corrige P1-050): el pagador de "Requires Magic Action" es un grupo con
+   * el ATRIBUTO magic — plano de atributos, NO de alineaciones (glosario §Magic y
+   * §31.2/P1-018). El mazo real tiene 9: druids, ninjas, reformedchurchofsatan,
+   * rosicrucians, stonehenge, templars, vampires, voudonistas, witch. Ya no hace
+   * falta NINGUN test double: el bloque busca un grupo real con Poder>=3 (para
+   * pagar la accion) y S2 lo usa de verdad, asi que la jugabilidad se prueba
+   * contra el catalogo de produccion en vez de contra un dato fabricado. */
   var mgIdxL8c=-1;
   for(var mgL8c=0;mgL8c<C.cards.length;mgL8c++){
     var mgCardL8c=C.cards[mgL8c];
-    if(mgCardL8c.type==='group'&&(mgCardL8c.power|0)>=3){ mgIdxL8c=mgL8c; break; }
+    if(mgCardL8c.type==='group'&&(mgCardL8c.power|0)>=3&&
+       (mgCardL8c.attributes||[]).some(function(a){return String(a).toLowerCase()==='magic';})){
+      mgIdxL8c=mgL8c; break;
+    }
   }
   var mg2IdxL8c=-1;
   for(var mg2L8c=0;mg2L8c<C.cards.length;mg2L8c++){
     if(C.cards[mg2L8c].type==='group'&&mg2L8c!==mgIdxL8c){ mg2IdxL8c=mg2L8c; break; }
   }
-  var mgOrigL8c=C.cards[mgIdxL8c].alignments;
-  C.cards[mgIdxL8c].alignments=['magic'];
-  try{
+  ok(mgIdxL8c>=0,'L8c P1-054 el mazo real tiene un grupo con atributo magic y Poder>=3 que puede pagar el coste');
+  ok((C.cards[mgIdxL8c].attributes||[]).indexOf('magic')>=0&&
+     (C.cards[mgIdxL8c].alignments||[]).indexOf('magic')<0,
+     'L8c P1-054 el pagador tiene el ATRIBUTO magic y no la alineacion magic (regresion de P1-018)');
     /* L8c S1: la ventana SOLO se abre si un rival HUMANO tiene 405; sin 405 en
        juego, endTurn corre beginTurn sincrono como siempre (blast radius cero). */
     freshL8c();
@@ -5492,9 +5498,6 @@ function readyToAttack(pid) {
     E.playPlot(0,idxOfId('unlucky13'),null,{});
     ok(plotsOfL8c(1)===3,
       'L8c S7 el autoDraw de Network quedo BLOQUEADO (3 -> 3; sin bandera seria 3 -> 5)');
-  } finally {
-    C.cards[mgIdxL8c].alignments=mgOrigL8c;
-  }
 })();
 
 /* ---------- Utilidad global: resolver un ataque SIN ventanas de reaccion ----------

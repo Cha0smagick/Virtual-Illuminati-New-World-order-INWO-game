@@ -4370,16 +4370,22 @@ case 'bulk_power':{
        * objetivo es el jugador cuyo turno va a empezar. REGLA DEL CASO: se valida
        * TODO antes de tocar nada; beginTurn dentro del case es seguro porque nada
        * toca la mano del actor y el tail de playPlot (descartar la carta jugada)
-       * corre despues. El coste "Requires Magic Action" se busca con
-       * firstUsableAid con filtro de alineacion Magic (SOLO grupos: la root
-       * Illuminati esta excluida por firstUsableAid; la cuestion de si la propia
-       * Illuminati puede pagar si es Magic queda para el lote de P1-032). */
+       * corre despues.
+       *
+       * P1-054 (corrige P1-050): "Requires Magic Action" NO es un tipo de accion con
+       * nombre — los Action Tokens son genericos (glass pebbles). El glosario define
+       * Magic como ATRIBUTO de carta, asi que el pagador se busca en el plano de
+       * ATRIBUTOS con hasAttr, el MISMO helper del patron requireActionFromAttr
+       * (ver engine.js:2707). Leerlo como `alignments.indexOf('magic')` era
+       * reincidencia exacta de P1-018: 0 grupos tienen la alineacion magic y 9 la
+       * tienen como atributo, luego la validacion era CODIGO MUERTO y la carta
+       * era literalmente injugable. firstUsableAid ya excluye la root Illuminati. */
       var plTS=S.players[pid];
       var W2=S.pendingTurnStart;
       if(!W2)throw new Error(c.name+': solo es jugable al comienzo del turno de un rival (no hay ventana de reaccion abierta)');
       if(W2.forPid===pid)throw new Error(c.name+': no puedes bloquear el comienzo de tu propio turno');
-      var aidTS=firstUsableAid(pid,function(cTS){return cTS.alignments&&cTS.alignments.indexOf('magic')>=0;});
-      if(!aidTS)throw new Error(c.name+': Requires Magic Action: se necesita la accion de un grupo Magic');
+      var aidTS=firstUsableAid(pid,function(cTS,nTS){return hasAttr(cTS,eff.requireActionFromAttr,nTS);});
+      if(!aidTS)throw new Error(c.name+': Requires Magic Action — se necesita la acción de un grupo tuyo con el atributo magic');
       spendGroupToken(pid,aidTS.uid);
       var tgtTS=S.players[W2.forPid];
       tgtTS.flags.noPlotUntilTurnEnd=S.turn+1;

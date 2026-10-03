@@ -5277,13 +5277,14 @@ Tres razones por las que 405 no cabía en ningun `kind` existente:
   `autoDraw` de The Network, porque `E.beginTurn` roba en ese mismo instante.
   Poner la bandera antes de `beginTurn` es lo que lo cubre. Regresion S7, con
   control positivo: sin la bandera el log seria `3 -> 5`.
-- **P1-050** - **El coste "Requires Magic Action" es IMPAGABLE en el mazo real.**
-  Hay 0 grupos con `'magic'` en `alignments`, las 18 Illuminati tienen
-  `alignments` vacias (P1-032) y hay 0 Resources con `'magic'`. La mecanica
-  queda implementada y el coste fallara con su razon oficial ("Requires Magic
-  Action") hasta que P1-032 rellene las alineaciones. La regresión NO inventa
-  data: toma un grupo real con `power>=3`, le pone `alignments=['magic']`
-  temporalmente como doble de test y lo restaura en un `finally`.
+- **P1-050** - **CORREGIDO en §55 (P1-054).** La premisa de este hallazgo era
+  falsa. Este texto se conserva solo como registro del error: "Magic" NO es una
+  alineacion, es un ATRIBUTO de carta (glosario §Magic; §31.2 ya lo habia
+  detectado con P1-018). Hay 0 grupos con `'magic'` en `alignments` —cierto— pero
+  irrelevante, porque hay **9 grupos con el ATRIBUTO `magic`**. La regresion de
+  este lote se basaba ademas en un doble de test que fabricaba data imposible
+  (`alignments=['magic']` sobre un grupo real). Corregido: el coste se declara con
+  `requireActionFromAttr:'magic'` y se paga con un grupo real del catalogo.
 - **P1-053** - El reparto inicial es aleatorio y puede dejar el 405 en la mano de
   un HUMANO; entonces `E.endTurn` abria la ventana a mitad de un test
   automatizado que asume `phase='main'` al cerrar turno. Cinco suites tocadas
@@ -5347,10 +5348,12 @@ reaccionar a si mismo).
    justamente para las cartas cuya legitimidad depende del MOMENTO y no del turno
    del actor; sin ella, 405 era injugable y nadie lo notaba porque no habia
    ninguna prueba que la jugara.
-3. **Un coste que el mazo no puede pagar se DECLARA, no se perdona.** Con 0
-   fuentes de Magic, relajar el requisito habria sido inventar una regla para que
-   la carta pareciese funcionar. Lo correcto es implementar la mecanica completa y
-   dejar que el fallo diga la verdad oficial.
+3. **Una premisa de medicion puede estar mal Y el test puede estar mal con ella.**
+   (LECCION RETIRADA en §55. Aqui se afirmo que un coste no pagable "se declara,
+   no se perdona" y se fabrico un doble de test para probarlo. El doble escondia
+   que la premisa era falsa: el requisito era pagable todo el tiempo, en el
+   plano de atributos. Un doble de test que hace posible lo imposible no prueba
+   la mecanica: la desactiva.)
 4. **Un test automatizado que asume la fase se rompe solo con un reparto
    aleatorio.** La tentacion es estabilizar el test sembrando el mazo; el
    arreglo correcto es que el test de motor no declare un humano que no va a
@@ -5367,10 +5370,15 @@ reaccionar a si mismo).
   de un rival" en general. Decision de arquitectura, no arreglo local:
   `S.plotDeck` es global y lo usan `drawFrom`, `E.drawPlot`,
   `E.exchangeForPlot`, el reparto inicial y `publicState().deckCounts`.
-- **P1-032 / L9 - EDITAR ALINEACIONES pasa a ser BLOQUEANTE de 405.** Con 0
-  grupos, 0 Resources y 0 Illuminati con `'magic'`, el 405 no se puede pagar en
-  una partida real. L9 era "pendiente"; ahora es la unica palanca que convierte
-  la mecanica de 405 en jugable de verdad.
+- ~~**P1-032 / L9 - EDITAR ALINEACIONES pasa a ser BLOQUEANTE de 405.**~~
+  **RETIRADO en §55.** La premisa era falsa: 405 no se paga con una alineacion,
+  se paga con un grupo que tenga el **atributo** `magic`, y hay 9 en el mazo real.
+  L9 (`align_edit`, cartas 332/357/310/280) no tiene ninguna relacion con 405 y
+  sigue siendo un lote mas, con su propia aceptacion (nodo con dos
+  alineaciones, 332 quita una y `nodeAligns` deja de reportarla). P1-032 (las 18
+  Illuminati con `alignments` vacias) **tampoco** es un hueco de datos: el
+  glosario dice explicitamente que los grupos Illuminati nunca tienen
+  alineaciones ni atributos. Es la regla oficial, no una carencia.
 - **Desviacion preexistente, NO tocada aqui** - `E.beginTurn` solo sube las
   fichas a 1 y nunca las pone a 0, asi que las fichas de accion sin gastar se
   arrastran de un turno al siguiente. El juego oficial dice que se pierden al
@@ -5379,3 +5387,159 @@ reaccionar a si mismo).
   Weird Studies, 335 Perpetual Motion Machine) siguen sin mecanismo:
   `placeBonusAction` ya existe y les sirve, pero cada una necesita su propia
   condicion de pago.
+
+
+## 55. L8c-bis 405 UNLUCKY 13 - EL COSTE "MAGIC ACTION" (P1-054, corrige P1-050)
+
+### Hallazgo
+
+`a602820` (L8c, §54) entrego la ventana de `405 Unlucky 13` completa y verde, pero
+con la carta **literalmente injugable**. El lote declaraba su propio coste como
+ IMPAGABLE y lo "resolvia" con un doble de test. Al medir el catalogo de
+produccion para esta seccion, las dos premisas del hallazgo resultaron falsas.
+
+**Premisa 1 (cierta pero irrelevante): "0 grupos con `magic` en `alignments`".**
+Cierto, y no significa nada. `magic` **no es una alineacion**: es un ATRIBUTO de
+carta. El glosario (`inwo_rules_extracted.txt:427-433`) lo define asi — *"Gadget:
+A bizarre device... Magic: An item of mystical power. Any attack which uses a
+Group, Plot, or Resource identified as Magic is considered to be a Magic
+attack."*— y `engine.js:787` lo confirma con la lista canonica de 10:
+`CANON_ALIGNMENTS=[conservative, corporate, criminal, fanatic, government,
+liberal, peaceful, straight, violent, weird]`. No hay `magic`.
+Lo que si existe: **9 grupos con el atributo `magic`** — `druids`, `ninjas`,
+`reformedchurchofsatan`, `rosicrucians`, `stonehenge`, `templars`, `vampires`,
+`voudonistas`, `witch`. Son pagadores reales.
+
+**Premisa 2 (falsa de raiz): "18 Illuminati con `alignments` vacias = P1-032, y por
+eso L9 es BLOQUEANTE".** Las Illuminati **no pueden** tener alineaciones ni
+atributos: es la regla oficial, citada en `engine.js:1524-1525` (P1-022) desde el
+glosario `:1079-1081` — *"Illuminati Groups never have alignments or
+attributes."* No es un hueco de datos que L9 pueda rellenar. Y L9 (`align_edit`,
+cartas 332/357/310/280) no tiene ninguna relacion con 405.
+
+**El defecto tecnico.** `gen_cards.js` declaro `magicAction:true`, un flag que no
+existe en ninguna parte del motor, y el `case 'turn_start_block'` de
+`engine.js:4367` valida con
+`firstUsableAid(pid, c=>c.alignments.indexOf('magic')>=0)`. Ese filtro no puede
+matchear nunca: el coste era CODIGO MUERTO y el `throw` de "Requires Magic
+Action" era la unica reachable. Es decir, la unica prueba del lote (S2) pagaba el
+coste con un doble que **fabricaba data imposible** (`alignments=['magic']` sobre
+un grupo real, restaurado en un `finally`), contradiciendo las 10 alineaciones
+oficiales.
+
+**"Requires Magic Action" no es un tipo de accion con nombre.**
+`Select-String -Pattern "Magic Action"` sobre el documento de reglas: **0 hits**.
+Los Action Tokens son genericos ("about 15 Action tokens", glass pebbles). No hay
+concepto de accion con nombre en el juego. Lo que el texto quiere decir es "paga
+con la accion de un grupo que sea Magic", y "Magic" se define en el glosario
+como atributo. `192 andstaydead` lo dice sin rodeos: *"It requires an action from
+a Magic group."*
+
+### Correcciones
+
+- **gen_cards.js** (`L8C_FX`): `magicAction:true` -> `requireActionFromAttr:'magic',`
+  el patron que ya existe en el mismo archivo para `plagueofdemons`
+  (`gen_cards.js:338`). Comentario actualizado con la verdad del glosario.
+- **engine.js** (`case 'turn_start_block'`): el filtro pasa de
+  `c.alignments.indexOf('magic')>=0` a
+  `firstUsableAid(pid, function(cTS,nTS){return hasAttr(cTS,eff.requireActionFromAttr,nTS);})`
+  — el MISMO helper y el mismo patron que la rama `requireActionFromAttr` de
+  `engine.js:2703-2708`. `hasAttr(c,attr,node)` (`engine.js:2573`) lee el nodo y
+  la carta en el plano de atributos, con `attrsAdded`/`attrsRemoved` incluidos.
+  El mensaje de error ahora cita la razon oficial: *"Requires Magic Action — se
+  necesita la accion de un grupo tuyo con el atributo magic"*.
+  `firstUsableAid` ya excluye la root Illuminati, asi que el pagador es siempre
+  un Grupo, sin rama extra.
+- **test_fase2_rules.js** (bloque L8c): **eliminados por completo** el `try/finally`
+  y la mutacion `C.cards[mgIdxL8c].alignments=['magic']`. Ahora el bloque busca un
+  grupo REAL del catalogo con `type==='group'`, `power>=3` y atributo `magic`, y
+  S2 lo juega de verdad. Dos aserciones nuevas lo blindan: que el pagador existe
+  en el mazo de produccion, y que tiene el **atributo** `magic` y **no** la
+  alineacion `magic` (regresion de P1-018). No queda ninguna mutacion que
+  restaurar, asi que el `finally` desaparece con ella.
+
+### P1 findings (corregidos en este lote)
+
+- **P1-054** - **P1-018 reincidente.** La misma confusion de plano (atributo vs
+  alineacion) que §31.2 cerro en `engine.js:2579-2588` reaparece 24 secciones
+  despues, en codigo nuevo, y la primera manifestacion es que la validacion no
+  puede matchear nunca. El patron correcto (`requireActionFromAttr` + `hasAttr`)
+  ya existia y estaba a 1600 lineas de distancia en el mismo archivo.
+- **P1-050** -Retirado. El coste no era impagable; era ilegible. Corregido en §54
+  (ver "P1 findings" de esa seccion), con su premisa de P1-032 deshecha.
+
+### Blast radius
+
+**CERO** en el motor y **CERO** en el catalogo: `magicAction` era un campo que
+nadie leia, asi que cambiarlo a `requireActionFromAttr` no altera ninguna otra
+carta. El unico cambio de comportamiento real es que **405 pasa a ser jugable**:
+`firstUsableAid` ahora encuentra pagador, `spendGroupToken` se ejecuta y la carta
+entra al juego. Las 10 suites siguen verdes con el catalogo identico
+(421 cartas, mismos conteos por tipo).
+
+### Verificacion
+
+- `node --check` limpio en `gen_cards.js`, `engine.js`, `test_fase2_rules.js`.
+- `node gen_cards.js` -> `texto secundario recuperado del HTML de Scribd: 14` /
+  `written 421 {"group":167,"illuminati":18,"plot":201,"resource":35}
+  verified-groups 33`. Sin deriva: los conteos siguen identicos a §53 y §54, lo
+  que confirma que el cambio de flag no toco el catalogo.
+- Las 10 suites en verde. Gate de FASE 4 **sin cambio** (133 clasificadas, 115
+  pendientes, techo 176, minimo 53): este lote no reclasifica nada, solo arregla
+  un coste.
+- Aserciones nuevas, confirmadas en la salida real de `test_fase2_rules.js`:
+  `ok - L8c P1-054 el mazo real tiene un grupo con atributo magic y Poder>=3 que
+  puede pagar el coste`, `ok - L8c P1-054 el pagador tiene el ATRIBUTO magic y no
+  la alineacion magic (regresion de P1-018)`, `ok - L8c S2 el grupo Magic pago la
+  accion (ficha 1 -> 0)`.
+- **30/30 corridas consecutivas** de `test_fase2_rules` + `test_fase4_cards` +
+  `test_p0_invariants` (90 ejecuciones, 0 fallos).
+
+### Limites declarados
+
+- El mensaje de fallo del coste cambio de texto. Ninguna asercion lo comprobaba
+  (S2/S5/S6 usan `/no hay ventana/` y `/Unlucky 13/`), asi que no hubo que
+  tocarlas; queda anotado por si un test futuro lo referencia.
+- El Scroll de `E.playPlot` y el orden `spendGroupToken` -> flags -> `beginTurn` no
+  se modificaron. El lote solo cambia **quien** puede pagar, no **cuando** se paga.
+
+### Lecciones
+
+1. **Un doble de test que fabrica lo imposible no prueba la mecanica: la
+   desactiva.** `alignments=['magic']` sobre un grupo real convertia una rama
+   muerta en una rama verde. La senal de alarma fue el comentario del propio test
+   justificando el doble ("no hay NINGUN pagador Magic en el mazo"): cuando un
+   test necesita inventar el dato que la carta exige, la carta o el test estan
+   mal, y suele ser la carta.
+2. **La medicion va contra el catalogo de PRODUCCION, no contra la premisa del
+  Propio lote.** L8c medico "0 grupos con magic" sobre una busqueda en
+   `alignments` —el campo que el codigo leia—, de modo que la medicion no podia
+   contradecir al codigo: media lo que el codigo ya afirmaba. La medicion
+   independiente tiene que consultar el campo **que la regla real usa**.
+3. **Un hallazgo de este documento se puede retirar. Un hallazgo mal fundido no
+     es un hallazgo, es ruido con numeracion P1.** P1-050 existia para explicar un
+   defecto que era de lectura de esquema, y su premisa ("L9 es bloqueante")
+   habria dirigido el siguiente lote hacia la carta equivocada (332 Orbital Mind
+   Control Lasers, que no tiene nada que ver). Por eso §54 corrige su P1-050 y su
+   leccion 3 explicitamente en vez de Limitarlos en silencio.
+4. **El patron correcto suele existir ya, en otro `case` del mismo switch.**
+   `requireActionFromAttr` estaba implementado y probado desde antes; el coste
+   nuevo lo reimplemento con un flag inventado en lugar de mirar 30 lineas mas
+   abajo. Ante un requisito nuevo: buscar `case` similares antes de escribir.
+
+### Backlog
+
+- **Deshacer la premisa de plan.md.** La nota que declaraba L9 BLOQUEANTE para 405
+  era falsa y ya esta retirada de §54 y de aqui. L9 sigue pendiente por su
+  propia aceptacion (`align_edit`), no por 405.
+- **P1-041 (abierto, hueco de motor)** - Mazos de Plot POR JUGADOR. Sin cambios.
+- **Los otros 4 PRINT de token extra** (12 Brazil, 61 Hawaii, 215 Center for
+  Weird Studies, 335 Perpetual Motion Machine) siguen sin mecanismo:
+  `placeBonusAction` ya existe y les sirve, pero cada una necesita su propia
+  condicion de pago.
+- **Candidato a barrido automatico**: cualquier `indexOf('magic')` o
+  `indexOf('computer')` etc. sobre `.alignments` en el motor. Los dos planos
+  existen y estan separados en `gen_cards.js` (`ALIGNMENTS10` y `ATTRIBUTES`),
+  pero el motor depende de que cada quien use `nodeAligns`/`hasAttr` bien. P1-018
+  ya salio dos veces; un grep con asercion sobre el plano correcto lo haria
+  imposible la tercera.
