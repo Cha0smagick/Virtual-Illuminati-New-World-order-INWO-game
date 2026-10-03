@@ -514,15 +514,47 @@ Kind `align_rule`, unica cualificadora `alignMag`.
 >   **Leccion permanente (4a repeticion de la de medicion):** un barrido debe clasificar por AMBITO
 >   (¿esta variable indexa una mano o un mazo?) antes de contar; el numero bruto de matches es irrelevante.
 >   Ademas, un resultado NEGATIVO tambien es resultado: el backlog se cierra con evidencia negativa, no con silencio.
-## [ ] L9 - EDITAR ALINEACIONES
+> - **§60 (hecho): L9 EDITAR ALINEACIONES - 332 + 357 (P1-063).** La premisa de este lote
+>   era falsa en 3 puntos y se corrigio en el audit: (a) **NO existia `case 'align_edit'`**
+>   - L9 era greenfield, no un cableado; (b) **solo 2 de las 4 cartas son `align_edit`**:
+>   **310 `mediaconnections` y 280 `hiddeninfluence` son Global Power + LINK (ya en L10)** y
+>   vuelven alli intactas; (c) *"por nodo, no por carta"* es cierto para 332 y **FALSO para
+>   357**, porque un grupo destruido no tiene nodo (`destroyedByMe` guarda solo `cardId`).
+>   **3 mecanismos nuevos**: caducidad por turno (`alignsTmpAdded`/`alignsTmpRemoved` con
+>   sello `alignsTmpTurn`, dentro de `nodeAligns`), ventana de Gadget fuera de `playPlot`
+>   (`S.pendingAlignEdit` + `E.useGadgetAction`/`E.resolveAlignEdit`, bloqueada durante
+>   ataque privilegiado), y overlay retroactivo **por carta** (`S.alignRetro` + `retroAlignsOf`).
+>   **Mejora atomica del pago**: 357 paga *"your luminati OR Media groups Power>=8"* en
+>   **dos pasadas** (reunir, comprobar, gastar), al contrario que `force_align`, que gasta
+>   fichas dentro del walk y luego lanza. **Nuevo accessor `E.alignsOfNode(uid)`**: antes
+>   el motor no exponia alineaciones, y el criterio de aceptacion de este lote no se podia
+>   afirmar directamente. Gate FASE 4 movido 133/115 -> **135/113** (techo 176 sin tocar).
+>   **PENDIENTE CRITICO**: `ai.js` no resuelve `pendingAlignEdit` y `endTurn` la bloquea
+>   luego una partida AI-vs-AI con 332 se colgaria. Cerrar con el patron de §53.
+>   **3 bugs de motor mas que la regresion de L9 descubrio** (todos en este lote):
+>   **P1-064** la marca de temporalidad de 332 iba en el nodo del Gadget (
+d) y no en
+>   el grupo re-alineado (	), asi que la edit caia en la capa PERMANENTE y **nunca
+>   caducaba** (contra el texto: "only for the rest of the current player's turn").
+>   **P1-065** 357 dice "Play this card at any time", no es de la ventana de suceso, pero
+>   el case 'align_edit' exigia un S.pendingEvent previo y ademas lo leia: **era
+>   INJUGABLE**. Ahora crea su propia ventana (rechazando pisar una ya abierta).
+>   **P1-066** guarda falsy-cero: if(!pid||...) en E.resolveRewritingHistory hacia que
+>   para el **primer** jugador (pid 0) la funcion retornara en silencio: se cobraba el
+>   coste y **no se aplicaba nada**. Ahora pid==null. Ademas cierra la ventana.
+## [x] L9 - EDITAR ALINEACIONES - CERRADO en §60 (alcance corregido: 332 + 357; 310 y 280 a L10)
 
-- **Cartas (4)**: 332 Orbital Mind Control Lasers (anade / quita / invierte un alineamiento) ·
-  357 Rewriting History (lo mismo, sobre un grupo destruido) · 310 Media Connections ·
-  280 Hidden Influence.
-- **Mecanica**: `align_edit`. El motor ya tiene alineaciones **a nivel de nodo** desde §32
-  (P1-017), asi que esta edicion es por nodo, no por carta.
-- **Aceptacion**: nodo con dos alineaciones; 332 quita una de las dos y `nodeAligns` deja de
-  reportarla.
+- **Cartas (2, alcance corregido)**: 332 Orbital Mind Control Lasers (resource) y
+  357 Rewriting History (plot). **310 Media Connections y 280 Hidden Influence NO son
+  `align_edit`**: son Global Power + LINK, y siguen intactas en **L10**.
+- **Mecanica**: `align_edit`, con **dos modos**: `gadget_action` (332, via la accion del
+  Gadget, fuera de `playPlot`, con caducidad por turno) y `destroyed_retro` (357, sobre
+  un grupo **destruido**, que no tiene nodo: overlay **por carta** en `S.alignRetro`).
+  El texto original de este lote decia *"por nodo, no por carta"*: es cierto para 332
+  y **falso para 357**.
+- **Aceptacion (cumplida)**: nodo con dos alineaciones; 332 quita una de las dos y
+  `E.alignsOfNode` deja de reportarla. Verificado con **14 aserciones** verdes.
+
 
 ## [ ] L10 - EFECTOS PERMANENTES LIGADOS ("Link this card to X")
 

@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    INWO Engine — One Big Deck variant (official OBD)
    Rules source: World Domination Handbook v1.2 (Jan 2002)
    + project SPEC-RULES.md v2.0 corrections
@@ -319,6 +319,88 @@ function nodeAligns(node,cardObj){
     }
     base=kept;
   }
+  /* L9 / 332 — Orbital Mind Control Lasers: el cambio "dura solo lo que resta
+   * del turno del jugador actual". Las ediciones PERMANENTES viven en
+   * alignsAdded/alignsRemoved; las TEMPORALES en alignsTmpAdded/alignsTmpRemoved
+   * con un SELLO de turno (alignsTmpTurn). Se leen solo mientras el sello coincide
+   * con S.turn, asi que caducan solas al empezar el turno siguiente y NO hace
+   * falta barrer nada en E.endTurn: la caducidad es una consecuencia de la
+   * comparacion, no un estado que haya que limpiar. Se aplican DESPUES de la
+   * capa permanente para que un temporal pueda pisar a un permanente, y con la
+   * misma regla "la suma gana a la resta" (L317) para que una re-alineacion
+   * posterior en el mismo turno no quede anulada por una resta anterior. */
+  if(S&&node&&node.alignsTmpTurn===S.turn){
+    var tAdd=Array.isArray(node.alignsTmpAdded)?node.alignsTmpAdded:null;
+    var tRem=Array.isArray(node.alignsTmpRemoved)?node.alignsTmpRemoved:null;
+    if(tAdd)for(var t=0;t<tAdd.length;t++){
+      var ta=String(tAdd[t]).toLowerCase();
+      if(base.indexOf(ta)<0)base.push(ta);
+    }
+    if(tRem&&tRem.length){
+      var tKept=[];
+      for(var m=0;m<base.length;m++){
+        if(tRem.indexOf(base[m])>=0&&(tAdd||[]).indexOf(base[m])<0)continue;
+        tKept.push(base[m]);
+      }
+      base=tKept;
+    }
+  }
+  /* L9 / 357 — Rewriting History: "Any one alignment of any DESTROYED group may
+   * be retroactively added, removed, or reversed." Un grupo destruido NO tiene
+   * nodo, asi que el overlay no puede vivir en el nodo como el de 332: vive a
+   * nivel de CARTA en S.alignRetro ({cardId:{added:[],removed:[]}}). Se consulta
+   * aqui como ultima capa para que affected a CUALQUIER nodo con ese cardId —
+   * incluida una copia re-desplegada de la misma carta, que es justo lo que
+   * "retroactively" implica. Se aplica DESPUES de la temporal porque es una
+   * verdad permanente del mundo y no debecaducar con el turno; y con la misma
+   * regla "la suma gana a la resta" que las otras capas. Los consumidores de
+   * nodeAligns (bonificacion +/-4, shares, isOpposite, token_gift) reciben este
+   * cambio sin ningun cableado extra. */
+  if(S&&S.alignRetro&&node){
+    var rt=S.alignRetro[node.cardId];
+    if(rt){
+      if(Array.isArray(rt.removed)&&rt.removed.length){
+        var rKept=[];
+        for(var r=0;r<base.length;r++){
+          if(rt.removed.indexOf(base[r])>=0&&(rt.added||[]).indexOf(base[r])<0)continue;
+          rKept.push(base[r]);
+        }
+        base=rKept;
+      }
+      if(Array.isArray(rt.added)){
+        for(var r2=0;r2<rt.added.length;r2++){
+          var ra=String(rt.added[r2]).toLowerCase();
+          if(base.indexOf(ra)<0)base.push(ra);
+        }
+      }
+    }
+  }
+  return base;
+}
+/* L9 / 357 — lector de overlays retroactivos para cartas SIN nodo. Un grupo
+ * destruido no tiene nodo, asi que nodeAligns no puede responder por el, pero el
+ * contador de metas (E.checkVictory / metas de "destruye N grupos de una
+ * alineacion") SI necesita conocer la alineacion retroactiva de una carta
+ * destruida. Esta funcion es la unica fuente de ese dato. */
+function retroAlignsOf(cardId){
+  var c=card(cardId);
+  var base=alignsOf(c).slice();
+  var rt=(S&&S.alignRetro&&S.alignRetro[cardId])||null;
+  if(!rt)return base;
+  if(Array.isArray(rt.removed)&&rt.removed.length){
+    var kept=[];
+    for(var k=0;k<base.length;k++){
+      if(rt.removed.indexOf(base[k])>=0&&(rt.added||[]).indexOf(base[k])<0)continue;
+      kept.push(base[k]);
+    }
+    base=kept;
+  }
+  if(Array.isArray(rt.added)){
+    for(var i=0;i<rt.added.length;i++){
+      var a=String(rt.added[i]).toLowerCase();
+      if(base.indexOf(a)<0)base.push(a);
+    }
+  }
   return base;
 }
 function nodeAttrs(node,cardObj){
@@ -344,7 +426,7 @@ E.newGame=function(configs){
   S={
       phase:'setup',turn:0,round:1,currentPid:-1,turnCompleted:false,
     players:[],groupDeck:[],plotDeck:[],groupDiscard:[],plotDiscard:[],
-    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,alignRule:null,log:[],uidCounter:100,winner:null,
+    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,pendingAlignEdit:null,alignRetro:{},alignRule:null,log:[],uidCounter:100,winner:null,
     config:{goalCount:(configs.goalCount||12)},
     lastRoll:null
   };
@@ -602,6 +684,16 @@ function publicState(){
      * el UI decide su boton desde SU propia mano (que ya esta proyectada). */
     pendingTurnStart:S.pendingTurnStart?{forPid:S.pendingTurnStart.forPid,
       forName:S.players[S.pendingTurnStart.forPid]?S.players[S.pendingTurnStart.forPid].name:'?'}:null,
+    /* L9 / 332 — solo se proyecta QUIEN tiene la ventana abierta. El objetivo, la
+     * operacion y la alineacion elegidas los elige el jugador dueño; no hacen falta
+     * para que la UI ofrezca los controles, y no se filtra ninguna mano. */
+    pendingAlignEdit:S.pendingAlignEdit?{byPid:S.pendingAlignEdit.byPid,
+      byName:S.players[S.pendingAlignEdit.byPid]?S.players[S.pendingAlignEdit.byPid].name:'?'}:null,
+    /* L9 — la MISMA lista de 10 alineaciones oficiales que valida applyAlignEdit.
+     * Se proyecta para que la UI ofrezca el desplegable SIN duplicar la constante:
+     * si las dos copias divergieran, el motor rechazaria la eleccion y el jugador
+     * veria una opcion que nunca funciona. */
+    canonAlignments:CANON_ALIGNMENTS.slice(),
     players:S.players.map(function(pl,i){
       return {
         idx:i,name:pl.name,human:pl.human,illumId:pl.illumId,
@@ -1373,6 +1465,185 @@ E.resolvePendingTurnStart=function(act){
   log('Los rivales dejan pasar el comienzo del turno de '+S.players[W.forPid].name);
   S.phase='begin';
   E.beginTurn(W.forPid);
+  return publicState();
+};
+
+/* ================= L9 - EDITAR ALINEACIONES (332, 357) =================
+ *
+ * Las dos cartas de L9 comparten el verbo pero no el soporte:
+ *   332 Orbital Mind Control Lasers -> edicion TEMPORARIA de un nodo EN JUEGO,
+ *     disparada por la ACCION del Gadget ("at any time except during a
+ *     privileged attack", "lasts only for the rest of the current turn").
+ *   357 Rewriting History            -> edicion RETROACTIVA y PERMANENTE de un
+ *     grupo YA DESTRUIDIDO, que no tiene nodo, y que puede cambiar el conteo de
+ *     una meta de "destruye N grupos de una alineacion".
+ * Por eso 332 escribe en el NODO (alignsTmp*, con sello de turno) y 357 escribe
+ * en S.alignRetro, un overlay por CARDId que nodeAligns consulta como ultima capa.
+ */
+
+/* Aplica una edicion de alineacion. `op` es 'add' | 'remove' | 'invert'.
+ * - Si hay `node`, la alineacion se anade o se resta de alignsAdded /
+ *   alignsRemoved (permanente) o de alignsTmpAdded / alignsTmpRemoved (temporal,
+ *   sellada con el turno actual).
+ * - Si hay `retroCardId`, se escribe en S.alignRetro (357).
+ * Devuelve true si la alineacion cambio de verdad. Registrar una resta que no
+ * aplica dejaria rastro para Backlash (200) sin motivo: es la misma regla que
+ * respeta force_align. */
+function applyAlignEdit(op,align,node,retroCardId){
+  if(CANON_ALIGNMENTS.indexOf(align)<0)
+    throw new Error('"'+align+'" no es una alineacion oficial');
+  var changed=false;
+  if(node){
+    var cur=nodeAligns(node).map(function(x){return String(x).toLowerCase();});
+    var isAdd=op==='add',want;
+    if(op==='invert'){isAdd=cur.indexOf(align)<0;want=isAdd;}
+    else want=isAdd;
+    if(want){
+      /* SOLO se registra si de verdad se gana: si ya estaba, no se anade un
+       * duplicado que el consumidor tendria que filtrar. */
+      if(cur.indexOf(align)<0){
+        var fld=node.temporary?'alignsTmpAdded':'alignsAdded';
+        if(!Array.isArray(node[fld]))node[fld]=[];
+        node[fld].push(align);
+        if(node.temporary)node.alignsTmpTurn=S.turn;
+        changed=true;
+      }
+    }else{
+      if(cur.indexOf(align)>=0){
+        var fld2=node.temporary?'alignsTmpRemoved':'alignsRemoved';
+        if(!Array.isArray(node[fld2]))node[fld2]=[];
+        node[fld2].push(align);
+        if(node.temporary)node.alignsTmpTurn=S.turn;
+        changed=true;
+      }
+    }
+  }
+  if(retroCardId!==undefined&&retroCardId!==null){
+    var r=S.alignRetro[retroCardId];
+    if(!r){r={added:[],removed:[]};S.alignRetro[retroCardId]=r;}
+    var base=retroAlignsOf(retroCardId);
+    var wantR=(op==='add')?true:((op==='remove')?false:(base.indexOf(align)<0));
+    if(wantR){
+      if(base.indexOf(align)<0){
+        /* quitar de removed si estaba, para que "la suma gana a la resta" */
+        r.removed=r.removed.filter(function(x){return x!==align;});
+        if(r.added.indexOf(align)<0)r.added.push(align);
+        changed=true;
+      }
+    }else{
+      if(base.indexOf(align)>=0){
+        r.added=r.added.filter(function(x){return x!==align;});
+        if(r.removed.indexOf(align)<0)r.removed.push(align);
+        changed=true;
+      }
+    }
+  }
+  return changed;
+}
+/* L9 — costura de LECTURA para pruebas y para la UI: devuelve las alineaciones
+ * EFECTIVAS de un nodo, es decir exactamente lo que nodeAligns() reporta DESPUES
+ * de aplicar sus TRES capas (permanente + temporal-de-turno + retroactiva-por-
+ * carta), porque las tres viven dentro de nodeAligns(). No muta nada y el motor no
+ * la usa: es una ventana de observacion, para que el criterio de aceptacion de L9
+ * ("332 quita una alineacion y nodeAligns deja de reportarla") se compruebe de
+ * forma DIRECTA en vez de deducirse de un efecto secundario. La caducidad por turno
+ * se observa sola: en el turno siguiente `alignsTmpTurn` ya no coincide con S.turn
+ * y la capa temporal desaparece sin que nadie la limpie. */
+E.alignsOfNode=function(uid){
+  var nd=findNode(uid);
+  if(!nd)return null;
+  return nodeAligns(nd,card(nd.cardId)).slice();
+};
+
+
+/* 332 — la ACCION del Gadget. Se usa en cualquier momento del turno propio
+ * ("at any time"), y el texto prohibe expresamente usarla durante un ataque
+ * privilegiado, asi que se rechaza si hay un ataque vivo. Abre una ventana
+ * (S.pendingAlignEdit) para que la UI pueda pedir grupo + operacion + alineacion
+ * sin ensuciar la firma de la llamada. */
+E.useGadgetAction=function(pid,opts){
+  opts=opts||{};
+  requireOwnMain(pid);
+  if(S.attack||S.pendingAttack)
+    throw new Error('No puedes usar la accion de tu Gadget durante un ataque privilegiado');
+  if(S.pendingAlignEdit)throw new Error('Ya hay una accion de Gadget esperando resolucion');
+  var own=findNode(opts.resourceUid);
+  if(!own)throw new Error('Los Lasers no estan en tu mesa');
+  S.pendingAlignEdit={byPid:pid,resourceUid:opts.resourceUid,mode:'gadget_action'};
+  return publicState();
+};
+
+/* Cierra la ventana de 332 y aplica la edicion. Idempotente sin ventana, como
+ * resolvePendingTurnStart. Valida TODO antes de mutar: si la alineacion no
+ * cambia, no se cobra nada. */
+E.resolveAlignEdit=function(act){
+  act=act||{};
+  var W=S.pendingAlignEdit;
+  if(!W)return publicState();
+  S.pendingAlignEdit=null;
+  var pid=W.byPid;
+  if(act.pass)return publicState();
+  var nd=findNode(W.resourceUid);
+  if(!nd)throw new Error('Los Lasers ya no estan en tu mesa');
+  var t=findNode(act.targetUid);
+  if(!t)throw new Error('Ese grupo no esta en tu mesa');
+  var owner=findOwnerPid(act.targetUid);
+  if(owner==null)throw new Error('Ese grupo ya no esta en juego');
+  if(card(t.cardId).type!=='group')throw new Error('Solo puedes re-alinear un Group');
+  var op=String(act.op||'invert');
+  if(['add','remove','invert'].indexOf(op)<0)throw new Error('Operacion de alineacion desconocida');
+  var al=String(act.align||'').toLowerCase();
+  if(CANON_ALIGNMENTS.indexOf(al)<0)throw new Error('"'+al+'" no es una alineacion oficial');
+  var before=nodeAligns(t).slice();
+  /* P1-064 — la marca de temporalidad va en `t` (el nodo que se EDITA), no en
+   * `nd` (el nodo del Gadget que paga). applyAlignEdit elige capa con
+   * `node.temporary` sobre el nodo que recibe, asi que marcandolo en `nd` la
+   * edit caia en la capa PERMANENTE (alignsRemoved) y no caducaba nunca: el
+   * texto de 332 dice "the change lasts only for the rest of the current
+   * player's turn". La regresion L9 lo cazo (332 quita 'violent' y al turno
+   * siguiente seguia sin 'violent'). */
+  t.temporary=true; /* 332: la edit dura solo este turno */
+  var changed=applyAlignEdit(op,al,t,null);
+  delete t.temporary;
+  var after=nodeAligns(t);
+  if(!changed){
+    log(card(t.cardId).name+' ya era '+(op==='add'?'+':(op==='remove'?'-':''))+al+': la accion no cambia nada');
+  }else{
+    log('Los Lasers hacen que '+card(t.cardId).name+' pase a '+after.join(', ')+' (dura este turno)');
+  }
+  return publicState();
+};
+
+/* 357 — Rewriting History se juega como Plot: el coste es DISYUNTIVO (una accion
+ * de tu Illuminati, O grupos Media con Poder total >= 8) y el efecto es
+ * retroactivo sobre un grupo ya destruido. Se expone aparte porque su objetivo
+ * no es un nodo: es un cardId de destroyedByMe. */
+E.resolveRewritingHistory=function(act){
+  act=act||{};
+  var d=S.pendingEvent;
+  if(!d)return publicState();
+  var P=d.owner||{};
+  var pid=P.byPid;
+  /* P1-066 - `!pid` es TRUE para el jugador 0 (0 es falsy), asi que 357 se
+   * resolvia en silencio para el PRIMER jugador y no hacia nada: el overlay
+   * retro nunca se aplicaba y no se logueaba nada. Misma clase que el
+   * `owner<0` de findOwnerPid (P1-063). La ausencia se comprueba con ==null. */
+  if(pid==null||pid===undefined||!S.players[pid])return publicState();
+  var ixD=d.data||{};
+  var cd=act.retroCardId!=null?act.retroCardId:ixD.retroCardId;
+  if(cd===undefined||cd===null)throw new Error('No hay ningun grupo destruido que reescribir');
+  var op=String(act.op||'invert');
+  if(['add','remove','invert'].indexOf(op)<0)throw new Error('Operacion de alineacion desconocida');
+  var al=String(act.align||'').toLowerCase();
+  if(CANON_ALIGNMENTS.indexOf(al)<0)throw new Error('"'+al+'" no es una alineacion oficial');
+  var before=retroAlignsOf(cd).slice();
+  var changed=applyAlignEdit(op,al,null,cd);
+  var after=retroAlignsOf(cd);
+  /* La ventana se cierra SIEMPRE, incluso si la eleccion no cambia nada: si
+   * quedara abierta, endTurn la rechazaria y la partida se quedaria bloqueada. */
+  S.pendingEvent=null;
+  if(changed)log('Reescriben la historia: '+card(cd).name+' ahora es '+after.join(', '));
+  else log(card(cd).name+' ya era '+al+': reescribir la historia no cambia nada');
   return publicState();
 };
 
@@ -4785,6 +5056,78 @@ case 'bulk_power':{
       lastResult={ok:true,plot:c.name,pending:true,
                   reason:'roba '+card(pE.data.cardIdx).name+' del descarte al cerrar la ventana'};
       break;}
+    case 'align_edit':{
+      /* L9 — 357 Rewriting History. NO es un align_edit de nodo: el grupo ya esta
+       * DESTRUIDO, asi que no tiene nodo — destroyedByMe guarda solo cardId (sin
+       * snapshot de alineaciones), luego el overlay vive en S.alignRetro, a nivel
+       * de CARTA, y lo consultan tanto nodeAligns (copia re-desplegada) como
+       * retroAlignsOf (contador de metas). Ver applyAlignEdit.
+       * 332 Orbital Mind Control Lasers NO pasa por aqui: es una accion de Gadget
+       * usable "at any time except during a privileged attack" y va por
+       * E.useGadgetAction / E.resolveAlignEdit. */
+      if(eff.mode!=='destroyed_retro')
+        throw new Error(c.name+': este align_edit no se juega con la carta (modo '+eff.mode+')');
+      /* P1-065 - 357 dice "Play this card at any time": NO es una carta de la
+       * ventana de SUCESO (a diferencia de 249 EMBEZZLEMENT, que si lo es y por
+       * eso exige pendingEvent). Este case ABRIA su propia ventana y ademas la
+       * exigia previa, con lo que 357 era INJUGABLE: la regresion L9 lo cazo con
+       * el error "Rewriting History: no hay ningun suceso pendiente". Ahora se
+       * comprueba que no haya YA una ventana abierta (no se pisa una decision
+       * ajena) y se crea la propia mas abajo. */
+      /* Candidatos: TODOS los grupos destruidos por cualquier jugador, deduplicados
+       * por carta. El texto dice "any destroyed group", sin posesivo. */
+      var destrR=[];
+      for(var qR=0;qR<S.players.length;qR++)
+        (S.players[qR].destroyedByMe||[]).forEach(function(cdR){
+          if(destrR.indexOf(cdR)<0)destrR.push(cdR);});
+      if(!destrR.length)
+        throw new Error(c.name+': no hay ningun grupo destruido al que reescribir su historia');
+      /* COSTE DISYUNTIVO — "It requires an action by your luminati, OR actions by
+       * Media Groups with a total Power of at least 8." Es el mismo patron que
+       * force_align (el comentario de 386 dice que es el patron de 278 Hex, §50):
+       * primero el Illuminati y, si no hay fichas, acumular Poder de grupos con el
+       * atributo hasta el minimo.
+       * DIFERENCIA CON force_align, y es deliberada: aqui se REUNE primero y se
+       * GASTA despues. force_align llama a spendGroupToken DENTRO del walk y
+       * despues lanza si no llega — es decir, gasta fichas y luego falla. Aqui no:
+       * si el pago no se completa, no se ha gastado nada. */
+      var costR=eff.payMinPower||8,paidR=null;
+      if(pl.illumTokens>=1){pl.illumTokens--;paidR={via:'illuminati',groups:[]};}
+      if(!paidR){
+        var needR=costR,pickedR=[];
+        walk(pl.structure,function(nR){
+          if(needR<=0)return;
+          if(nR===pl.structure)return;
+          if(noTokensFlag(nR))return;
+          if(!nR.tokens||nR.tokens<1)return;
+          var ncR=card(nR.cardId);
+          if(!ncR)return;
+          if(!hasAttr(ncR,eff.payAttr||'media',nR))return;
+          pickedR.push({uid:nR.uid,name:ncR.name,power:curPower(nR)});
+          needR-=curPower(nR);
+        });
+        if(needR>0){
+          if(!pickedR.length)
+            throw new Error(c.name+': necesitas una accion de tu Illuminati, o grupos Media con Poder total '+costR+', y no tienes ninguna de las dos');
+          throw new Error(c.name+': necesitas '+costR+' de Poder de grupos Media; los tuyos sin ficha solo aportan '+(costR-needR)+' (accion del Illuminati: sin fichas)');
+        }
+        pickedR.forEach(function(gR){spendGroupToken(pid,gR.uid);});
+        paidR={via:'groups',groups:pickedR};
+      }
+      if(S.pendingEvent)
+        throw new Error(c.name+': ya hay un suceso pendiente de resolucion');
+      /* P1-065 - la ventana la ABRIMOS aqui (ver comentario arriba). */
+      var pR={owner:{byPid:pid,byName:pl.name},
+              data:{cardIdx:handIdx,retroCandidates:destrR,retroCardId:null},
+              responders:[]};
+      S.pendingEvent=pR;
+      pR.data.retroCandidates=destrR;
+      pR.data.retroCardId=null;
+      pR.responders=[];
+      log(c.name+': '+pl.name+' va a reescribir la historia de uno de '+destrR.length+' grupo(s) destruido(s) · coste '+costR+' pagado con '+(paidR.via==='illuminati'?'una accion del Illuminati':paidR.groups.map(function(g){return g.name;}).join(' + ')));
+      lastResult={ok:true,plot:c.name,pending:true,reason:'reescribe la historia de un grupo destruido',
+        retroCandidates:destrR.length,cost:costR,paidWith:paidR};
+      break;}
     case 'embezzlement':{
       if(!S.pendingEvent)
         throw new Error(c.name+': no hay ningun suceso pendiente');
@@ -5040,6 +5383,10 @@ E.endTurn=function(){
    * repartiria sobre un mazo racionado y la eleccion se resolveria contra un mazo
    * que ya no es el que se miro. Se cierra antes que nada. */
   if(S.pendingDraw)throw new Error('No se puede terminar el turno sin resolver tu eleccion de robo');
+  /* L9 / 332 — la accion del Gadget sigue ABIERTA y su token de accion NO se ha
+   * gastado todavia. Terminar el turno aqui dejaria la ventana colgada para el
+   * rival, que no es el dueno. Se cierra antes que nada. */
+  if(S.pendingAlignEdit)throw new Error('No se puede terminar el turno sin resolver la accion de tu Gadget');
   var pid=S.currentPid;
   var pl=S.players[pid];
   if(!pl)throw new Error('No hay jugador activo');

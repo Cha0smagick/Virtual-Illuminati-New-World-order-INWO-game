@@ -645,6 +645,60 @@ function attackPanel(st) {
     tsHtml += '<button data-act="turnstartpass" title="Dejar comenzar el turno sin reaccionar">Pasar</button>';
     $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar">' + tsHtml + '</div>');
   }
+/* L9 — 332 Orbital Mind Control Lasers: ACCION DE GADGET. A diferencia de las
+   * ventanas de reaction, aqui NO hay una carta que jugar: la ventana se abre
+   * porque el recurso ya esta en juego y su ACCION es lo que se gasta. El jugador
+   * elige el grupo objetivo, la operacion (anadir / quitar / invertir) y la
+   * alineacion; el motor (E.resolveAlignEdit) valida todo y caduca el cambio al
+   * final del turno ("the change lasts only for the rest of the current turn").
+   * Los grupos se ofrecen como botones aqui mismo, sin pasar por `sel`/`route`:
+   * la ventana ya esta abierta en el motor y solo falta elegir destino, asi que
+   * un sub-menu de dos pasos (grupo -> aplicar) es mas simple que un tercer modo
+   * de seleccion. Las alineaciones vienen de publicState().canonAlignments, la
+   * MISMA lista que valida el motor (engine.js CANON_ALIGNMENTS): duplicarla aqui
+   * seria una fuente de deriva. */
+  var AE = st.pendingAlignEdit;
+  if (AE && st.currentPid === AE.byPid) {
+    var aeOp = '<select id="aeOp">' +
+      '<option value="remove">Quitar alineación</option>' +
+      '<option value="add">Añadir alineación</option>' +
+      '<option value="invert">Invertir (add ⇄ remove)</option>' +
+      '</select>';
+    var aeAl = '<select id="aeAlign"><option value="">— alineación —</option>' +
+      (st.canonAlignments || []).map(function (a) { return '<option value="' + a + '">' + esc(a) + '</option>'; }).join('') +
+      '</select>';
+    var aeHead = '<b>🔬 Acción de Gadget</b>: elige un grupo, la operación y la alineación. ' +
+      '<span class="hint">El cambio dura solo hasta el final de este turno</span><br>' +
+      aeOp + ' ' + aeAl + ' ';
+    /* grupo ya elegido -> aplicar; si no, offercer los grupos en juego */
+    var aeSelUid = (sel && sel.mode === 'alignEdit') ? sel.data.targetUid : null;
+    var aeHtml = aeHead;
+    if (aeSelUid) {
+      var aeName = 'ese grupo';
+      (function aeWalk(n) {
+        if (n.uid === aeSelUid && C.cards[n.cardId]) aeName = C.cards[n.cardId].name;
+        (n.children || []).forEach(aeWalk);
+      })(st.players[0] && st.players[0].structure);
+      aeHtml += '<span class="hint">Objetivo: <b>' + esc(aeName) + '</b></span> ' +
+        '<button data-act="aligneditapply" class="primary" title="Aplicar el cambio">APLICAR ▶</button> ' +
+        '<button data-act="aligneditcancel" title="Elegir otro grupo">← otro grupo</button>';
+    } else {
+      var aeGroups = 0;
+      st.players.forEach(function (p) {
+        (function aeW(n) {
+          if (C.cards[n.cardId] && C.cards[n.cardId].type === 'group') {
+            aeGroups++;
+            aeHtml += '<button data-act="aligneditpick" data-uid="' + n.uid + '" title="Elegir este grupo como objetivo">' +
+              esc(C.cards[n.cardId].name) + '</button> ';
+          }
+          (n.children || []).forEach(aeW);
+        })(p.structure);
+      });
+      if (!aeGroups) aeHtml += '<span class="bad">No hay ningún grupo en juego.</span>';
+    }
+    aeHtml += '<button data-act="aligneditpass" title="No usar la acción del Gadget">Pasar</button>';
+    $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar">' + aeHtml + '</div>');
+  }
   var P = st.pendingAttack;
   if (P) {
     $('actionBtns').insertAdjacentHTML('afterbegin',
@@ -1331,6 +1385,23 @@ function bindEvents() {
     else if (act === 'drawtake') { clearSel(); CB.onResolveDraw({ take: btn.getAttribute('data-v') }); }
     else if (act === 'turnstartplay') { clearSel(); CB.onTurnStartPlay(parseInt(btn.getAttribute('data-i'), 10)); }
     else if (act === 'turnstartpass') { clearSel(); CB.onTurnStartPass(); }
+    /* L9 — 332 Orbital Mind Control Lasers. `pick` es el paso 1 (elegir grupo): no
+     * toca el motor, solo guarda el objetivo en `sel` como hace el resto de menus de
+     * dos pasos (ver pickMover/attacker). `apply` y `pass` son el paso 2 y si
+     * hablan con el motor. Todos empiezan por clearSel() para no arrastrar la
+     * seleccion de un turno a otro. */
+    else if (act === 'aligneditpick') { sel = { mode: 'alignEdit', data: { targetUid: btn.getAttribute('data-uid') } }; log('🎯 Paso 2/2 — elige operación y alineación, luego APLICA.'); render(curState); }
+    else if (act === 'aligneditcancel') { clearSel(); render(curState); }
+    else if (act === 'aligneditapply') {
+      var aeOpV = ($('aeOp') && $('aeOp').value) || 'remove';
+      var aeAlV = ($('aeAlign') && $('aeAlign').value) || '';
+      if (!aeAlV) { log('⚠ Elige primero una alineación.'); return; }
+      var aeUid = (sel && sel.mode === 'alignEdit') ? sel.data.targetUid : null;
+      clearSel();
+      if (!aeUid) { log('⚠ No hay grupo objetivo elegido.'); render(curState); return; }
+      CB.onResolveAlignEdit({ targetUid: aeUid, op: aeOpV, align: aeAlV });
+    }
+    else if (act === 'aligneditpass') { clearSel(); CB.onResolveAlignEdit({ pass: true }); }
     else if (act === 'privilege') { CB.onTogglePrivilege(); }
       else if (act === 'aid') { sel = { mode: 'aid', data: {} }; render(curState); }
       else if (act === 'oppose') { sel = { mode: 'oppose', data: {} }; render(curState); }

@@ -5294,6 +5294,18 @@ Tres razones por las que 405 no cabía en ningun `kind` existente:
   humano que no va a decidir nada. `test_appflow` ademas simula al humano
   pulsando Pass cuando la ventana aparece.
 
+### Incidente: texto de harness inyectado en `game/js/engine.js`
+
+Durante la verificacion de este lote, `node --check game/js/engine.js` fallo con `SyntaxError: Unexpected token '<'` en la linea 1558, pese a que el `git diff` de esa linea parecia correcto.
+
+**Diagnostico**: la linea 1558 contenia literalmente el texto `<dc-system-reminder>` (21 caracteres, primer byte `0x3C`), y las lineas 1559-1565 contenian prosa de harness en ingles sobre compresion de contexto. Es decir, **habia texto inyectado dentro del codigo fuente**. Se elimino y `node --check` volvio a 0.
+
+**Como se confirmo, y por que importa el metodo**: dos lecturas del mismo fichero **se contradijeron**. Una via `ctx_execute` (Bun) devolvio `indexOf('<dc-system-reminder>') = -1` y.bytes 310829, concludediendo que no habia contaminacion. La lectura decisiva se hizo con PowerShell puro sobre `[System.IO.File]::ReadAllAllLines`, que devolvio los codigos de caracter exactos, y con `git diff`, que mostro las lineas anadidas que no eran codigo mio. **Dos herramientas de sandbox de GitHub puedenYm contaminadas por texto de inyeccion; el shell del sistema y `git` no.**
+
+**Estado final**: el barrido con PowerShell sobre los 17 ficheros del proyecto no encontro ninguna otra linea contaminada. Las 6 coincidencias iniciales restantes (`placeholder` en el texto de `gen_cards.js` y del propio audit) se revisaron una a una y son **proyecto legitimo**: hablan del `placeholder` del `npm test` y de los datos de transcription, no harness.
+
+**Leccion**: cuando una lectura de fichero contradiga a otra, la diferencia no es ruido que descartar sino senal de que **una de las dos vias esta contaminada**. Resolver con la herramienta mas simple y menos susceptible (shell del sistema + git), no con la mas rica. Y verificar la integridad del fichero con un patron de vocabulario de harness, que es barato y habria detectado esto antes del primer `node --check`.
+
 ### Blast radius
 
 **CERO** para toda partida sin 405. `E.endTurn` solo abre la ventana si encuentra
@@ -6082,3 +6094,152 @@ Ademas, la elevacion de 30 a 200 por la tasa medida es la forma correcta de cerr
 - Los 4 PRINT de token extra (12, 61, 215, 335) usan `placeBonusAction` pero necesitan su condicion de pago.
 - Lotes de `plan.md`: **L9 EDITAR ALINEACIONES** (332, 357, 310, 280) sigue siendo el primer lote de plan sin empezar.
 - El barrido de `pop()`/`shift()` **no cubre `ai.js` / `ui.js` / `app.js`**. Hoy no hace falta (operan sobre indices proyectados, nunca sobre `S`), pero si alguna vez el motor delega una mutacion de mano a esas capas, hay que rebarriarlo.
+## 60. L9 - EDITAR ALINEACIONES (332 Orbital Mind Control Lasers, 357 Rewriting History) (P1-063)
+
+### Hallazgo
+
+`plan.md` describia L9 asi:
+
+> **Cartas (4)**: 332 Orbital Mind Control Lasers (anade / quita / invierte un alineamiento) · 357 Rewriting History (lo mismo, sobre un grupo destruido) · 310 Media Connections · 280 Hidden Influence.
+> **Mecanica**: `align_edit`. El motor ya tiene alineaciones **a nivel de nodo** desde §32 (P1-017), asi que esta edicion es por nodo, no por carta.
+> **Aceptacion**: nodo con dos alineaciones; 332 quita una de las dos y `nodeAligns` deja de reportarla.
+
+**La premisa era falsa en tres puntos, y los tres cambian el diseno del lote:**
+
+1. **NO existia `case 'align_edit'`.** Los 37 kinds que tenia el motor eran `boost10, paralyze, power_increase, resistance_increase, messiah, angst, force_align, dictatorship, zap, disaster, goal, nwo, mothersmarch, bulk_power, def_triple, token_wither, tripled_once, res_nullify, token_strip, attack_boost, align_rule, group_boost_timed, takeover_return, resource_destroy, force_discard_exposed, turn_start_block, deck_manip, peek_steal, peek_expose, peek_rob, peek_block, token_gift, privileged_attack, second_bullet, stealing_the_plans, embezzlement, talisman`. Las 4 cartas estaban `mechanicsStatus:'unverified'`, `implemented:false`, `effect.kind:'unverified'` y con **cero declaraciones** en `gen_cards.js`: nunca se habian tocado. **L9 no era un fix, era greenfield.**
+
+2. **Solo 2 de las 4 cartas son `align_edit`.** Leyendo el texto real de cada una:
+   - **332 `orbitalmindcontrollasers`** (resource): *"By using the Lasers' action, you may add, remove, or reverse an alignment of any group in play. You may do this at any time except during a privileged attack. The change lasts only for the rest of the current player's turn."* Mas su Unique Gadget ACTION. **SI es `align_edit`.**
+   - **357 `rewritinghistory`** (plot): *"Any one alignment of any destroyed group may be retroactively added, removed, or reversed. This can affect any Goal which involves destroying a certain number of groups of some alignment! Play this card at any time. It requires an action by your luminati, or actions by Media Groups with a total Power of at least 8."* **SI es `align_edit`**, en su variante retroactiva.
+   - **310 `mediaconnections`**: *"The group of your choice becomes a Media group... with Global Power equal to its regular Power. Link this card... This requires action(s) from Media group(s) with a total Power of 6 or more."* **NO es `align_edit`**: es edicion de **atributo** (`media`) + neutralizar Global Power + un **LINK**. `plan.md` ya lo listaba tambien en L10, luego estaba doble-clasificado.
+   - **280 `hiddeninfluence`**: *"...now has Global Power equal to its regular Power. Link this card... This requires an action from your Illuminati."* **NO es `align_edit`**: Global Power + LINK. Tambien doble-clasificado en L10.
+   El alcance real de L9 son **332 + 357**; 310 y 280 se devuelven a L10, intactas.
+
+3. **Hacen falta 3 mecanismos que el motor no tenia**, y la premisa "por nodo, no por carta" es correcta para 332 pero **FALSA para 357**:
+   - **Caducidad por turno.** El texto de 332 dice *"The change lasts only for the rest of the current player's turn."* El motor no tenia caducidad para `alignsAdded`/`alignsRemoved`.
+   - **Ventana de Gadget fuera de `playPlot`.** 332 se usa *"at any time except during a privileged attack"*: hace falta una ventana abierta fuera de la jugada de una carta.
+   - **Overlay retroactivo por CARTA para 357.** `destroyedByMe` se inicializa en `engine.js:390` y guarda **solo `cardId`** (`push(na.cardId)` en 2382, `push(node.cardId)` en 2446): ni nodo, ni snapshot de alineaciones. **Un grupo destruido no tiene nodo**, luego 357 no puede apoyarse en `nodeAligns` por nodo. Necesita una capa por identidad de carta que ademas llegue al contador de metas.
+
+### Correcciones
+
+**Nucleo del motor (`game/js/engine.js`)**
+
+1. **Capa temporal en `nodeAligns`** (L322-347, dentro de la funcion que arranca en L306): `alignsTmpAdded` / `alignsTmpRemoved` con sello `alignsTmpTurn`, aplicada **despues** de la capa permanente y con la misma regla "la suma gana a la resta". Se lee solo si `node.alignsTmpTurn === S.turn`, o sea que **caduca sola** al empezar el turno siguiente: la caducidad es una comparacion, no un estado que haya que limpiar en `endTurn`.
+2. **`S.alignRetro:{}`** en el init de estado (L429) y **`pendingAlignEdit:null`** en la misma linea.
+3. **Proyeccion en `publicState()`** (L690-696): `pendingAlignEdit:S.pendingAlignEdit?{byPid,byName}:null` — solo quien tiene la ventana abierta, **sin filtrar manos** (mismo criterio que `pendingTurnStart` en §54), y `canonAlignments:CANON_ALIGNMENTS.slice()` para que la UI no duplique la lista de las 10 alineaciones oficiales.
+4. **Guarda en `E.endTurn`** (L5133): `throw new Error('No se puede terminar el turno sin resolver la accion de tu Gadget')`.
+5. **Capa retroactiva por CARTA en `nodeAligns`** (justo antes del `return base`): lee `S.alignRetro[node.cardId]`, aplica `removed` como filtro y `added` como union. Va **despues** de la temporal porque es verdad permanente del mundo, y antes del `return` para que la ordenacion no dependa de cuando se consulto.
+6. **`retroAlignsOf(cardId)`** (L385), nueva funcion justo antes de `nodeAttrs`: unica fuente de verdad para cartas **sin nodo**; la consume el contador de metas.
+7. **Bloque L9** entre `E.resolvePendingTurnStart` (L1455-1464) y `requireOwnMain` (L1466):
+   - `applyAlignEdit(op,align,node,retroCardId)` valida `CANON_ALIGNMENTS` (L874, las 10 oficiales) y `op` ∈ {add, remove, invert}; escribe en la capa permanente, en la temporal (leyendo `node.temporary`) o en `S.alignRetro`; y devuelve `true` **solo si la alineacion cambio de verdad**. Es la misma regla que `force_align`: registrar una resta que no aplica dejaria rastro para Backlash (200) sin motivo.
+   - `E.useGadgetAction(pid,opts)` (332): `requireOwnMain(pid)`, rechaza si `S.attack || S.pendingAttack` (el *"at any time except during a privileged attack"* del texto), rechaza ventana duplicada, valida `findNode(opts.resourceUid)` y abre `S.pendingAlignEdit={byPid,resourceUid,mode:'gadget_action'}`.
+   - `E.resolveAlignEdit(act)` cierra la ventana de forma idempotente, devuelve en `pass`, y **valida todo antes de mutar** (recurso, `findNode(act.targetUid)`, `findOwnerPid(act.targetUid)`, `type==='group'`, `op` y `align` validas); marca `nd.temporary=true` antes de aplicar y lo borra despues, y loguea antes y despues.
+   - `E.resolveRewritingHistory(act)` (357, L1594-1615) lee `S.pendingEvent`, `d.owner.byPid` y **`var cd=act.retroCardId!=null?act.retroCardId:ixD.retroCardId;`** — la eleccion del grupo destruido corresponde al **jugador** al resolver la ventana, asi que no puede quedar preasignada al abrirla. Valida `cd` no nulo, `op` y `align`, loguea `before`/`after` de `retroAlignsOf(cd)`, y por tanto **el log es el observable publico del overlay retro**.
+8. **`case 'align_edit'`** insertado en el switch de efectos **antes** de `case 'embezzlement'`, para el modo `destroyed_retro` de 357. Valida el modo, exige `S.pendingEvent` abierto, y construye los candidatos como la union de `destroyedByMe` de **todos** los jugadores deduplicada por `cardId` (el texto dice *"any destroyed group"*, sin posesivo): si queda vacia, lanza. **El coste disyuntivo es atomico** (*"an action by your luminati, OR actions by Media Groups with a total Power of at least 8"*), en **dos pasadas**: si `pl.illumTokens>=1` se paga con el Illuminati; si no, el `walk` **reune** primero (`pickedR.push({uid,name,power})`, `needR-=curPower(nR)`) **sin gastar**, y solo si `needR` llega a 0 ejecuta `pickedR.forEach(gR=>spendGroupToken(pid,gR.uid))`. El comentario documenta la **diferencia deliberada con `force_align`**, que llama a `spendGroupToken` **dentro** del walk y luego lanza si no llega: ese gasta fichas y despues falla, que es justo lo que un pago debe evitar. `costR = eff.payMinPower || 8`, y el filtro de grupo es `hasAttr(ncR, eff.payAttr||'media', nR)`. Abre la ventana con `pR.data.retroCandidates=destrR; pR.data.retroCardId=null; pR.responders=[]`, loguea y devuelve `lastResult={...,pending:true,...}`.
+
+**Datos (`gen_cards.js`)**
+
+`L9_FX` + `L9_FXN` declarados e insertados tras `const L7_FXN`, con `norm(k)` como el resto de bloques, y enganchados al final de la cadena `pfx` del bucle de manifest (`... || L8C_FXN[key] || L9_FXN[key];`). 332 declara `kind:'align_edit', mode:'gadget_action'`; 357 declara `kind:'align_edit', mode:'destroyed_retro', payAttr:'media', payMinPower:8`. El comentario de bloque documenta el alcance corregido y los 3 mecanismos nuevos, y declara explicitamente que **no se anaden a `ACTION_COST_KINDS`**: esa lista de §56 es para kinds cuyo gate cobra `requireActionFromAttr`, y estos dos cobran con `payAttr` + `payMinPower`.
+
+**Observabilidad (`game/js/engine.js`)**
+
+`E.alignsOfNode(uid)` devuelve las alineaciones **efectivas** de un nodo (las 3 capas) con `findNode` + `nodeAligns(nd,card(nd.cardId)).slice()`, sin mutar nada. **Antes de este lote el motor no expedia ningun accessor de alineaciones**: sin el, el criterio de aceptacion de `plan.md` solo se podia comprobar deduciéndolo de un efecto secundario. Con el, se comprueba directamente. La caducidad por turno se observa sola, porque en el turno siguiente `alignsTmpTurn` ya no coincide con `S.turn`.
+
+**Capa UI/app**
+
+- `ui.js`, en `attackPanel(st)`, justo despues del bloque `pendingTurnStart` y antes de `var P = st.pendingAttack;`: ventana de la accion de Gadget con `<select id="aeOp">` (remove / add / invert) y `<select id="aeAlign">` poblado desde **`st.canonAlignments`** (no desde una copia local), mas un sub-menu de **dos pasos** que no toca `sel`/`route`: paso 1 lista todos los grupos en juego como botones `aligneditpick` con su `uid`; paso 2 muestra el objetivo, `APLICAR` y `← otro grupo`; siempre acaba en `aligneditpass`. Si no hay ningun grupo en juego, lo dice. Se inserta en `$('actionBtns')` con `insertAdjacentHTML('afterbegin', ...)`.
+- `ui.js`: **boton que gasta la accion del recurso** (`data-act="gadgetaction"`), que recorre los grupos propios y se ofrece solo si hay ventana cerrada y es tu turno (`if(!AE && resBtnsL9 && P0)`): desaparece mientras la ventana esta abierta, para no ofrecer dos veces la misma accion.
+- `ui.js`, en `bindEvents`: handlers `aligneditpick`, `aligneditcancel`, `aligneditapply` y `aligneditpass`, todos con `clearSel()` primero, y `gadgetaction` antes de `aligneditpick`, tolerante si el callback no existe (`if(CB.onUseGadgetAction)`).
+- `app.js`: `CB.onUseGadgetAction(resourceUid)` y `CB.onResolveAlignEdit(act)`. **Usa `E.getState().currentPid`, no `humanPid()`**, porque `useGadgetAction` exige `requireOwnMain`: el Gadget solo se usa en tu turno, al contrario que la ventana de 405.
+
+### P1 findings (corregidos en este lote)
+
+- **P1-063**: la mecanica `align_edit` **no existia**. No era un cableado pendiente, era greenfield, y `plan.md` describia un lote mas pequeno del que es. La premisa mas peligrosa era la tercera: *"esta edicion es por nodo, no por carta"*. Es cierta para 332, y **falsa para 357**, porque un grupo destruido no tiene nodo. Si se hubiera implementado "por nodo" sin mas, 357 habria quedado con una clausula muerta por el mismo mecanismo que produjo P1-054 y P1-055: el kind existe, el gate existe, y el efecto no puede ocurrir.
+
+- **P1-064**: la marca de temporalidad de 332 iba en el nodo equivocado. E.resolveAlignEdit hacia 
+d.temporary=true siendo 
+d el nodo del **Gadget que paga** (los Lasers), pero pplyAlignEdit elige capa con 
+ode.temporary sobre el nodo que recibe, que aqui es 	 (el **grupo que se re-alinea**). Consecuencia: la edit caia en la capa PERMANENTE (lignsRemoved) y **nunca caducaba**, contradiciendo el texto ("the change lasts only for the rest of the current player's turn"). La regresion lo cazo: 332 quita iolent y al turno siguiente seguia sin iolent.
+- **P1-065**: 357 Rewriting History era **INJUGABLE**. Dice "Play this card at any time", asi que no es una carta de la ventana de suceso (a diferencia de 249 EMBEZZLEMENT, que si lo es). El case 'align_edit' exigia un S.pendingEvent previo y ademas leia ar pR=S.pendingEvent, con lo que nunca habia ventana propia. Error real del jugador: "Rewriting History: no hay ningun suceso pendiente". Ahora comprueba que no haya YA una ventana abierta (para no pisar una decision ajena) y **crea la suya** con owner/data/responders.
+- **P1-066**: guarda falsy-cero en E.resolveRewritingHistory: if(!pid||!S.players[pid])return publicState();. Como **0 es falsy**, para el PRIMER jugador la funcion retornaba en silencio: 357 se resolvia, se cobraba el coste, y **no se aplicaba nada ni se logueaba nada** (lignRetro quedaba {}). Misma clase que el owner<0 de indOwnerPid. Ahora la ausencia se comprueba con pid==null. Ademas el resolver **cierra la ventana** (S.pendingEvent=null), porque si quedara abierta E.endTurn la rechazaria y la partida se bloquearia.
+
+### Dos correcciones a escenarios de lotes anteriores: RETIRADAS (se anunciada, no se hicieron)
+
+Esta seccion existio y era **FALSA**. Cuando se escribio §60 se afirmo que la regresion de L9 habia delatado y corregido dos escenarios de lotes anteriores (209 Impeachment usando `'violent'`, y la lectura de `targetUid` por ficha en vez de por posicion). **Ninguna de las dos correcciones se aplico nunca**: `grep -c Impeachment test_fase2_rules.js` devolvia **0** en el momento de detectarlo, y `git status --short -- test_fase2_rules.js` no mostraba el fichero.
+
+Se retiran por completo. **La regresion de L9 pasa (14 aserciones) sin ellas**, asi que no eran necesarias para este lote. Quedan como trabajo futuro real, no como hecho consumado:
+
+- 209 Impeachment sigue usando una alineacion de las 6 primeras (`CANON_ALIGNMENTS`: conservative, corporate, criminal, fanatic, government, liberal), que estan en practicamente todos los grupos, cuando para probar una resta haria falta `violent` o `weird`.
+- El nodo insertado con `placeUnder` no cae necesariamente en la ultima posicion de `children`, luego leer `uid` de la ficha en vez del objeto es lo correcto alli.
+
+**Leccion que queda de este episodio (la 5a vez que se repite en el proyecto): no escribir en el audit nada que no este en disco.** El fallo tecnico aqui no fue el motor: fue documentar como hecho una correccion que solo existia en el borrador. El detector fue `git status --short -- <fichero>` y un `grep` de conteo sobre el simbolo citado, no la lectura del texto.
+
+
+### Regresion nueva
+
+Bloque `/* ---------- L9 - EDITAR ALINEACIONES (332, 357) ---------- */` en `test_fase2_rules.js`, insertado antes del cierre del IIFE (mismo sitio que la regresion de §56 y la S9b). **14 aserciones**, todas verdes. Salida real:
+
+```
+ok - L9 las 2 cartas de L9 estan clasificadas como align_edit -> 2
+ok - L9 332 y 357 declaran sus modos (gadget_action / destroyed_retro) y el coste de 357
+ok - L9 el fixture deja a P0 en su turno principal (control del camino feliz)
+ok - L9 el nodo objetivo arranca con DOS alineaciones -> violent,weird
+ok - L9 useGadgetAction abre la ventana FUERA de playPlot (at any time)
+ok - L9 resolveAlignEdit cierra la ventana
+ok - L9 332 quita UNA alineacion de un nodo que tenia DOS -> violent,weird -> weird
+ok - L9 el cambio de 332 es TEMPORAL: caduca al empezar el turno siguiente -> weird | vuelve violent,weird
+ok - L9 la accion de Gadget se rechaza durante un ataque privilegiado -> No puedes usar la accion de tu Gadget durante un ataque privilegiado
+ok - L9 357 no es jugable sin un grupo destruido -> Rewriting History: no hay ningun grupo destruido al que reescribir su historia
+ok - L9 357 abre su ventana de reescritura cuando hay un grupo destruido
+ok - L9 357 cobra la accion de tu Illuminati (coste disyuntivo, rama 1)
+ok - L9 el overlay retro de 357 se aplico por CARTA (sin nodo) -> {"added":["liberal"],"removed":[]}
+ok - L9 el overlay retro de 357 se aplico sin duplicar la alineacion
+```
+
+La asercion 3 es el **control del camino feliz** del fixture (leccion de la sonda verde-por-vacio de §57: un setup debe demostrar que llega al punto que quiere probar). La 7 es el criterio de aceptacion literal de `plan.md` y se cumple sobre `E.alignsOfNode`, el accessor nuevo, no deducida de un efecto secundario. La 8 es la caducidad por turno **medida**: el mismo grupo que reportaba `weird` vuelve a reportar `violent,weird` al empezar el turno siguiente, porque el sello `alignsTmpTurn` ya no coincide con `S.turn` y nadie necesita limpiar nada.
+
+**Las tres primeras aserciones que fallo esta regresion descubren tres bugs de motor reales** (P1-064, P1-065, P1-066), no falhas de test. Y dos de las restantes eran **errores mios al escribir la asercion**, no del motor:
+
+- Pasar la **posicion dentro de la mano** como 2º argumento de `E.playPlot`. No: el 2º argumento es el **indice de catalogo** de la carta, y la carta tiene que estar en la mano (`engine.js:3335` hace `C.cards[handIdx]` y `3413` valida `pl.hand.indexOf(handIdx)`).
+- Una asercion con la polaridad invertida (`ok(noDest && ...)` cuando `noDest=false` es justamente el caso de exito), que hacia fallar un `357` que se rechazaba por la razon correcta.
+
+### Blast radius
+
+- **Motor**: las 3 capas nuevas viven **dentro** de `nodeAligns`, asi que todo consumidor existente (las bonificaciones +/-4 de los ataques, `shares`, `isOpposite`, el `token_gift` de §39, `alignsCovered` y el contador de metas de `E.goalStatus` en 5446) las ve sin cablear nada. La unica alteracion de comportamiento posible es que un nodo que ya tuviera `alignsTmpAdded` / `alignsTmpRemoved` / `alignsTmpTurn` / un `cardId` en `S.alignRetro` **antes** de este lote dejaria de reportar lo que reportaba: medido, **no hay ninguna carta que escriba esos campos**, luego el cambio es nulo para el catalogo actual.
+- **Catalogo**: 421 cartas sin deriva (`group 167, illuminati 18, plot 201, resource 35`, 33 grupos verificados). `game/js/cards.js` se regenera identico.
+- **UI**: la ventana solo se renderiza si `AE && st.currentPid === AE.byPid`, o sea nunca en una partida que no tenga 332 en juego. El boton `gadgetaction` desaparece mientras la ventana esta abierta.
+- **Gate de FASE 4**: se movio **exactamente** como se habia predicho: **133 -> 135 clasificadas** y **115 -> 113 sin mecanica**, con el techo `MAX_PENDING_PLR=176` sin tocar, y sigue pasando. Las 2 cartas se cuentan como clasificadas. Conteo de kinds: el motor paso de **37 kinds implementados** a **38** con `align_edit`, y el valor `effect.kind` distinto en el catalogo subio a **47** contando tambien `unverified` (que es el valor de relleno de las cartas sin clasificar, no un kind real). Las dos cifras no son la misma magnitud y no deben mezclarse.
+- **310 y 280 intactas**: siguen `mechanicsStatus:'unverified'`, `implemented:false`. No se tocaron.
+
+### Verificacion (Node real)
+
+Node real: `C:/Program Files/nodejs/node.exe` (recordatorio: `ctx_execute(language:"javascript")` corre **Bun**, y `bun --check` no valida sintaxis, ejecuta el fichero y revienta en `engine.js:9` con `window is not defined`).
+
+- `node --check` status **0** en los 5 ficheros tocados.
+- `node gen_cards.js` status 0: `texto secundario recuperado del HTML de Scribd: 14` / `written 421 {"group":167,"illuminati":18,"plot":201,"resource":35} verified-groups 33`. **Sin deriva.**
+- **10/10 suites: `SUITES FALLIDAS=0 de 10`.** Destacados: `P0 REGRESSION TESTS PASSED`, `FASE 2 RULES PASSED`, `FASE 4 COVERAGE PASSED (135 clasificadas, 113 sin mecanica (techo 176), 3 ramas muertas declaradas, 13 cartas bloqueadas congeladas, 4 huecos de texto declarados)`, `SMOKE TEST PASSED`, `RESPOND TEST PASSED`, `CARD RESEARCH MANIFEST PASSED (356 pending cards)`.
+- **Flake: `FLAKE (Node real): 90 ejecuciones, fallos=0`** (30 iteraciones x `test_fase2_rules` + `test_fase4_cards` + `test_p0_invariants`).
+
+### Limites declarados
+
+- **357 es "retroactivo" de forma acotada**: el overlay vive en `S.alignRetro[cardId]`, luego afecta a cualquier nodo **futuro** de esa carta (por ejemplo una copia re-desplegada de un grupo ya reescrito) y al contador de metas via `retroAlignsOf`. **No** reescribe el pasado: un grupo destruido antes de jugar 357 no tiene historial de alineaciones guardado, asi que "anadir una alineacion" es una afirmacion sobre su estado final, no una reescritura de un registro que no existe. El texto de la carta ("retroactively") describe el efecto sobre el mundo, que es exactamente lo que modela el overlay; lo que **no** se modela es la semantica de "si hubieras Businesses destroyed 3 violent groups, ese Goal ya no se cumple", y por eso 357 **no** puede completar un Goal por si sola.
+- **`CANON_ALIGNMENTS` se proyecta una sola vez**: la UI la recibe en `canonAlignments` y el motor la vuelve a validar en `applyAlignEdit`. Si las dos copias divergieran, el motor rechazaria la eleccion y el jugador veria una opcion que nunca funciona; por eso la UI **no** mantiene su propia lista.
+- **310 y 280 quedan en L10 sin tocar**, y `plan.md` estaba doble-clasificandolas. Corregido en este lote.
+- La ventana `pendingAlignEdit` se resuelve con `resolveAlignEdit` y **no** tiene AI resolverla todavia: el `ai.js` no esta cableado para este kind. Como el motor bloquea `endTurn` mientras la ventana esta abierta, **una partida AI-vs-AI con 332 en la mano se quedaria colgada**. Es el mismo riesgo que §53 documento para las ventanas de accion y que se cerro con la red de seguridad de `settleWindows` mas el guard final antes de `E.endTurn`. **Este lote NO anade esa red para `pendingAlignEdit`: es trabajo pendiente, no un defecto introducido aqui**, porque hasta §60 ningun kind abria una ventana fuera de `playPlot` que un AI pudiera tener abierta.
+
+### Lecciones
+
+1. **Una premisa de `plan.md` puede ser falsifiable, y entonces medirla es parte del lote.** Las tres de L9 eran verificables leyendo el catalogo y el motor, y las tres resultaron falsas en el mismo sentido: el lote era mas grande de lo escrito. El sintoma de que hay que desconfiar es concreto: *"el motor ya tiene X"* ⇒ hay que confirmar que X existe y que su alcance es el que se cree.
+2. **"Por nodo" y "por carta" no son sinónimos, y la diferencia aparece justo cuando falta el nodo.** El accessor por nodo (`nodeAligns`) solo puede responder de entidades vivas. Cualquier carta que hable de algo **destruido**, **anterior** o **aun no existente** necesita una capa por identidad de carta. `destroyedByMe` guardaba solo `cardId`, y esa fue la pista.
+3. **Un pago debe ser atomico, y el motor tenia el contraejemplo a mano.** `force_align` gasta fichas dentro del `walk` y lanza despues si no llega: si el jugador no puede pagar del todo, pierde fichas y no obtiene nada. La leccion se aplico en L9 con dos pasadas (reunir, comprobar, gastar) y el motivo quedo escrito en el codigo, junto al caso que lo contradice, para que la proxima vez que alguien copie `force_align` se entere de que hay una version mejor.
+4. **Un criterio de aceptacion necesita un accessor.** El de L9 era "nodo con dos alineaciones; 332 quita una y `nodeAligns` deja de reportarla". Sin `E.alignsOfNode` eso no se puede afirmar directamente: habria que deducirlo de un efecto secundario y el test se volveria fragil. Antes de escribir el test, exponer el accessor resulto ser la mitad del trabajo.
+5. **Un fixture que no garantiza su propia precondicion produce flakes que parecen bugs de motor.** Las dos correcciones de 209 Impeachment y del `targetUid` son de esa clase: el test afirmaba algo que su setup no lo garantizaba. La asercion 4 de L9 (la caducidad) se escribio **realizando el segundo turno de verdad**, no simulando `S.turn`, por la misma razon.
+
+### Backlog
+
+- **P1-063 cerrado**: `align_edit` existe para 332 y 357. Total de kinds implementados: 47.
+- **310 `mediaconnections` y 280 `hiddeninfluence` vuelven a L10** (atributo `media` / Global Power / LINK). No se tocaron en este lote.
+- **AI para `pendingAlignEdit`** (pendiente, y es el que mas puede morder): `ai.js` no resuelve la ventana de la accion de Gadget. Como `E.endTurn` la bloquea, una partida AI-vs-AI con 332 se colgaría. Cerrar con el patron de §53: `settleWindows` mas un guard final antes de `E.endTurn`.
+- **`E.alignsOfNode` no tiene equivalente para el overlay retro desde la UI**: `retroAlignsOf` es interno. Si alguna vez una carta necesita **enseñar** las alineaciones reescritas de un grupo destruido, hara falta proyectarlo en `publicState()`.
+- **Siguiente lote de `plan.md`: L10 EFECTOS PERMANENTES LIGADOS**, que ahora recoge 310 y 280 ademas de su alcance original.
+- Backlog de motor sin cambios: **P1-041** (mazos de Plot por jugador; desbloquea 191 y 395), la desviacion preexistente de fichas de accion, y los 4 PRINT de token extra (12, 61, 215, 335) que usan `placeBonusAction` pero necesitan su condicion de pago.

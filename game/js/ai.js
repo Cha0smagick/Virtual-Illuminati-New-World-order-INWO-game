@@ -611,7 +611,29 @@ function settleDrawWindow(E) {
    ORDEN IMPORTA: la de robo va PRIMERA porque es la unica que bloquea `E.endTurn`,
    y resolverla puede abrir la de suceso (P1-027) al entregar la Plot, asi que la
    de suceso tiene que cerrarse DESPUES. */
+/* L9 - la ventana de ACCION DE GADGET (332 Orbital Mind Control Lasers). Es la
+   SEXTA ventana. Hoy la IA no puede abrirla (solo `E.useGadgetAction` la abre, y
+   eso lo llama exclusively el boton de la UI), asi que su radio de explosion es
+   CERO; pero se cablea igual por la misma razon que §53: una ventana que
+   `E.endTurn` rechaza convierte un forgetting future en un atasco silencioso.
+   DECLARACION DE LIMITACION: la politica es NEUTRA y honesta - la IA no tiene un
+   oraculo de "que re-alineacion conviene", asi que **pasa**. Nunca es peor que no
+   usar la accion, y no finge una heuristica que no existe. Si la ventana es de un
+   HUMANO no se toca: cada jugador cierra la suya. */
+function settleAlignEditWindow(E) {
+  var st = E.getState();
+  if (!st || !st.pendingAlignEdit) return;
+  var AE = st.pendingAlignEdit;
+  var owner = AE.byPid;
+  if (owner !== undefined && owner !== null) {
+    var pl = (st.players || [])[owner];
+    if (pl && pl.human) return;
+  }
+  try { E.resolveAlignEdit({ pass: true }); }
+  catch (e) { if (window.console) console.error('[INWO] AI: fallo al cerrar la accion de Gadget: ' + (e && e.message ? e.message : e)); }
+}
 function settleWindows(E) {
+  settleAlignEditWindow(E);
   settleDrawWindow(E);
   settleEventWindow(E);
   settleRollWindow(E);

@@ -1827,6 +1827,35 @@ const L7_FX = {
 };
 const L7_FXN = {};
 for (const k in L7_FX) { L7_FXN[norm(k)] = L7_FX[k]; }
+
+/* ---------- L9 - EDITAR ALINEACIONES (332, 357) ----------
+ * ALCANCE CORREGIDO (ver audit §60): plan.md listaba 4 cartas, pero solo 2 son
+ * `align_edit`. Leyendo el texto real de cada una:
+ *   332 Orbital Mind Control Lasers -> SI: anade / quita / invierte una alineacion.
+ *   357 Rewriting History           -> SI, pero sobre un grupo YA DESTRUIDO.
+ *   310 Media Connections           -> NO: edita el ATRIBUTO media + Global Power + LINK (era L10).
+ *   280 Hidden Influence            -> NO: Global Power + LINK (era L10, doble-clasificado).
+ * Las dos necesitan tres mecanismos que el motor no tenia:
+ *   1. CADUCIDAD POR TURNO (solo 332): "The change lasts only for the rest of the
+ *      current player's turn" -> node.alignsTmpAdded/Removed con sello alignsTmpTurn.
+ *   2. VENTANA DE GADGET FUERA DE playPlot (solo 332): "at any time except during
+ *      a privileged attack" -> S.pendingAlignEdit + E.useGadgetAction.
+ *   3. OVERLAY RETROACTIVO POR CARTA (solo 357): el grupo destruido NO tiene nodo y
+ *      destroyedByMe solo guarda cardId, luego el overlay va en S.alignRetro.
+ * NO se anaden a ACTION_COST_KINDS: esa lista es para kinds cuyo gate cobra un
+ * `requireActionFromAttr`, y estos dos cobran con payAttr + payMinPower. */
+const L9_FX = {
+  'Orbital Mind Control Lasers': {
+    kind: 'align_edit', mode: 'gadget_action',
+    t: 'By using the Lasers\' action, you may add, remove, or reverse an alignment of any group in play. You may do this at any time except during a privileged attack. The change lasts only for the rest of the current player\'s turn. Unique Gadget ACTION'
+  },
+  'Rewriting History': {
+    kind: 'align_edit', mode: 'destroyed_retro', payAttr: 'media', payMinPower: 8,
+    t: 'Any one alignment of any destroyed group may be retroactively added, removed, or reversed. This can affect any Goal which involves destroying a certain number of groups of some alignment! Play this card at any time. It requires an action by your luminati, or actions by Media Groups with a total Power of at least 8.'
+  }
+};
+const L9_FXN = {};
+for (const k in L9_FX) { L9_FXN[norm(k)] = L9_FX[k]; }
 /* P1-055 — kinds cuyo gate en engine.js COBRA un `requireActionFromAttr`
  * ("debes gastar la acción de un grupo tuyo con el atributo X"). Lista cerrada a
  * propósito: un kind nuevo con ese coste debe registrarse aquí Y traer su gate, para
@@ -2129,7 +2158,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

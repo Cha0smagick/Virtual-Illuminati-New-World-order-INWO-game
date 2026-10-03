@@ -5704,6 +5704,123 @@ ok(actionCostCards.every(function(c) {
   return !(c.alignments || []).some(function(a) { return String(a).toLowerCase() === attr; });
 }), 'P1-055 ninguna carta declara el atributo de coste tambien como alineacion (regresion de P1-018/P1-054)');
 
+/* ---------- L9 - EDITAR ALINEACIONES (332, 357) ---------- */
+/* Criterio de aceptacion de plan.md: "nodo con dos alineaciones; 332 quita una de
+ * las dos y nodeAligns deja de reportarla". Se comprueba DIRECTAMENTE con
+ * E.alignsOfNode(uid) en vez de deducirlo de un efecto secundario, y se anaden
+ * los 3 mecanismos que plan.md no contemplaba: caducidad por turno de 332, el
+ * camino "at any time" de la accion de Gadget, y el overlay retroactivo POR CARTA
+ * de 357 (un grupo destruido no tiene nodo, luego no puede apoyarse en nodeAligns). */
+var L9A = C.cards.filter(function (c) { return c.effect && c.effect.kind === 'align_edit'; });
+ok(L9A.length === 2,
+   'L9 las 2 cartas de L9 estan clasificadas como align_edit -> ' + L9A.length);
+var L9c332 = C.cards.find(function (c) { return c.id === 'orbitalmindcontrollasers'; });
+var L9c357 = C.cards.find(function (c) { return c.id === 'rewritinghistory'; });
+ok(!!L9c332 && !!L9c357 &&
+   L9c332.effect.mode === 'gadget_action' &&
+   L9c357.effect.mode === 'destroyed_retro' &&
+   L9c357.effect.payAttr === 'media' && L9c357.effect.payMinPower === 8,
+   'L9 332 y 357 declaran sus modos (gadget_action / destroyed_retro) y el coste de 357');
+
+(function () {
+  if (!L9c332 || !L9c357) return;
+  /* Objetivo: un grupo con DOS alineaciones de las 6 "de siempre" fuera, porque
+   * para probar una RESTA hace falta que la alineacion exista de verdad. 'violent'
+   * y 'weird' no estan en todos los grupos (a diferencia de las 6 primeras). */
+  var grpL9 = C.cards.find(function (c) {
+    if (c.type !== 'group') return false;
+    var a = c.alignments || [];
+    return a.indexOf('violent') >= 0 && a.indexOf('weird') >= 0;
+  });
+  if (!grpL9) { ok(false, 'L9 el catalogo tiene un grupo con violent+weird'); return; }
+
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  for (var kL9 = 0; kL9 < 12; kL9++) {
+    var stL9 = E.getState();
+    if (stL9.phase === 'main' && stL9.currentPid === 0) break;
+    E.endTurn();
+  }
+  ok(E.getState().phase === 'main' && E.getState().currentPid === 0,
+     'L9 el fixture deja a P0 en su turno principal (control del camino feliz)');
+
+  plant(0, 'nL9res', L9c332.idx, 1);
+  plant(0, 'nL9grp', grpL9.idx, 1);
+
+  var a1 = E.alignsOfNode('nL9grp') || [];
+  ok(a1.indexOf('violent') >= 0 && a1.indexOf('weird') >= 0,
+     'L9 el nodo objetivo arranca con DOS alineaciones -> ' + a1.join(','));
+
+  /* El Gadget se usa "at any time except during a privileged attack": fuera de
+   * playPlot, abriendo su propia ventana. */
+  E.useGadgetAction(0, { resourceUid: 'nL9res' });
+  ok(!!E.getState().pendingAlignEdit,
+     'L9 useGadgetAction abre la ventana FUERA de playPlot (at any time)');
+  E.resolveAlignEdit({ targetUid: 'nL9grp', op: 'remove', align: 'violent' });
+  ok(!E.getState().pendingAlignEdit, 'L9 resolveAlignEdit cierra la ventana');
+
+  var a2 = E.alignsOfNode('nL9grp') || [];
+  ok(a2.indexOf('violent') < 0 && a2.indexOf('weird') >= 0,
+     'L9 332 quita UNA alineacion de un nodo que tenia DOS -> ' + a1.join(',') + ' -> ' + a2.join(','));
+
+  /* Caducidad por turno: el sello alignsTmpTurn ya no coincide con S.turn, asi que
+   * la alineacion vuelve sola. No hace falta ningun barrido en endTurn. */
+  var tw0 = E._raw().turn;
+  for (var eL9 = 0; eL9 < 12 && E._raw().turn === tw0; eL9++) E.endTurn();
+  var a3 = E.alignsOfNode('nL9grp') || [];
+  ok(E._raw().turn > tw0 && a3.indexOf('violent') >= 0,
+     'L9 el cambio de 332 es TEMPORAL: caduca al empezar el turno siguiente -> ' + a2.join(',') + ' | vuelve ' + a3.join(','));
+
+  /* Rechazo durante ataque privilegiado: "at any time EXCEPT during a privileged
+   * attack". Se planta el recurso y se fuerza S.attack. */
+  for (var wL9 = 0; wL9 < 12; wL9++) {
+    var s2 = E.getState();
+    if (s2.phase === 'main' && s2.currentPid === 0) break;
+    E.endTurn();
+  }
+  var rawL9 = E._raw();
+  rawL9.attack = { groupUid: 'nL9grp', targetUid: 'x', power: 1 };
+  var threwL9 = false, whyL9 = '';
+  try { E.useGadgetAction(0, { resourceUid: 'nL9res' }); } catch (e) { threwL9 = true; whyL9 = String(e.message || e); }
+  rawL9.attack = null;
+  ok(threwL9 && /ataque/i.test(whyL9),
+     'L9 la accion de Gadget se rechaza durante un ataque privilegiado -> ' + (whyL9 || 'NO RECHAZO'));
+
+  /* 357: sin grupos destruidos no es jugable. */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  for (var k2L9 = 0; k2L9 < 12; k2L9++) {
+    var s3L9 = E.getState();
+    if (s3L9.phase === 'main' && s3L9.currentPid === 0) break;
+    E.endTurn();
+  }
+  var noDest = true, whyDest = '';
+  var rawND = E._raw();
+  /* OJO: el 2º arg de playPlot es el INDICE DE CATALOGO de la carta, y la carta
+   * tiene que estar EN LA MANO (engine.js:3335 `C.cards[handIdx]` y 3413
+   * `pl.hand.indexOf(handIdx)`). No es la posicion dentro de la mano. */
+  if (rawND.players[0].hand.indexOf(L9c357.idx) < 0) rawND.players[0].hand.push(L9c357.idx);
+  try { E.playPlot(0, L9c357.idx, null, {}); } catch (e) { noDest = false; whyDest = String(e.message || e); }
+  ok(!noDest && /destruid/i.test(whyDest),
+     'L9 357 no es jugable sin un grupo destruido -> ' + (whyDest || 'SI SE JUGO'));
+
+  /* 357 con un grupo destruido: el overlay es POR CARTA (S.alignRetro), y se
+   * observa en el log de resolveRewritingHistory, que loguea before/after. */
+  var raw2L9 = E._raw();
+  raw2L9.players[0].destroyedByMe.push(grpL9.idx);
+  raw2L9.players[0].illumTokens = 1;
+  var h2L9 = raw2L9.players[0].hand.indexOf(L9c357.idx);
+  if (h2L9 < 0) raw2L9.players[0].hand.push(L9c357.idx);
+  var out2L9 = E.playPlot(0, L9c357.idx, null, {});
+  ok(!!E.getState().pendingEvent,
+     'L9 357 abre su ventana de reescritura cuando hay un grupo destruido');
+  ok(!raw2L9.players[0].illumTokens,
+     'L9 357 cobra la accion de tu Illuminati (coste disyuntivo, rama 1)');
+  E.resolveRewritingHistory({ retroCardId: grpL9.idx, op: 'add', align: 'liberal' });
+  var retroL9 = raw2L9.alignRetro || {};
+  ok(!!retroL9[grpL9.idx] && (retroL9[grpL9.idx].added || []).indexOf('liberal') >= 0,
+     'L9 el overlay retro de 357 se aplico por CARTA (sin nodo) -> ' + JSON.stringify(retroL9[grpL9.idx]));
+  ok(!!raw2L9.alignRetro[grpL9.idx] && (raw2L9.alignRetro[grpL9.idx].added || []).filter(function (x) { return x === 'liberal'; }).length === 1,
+     'L9 el overlay retro de 357 se aplico sin duplicar la alineacion');
+})();
 console.log('');
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');

@@ -176,6 +176,19 @@ var CB = {
     try { E.resolvePendingTurnStart({ pass: true }); after('Los rivales dejan pasar el comienzo del turno'); }
     catch (e) { log('! ' + e.message); }
   },
+  /* L9 — 332 Orbital Mind Control Lasers. La ventana la abre E.useGadgetAction y
+   * la cierra E.resolveAlignEdit. Aqui NO se elige grupo ni alineacion: eso ya lo
+   * ha hecho la UI (pick + selects), asi que solo se reenvia la decision. Usamos
+   * currentPid (NO humanPid) porque `useGadgetAction` exige requireOwnMain: el
+   * Gadget solo se puede usar en TU turno, a diferencia de la ventana de 405. */
+  onUseGadgetAction: function (resourceUid) {
+    try { E.useGadgetAction(E.getState().currentPid, { resourceUid: resourceUid }); after('Accion de Gadget abierta'); }
+    catch (e) { log('! ' + e.message); }
+  },
+  onResolveAlignEdit: function (act) {
+    try { E.resolveAlignEdit(act || {}); after(act && act.pass ? 'Gadget no usado' : 'Alineacion editada'); }
+    catch (e) { log('! ' + e.message); }
+  },
   onMoveGroup: function (uid, newParentUid) { E.moveGroup(E.getState().currentPid, uid, newParentUid); after('Grupo movido'); },
   onEndTurn: function () { endTurnFlow(); }
 };
