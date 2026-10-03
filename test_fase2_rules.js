@@ -3025,10 +3025,22 @@ function readyToAttack(pid) {
      * endurece. Con el pop() viejo esta mano tiene mas de una carta y el pop se
      * llevaria la equivocada, duplicando la Plot en las dos manos. */
     var rh = E._raw().players[resp].hand;
-    var payPos = rh.indexOf(filler.idx);
-    ok(payPos >= 0, 'P1-060 el pago estaba en la mano del reclamante antes de romperlo');
-    if (payPos < 0) return;
-    rh.splice(payPos, 1);
+    var payCount = rh.filter(function (x) { return x === filler.idx; }).length;
+    ok(payCount >= 1, 'P1-060 el pago estaba en la mano del reclamante antes de romperlo -> ' + payCount);
+    if (payCount < 1) return;
+    /* P1-062 - el barrido de flake (30x) atrapo lo que la corrida inicial no vio:
+     * este fixture NO garantizaba la precondicion de su propia rama. El reparto
+     * inicial es aleatorio y puede dejar en la mano del reclamante una SEGUNDA
+     * copia de la misma carta que usamos como pago. Al sacar una sola copia,
+     * `at3` daba >= 0, el motor tomaba el CAMINO FELIZ - y hacia bien, el pago
+     * seguia ahi -, el rollback no se ejecutaba, y las 2 aserciones que solo son
+     * ciertas en la rama de rollback fallaban ~1/60. El motor nunca estuvo mal.
+     * Por eso el arreglo es del fixture, no de la asercion: se saca TODA copia
+     * y se afirma la precondicion. Es la misma leccion que el flake de S7 (§56):
+     * un test que depende del reparto aleatorio se hace determinista, nunca debil. */
+    for (var q = rh.length - 1; q >= 0; q--) if (rh[q] === filler.idx) rh.splice(q, 1);
+    ok(rh.indexOf(filler.idx) < 0,
+      'P1-060 precondicion del rollback cumplida: el pago no queda en ninguna copia de la mano');
     E.resolvePendingEvent();
     var raw = E._raw();
     var enResp = raw.players[resp].hand.filter(function (x) { return x === res.idx; }).length;

@@ -5940,3 +5940,145 @@ El invariante afirmado es el real, no un detalle de implementacion: la Plot en d
 - Desviacion preexistente de las fichas de accion: se arrastran entre turnos, el juego oficial dice que se pierden al final del turno.
 - Los 4 PRINT de token extra (12 Brazil, 61 Hawaii, 215 Center for Weird Studies, 335 Perpetual Motion Machine) usan `placeBonusAction` pero necesitan su propia condicion de pago.
 - Lotes de `plan.md`: L9 (ya no bloqueante para 405), L10, L11, L12, L13, L14, L15, L16, L17.
+
+## 59. BARRIDO DE pop() Y shift() — CIERRE DEL PATRON IDENTIDAD-VS-POSICION
+
+### Hallazgo
+
+§58 cerro el barrido del patron `indexOf` -> `splice`. Quedaba una variante sin cubrir: **`pop()` y `shift()`**, queeseran la ultima forma de "asumir una posicion en vez de la identidad". Este lote barre las dos en todo `engine.js` (5.228 lineas) y el resultado es **NEGATIVO: 0 instancias vivas**.
+
+Lo relevante del resultado no es que no hubiera nada: es que **el unico `pop()` sobre una mano era exactamente el que P1-060 corrigio en este mismo lote anterior**. Con el fix aplicado, el patron queda cerrado en sus tres variantes (`indexOf`->`splice`, `pop`, `shift`).
+
+### Los 5 pop(): todos son operaciones de MAZO, ninguno de mano
+
+| Linea | Codigo | Que muta | Veredicto |
+|---|---|---|---|
+| 924 | `for(var i=0;i<3;i++)pl.hand.push(S.plotDeck.pop());` | `S.plotDeck` | Reparto inicial. SEGURO: robar del mazo por la cima es la semantica correcta; no hay indice asumido. |
+| 925 | `for(var j=0;j<10;j++)pl.hand.push(S.groupDeck.pop());` | `S.groupDeck` | Idem para el mazo de Groups. SEGURO. |
+| 1099 | `if(!deck.length){while(discard.length)deck.push(discard.pop());shuffle(deck);...}` | `discard` -> `deck` | Rebarajado del descarte cuando el mazo se agota. SEGURO. |
+| 1100 | `return deck.pop();` | `deck` | `drawFrom`: el draw es por definicion "la cima del mazo". SEGURO. |
+| 1188 | `for(var i=0;i<n&&deck.length>0;i++)out.push(deck.pop());` | `deck` | `drawN` multi-robo. SEGURO. |
+
+**Ninguno asume una posicion dentro de `pl.hand`.** El `push(pl.hand...)` de 924-925 solo **anade** al final, que no puede quedar obsoleto.
+
+### Los 3 shift(): uno es copia, dos son consumo intencional
+
+| Linea | Codigo | Veredicto |
+|---|---|---|
+| 1332 | `chosen=deck.shift();` | Mazo. SEGURO. |
+| 5054 | `var handIx=plotsInHand.shift();` (dentro de `E.endTurn`, bucle de limite de mano) | **SEGURO — `plotsInHand` es una COPIA.** En 5046: `var plotsInHand=pl.hand.filter(function(ix){return C.cards[ix].type==='plot';});`. `filter` construye un array NUEVO, asi que el `shift()` no puede mutar `pl.hand`; la mano se muta despues y de forma independiente via `removeFromHand(pl,handIx)` (5055). |
+| 5060 | `var exposedIx=pl.exposedPlots.shift();` | **SEGURO — consumo intencional.** Es el segundo bucle de `E.endTurn`, que descarga los excessos de Plot expuesta; el `shift()` avanza el cursor y `discardPlot(exposedIx,pid)` (5061) consume la carta. El array SI se muta a proposito, y `excess--` (5063) termina el bucle. |
+
+### P1-060 confirmado: el hand.pop() ya no existe
+
+La comprobacion explicita de que la correccion de §58 esta viva: el grep de `pop()` sobre el motor **no devuelve ninguna linea con `pl.hand.pop()` ni con `hand.pop()`**. El unico `pop()` que alguna vez opero sobre una mano fue el del rollback de EMBEZZLEMENT, y ahora es `indexOf`+`splice` por identidad., y ahora es `indexOf`+`splice` por identidad.
+
+### Asimetria 5047 vs 5059: verificada, NO es bug
+
+Al leer el bucle de limite de mano se vio una asimetria aparente: 5047 usa `var exposed=pl.exposedPlots||[]` (con guarda) mientras 5059 accede a `pl.exposedPlots.length` **sin** guarda. Si `pl.exposedPlots` pudiese ser `undefined`, 5059 lanzaria `TypeError`.
+
+Se verifico el ciclo de vida completo del campo (las 20 apariciones no-comentario):
+
+- **364** (`E.newGame`): `exposedPlots:[]` — se inicializa siempre como array.
+- **3638**: `pl.exposedPlots=pl.exposedPlots.filter(...)` — la unica reasignacion, y `filter` **siempre** devuelve un array, nunca `undefined`.
+- Todos los demas usos son `push` / `indexOf` / `length` / `slice` / `filter` de lectura.
+
+**Conclusion: `pl.exposedPlots` es un array en todo momento observable**, luego el `||[]` de 5047 es **codigo defensivo vestigial** y la asimetria es inocua. Se deja tal cual (quitarla seria un cambio cosmetico sin valor en un lote cuyo alcance es el barrido) pero queda **declarada** para que no vuelva a abrir como hallazgo.
+
+### removeFromHand verificado
+
+El helper que toda la correccion depende (1488-1491) es correcto por construccion:
+
+```js
+function removeFromHand(pl,idx){
+  var i=pl.hand.indexOf(idx);
+  if(i>=0)pl.hand.splice(i,1);
+}
+```
+
+Busca la identidad, splitea la posicion, y **re-resuelve el indice en el momento del uso**. Es el patron correcto, y es exactamente lo que P1-059 dejo de hacer la cola de `playPlot`.
+
+### P1 findings (cerrados en este lote)
+
+- **P1-061** — barrido `pop()`/`shift()`: **0 instancias vivas**. No hay correccion de codigo; el finding es la **confirmacion de que P1-060 cerro la ultima**, y el cierre formal del patron identidad-vs-posicion en sus tres variantes.
+
+### Blast radius
+
+**CERO.** Este lote no toca una sola linea de codigo ejecutable: es un lote de verificacion. Se anade documentacion (`audit`, `plan.md`) y nada mas.
+
+### Verificacion (Node real)
+
+- `node --check` -> **0** en `game/js/engine.js`, `gen_cards.js`, `test_fase2_rules.js`.
+- `node gen_cards.js` -> status 0, `texto secundario recuperado del HTML de Scribd: 14` / `written 421 {"group":167,"illuminati":18,"plot":201,"resource":35} verified-groups 33` — **sin deriva**.
+- Barrido sobre las 5.228 lineas de `engine.js`: 5 `.pop()`, 3 `.shift()`, 0 `pl.hand.pop()`.
+- Suite completa y flake: ver el commit del lote.
+
+### Lecciones
+
+1. **Un barrido tiene que clasificar por AMBITO antes de contar.** Los 5 `pop()` brutos son todos de mazo, y 2 de los 3 `shift()` son de mazo o de consumo intencional. El numero bruto (5) es irrelevante; lo que decide es **sobre que estructura acts**. Un barrido queMatching por token y cuenta, sin preguntarse "esta variable indexa una mano o un mazo?", produce o un falso positivo o un falso negativo segun la suerte.
+2. **Cuarta repeticion de la misma leccion de medicion** (§54 `magic` en el plano equivocado, §56 `e.ifAttr` vs `eff.ifAttr` y los ids con espacios de `norm()`, §58 shadowing + matching contra comentarios). Todas resueltas con la misma regla: **el barrido genera candidatos, y cada candidato se lee en su flujo real**. Un hallazgo de barrido nunca se escribe sin haber leido las lineas que lo produjeron.
+3. **Un resultado negativo tambien es un resultado.** La tentacion de no escribir el lote porque "no hay nada que arreglar" es exactamente la que deja un backlog eterno. §57 abrio el backlog del patron §58 lo cerro con evidencia, y §59 cierra la tercera variante. Un backlog se cierra con evidencia negativa, no con silencio.
+
+### Limites declarados
+
+- El barrido cubre `pop()` y `shift()` en `engine.js`. **No** cubre `game/js/ai.js`, `game/js/ui.js` ni `game/js/app.js`, que tambien mutan estado. Queda abierto si esas capas llegan a tocar `hand` por posicion (hoy no lo hacen: `ui.js` y `app.js` operate sobre indices de proyectados, nunca sobre `S`).
+- La asimetria `||[]` de 5047 se deja sin tocar por ser cosmetica; documentada arriba para que no se reabra.
+
+### Backlog
+
+- **CERRADO**: el patron identidad-vs-posicion en sus tres variantes (`indexOf`->`splice` en §58, `pop` en §58/P1-060, `shift` en §59). No queda ninguna variante conocida viva en `engine.js`.
+- **P1-041** (mazos de Plot por jugador; desbloquea 191 y 395) — decision de arquitectura, sigue abierto.
+- Desviacion preexistente de fichas de accion (se arrastran entre turnos; el juego oficial dice que se pierden al final del turno).
+- Los 4 PRINT de token extra (12, 61, 215, 335) usan `placeBonusAction` pero necesitan su condicion de pago.
+- Lotes de `plan.md`: **L9 EDITAR ALINEACIONES** (332, 357, 310, 280) sigue siendo el primer lote de plan sin empezar.
+### P1-062 — lo que el flake de ESTE lote atrapo (y por que §59 no era solo documentacion)
+
+El protocolo de flake se ejecuto aunque §59 no toca codigo ejecutable, y eso resulto ser la decision correcta: **el flake fallo 1 vez en 90 ejecuciones** con dos aserciones del bloque `6b)` P1-060 de §58:
+
+```
+FAIL - P1-060 el rollback devuelve la Plot a quien la habia robado, no se la queda el reclamante -> 0
+FAIL - P1-060 el pago roto no entra al descarte de Plots
+```
+
+**Diagnostico.** La firma de esas dos aserciones (la Plot en disputa NO vuelve al ladron, y el pago SI entra en `plotDiscard`) es exactamente la del **camino feliz**: en `E.resolvePendingEvent`, `at3 >= 0` hace `hp.splice(at3,1)` + `S.plotDiscard.push(pay)` y la Plot en disputa se queda con el reclamante. O sea que el rollback **no se ejecuto**.
+
+La causa NO era el motor: era que el fixture **no garantizaba la precondicion de su propia rama**. El reparto inicial es aleatorio y puede dejar en la mano del reclamante una **segunda copia** de la misma carta usada como pago; el fixture sacaba **una sola** copia (`rh.splice(payPos,1)`), de modo que `at3` daba `>= 0`. El motor hizo lo correcto con el estado que recibio.
+
+Tasa ~1/60, asi que las corridas de 30 de §58 y de este lote inicial la pasaron por suerte — igual que ocurrio con S7 (§56).
+
+**Correccion (P1-062, del fixture y no de la asercion).** Se saca **toda** copia del pago y se afirma la precondicion:
+
+```js
+var payCount = rh.filter(function (x) { return x === filler.idx; }).length;
+ok(payCount >= 1, 'P1-060 el pago estaba en la mano del reclamante antes de romperlo -> ' + payCount);
+if (payCount < 1) return;
+for (var q = rh.length - 1; q >= 0; q--) if (rh[q] === filler.idx) rh.splice(q, 1);
+ok(rh.indexOf(filler.idx) < 0,
+  'P1-060 precondicion del rollback cumplida: el pago no queda en ninguna copia de la mano');
+```
+
+Relajar la asercion habria sido el error: las dos aserciones que fallan son **precisamente las que distingue el rollback del camino feliz**, asi que cebrirlas habria dejado la rama sin cubrir. El arrangement se hace determinista; la asercion no se debilita. Es la misma leccion que el flake de S7 (§56) aplicada por segunda vez.
+
+**Verificacion de P1-062** (Node real `C:/Program Files/nodejs/node.exe`):
+
+- `node --check` -> **0** en `game/js/engine.js`, `gen_cards.js`, `test_fase2_rules.js`.
+- **10/10 suites**: `SUITES FALLIDAS=0 de 10`.
+- **Flake enfocado: 200/200** ejecuciones consecutivas de `test_fase2_rules`, fallos=0. Se subio de 30 a 200 **a proposito**: con la tasa previa de ~1/60, 30 ejecuciones NO tendrian potencia estadistica para demostrar el arreglo (probabilidad de no detectar ~0,6). 200 ejecuciones dejan el fallo en <3% esperado.
+
+### Leccion 4 del lote: el protocolo se cumple aunque el lote "no toque codigo"
+
+La justificacion interna de no correr el flake ("no hay cambio de codigo, no puede romperse nada") es **falsa**: §59 no cambio codigo ejecutable, pero **el flake fallo y era mi propia regresion de §58 la que estaba mal**. El defecto ya estaba en el arbol desde el commit anterior; lo que faltaba era la corrida que lo revelara.
+
+Corolario: un lote de solo-documentacion no es un lote sin verificacion. Se corre igual, porque **verifica el lote anterior**. Este es el argumento mas fuerte a favor del protocolo de 30x que se ha acumulado en el audit: cada corrida no solo valida lo que se acaba de escribir, tambien audita lo que ya estaba commiteado.
+
+Ademas, la elevacion de 30 a 200 por la tasa medida es la forma correcta de cerrar un flake cuya frecuencia se conoce: **la potencia estadistica del test es funcion de la tasa del defecto**, y tras un arreglo hay que superar esa tasa varias veces, no una.
+
+### Backlog (actualizado)
+
+- **P1-062 cerrado** (fixture determinista del bloque `6b)` P1-060).
+- **CERRADO**: el patron identidad-vs-posicion en sus tres variantes (`indexOf`->`splice` §58, `pop` §58/P1-060, `shift` §59).
+- **P1-041** (mazos de Plot por jugador; desbloquea 191 y 395) — decision de arquitectura, sigue abierto.
+- Desviacion preexistente de fichas de accion (se arrastran entre turnos; el juego oficial dice que se pierden al final del turno).
+- Los 4 PRINT de token extra (12, 61, 215, 335) usan `placeBonusAction` pero necesitan su condicion de pago.
+- Lotes de `plan.md`: **L9 EDITAR ALINEACIONES** (332, 357, 310, 280) sigue siendo el primer lote de plan sin empezar.
+- El barrido de `pop()`/`shift()` **no cubre `ai.js` / `ui.js` / `app.js`**. Hoy no hace falta (operan sobre indices proyectados, nunca sobre `S`), pero si alguna vez el motor delega una mutacion de mano a esas capas, hay que rebarriarlo.

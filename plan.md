@@ -504,6 +504,16 @@ Kind `align_rule`, unica cualificadora `alignMag`.
 >   **P1-060**: el rollback de la rama `if (at3 < 0)` usaba `hand.pop()` (posicion asumida en vez de identidad, correcto hoy solo por casualidad posicional) — era el **unico `pop()` vivo del motor**. Corregido a `indexOf(ixQ)` + `splice`. Regresion: bloque `6b) P1-060` en `test_fase2_rules.js` (9 aserciones, fichero 5.646 → 5.703 lineas) que fuerza la rama sacando el pago de la mano del reclamante entre los dos pasos de la ventana.
 >   **Leccion permanente**: un barrido de texto **genera candidatos, no conclusiones** — 22 de 26 "riesgos" eran falsos positivos por shadowing de ambito y por matching contra los comentarios del propio audit (3a repeticion de la leccion de §54/§56). Y **documentar un defecto crea sus propios falsos positivos**: los comentarios de §57 se emparejaron como codigo.
 >   **LECCION PERMANENTE (heredada de §57, aplica a todo lo que viene):** `ctx_execute(language:"javascript")` corre **BUN**, no Node. `process.execPath` NO es node y `bun --check` **no valida sintaxis** (ejecuta el fichero y revienta en `engine.js:9` con `window is not defined`). Usar siempre `C:/Program Files/nodejs/node.exe`.
+> - **§59 (hecho): barrido de `pop()` y `shift()` - CIERRE del patron identidad-vs-posicion (P1-061).**
+>   Barrido completo de `engine.js` (5.228 lineas): 5 `.pop()` + 3 `.shift()`, **0 instancias vivas**.
+>   Los 5 `pop()` son TODOS de mazo (reparto inicial 924-925, rebarajado 1099, draw 1100, drawN 1188).
+>   De los 3 `shift()`: 1332 es de mazo; 5054 (`plotsInHand`) es seguro porque 5046 lo construye con
+>   `filter` (array NUEVO, no alias de `pl.hand`); 5060 (`exposedPlots.shift()`) es consumo intencional.
+>   Confirmado que el `pop()` sobre mano que P1-060 corrigio ya NO existe: el patron cierra sus 3 variantes
+>   (`indexOf`->`splice` §58, `pop` §58/P1-060, `shift` §59). Lote de verificacion pura, blast radius CERO.
+>   **Leccion permanente (4a repeticion de la de medicion):** un barrido debe clasificar por AMBITO
+>   (¿esta variable indexa una mano o un mazo?) antes de contar; el numero bruto de matches es irrelevante.
+>   Ademas, un resultado NEGATIVO tambien es resultado: el backlog se cierra con evidencia negativa, no con silencio.
 ## [ ] L9 - EDITAR ALINEACIONES
 
 - **Cartas (4)**: 332 Orbital Mind Control Lasers (anade / quita / invierte un alineamiento) ·
