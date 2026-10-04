@@ -627,6 +627,150 @@ d) y no en
   `findNode` y `tokens>=1`). 236, 378 y 400 no dependen de eso, asi que este lote es posible.
 - **Aceptacion**: 378 destruye un Resource rival y desaparece de `pl.resources` del rival
   (afirmado por la ausencia del `uid` concreto, no contando recursos).
+  **CORREGIDO como causa raiz en P1-077 (L12.a)**: no era una decision de diseno, era un agujero
+  de `findNode`, que solo recorre el arbol de grupos y nunca `pl.resources`.
+
+### [x] L12.a - HECHO (P1-077): los Resources eran inalcanzables para el buscador de nodos
+
+- **Commit `8a0ac35`** (engine.js + test_fase2_rules.js + index.html).
+- **Hallazgo**: `findNode(uid)` y `findOwnerPid(uid)` recorren solo `S.players[p].structure`.
+  Los Resources viven en `pl.resources`, un array plano de entradas `{uid:'r'+n, cardId,
+  linkedTo, tokens, [drawHook], [stash]}` que **no** forma parte del arbol de grupos. Por tanto
+  `findNode('r12')` devolvia siempre `null` y `findOwnerPid('r12')` siempre `-1`.
+- **Tres consumidores rotos**: `E.useGadgetAction` y `E.resolveAlignEdit` (332 Orbital Mind
+  Control Lasers **INJUGABLE**: cualquier uid de Resource caia en el `throw` "Los Lasers no
+  estan en tu mesa") y `E.addSupport` (`throw 'Apoyo inexistente'`, que es la causa raiz de
+  §38.5-B: los Resources no pueden atacar ni ayudar).
+- **Por que la regresion L9 de 332 pasaba sin tocar el bug**: su helper `plant()` mete el nodo en
+  `structure.children`, o sea **como si el Resource fuera un grupo**. El test nunca pasaba por el
+  camino de juego real.
+- **Correccion**: helper nuevo `findResourceEntry(uid)` que devuelve `{pid, entry}` recorriendo
+  `pl.resources` de todos los jugadores, mas el helper de test `plantRes(pid, uid, cardId)` que
+  planta el Resource donde lo planta el motor de verdad. **NO** se metio `pl.resources` dentro de
+  `findNode`: los nodos de grupo tienen `children` y `tokens` propios y se consumen en
+  `spendGroupToken()`, `nodeAligns()` y `noTokensFlag()`; una entrada de Resource no cumple esa
+  forma y romperia a todos esos consumidores a la vez.
+- **Leccion**: un identificador que el motor genera (`r+n`) tiene que ser alcanzable por el mismo
+  buscador que valida las cartas que lo usan. Un `throw` de "no esta en tu mesa" sobre un uid
+  que el buscador no puede resolver es una carta muerta en silencio.
+
+### [x] L12.b - HECHO (P1-078): el fixture de L10 no era determinista (test flaky)
+
+- **Commit `e4132f0`** (test_fase2_rules.js).
+- **Sintoma medido**: `test_fase2_rules.js` fallaba ~3-4% de las corridas con exactamente 2
+  fallos, siempre los mismos y siempre juntos, los dos de L10 (310 Media Connections).
+- **Causa**: el reparto inicial es aleatorio y a veces deja ya una copia de `mediaconnections` en
+  la mano de P0. `toHandL10()` quita la del `plotDeck` y empuja UNA, pero **no purga las que ya
+  venian**; y las aserciones de L10 cuentan copias de forma **absoluta** (`=== 1` antes del
+  rechazo, `=== 0` tras el camino feliz) mientras el resto del fichero cuenta por delta. Los
+  otros terminos de ambas condiciones se cumplian siempre, asi que caian exactamente esas dos y
+  solo esas dos.
+- **Correccion**: `toHandL10` purga con splice inverso las copias previas antes de insertar
+  (splice inverso y no `filter`+reasignar para no cambiar la identidad del array de mano, que
+  otros bloques del test ya tienen capturada). **60/60 corridas en verde** tras el fix.
+- **Leccion**: todo fixture que inserte una carta en la mano debe ser determinista en el numero
+  de copias. O cuenta por delta, o purga antes de insertar. Lo que no vale es empujar sin purgar
+  y luego asertar un numero absoluto.
+
+### [ ] L12.c - DATOS: familia `resource_effect` en `gen_cards.js`
+
+- [ ] L12.c.1 Anadir la familia `resource_effect` con las 5 cartas y `kind` UNICO (ninguna de
+  las 5 lo usa hoy: 233/367 son `draw_hook`, 332 `align_edit`, 344 `bulk_power`).
+  **Proximo ID libre al abrir este paso: P1-079.**
+- [ ] L12.c.2 `t:` = texto impreso **verbatim** de la carta. Ojo: `textFull` es la
+  transcripcion limpia; `text` es el OCR y a veces esta corrupto (236 dice "Gudget" donde el
+  impreso dice "Gadget").
+- [ ] L12.c.3 `400 The Weak Link` tiene `textFull` nulo (hueco de OCR ya declarado en el audit).
+  Se conserva el hueco y se documenta; NO se inventa el texto que no se ha leido de la fuente.
+- [ ] L12.c.4 **NO anadir `subtype` ni `attributes` a los Resources.** El motor ya lo declara
+  escrito en `case 'resource_destroy'` (L4794-4800): *"el mazo NO tiene clasificacion de
+  Resources: 34 de los 35 tienen `subtype:null` ... el mismo motivo por el que se solto el
+  'Gadget Resource' de 270. No se inventa ninguna categoria."* El mismo criterio se aplica a
+  236/378/400/413 y la diferencia se documenta como **limite declarado + backlog**.
+- [ ] L12.c.5 `400` lleva el coste combinado: `payIllum` + `payAttrAny:['science','magic',
+  'computer']` + `payMinPower:6` (patron exacto de `case 'align_edit'`, 357 Rewriting History).
+- [ ] L12.c.6 `378` lleva el 1d6 (`roll:'d6'`) y las tres ramas: 1 / 2-5 / 6.
+- [ ] L12.c.7 `413` lleva `stash:true` (lista de Resources escondidos) y `firstPlay:true` (el
+  "when you first play this card" del impreso).
+- [ ] L12.c.8 Correr `node test_fase4_cards.js`: **clasificadas 141 -> 146** y **sin mecanica
+  107 -> 102** (exactamente 5). Cualquier otro numero es un fallo, no una mejora.
+
+### [ ] L12.d - MOTOR: `case 'resource_effect'` en `engine.js`
+
+- [ ] L12.d.1 El `case` debe existir de forma REAL (`case 'resource_effect':`), nunca `else
+  if`: el gate de FASE 4 detecta las ramas con `/case\s+'([a-z0-9_]+)'\s*:/` sobre todo el
+  motor, asi que un kind clasificado cuya rama "no existe" hace fallar la suite.
+- [ ] L12.d.2 `E.playResource`: su `switch(resFx)` necesita su `case 'resource_effect'`; hoy el
+  `default` LANZA con *"El Resource X tiene una mecanica (resource_effect) que E.playResource
+  todavia no ejecuta"*. 413 registra `entry.stash = []` **despues** del `push` (patron
+  `draw_hook`, cuyo comentario lo pide explicitamente en el codigo).
+- [ ] L12.d.3 Todo rechazo de coste u objetivo lanza `throw new Error(c.name + ': ...')` con el
+  **motivo oficial** en texto llano (DoD #5). Formato de referencia:
+  `c.name+' necesita la accion de tu Illuminati o de un grupo '+eff.payAttr+...`.
+- [ ] L12.d.4 **Objetivo elegido, nunca autoelegido** (DoD #6): 378/236/400 reciben
+  `opts.rivalPid` + `opts.resUid` desde la UI, como hace `case 'resource_destroy'`. **NO**
+  replicar el default actual de `resource_destroy` (`splice(-1,1)` borra el ULTIMO Resource en
+  silencio cuando no hay `resUid`): si la UI no paso objetivo, se elige de forma explicita o se
+  falla.
+- [ ] L12.d.5 378 tira `d6()` una sola vez (unico generador de dado del motor, engine.js L15) y
+  aplica las tres ramas; el Resource destruido se descarta con `S.groupDiscard.push(cardId)` como
+  hace `resource_destroy`.
+- [ ] L12.d.6 400 usa el patron de coste combinado de `align_edit` (357): primero
+  `pl.illumTokens--`; si no hay, `walk(pl.structure, ...)` **reuniendo** Poder hasta `payMinPower`
+  y **gastando despues**. No gastar dentro del walk como hace `force_align`, que gasta fichas y
+  luego lanza.
+- [ ] L12.d.7 Un uso = una sola ficha (leccion de engine.js L1938-1957: un intento de gastar
+  `pl.illumTokens` en vez de la ficha del nodo raiz se retiro al MEDIR porque hacia gastar dos
+  pools distintos por una sola accion).
+- [ ] L12.d.8 `lastResult` es el canal de resultado (`{ok, negated, card, kind, target,
+  targetPid, owner, paidWith}`): las regresiones deben mirar ahi para afirmar el efecto observable.
+- [ ] L12.d.9 `node --check game/js/engine.js` limpio + `npm test` en verde + FASE 4 con 146/102.
+
+### [ ] L12.e - UI: las 5 cartas ejecutables y con objetivo elegido por el jugador
+
+- [ ] L12.e.1 `app.js`: los callbacks con la misma red `try { ... } catch (e) { log('! ' +
+  e.message); }` que usan `onUseGadgetAction` / `onResolveAlignEdit` (L195-202), para que un
+  rechazo del motor llegue al registro y no solo a la consola (leccion de P1-076).
+- [ ] L12.e.2 `ui.js`: accion en el menu de la mano que abre la ventana de objetivo del rival y
+  lista SUS Resources uno por uno (nunca el primero). Reutilizar el patron de `pendbar` que ya
+  existe para `pendingAlignEdit` (ui.js L664-705).
+- [ ] L12.e.3 **Anadir el boton que falta para "usar Gadget"**: `onUseGadgetAction` existe en
+  app.js L195-198 pero `useGadgetAction` tiene **0 ocurrencias en ui.js** => no hay ningun boton
+  que abra la ventana y el sub-menu de `pendingAlignEdit` es codigo muerto para el jugador. Es
+  DoD #6 incumplido hoy para 332.
+- [ ] L12.e.4 `?v=44` -> `?v=45` en las 13 referencias de `game/index.html` (cache-busting).
+- [ ] L12.e.5 **Verificar en navegador real** (leccion de P1-075: un test de Node no pasa por el
+  camino pulsacion -> callback). Servidor estatico temporal, arrancar partida, pulsar cada una de
+  las 5 cartas; comprobar que el rechazo llega al registro y que no hay errores en consola.
+
+### [ ] L12.f - REGRESION en `test_fase2_rules.js` (>=2 escenarios)
+
+- [ ] L12.f.1 Escenario 1: **378 destruye un Resource rival** afirmado por la AUSENCIA del `uid`
+  concreto en `pl.resources` del rival (no contando recursos, como exige la aceptacion del lote).
+- [ ] L12.f.2 Escenario 2: **348 Purge modo B** (usado por otro grupo) baja Poder y Global Power
+  en 1, o **236 Deasil Engine** destruye un Resource de cualquier bando sin gastar accion.
+- [ ] L12.f.3 Rechazo por regla: 400 con Poder combinado insuficiente **NO MUTA NADA** (mismo
+  patron que L10: sin link, ficha intacta, carta en la mano) y el mensaje cita el motivo oficial.
+- [ ] L12.f.4 **Determinismo (leccion de P1-078)**: los helpers que insertan en la mano purgan
+  copias previas, o los asserts cuentan por delta. La partida del fixture se construye con
+  `plant`/`plantRes`, no con el reparto aleatorio.
+- [ ] L12.f.5 Aserciones sobre el log con `.some(...)`, **nunca `log[length-1]`** (regla 14):
+  jugar un Plot abre VENTANA DE SUCESO ABIERTA, asi que el efecto no es la ultima linea.
+- [ ] L12.f.6 **30+ corridas consecutivas en verde** (regla 13) antes de dar el lote por bueno.
+
+### [ ] L12.g - CIERRE: `§64` en el audit, cerrar el lote, commit + push
+
+- [ ] L12.g.1 Seccion `§64` en `docs/audit/INWO_SURGICAL_AUDIT.md` con Hallazgo / Correcciones /
+  Verificacion / Lecciones / Backlog, **ASCII sin tildes**, escrita con script Node temporal
+  (`fs.appendFileSync`, que aborte si `## 64.` ya existe) y luego borrado.
+- [ ] L12.g.2 IDs de la seccion: **P1-079..P1-083** (uno por carta de L12), mas recordatorio de
+  P1-077 y P1-078, que ya tienen su propia seccion.
+- [ ] L12.g.3 Marcar `## [x] L12` en este fichero y anotar el resultado real (clasificadas
+  141 -> 146, sin mecanica 107 -> 102, suites 11/11, 30+ corridas).
+- [ ] L12.g.4 Backlog que queda declarado: (a) el "Gadget / Artifact / Agent" del impreso no es
+  verificable por maquina (34 de 35 Resources sin `subtype`); (b) §38.5-B sigue cerrado: los
+  Resources no pueden atacar ni ayudar porque `E.addSupport` sigue usando `findNode`; (c) la
+  "reaccion del rival" de 22/254/333, ya fuera de L11.
 
 ## [ ] L13 - DEFENSA CONTRA DISASTERS
 
