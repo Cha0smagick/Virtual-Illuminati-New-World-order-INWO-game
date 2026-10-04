@@ -1105,6 +1105,28 @@ function expireTurnFlags(){
         n.defTriple=null;
         log('El triple defensivo de '+card(n.cardId).name+' caduca (turno '+S.turn+')');
       }
+      /* L13 - 410 Volunteer Aid: "If the Place is still devastated by the Disaster, it
+       * automatically gets Relief at the beginning of its owners next turn." Se engancha
+       * AQUI y no en endTurn porque expireTurnFlags() es lo que E.beginTurn llama PRIMERO
+       * (L1164) con S.turn ya incrementado; por eso el flag se creo con untilTurn=S.turn+1
+       * al jugarse la carta. Precedente exacto: n.defTriple.untilTurn (L1104), que ya es
+       * "un bonus defensivo de una carta que caduca por turno". Se filtra por dueno con
+       * findOwnerPid porque el walk recorre los grupos de TODOS los jugadores.
+       * Relief = deja de estar devastado y recupera su ficha de accion: es lo que dicen
+       * las reglas oficiales citadas en P1-011 (un grupo devastado no recibe fichas ni
+       * cuenta para las metas). El subarbol entero se limpia porque devastar marca el
+       * subarbol entero (L3372). */
+      if(n.reliefPending&&n.reliefPending.untilTurn!=null&&S.turn>=n.reliefPending.untilTurn
+         &&findOwnerPid(n.uid)===n.reliefPending.byPid){
+        var rlC=n.reliefPending.byCard!=null?card(n.reliefPending.byCard).name:'la carta de Relief';
+        if(n.devastated){
+          walk(n,function(x){x.devastated=false;if(x.tokens!=null&&x.tokens<1)x.tokens=1;});
+          log(card(n.cardId).name+' recibe Relief automatico de '+rlC+': ya no esta devastado y recupera su accion');
+        }else{
+          log(card(n.cardId).name+' no necesitaba Relief: '+rlC+' caduca igualmente');
+        }
+        n.reliefPending=null;
+      }
       if(n.resNullify&&n.resNullify.untilTurn!=null&&S.turn>=n.resNullify.untilTurn){
         n.resNullify=null;
         n.noMasterAlignDefense=false;
@@ -1171,6 +1193,15 @@ E.beginTurn=function(pid,isFirst){
   /* P1-026: el ataque privilegiado de los Bavarianos es "1 vez por turno". */
   pl.flags.privilegedUsed=0;
   pl.usedResourceThisTurn=false;
+  /* L13 - 245: "This device can act once per turn". El flag usedThisTurn va en la
+   * ENTRADA del Resource y no en pl.usedResourceThisTurn porque el alcance del +2 es
+   * GLOBAL (el impreso no dice "your Disasters"): si viviera en el jugador, solo
+   * caducaria al empezar el turno de su dueno. Se resetea al empezar CUALQUIER turno,
+   * que es lo que "once per turn" significa para un efecto que no tiene dueno. */
+  for(var qL13=0;qL13<S.players.length;qL13++){
+    var rsL13=S.players[qL13].resources||[];
+    for(var rL13=0;rL13<rsL13.length;rL13++)rsL13[rL13].usedThisTurn=false;
+  }
   pl.usedExtraDrawThisTurn=false;
   /* clear stale immunities granted against this player last turn */
   for(var q=0;q<S.players.length;q++){
@@ -1628,6 +1659,29 @@ E.alignsOfNode=function(uid){
  * hacer nada. Es a proposito; el mismo defecto estaba en case resource_destroy
  * (278 Hex), donde sin resUid el splice(-1,1) borra el ULTIMO Resource en silencio.
  */
+/* L13 - 245 Earthquake Projector. "This device can act once per turn. It can increase
+ * the Power of any Attack to Destroy a Place, or of any Disaster card, by 2."
+ * NO HAY VENTANA: la accion no elige objetivo - el objetivo es "cualquier ataque" y
+ * el jugador decide CUANDO usarla. Por eso no hace falta un S.pending* ni un veto en
+ * endTurn, al contrario que 378 Suicide Squad, que si tiene que elegir un Resource
+ * rival concreto. Lo que se guarda es un flag usedThisTurn en la ENTRADA (no en el
+ * jugador), y announcePlotInstantAttack suma el +2 al Poder del ataque de cualquiera
+ * que se anuncie mientras siga activo. */
+E.useDisasterBoost=function(pid,opts){
+  opts=opts||{};
+  requireOwnMain(pid);
+  var R=findResourceEntry(opts.resourceUid);
+  if(!R)throw new Error('Ese Resource no esta en juego');
+  if(R.pid!==pid)throw new Error('Ese Resource no es tuyo');
+  var rc=card(R.entry.cardId), rEff=(rc.effect||{}), act=R.entry.action;
+  if(!act||act.kind!=='disaster_defence'||act.mode!=='boost_attack')
+    throw new Error(rc.name+': su accion todavia no esta implementada');
+  if(R.entry.usedThisTurn)
+    throw new Error(rc.name+': "This device can act once per turn" y ya ha actuado este turno');
+  R.entry.usedThisTurn=true;
+  log(rc.name+' se usa: +'+(rEff.boostValue||0)+' al Poder de cualquier ataque a destruir o Disaster de este turno');
+  return publicState();
+};
 E.useResDestroy=function(pid,opts){
   opts=opts||{};
   requireOwnMain(pid);
@@ -1986,6 +2040,15 @@ E.playResource=function(pid,handIdx,linkedToUid){
         throw new Error(c.name+': un Resource no puede llevar el modo '+String(c.effect.mode)+' (esa mecanica es de una Plot card)');
       break;
     }
+    case 'disaster_defence':{
+      /* L13 - 245 Earthquake Projector es la UNICA de las 5 que es Resource card.
+       * Colocarla NO ejecuta nada: su "+2 al Poder" se activa cuando el jugador USA
+       * el device (una vez por turno, segun el impreso), asi que aqui solo se VALIDA
+       * el modo y el registro de la capacidad va DESPUES del push, igual que 378/413. */
+      if(c.effect.mode!=='boost_attack')
+        throw new Error(c.name+': un Resource no puede llevar el modo '+String(c.effect.mode)+' (esa mecanica es de una Plot card)');
+      break;
+    }
     default: throw new Error('El Resource "' + c.name + '" tiene una mecanica (' + resFx + ') que E.playResource todavia no ejecuta');
   }
   pl.illumTokens--;pl.usedResourceThisTurn=true;
@@ -2008,6 +2071,14 @@ E.playResource=function(pid,handIdx,linkedToUid){
     log(c.name+' queda enlazada: tiene una ACCION para destruir un Resource de un rival (tira 1d6)');
   }
   pl.resources.push(entry);
+  /* L13 - 245 Earthquake Projector. Misma leccion del draw_hook y de L12: la
+   * capacidad se registra DESPUES del push para poder dejar la referencia en la MISMA
+   * entrada. Colocarla no ejecuta nada; su ACCION (+2 al Poder de cualquier ataque a
+   * destruir o Disaster, una vez por turno) la consume E.useDisasterBoost. */
+  if (resFx==='disaster_defence' && c.effect.mode==='boost_attack'){
+    entry.action={kind:'disaster_defence',mode:'boost_attack'};
+    log(c.name+' queda enlazada: usa su ACCION (una vez por turno) para +'+(c.effect.boostValue||0)+' al Poder de cualquier ataque a destruir o Disaster');
+  }
   log(pl.name+' juega el recurso '+c.name);
   if(resFx==='draw_hook')log(c.name+' queda enlazado: cambiara los proximos robos de '+pl.name);
   return publicState();
@@ -3294,8 +3365,12 @@ function announcePlotInstantAttack(pid,pc,tUid,opts){
      destroy" (+2) de "any further Assassination" (+10). */
   var pgI=destroyDefenseBonus(nd,eff.kind==='assassination');
   if(pgI){defPower+=pgI;notes.push('+'+pgI+' de proteccion permanente ('+pc.name+')');}
+  /* L13 - 244 Earth Magic deja constancia en el registro de que la restriccion esta
+   * activa, para que el jugador vea POR QUE un grupo no se opuso al Disaster. */
+  if(nd.magicMayOppose&&eff.victimMayBeAided&&victim>=0)
+    notes.push('solo los grupos '+nd.magicMayOppose.attr+' pueden oponerse ('+(nd.magicMayOppose.byCard!=null?card(nd.magicMayOppose.byCard).name:'la carta que lo restringe')+')');
   if(eff.victimMayBeAided&&victim>=0){
-    var vn=firstUsableAid(victim,null);
+    var vn=firstUsableAid(victim,nd.magicMayOppose?function(cc,nn){return hasAttr(cc,nd.magicMayOppose.attr,nn);}:null);
     if(vn){spendGroupToken(victim,vn.uid);var vp=curPower(vn);defPower+=vp;notes.push(card(vn.cardId).name+' se defiende (+'+vp+')');}
   }
   /* P1-009: Shangri-La — "+5 to defend against ANY attack". Los Instant Attacks
@@ -3304,6 +3379,42 @@ function announcePlotInstantAttack(pid,pc,tUid,opts){
   if(sdb){defPower+=sdb;notes.push('+'+sdb+' de defensa de '+illuCard(victim).name);}
 
   var pos=(victim>=0)?positionBonus(victim,tUid):0;
+  /* L13 - 188 Air Magic: "The Power of the Place is tripled for this one defense".
+   * El x3 se aplica a defPower, NO a curPower: por eso no afecta ni a las metas
+   * (countsForGoals) ni al Poder del grupo para nada que no sea esta defensa, que es
+   * exactamente lo que dice el impreso. Las excepciones se comparan contra el NOMBRE
+   * del Disaster normalizado (misma forma que el filtro de altUse.targetNames,
+   * L4252-4254, y por el mismo motivo P1-020: el dataset no guarda nombres legibles
+   * para esas dos cartas, solo su clave). Si el Place tiene el flag pero el Disaster
+   * es de la lista, NO se multiplica y se dice por que en el registro. */
+  if(nd.defenseTripled){
+    var tpk=String(pc.name).toLowerCase().replace(/[^a-z0-9]/g,'');
+    var tex=nd.defenseTripled.except||[];
+    var tnm=nd.defenseTripled.byCard!=null?card(nd.defenseTripled.byCard).name:'Air Magic';
+    if(tex.indexOf(tpk)>=0){
+      notes.push(tnm+' NO protege de '+pc.name+': el impreso excluye ese Disaster');
+    }else{
+      defPower=defPower*3;
+      notes.push('defensa x3 por '+tnm+' (Poder de defensa de '+tc.name+': '+defPower+')');
+    }
+  }
+  /* L13 - 245 Earthquake Projector: "increase the Power of any Attack to Destroy a
+   * Place, or of any Disaster card, by 2". Se suma al PODER DEL ATAQUE (power), no a la
+   * defensa, y solo si el device se ha USADO este turno (usedThisTurn, que lo
+   * resetea E.beginTurn). El alcance es GLOBAL mientras el device este en juego porque
+   * el impreso no dice "your": por eso recorre los Resources de TODOS los jugadores y
+   * no solo los del que anuncia el ataque. */
+  for(var qB=0;qB<S.players.length;qB++){
+    var rsB=S.players[qB].resources||[];
+    for(var rB=0;rB<rsB.length;rB++){
+      var eB=rsB[rB];
+      if(!eB.usedThisTurn||!eB.action||eB.action.kind!=='disaster_defence'||eB.action.mode!=='boost_attack')continue;
+      var bE=card(eB.cardId).effect||{};
+      var bv=typeof bE.boostValue==='number'?bE.boostValue:2;
+      power+=bv;
+      notes.push('+'+bv+' de '+card(eB.cardId).name+' (usado este turno)');
+    }
+  }
   var str=power-defPower-pos;
   return {pid:pid,cardIdx:pc.idx,cardName:pc.name,tUid:tUid,nd:nd,tc:tc,eff:eff,
           victim:victim,power:power,defPower:defPower,pos:pos,str:str,
@@ -5715,6 +5826,107 @@ case 'bulk_power':{
           paidWith:paidW.via==='illuminati'?{via:'illuminati'}:{via:'groups',groups:paidW.groups.length}};
         break;}
       throw new Error(c.name+': modo de resource_effect desconocido ('+String(rFx)+')');
+    }
+    case 'disaster_defence':{
+      /* L13 - DEFENSA CONTRA DISASTERS. 243/410/188/244 son Plot cards y llegan aqui por
+       * E.playPlot; 245 Earthquake Projector es la unica de las 5 que es Resource card y
+       * llega por E.playResource (su case esta al lado de bulk_power/draw_hook).
+       * REGLA DE DISENO DEL LOTE: el bonus se escribe SOBRE EL NODO del Place
+       * (nd.destroyBonus / nd.defenseTripled / nd.magicMayOppose), nunca sobre un campo
+       * del ataque. Motivo, el mismo que P1-016 ya explico para 208 Bodyguard y 382
+       * Talisman: la proteccion es permanente y sobrevive al ataque que la puso a prueba.
+       * Y destroyBonus lo lee destroyDefenseBonus() en el calculo de defPower, o sea
+       * que suma SOLO a la defensa y NO toca curPower(): por eso el lote cumple la
+       * regla oficial de plan.md de que no afecta al Poder del Place. */
+      var dd=eff;
+      var ndD=findNode(targetUid);
+      /* 243 y 244 imprimen "Gives one Place" / "protect a Place", sin decir "your".
+       * No se inventa la restriccion de propiedad: el objetivo es CUALQUIER Place en
+       * juego, propio o rival, y lo elige el jugador (DoD 6), nunca el motor. */
+      if(!ndD)throw new Error(c.name+': elige un Place objetivo');
+      var tcD=card(ndD.cardId);
+      if(tcD.subtype!=='place')
+        throw new Error(c.name+': solo se juega sobre un Place (Lugares), y '+tcD.name+' es '+String(tcD.subtype||'grupo'));
+      var ownD=findOwnerPid(targetUid);
+      var modeD=dd.mode;
+      if(modeD==='static_defence'){
+        /* 243 Early Warning +10 y 410 Volunteer Aid +6: "Gives one Place a +N to
+         * defend against any Disaster". SUMA, no pisa: dos 243 seguidas dan +20, que es
+         * lo que dicen las reglas cuando varios efectos se acumulan. "Playing this card
+         * is a free action" significa que no cuesta la accion de un grupo, NO que se
+         * pueda jugar fuera de turno: por eso estas cartas NO estan en la lista instant
+         * de E.playPlot y siguen exigiendo requireOwnMain. */
+        if(typeof dd.defenseBonus!=='number')
+          throw new Error(c.name+': el bonus de defensa de esta carta no esta declarado (defenseBonus)');
+        ndD.destroyBonus=(ndD.destroyBonus||0)+dd.defenseBonus;
+        if(dd.reliefPending){
+          /* 410: el Relief es AUTOMATICO y llega al principio del turno del dueno del
+           * Place. Se ancla con untilTurn=S.turn+1 y lo consume expireTurnFlags(), que
+           * E.beginTurn llama PRIMERO (L1164) con S.turn ya incrementado: precedente
+           * exacto de n.defTriple.untilTurn (L1104). Se guarda byPid para filtrar por
+           * dueno, porque el walk de expireTurnFlags recorre los grupos de TODOS. */
+          ndD.reliefPending={untilTurn:S.turn+1,byPid:ownD,byCard:handIdx};
+        }
+        log(c.name+' protege a '+tcD.name+' con +'+dd.defenseBonus+' contra cualquier Disaster'+(dd.reliefPending?' y con Relief automatico al empezar el proximo turno de '+S.players[ownD].name:''));
+        lastResult={ok:true,negated:true,card:c.name,kind:'disaster_defence',mode:modeD,
+          target:tcD.name,defense:dd.defenseBonus,relief:!!dd.reliefPending,
+          notes:[c.name+' da +'+dd.defenseBonus+' de defensa a '+tcD.name+(dd.reliefPending?' y Relief automatico':'')]};
+        break;
+      }
+      if(modeD==='triple_defence'){
+        /* 188 Air Magic: "Playing this card is an action for a Magic group. Alternatively,
+         * you may sacrifice the top Plot card from your deck, to power this card. Discard
+         * it without looking at it." El texto pone "Requires Magic Action or Discard", o
+         * sea que la accion del grupo Magic y el sacrificio son ALTERNATIVAS, no
+         * acumulativas. El sacrificio es shift() sobre el mazo de Plots, que es
+         * literalmente "la carta superior, sin mirarla", y va al descarte de Plots. */
+        var aaD=null;
+        if(dd.requireActionFromAttr){
+          aaD=opts.aidUid?findNode(opts.aidUid):null;
+          if(opts.aidUid&&(!aaD||findOwnerPid(opts.aidUid)!==pid))
+            throw new Error('El grupo que aporta la accion debe ser tuyo');
+          if(!aaD)aaD=firstUsableAid(pid,function(cq,nq){return hasAttr(cq,dd.requireActionFromAttr,nq);});
+        }
+        if(aaD){
+          spendGroupToken(pid,aaD.uid);
+          log(c.name+' se paga con la accion de '+card(aaD.cardId).name);
+        }else if(dd.orSacrificeTopPlot){
+          if(!pl.plotDeck||!pl.plotDeck.length)
+            throw new Error(c.name+': no tienes cartas en tu mazo de Plots que sacrificar');
+          var sacD=pl.plotDeck.shift();
+          S.plotDiscard.push(sacD);
+          log(c.name+' se paga sacrificando '+card(sacD).name+' (la carta superior de tu mazo de Plots, descartada sin mirarla)');
+        }else{
+          throw new Error(c.name+' necesita la accion de un grupo tuyo '+String(dd.requireActionFromAttr)+' o sacrificar la carta superior de tu mazo de Plots');
+        }
+        /* El flag va en el nodo del Place y guarda la lista de excepciones tal cual la
+         * imprime la carta. announcePlotInstantAttack la lee al calcular defPower. */
+        ndD.defenseTripled={byCard:handIdx,except:Array.isArray(dd.exceptDisasters)?dd.exceptDisasters.slice():[]};
+        pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:ndD.uid});
+        log(c.name+' protege a '+tcD.name+': su Poder de defensa se triplica para esta defensa (excepto los Disaster de la lista impresa)');
+        lastResult={ok:true,negated:true,card:c.name,kind:'disaster_defence',mode:modeD,
+          target:tcD.name,tripled:3,except:ndD.defenseTripled.except.slice(),
+          notes:[c.name+' triplica la defensa de '+tcD.name+' salvo '+(ndD.defenseTripled.except.join(', ')||'ningun Disaster')]};
+        break;
+      }
+      if(modeD==='aid_restriction'){
+        /* 244 Earth Magic: "Using this card any Magic group in play use their Action
+         * tokens to oppose the attack." NO hay linea de coste en el impreso: no se
+         * inventa ninguna accion que cobrar, asi que jugar la carta es la unica accion y
+         * el efecto es la restriccion. El flag lo lee announcePlotInstantAttack para
+         * cambiar el filtro de firstUsableAid(victim, null), que HOY acepta CUALQUIER
+         * grupo del defensor (P1-016: solo giantkudzu declara victimMayBeAided). */
+        if(!dd.aidAttr)
+          throw new Error(c.name+': el atributo que restringe a los grupos no esta declarado (aidAttr)');
+        ndD.magicMayOppose={attr:dd.aidAttr,byCard:handIdx};
+        pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:ndD.uid});
+        log(c.name+' protege a '+tcD.name+': solo los grupos '+dd.aidAttr+' en juego pueden oponerse al Disaster con su ficha de accion'+(dd.printedCostAbsent?' (el impreso no declara coste para esta carta)':''));
+        lastResult={ok:true,negated:true,card:c.name,kind:'disaster_defence',mode:modeD,
+          target:tcD.name,aidAttr:dd.aidAttr,printedCostAbsent:!!dd.printedCostAbsent,
+          notes:['Solo los grupos '+dd.aidAttr+' pueden oponerse al Disaster de '+tcD.name].concat(dd.printedCostAbsent?['El impreso de esta carta no declara coste: no se inventa ninguno']:[])};
+        break;
+      }
+      throw new Error(c.name+': modo de disaster_defence desconocido ('+String(modeD)+')');
     }
     default:{
       throw new Error('La carta "'+c.name+'" tiene una mecánica no implementada.');
