@@ -6580,3 +6580,183 @@ En navegador real (lo que un test de Node no puede ver):
 - **P2 (del plan de la mano)**: `test_hand_peek.js` no verifica el `PK_WARN` de "el texto es OCR" de forma especifica (M3.6 quedo sin marcar a proposito, pendiente de decidir el texto exacto).
 - **`P1-077` candidato**: un lint estatico que prohiba identificadores de datos sin prefijar (`cards[`, `images[`, `texts[`) en los cuatro JS del juego. El caso de hoy fue un `ReferenceError`; el patron puede repetirse.
 - Reanudar `plan.md` en el lote **L12 - MANIPULACION DE RESOURCES** (236 Deasil Engine, 348 Purge, 378 Suicide Squad, 400 The Weak Link, 413 Warehouse 23).
+## 64. L12 - MANIPULACION DE RESOURCES: 236, 348, 378, 400, 413 (P1-077, P1-078, P1-079, P1-080, P1-081, P1-082, P1-083, P1-084, P1-085, P1-086)
+
+### Hallazgo
+
+P1-077 - Los Resources eran INALCANZABLES para el buscador de nodos. `findNode()` y
+`findOwnerPid()` recorren solo `S.players[p].structure` (el arbol de grupos), pero
+los Resources viven en `pl.resources`, un array plano de entradas `{uid,cardId,
+linkedTo,tokens}`. `findNode("r12")` devolvia siempre `null`. Tres consumidores
+rotos: `E.useGadgetAction` ("Los Lasers no estan en tu mesa") y `E.resolveAlignEdit`
+("Los Lasers ya no estan en tu mesa") =&gt; 332 Orbital Mind Control Lasers era
+INJUGABLE; y `E.addSupport` ("Apoyo inexistente") =&gt; es la CAUSA RAIZ de 38.5-B
+("los Resources hoy no pueden atacar ni ayudar"): no era una decision de diseno,
+era un agujero del buscador. Por que la regresion L9 de 332 pasaba sin tocar el
+bug: su helper `plant()` mete el nodo en `structure.children`, o sea COMO SI EL
+RESOURCE FUERA UN GRUPO. El test nunca pasaba por el camino de juego real.
+
+P1-078 - El fixture de L10 no era determinista. El reparto inicial es aleatorio y a
+veces dejaba ya una copia de la 310 Media Connections en la mano de P0.
+`toHandL10()` quitaba la copia del `plotDeck` y empujaba UNA en la mano, pero no
+purgaba las que ya venian, y las aserciones de L10 cuentan copias de forma
+ABSOLUTA (1 antes del rechazo, 0 despues del camino feliz). Medido: 2 fallos de
+cada ~80 corridas, SIEMPRE juntos. El motor no cambiaba de comportamiento: el
+fixture no era determinista.
+
+P1-079 - Global Power SI existe en el motor, como `globalNeutral`. L162-165 lo
+declara ("el grupo DEJA de tener Global Power, y Global Power es exactamente lo
+que aporta a las metas"), L172 lo filtra, L3826 lo pone y L3734-3753 lo quita. El
+hueco P1-DATA-03 (la red no resolvia cs.cmu.edu / sjgames.com) estaba cerrado
+desde L10. Por eso 348 Purge sale de `BLOCKED_CARDS` (`test_fase4_cards.js:131`),
+con el PRECEDENTE EXACTO de 310 y 280, que salieron por el mismo motivo en L10.
+LECTURA DECISIVA: "un grupo con Global Power igual a su Poder normal" (280) es un
+grupo normal, y "el grupo pierde su Global Power" (348 modo B) es
+`nd.globalNeutral = true`.
+
+P1-080 - 236 Deasil Engine (plot). Exige un Resource objetivo ELEGIDO (`opts.resUid`);
+si no llega, lanza con el motivo oficial. Saca la entrada de `pl.resources` del
+dunio y la mete en `S.groupDiscard` ("destroying itself. Its owner must discard
+it"). El "cancels out" del impreso se comprueba contra `S.pendingResDestroy`.
+
+P1-081 - 348 Purge (plot). El impreso elige entre dos modos. Modo A (usada por tu
+Illuminati): destruye las cartas Agent que dupliquen tu grupo de Illuminati. Se
+DECLARA como limite del mazo, porque el deck lleva una sola copia de cada
+Illuminati y no puede existir un Agent que lo duplique; no se simula, se dice en el
+log y en `lastResult.notes`. Modo B (usada por otro grupo): `powerTax` (el "-1
+Power" NO dice "permanently", asi que se pliega en el nodo mientras la carta siga
+enlazada), `globalNeutral = true` (ES el "-1 Global Power", P1-079) y
+`dupImmune = true` (SI permanente, como imprime), mas el enlace al grupo. La ficha
+la gasta el grupo que la usa, no el jugador (criterio P1-017).
+
+P1-082 - 400 The Weak Link (plot). Veto del ataque privilegiado COMPROBADO (igual
+que 278 Hex), objetivo ELEGIDO y solo de un rival. El coste disyuntivo usa el
+patron de 357 Rewriting History: `payIllum` primero, si no `walk(pl.structure)`
+acumulando Poder hasta `payMinPower:6` entre nodos con `tokens>=1`,
+`!noTokensFlag(n)` y atributo en `payAttrAny:["science","magic","computer"]`. SE
+REUNE ANTES DE GASTAR: si el pago no se completa, no se ha gastado nada.
+
+P1-083 - 378 Suicide Squad (resource). No es un efecto de colocacion, es una ACCION
+de un Resource ya en juego: colocarlo solo registra `entry.action`, y la ACCION
+pasa por `S.pendingResDestroy` + `E.useResDestroy` + `E.resolveResDestroy`. Tira
+`d6()` UNA sola vez y aplica las tres ramas impresas (1: cae el objetivo y 378
+sobrevive; 2-5: ambos; 6: cae 378 y sobrevive el objetivo). El objetivo NUNCA se
+autoelige: sin `resUid` la ventana se cierra y no se destruye nada. Lo decide el
+impreso: colocar un Resource cuesta 1 accion Illuminati, y el texto de 378 no dice
+"Requires Action", asi que USARLO no gasta ficha de grupo.
+
+P1-084 - 413 Warehouse 23 (resource, Unique). Implementado el REGISTRO del stash
+(`entry.stash = []` con log propio, con el patron de `draw_hook`: registro DESPUES
+del push en la misma entrada) y el payout: si la Warehouse se captura o se
+destruye, lo de dentro se va con ella.
+
+P1-085 - 332 Orbital Mind Control Lasers era INJUGABLE por el lado de la UI: el
+motor tenia `E.useGadgetAction` y la ventana `pendingAlignEdit` pintada, pero
+`useGadgetAction` tenia CERO ocurrencias en `ui.js`, o sea que no habia ningun
+boton que llegara hasta el. Mismo genero de fallo que P1-075: una ruta que el
+jugador no puede alcanzar. Ahora `chipAct()` y el `data-act="gadgetuse"` la hacen
+alcanzable.
+
+P1-086 - Tres bugs del PROPIO test de L12, no del motor. (a) `own378` era el array
+VIVO de `pl.resources`, y cuando el dado 6 destruye Suicide Squad ese mismo array
+queda con longitud 0, asi que `own378[0].uid` revienta; ahora el uid se captura
+en un escalar antes de la secuencia de dados. (b) `copiesOf` estaba declarado
+DENTRO del IIFE de otro lote, fuera de alcance; el lote declara su propio helper.
+(c) El escenario de 400 reutilizaba el uid que el de 236 ya habia consumido, asi
+que media el error del objetivo y no el del pago; cada escenario planta su
+propio Resource.
+
+### Correcciones
+
+- L12.a / P1-077 / commit `8a0ac35`: helper `findResourceEntry(uid)` que devuelve
+  `{pid,entry}` + `plantRes()` en el test. NO se metio `pl.resources` dentro de
+  `findNode`: los nodos de grupo tienen `children`, `tokens` propio de grupo y se
+  consumen en `spendGroupToken()`, `nodeAligns()` y `noTokensFlag()`; una entrada de
+  Resource no cumple esa forma y romperia a todos esos consumidores a la vez.
+- L12.b / P1-078 / commit `e4132f0`: `toHandL10()` purga la mano antes de insertar.
+- L12.c / P1-079 / commit `c3a6968`: familia `resource_effect` en `gen_cards.js`
+  con `kind` UNICO y `t:` verbatim; `KIND_ES` + 23 entradas en `FIELD_ES` de
+  `ui.js` para que el desglose del tooltip glose las claves nuevas; `purge` fuera
+  de `BLOCKED_CARDS`; cache-busting `?v=45`.
+- L12.d / P1-080..P1-082 / commit `f30e1a3`: `resource_effect` entra en la lista
+  `instant` de `playPlot` (se compara contra el KIND, no ids de carta); `case
+  resource_effect` en el switch de `playPlot` con los tres modos; `case
+  resource_effect` en el `switch(resFx)` de `playResource` que SOLO valida el
+  modo; y el registro DESPUES del push (413 -> `entry.stash=[]`, 378 ->
+  `entry.action`).
+- L12.d-2 / P1-083 / commit `4db2511`: `S.pendingResDestroy` + su proyeccion en
+  `publicState()` (solo QUIEN tiene la ventana abierta, como L9/332) + veto en
+  `endTurn` + `E.useResDestroy` + `E.resolveResDestroy`.
+- L12.e / P1-085 / commit `148d140`: `app.js` (`onUseResDestroy`,
+  `onResolveResDestroy`); `ui.js` (`chipMini(c,uid,act)`, `chipAct()`, `chipCard()`
+  en `panelHtml`, ventana `pendingResDestroy` que lista los Resources del rival uno
+  por uno, y 6 `data-act`: `resuse`, `gadgetuse`, `resdestroypick`,
+  `resdestroyapply`, `resdestroycancel`, `resdestroypass`. Cache-busting `?v=47`.
+- L12.f / P1-086 / commit `08e02f0`: bloque de regresiones L12 en
+  `test_fase2_rules.js` (L6313-6450). La aceptacion del lote se afirma por
+  AUSENCIA del `uid` concreto en `pl.resources` del rival, con el helper
+  `resUidStillThere(pid,uid)`: buscar el uid exacto es lo que impide que el aserto
+  pase por un `resources` que se borre de mas o de menos.
+
+### Limites declarados
+
+- El mazo NO tiene clasificacion de Resources: 34 de los 35 tienen `subtype:null`.
+  Por eso NO se filtra por Gadget / Artifact / Agent, igual que 278 Hex NO
+  filtra por "Magic Resource". El propio motor ya lo declara escrito en `case
+  resource_destroy` (L4794-4800): "el mazo NO tiene clasificacion de Resources
+  ... No se inventa ninguna categoria." Lo que el impreso pide queda como
+  `printedRestrict`, que es una DECLARACION TEXTUAL que el motor no usa para
+  filtrar. L12 no invento ninguna categoria nueva.
+- 348 modo A (destruye los Agents que dupliquen tu Illuminati) se declara
+  imposible por estructura del mazo; no se simula.
+- 38.5-B sigue cerrado: un Resource no puede atacar ni ayudar. Es una decision de
+  alcance de L12, no un cambio de comportamiento. Y por eso los Resources de este
+  lote que imprimen "at any time" siguen exigiendo turno propio.
+- 413 solo implementa el registro del stash y el payout; exponer, esconder y las
+  reglas de unicidad ("once exposed they must stay exposed") quedan en backlog.
+- 400 The Weak Link es el unico `t:` de todo el proyecto sin transcripcion
+  secundaria (`sourceStatus: "secondary-not-found"`). Sale del OCR de la imagen
+  con los errores de escaneo corregidos y el flavour eliminado, que es lo mismo
+  que hacen las demas familias. El hueco de fuente se conserva declarado.
+
+### Verificacion
+
+- `node --check` limpio en `engine.js`, `app.js`, `ui.js` y los tests.
+- `npm test` -> `ALL TESTS PASSED (11)`.
+- `node test_fase4_cards.js` -> `FASE 4 COVERAGE PASSED (146 cartas clasificadas,
+  102 Plots/Resources sin mecanica (techo 176), 3 ramas muertas declaradas, 10
+  cartas bloqueadas congeladas, 4 huecos de texto declarados)`. Frente al
+  baseline de UI (141/107): +5 clasificadas y -5 sin mecanica, exactamente las 5
+  cartas del lote, con `resource_effect:5` en el recuento de kinds (47 kinds).
+- 30/30 corridas consecutivas de `test_fase2_rules.js` (regla 13).
+- `test_hand_peek.js`: `HAND PEEK PASSED (desglose de 630 lineas sobre 421 cartas)`,
+  30/30.
+
+### Lecciones
+
+- Un uid que el motor genera tiene que ser ALCANZABLE por el mismo buscador que
+  valida las cartas que lo usan. Un identificador que el motor emite y nadie puede
+  resolver es una carta muerta en silencio.
+- Todo fixture que inserte una carta en la mano debe ser DETERMINISTA en el numero
+  de copias: el reparto inicial es aleatorio.
+- El registro del motor son OBJETOS `{t,p,msg}`, no strings.
+- `pl.resources` es un array VIVO: no se guarda la referencia y se usa despues de
+  un `splice`; se captura el uid en un escalar.
+- Un test que no pasa por el mismo camino de codigo que el jugador no vale como
+  prueba de jugabilidad (P1-075).
+- "At any time" no significa "fuera de tu turno" cuando la carta no lo dice: 378 y
+  332 son "at any time" pero el motor les exige turno propio, y eso queda como
+  limite declarado en vez de resolverlo por cuenta propia.
+
+### Backlog
+
+- Gadget / Artifact / Agent como condicion de printed legality sigue sin ser
+  verificable por maquina; solo constan como `printedRestrict`.
+- 348 modo A se declara, no se simula.
+- 413: solo el stash y el payout; faltan exponer/esconder y las reglas de
+  unicidad.
+- 38.5-B sigue cerrado (un Resource no puede atacar ni ayudar).
+- La reaccion del rival a 22 Clone Arrangers, 254 Faction Fight y 333 Payoff
+  queda para un lote propio.
+- El texto oficial de Global Power sigue sin transcripcion en `research/`; el
+  comportamiento esta implementado y declarado, la fuente oficial no.
