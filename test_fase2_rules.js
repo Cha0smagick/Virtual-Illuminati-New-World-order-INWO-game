@@ -5845,12 +5845,22 @@ ok(!!L9c332 && !!L9c357 &&
     return nd;
   }
   /* Inserta en la mano por IDENTIDAD de catalogo. `E.giveCard` NO sirve: exige
-   * que la carta ya este en el mazo del jugador y lanza "No tienes esa carta"
+* que la carta ya este en el mazo del jugador y lanza "No tienes esa carta"
    * (medido), asi que el fixture tiene que meterla a mano. Se saca del mazo de
-   * Plots para que la cuenta sea la que el test cree, no la que dejó el reparto. */
+   * Plots para que la cuenta sea la que el test cree, no la que dejo el reparto.
+   * P1-078 - PURGA antes de insertar. El reparto inicial es aleatorio y en este
+   * bloque las aserciones cuentan copias de forma ABSOLUTA (1 antes del rechazo,
+   * 0 despues del camino feliz), no por delta como hacen L5c/L7/L8c/L11. Medido:
+   * en ~3 de cada 80 corridas la 310 Media Connections ya venia en la mano de P0,
+   * y entonces las DOS aserciones de copias caian a la vez (2 en vez de 1, y 1 en
+   * vez de 0). El motor no cambiaba de comportamiento: el fixture no era
+   * determinista. Purgar deja la cuenta en el numero que el test cree. El splice
+   * inverso se usa en vez de filter+reasignar para no cambiar la identidad del
+   * array de mano, que other bloques del test ya tienen capturada. */
   function toHandL10(pid, cardId) {
     var pl = rawL10().players[pid];
     if (pid === 0) { var j = rawL10().plotDeck.indexOf(cardId); if (j >= 0) rawL10().plotDeck.splice(j, 1); }
+    for (var k = pl.hand.length - 1; k >= 0; k--) if (pl.hand[k] === cardId) pl.hand.splice(k, 1);
     pl.hand.push(cardId);
     return cardId;
   }
