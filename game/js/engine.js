@@ -46,6 +46,24 @@ function findOwnerPid(uid){
   for(var p=0;p<S.players.length;p++){if(findInTree(S.players[p].structure,uid))return p;}
   return -1;
 }
+/* P1-077 - buscador de Resources. Los Resources se guardan en `pl.resources`, un array
+ * plano de entradas {uid:'r'+n, cardId, linkedTo, tokens, [drawHook], [stash]}, y NO en
+ * el arbol de grupos, asi que findNode()/findOwnerPid() no los ven. Devuelve
+ * {pid, entry} o null. Se recorre en el orden de los jugadores para que, si el mismo
+ * uid se pidiera en dos mesas, gane la primera: los uid salen de un contador global
+ * (S.uidCounter), asi que la colision no deberia ocurrir, pero el comportamiento queda
+ * determinado en vez de depender del azar. NO se mete pl.resources dentro de findNode:
+ * los nodos de grupo tienen `children`, `tokens` propio de grupo y se consumen en
+ * spendGroupToken(), nodeAligns() y noTokensFlag(); una entrada de Resource no cumple
+ * esa forma y romperia a todos esos consumidores a la vez. */
+function findResourceEntry(uid){
+  if(uid==null)return null;
+  for(var p=0;p<S.players.length;p++){
+    var rs=S.players[p].resources;
+    for(var i=0;i<rs.length;i++){ if(rs[i].uid===uid) return {pid:p,entry:rs[i]}; }
+  }
+  return null;
+}
 function detach(parent,uid){
   for(var i=0;i<parent.children.length;i++){
     if(parent.children[i].uid===uid)return parent.children.splice(i,1)[0];
@@ -1583,8 +1601,15 @@ E.useGadgetAction=function(pid,opts){
   if(S.attack||S.pendingAttack)
     throw new Error('No puedes usar la accion de tu Gadget durante un ataque privilegiado');
   if(S.pendingAlignEdit)throw new Error('Ya hay una accion de Gadget esperando resolucion');
-  var own=findNode(opts.resourceUid);
-  if(!own)throw new Error('Los Lasers no estan en tu mesa');
+  /* P1-077 - los Resources NO viven en el arbol de grupos: estan en el array plano
+   * `pl.resources` con uid 'r'+n. findNode() solo recorre `S.players[p].structure`, asi
+   * que findNode('r12') devolvia SIEMPRE null y E.useGadgetAction SIEMPRE lanzaba
+   * "Los Lasers no estan en tu mesa": 332 Orbital Mind Control Lasers era INJUGABLE.
+   * No se arregla metiendo pl.resources dentro de findNode: los nodos de grupo tienen
+   * `children`, `tokens` de grupo y se usan en spendGroupToken/nodeAligns/noTokensFlag, y
+   * una entrada de Resource no tiene esa forma. Por eso existe findResourceEntry(). */
+  var ownR=findResourceEntry(opts.resourceUid);
+  if(!ownR)throw new Error('Los Lasers no estan en tu mesa');
   S.pendingAlignEdit={byPid:pid,resourceUid:opts.resourceUid,mode:'gadget_action'};
   return publicState();
 };
@@ -1599,8 +1624,8 @@ E.resolveAlignEdit=function(act){
   S.pendingAlignEdit=null;
   var pid=W.byPid;
   if(act.pass)return publicState();
-  var nd=findNode(W.resourceUid);
-  if(!nd)throw new Error('Los Lasers ya no estan en tu mesa');
+  var ndR=findResourceEntry(W.resourceUid); /* P1-077: ver nota en E.useGadgetAction */
+  if(!ndR)throw new Error('Los Lasers ya no estan en tu mesa');
   var t=findNode(act.targetUid);
   if(!t)throw new Error('Ese grupo no esta en tu mesa');
   var owner=findOwnerPid(act.targetUid);

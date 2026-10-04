@@ -47,6 +47,19 @@ function plant(pid, uid, cardId, tokens) {
   return findNode(root, uid);
 }
 
+/* P1-077 - plantar un RESOURCE como lo hace el motor de verdad.
+ * plant() mete el nodo en `structure.children`, o sea como si fuera un grupo. Se
+ * usaba tambien para los Resources y por eso la regresion de 332 (L9) pasaba sin
+ * llegar a tocar el agujero: findNode() encontraba el uid porque estaba en el arbol,
+ * cuando en una partida real un Resource vive en `pl.resources` (array plano, uid
+ * 'r'+n) y findNode() NO lo ve. Este helper usa la forma real, de modo que la misma
+ * regresion ahora afirma el camino de juego de verdad. */
+function plantRes(pid, uid, cardId) {
+  var rs = E._raw().players[pid].resources;
+  rs.push({ uid: uid, cardId: cardId, linkedTo: null, tokens: 0 });
+  return rs[rs.length - 1];
+}
+
 /* twoPlayerGuard impide atacar antes de que AMBOS completen su primer turno.
    readyToAttack() avanza turnos hasta que el jugador indicado tiene la mano y
    los dos rivales han jugado una vez, y devuelve ese pid. */
@@ -5743,7 +5756,7 @@ ok(!!L9c332 && !!L9c357 &&
   ok(E.getState().phase === 'main' && E.getState().currentPid === 0,
      'L9 el fixture deja a P0 en su turno principal (control del camino feliz)');
 
-  plant(0, 'nL9res', L9c332.idx, 1);
+  plantRes(0, 'nL9res', L9c332.idx); /* P1-077: en pl.resources, no en el arbol */
   plant(0, 'nL9grp', grpL9.idx, 1);
 
   var a1 = E.alignsOfNode('nL9grp') || [];
