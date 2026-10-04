@@ -328,6 +328,11 @@ img.sm { width: 46px; height: auto; }
   grid-area: btns; width: auto;
   max-height: 240px; overflow-y: auto; scrollbar-gutter: stable;
   display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start;
+  /* P1-072 (M4): el separador entre la mano y las acciones pertenece a la COLUMNA de
+     acciones, no a la fila de cartas. #handCards es un flex cuyo ancho depende de
+     cuantas cartas hay; un borde pegado a el se moveria con la mano. Aqui la columna
+     mide 330px fijos, asi que el borde es estable. */
+  border-left: 1px solid var(--hairline); padding-left: 10px;
 }
 /* P1-016 — barra de la ventana de reacción. Ocupa todo el ancho de la barra de
    acción porque es un aviso de estado de la partida, no un botón más: si el
@@ -374,7 +379,7 @@ img.sm { width: 46px; height: auto; }
   grid-area: cards; min-width: 0;
   max-height: none; overflow: visible;
   display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; justify-content: center;
-  border-right: 1px solid var(--hairline); padding: 6px 12px 4px 4px;
+  border-right: none; padding: 6px 12px 4px 4px;
 }
 #actionHint { grid-area: hint; }
 /* Badge con el numero de cartas de la mano. Vive en la barra pero NO dentro de
@@ -391,7 +396,7 @@ img.sm { width: 46px; height: auto; }
      stacking context en cada entrada/salida era la 2a fuente de parpadeo. */
   position: relative; z-index: 1;
   transform-origin: bottom center; will-change: transform;
-  width: 96px; flex: none; cursor: pointer;
+  width: 112px; flex: none; cursor: pointer;
   border: 1px solid rgba(255, 255, 255, .07); border-radius: 5px;
   background: rgba(0, 0, 0, .3);
   box-shadow: 0 2px 6px rgba(0, 0, 0, .45);
@@ -400,13 +405,12 @@ img.sm { width: 46px; height: auto; }
 #handCards .handCard img {
   width: 100%; height: auto; border-radius: 4px 4px 0 0; display: block;
 }
-/* P1-072 — la miniatura va limpia: el nombre queandia debajo en un <small> de 10px
-   era ilegible a 96px y solo anadia ruido. El nombre real esta en el title, en el
-   aria-label y en la capa de lectura #cardPeek (paso M2 del plan). */
-#handCards .handCard small { display: none; }
+/* P1-072 — la miniatura va limpia. El <small> con el nombre queAndia debajo fue
+   ELIMINADO del DOM en el paso M4 (antes solo se escondia con display:none aqui).
+   El nombre real esta en el title, en el aria-label y en la capa #cardPeek (M2). */
 #handCards .handCard:hover,
 #handCards .handCard:focus-visible {
-  transform: scale(1.55);
+  transform: scale(1.45);
   border-color: var(--gold);
   box-shadow: 0 -10px 30px rgba(255, 176, 58, .28), 0 0 0 1px rgba(255, 176, 58, .5);
   z-index: 30;
@@ -416,7 +420,7 @@ img.sm { width: 46px; height: auto; }
    explicita, sin salto. NO baja de 1: si la caja se encoge, el borde superior se
    mueve hacia abajo y el cursor puede quedar fuera del hit-box. */
 #handCards .handCard:active {
-  transform: scale(1.5);
+  transform: scale(1.4);
   box-shadow: 0 -6px 18px rgba(255, 176, 58, .3), 0 0 0 1px rgba(255, 176, 58, .55);
   z-index: 30;
 }
@@ -430,7 +434,7 @@ img.sm { width: 46px; height: auto; }
 }
 #handCards .handCard.picked:hover,
 #handCards .handCard.picked:focus-visible {
-  transform: scale(1.55);
+  transform: scale(1.45);
   box-shadow: 0 0 0 2px var(--gold), 0 -10px 30px rgba(255, 176, 58, .32);
   z-index: 30;
 }
@@ -835,19 +839,24 @@ img.sm { width: 46px; height: auto; }
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "info" "cards" "btns" "hint";
   }
-  /* P1-071 — en pantallas estrechas la fila unica se sale de la pantalla, asi que
-     aqui SI se recorta a lo alto (el factor de zoom baja a 1.3 y el crecimiento hacia
-     arriba se deforma en lugar de recortarse). Es el mismo compromiso que ya hacia la
-     version anterior de la barra, solo que aqui es aceptable porque en vertical la
-     carta Crece hacia arriba Y hacia abajo a la vez. */
-  #handCards, #actionBtns { max-height: none; border-right: none; }
+  /* P1-071 / P1-072 (M4) — en vertical NO hay scroll horizontal, a proposito.
+     Motivo tecnico, no estetico: en CSS, si un eje de `overflow` es auto/scroll, el
+     otro `visible` SE COMPUTA A auto. O sea que un `overflow-x:auto` para deslizar una
+     mano ancha recortaria TAMBIEN el crecimiento vertical de la carta => el zoom
+     volveria a cortarse, que es exactamente el bug que se arreglo en M1. No se puede
+     tener scroll horizontal y zoom vertical a la vez en la misma caja.
+     Decision: en pantallas estrechas la mano ENVUELVE a varias filas (una fila fija de
+     ancho > pantalla es ilegible igual), la miniatura baja a 92px y el zoom se queda en
+     1.3. La lectura fina la aporta #cardPeek, que es position:fixed y no la recorta
+     ningun ancestro — el mismo camino que usa Arena en movil. */
+  #handCards, #actionBtns { max-height: none; border-right: none; border-left: none; }
   #handCards {
-    max-height: 260px; overflow-y: hidden; overflow-x: auto;
-    scrollbar-width: thin; justify-content: flex-start;
+    max-height: none; overflow: visible;
+    justify-content: flex-start; gap: 6px;
   }
-  #handCards .handCard { transform-origin: bottom center; }
+  #handCards .handCard { width: 92px; transform-origin: bottom center; }
   #handCards .handCard:hover, #handCards .handCard:focus-visible { transform: scale(1.3); }
-  #handCards .handCard:active { transform: scale(1.26); }
+  #handCards .handCard:active { transform: scale(1.28); }
   #handCards .handCard.picked:hover, #handCards .handCard.picked:focus-visible { transform: scale(1.3); }
   #actionBtns { width: auto; }
   #cardInfo { height: 52px; min-height: 52px; max-height: 52px; }

@@ -796,7 +796,13 @@ function handBar(st) {
     var c = cardOf(ix);
     return '<button type="button" class="handCard' + (sel.data.handIdx === ix ? ' picked' : '') + '" data-idx="' + ix + '" aria-pressed="' + (sel.data.handIdx === ix ? 'true' : 'false') + '" aria-label="' + esc(c.name) + ', ' + esc(c.type) + ', Poder ' + (c.power == null ? 'desconocido' : c.power) + ', Resistencia ' + (c.resistance == null ? 'desconocida' : c.resistance) + '" title="' + esc(c.name) +
       '\nP:' + c.power + ' R:' + c.resistance + '\n' + esc((c.alignments || []).join(', ')) + '">' +
-      imgTag(c, 'thumb') + '<small>' + esc(c.name) + '</small></button>';
+      /* P1-072 (M4 del plan_mano_mtga.md): la miniatura va LIMPIA, como en Arena. El
+       * nombre salia en un <small> debajo de la imagen: a 112px de ancho era ilegible y
+       * solo anadia ruido. El nombre real sigue en el title, en el aria-label (lectores
+       * de pantalla) y en la capa de lectura #cardPeek (M2). Por eso el <small> se quita
+       * del DOM en vez de esconderse con CSS: un nodo oculto sigue pagando su coste de
+       * layout y, si alguien lo muestra desde las herramientas, la fila vuelve a crecer. */
+      imgTag(c, 'thumb') + '</button>';
   }).join('');
   buildBtns(st, true);
 }
@@ -826,9 +832,22 @@ function buildBtns(st, myMain) {
       b.push('<button data-act="extra" title="Gasta 1 estrella: roba 1 Grupo extra (1 por turno)">★→Grupo</button>');
       b.push('</span>');
     }
-    var hs = [['table','🗂 Tablero'],['type','🔤 Tipo'],['power','⚡ Poder']];
-    b.push('<span class="bgrp hsortbar"><b class="lbl">🗂 MANO</b>' +
-      hs.map(function (o) { return '<button data-act="hsort" data-v="' + o[0] + '" class="' + (handSort === o[0] ? 'on' : '') + '">' + o[1] + '</button>'; }).join('') +
+    /* P1-072 (M4 del plan_mano_mtga.md) — la barra de la mano es MINIMALISTA:
+       * (a) los tres botones de orden se quedan en el icono y el texto pasa a title +
+       *     aria-label (antes ocupaban media columna de 330px con "Tablero/Tipo/Poder");
+       * (b) el numero de cartas se imprime DENTRO de la etiqueta "MANO", no dentro de
+       *     #handCards. Motivo tecnico: la REGLA DE ORO de #handBar (ver style.css) es
+       *     que su topologia no dependa del contenido; un contador dentro de la fila
+       *     haria que cada carta robada o jugada re-acomodara la fila entera. La columna
+       *     de #actionBtns es de ancho fijo, asi que ahi el cambio no mueve una pixel. */
+    var hs = [['table', '🗂', 'Tablero'], ['type', '🔤', 'Tipo'], ['power', '⚡', 'Poder']];
+    b.push('<span class="bgrp hsortbar"><b class="lbl">🗂 MANO <span class="rowcount">🂠 <b>' +
+      (me.hand ? me.hand.length : 0) + '</b></span></b>' +
+      hs.map(function (o) {
+        return '<button data-act="hsort" data-v="' + o[0] + '" title="Ordenar la mano por ' + o[2] +
+          '" aria-label="Ordenar la mano por ' + o[2] + '" class="' +
+          (handSort === o[0] ? 'on' : '') + '">' + o[1] + '</button>';
+      }).join('') +
       '</span>');
     b.push('<button data-act="endturn" class="primary endturn' + (me.autoUsed ? '' : ' pulse') + '" title="PASO FINAL - termina tu turno y pasa al siguiente jugador">5 · Terminar turno ▶</button>');
   } else {

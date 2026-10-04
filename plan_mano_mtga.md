@@ -123,17 +123,17 @@ Objetivo: al inspeccionar una carta, el jugador ve coste / objetivo / efecto / f
 
 ### [ ] M4 - JS/CSS: minimalismo MTGA de la mano
 Objetivo: que la barra parezca MTGA, no un panel de herramientas.
-- [ ] M4.1 Quitar de verdad el `<small>` con el nombre del `innerHTML` de `handBar()` (M1.6 solo lo ocultaba por CSS): la miniatura queda limpia.
-- [ ] M4.2 El nombre sigue disponible por `title` y `aria-label` (ya estan) + ahora tambien en `#cardPeek`.
-- [ ] M4.3 Badge `.rowcount` con el numero de cartas: "🂠 7". Se escribe desde `handBar()`.
-- [ ] M4.4 Botones de orden `🗂/🔤/⚡`: reducidos a iconos pequenos con `title` explicito, en una sola linea, alineados a la derecha.
-- [ ] M4.5 Afinar el tamano de la miniatura: `width:112px` (de 96px) para que el nombre dentro de la imagen sea legible sin zoom. Recalcular el factor de hover a `1.42` para que 112*1.42 ~ 159px.
-- [ ] M4.6 Separar visualmente mano y acciones: la `#actionBtns` de 330px pasa a columna estrecha con borde izquierdo tenue; el borde por defecto de las cartas se hace casi invisible (`border-color: rgba(255,255,255,.06)`) y solo se enciende en hover/picked. Eso es el "minimalista" de MTGA.
-- [ ] M4.7 `body.spectate` y `body:not(.ingame)` siguen ocultando la barra (L761, L803-804). No tocar.
-- [ ] M4.8 Media query de <=1024px: mantener la adaptacion pero permitir scroll horizontal de la fila (`overflow-x:auto`) en vez de `wrap`, para no perder la fila unica.
-- [ ] M4.9 `prefers-reduced-motion` (L842-849) ya pone `transition-duration:.01ms`: se respeta automaticamente.
-- [ ] M4.10 Cache-busting si se toca `ui.js` (ya en M2) o `style.css` (ya en M1).
-- [ ] M4.11 **COMMIT + PUSH**: `fix(hand): M4 minimalismo MTGA (fila unica, sin nombre bajo miniatura, badge contador)`.
+- [x] M4.1 Quitar de verdad el `<small>` con el nombre del `innerHTML` de `handBar()` (M1.6 solo lo ocultaba por CSS): la miniatura queda limpia. <!-- HECHO: el <small> sale del DOM en ui.js handBar(); la regla CSS muerta `#handCards .handCard small{display:none}` se borro. -->
+ - [x] M4.2 El nombre sigue disponible por `title` y `aria-label` (ya estan) + ahora tambien en `#cardPeek`. <!-- HECHO: sin cambios, ya cumplido desde M1+M2. -->
+ - [x] M4.3 Badge `.rowcount` con el numero de cartas: "🂠 7". Se escribe desde `handBar()`. <!-- HECHO, pero DENTRO de buildBtns() y en la etiqueta "MANO", no dentro de #handCards: la REGLA DE ORO dice que la topologia de la barra no puede depender del contenido, y la columna de #actionBtns es de ancho fijo (330px) asi que ahi el cambio no mueve una pixel. -->
+ - [x] M4.4 Botones de orden `🗂/🔤/⚡`: reducidos a iconos pequenos con `title` explicito, en una sola linea, alineados a la derecha. <!-- HECHO: el array pasa a [clave, icono, etiqueta larga]; el texto va a title + aria-label. El handler data-act="hsort" no cambio. -->
+ - [x] M4.5 Afinar el tamano de la miniatura: `width:112px` (de 96px) para que el nombre dentro de la imagen sea legible sin zoom. Recalcular el factor de hover a `1.42` para que 112*1.42 ~ 159px. <!-- HECHO: 112px y hover 1.45 (112*1.45 = 162px); :active 1.4 para que la caja nunca encoja (si encoge, el borde superior se mueve y el cursor puede salir del hit-box). -->
+ - [x] M4.6 Separar visualmente mano y acciones: la `#actionBtns` de 330px pasa a columna estrecha con borde izquierdo tenue; el borde por defecto de las cartas se hace casi invisible (`border-color: rgba(255,255,255,.06)`) y solo se enciende en hover/picked. Eso es el "minimalista" de MTGA. <!-- HECHO con una correccion: el separador se movio a `border-left` de #actionBtns (no a border-right de #handCards) porque el ancho de #handCards depende de cuantas cartas hay y su borde se moveria con la mano. El borde casi invisible de las cartas ya estaba desde M1. -->
+ - [x] M4.7 `body.spectate` y `body:not(.ingame)` siguen ocultando la barra (L761, L803-804). No tocar. <!-- CUMPLIDO por omision: no se tocaron esas reglas. -->
+ - [x] M4.8 Media query de <=1024px: mantener la adaptacion pero permitir scroll horizontal de la fila (`overflow-x:auto`) en vez de `wrap`, para no perder la fila unica. <!-- HECHO AL CONTRARIO, y es deliberado: en CSS, si un eje de `overflow` es auto/scroll, el otro `visible` SE COMPUTA A auto, asi que un `overflow-x:auto` recortaria TAMBIEN el crecimiento vertical => el zoom volveria a cortarse (el bug de M1). No se pueden tener scroll horizontal y zoom vertical en la misma caja. En <=1024px la mano ENVUELVE, la miniatura baja a 92px y el zoom queda en 1.3; la lectura fina la aporta #cardPeek, que es position:fixed y no lo recorta ningun ancestro. -->
+ - [x] M4.9 `prefers-reduced-motion` (L842-849) ya pone `transition-duration:.01ms`: se respeta automaticamente. <!-- HECHO: no hizo falta tocar nada. -->
+ - [x] M4.10 Cache-busting si se toca `ui.js` (ya en M2) o `style.css` (ya en M1). <!-- HECHO: `?v=40` -> `?v=41` en las 13 referencias de game/index.html. -->
+ - [x] M4.11 **COMMIT + PUSH**: `fix(hand): M4 minimalismo MTGA (fila unica, sin nombre bajo miniatura, badge contador)`. <!-- HECHO. Verificado antes del commit: node --check limpio, HAND PEEK PASSED, 30/30 corridas, ALL TESTS PASSED (11), FASE 4 identico al baseline, mojibake 0. -->
 
 ### [ ] M5 - VERIFICACION
 - [ ] M5.1 `node --check` en `game/js/ui.js`, `game/js/app.js` y los JS tocados.
