@@ -80,7 +80,7 @@ tamaño legible, sin salir de la pantalla y sin que el resto de la mano se mueva
 - [x] M0.8 Escribir este plan.
 - [x] M0.9 Push de los 12 commits que estaban pendientes -> `git push origin main` => `1e27f89..2072538 main -> main`. **HECHO**.
 
-### [ ] M1 - CSS: el pop-up MTGA al pasar el raton
+### [x] M1 - CSS: el pop-up MTGA al pasar el raton
 Objetivo: la carta crece hacia arriba hasta ser legible, sin recorte, sin parpadeo, sin mover la mano.
 - [x] M1.1 En `#handCards`: quitar `max-height` y `overflow-y:auto` (dejan de recortar), poner `flex-wrap:nowrap`, `align-items:flex-end`, `justify-content:center`, `overflow:visible`, `padding-top:34px` (espacio para que la carta crezca sin chocar con `#cardInfo`).  <!-- hecho: flex-wrap:wrap conservado a proposito; lo que recorta era max-height/overflow -->
 - [x] M1.2 En `.handCard`: `transform-origin: bottom center;` + `will-change: transform;` + `transition: transform .14s cubic-bezier(.2,.7,.3,1), border-color .15s, box-shadow .15s;`
@@ -94,7 +94,7 @@ Objetivo: la carta crece hacia arriba hasta ser legible, sin recorte, sin parpad
 - [x] M1.10 `node --check` en los JS tocados (ninguno aun, pero se comprueba).
 - [x] M1.11 **COMMIT + PUSH**: `fix(hand): M1 pop-up MTGA al pasar el raton (scale 1.55, sin recorte)`.
 
-### [ ] M2 - JS: capa de lectura `#cardPeek` (inspector fijo sobre la mano)
+### [x] M2 - JS: capa de lectura `#cardPeek` (inspector fijo sobre la mano)
 Objetivo: al pasar el raton, ademas de crecer, la carta se lee en grande con su texto impreso completo, en una capa por encima, sin tocar la altura de la barra.
 - [x] M2.1 Anadir a `game/index.html` `<div id="cardPeek" class="cardPeek" role="tooltip" hidden>` justo despues de `#cardPreview`.
 - [x] M2.2 En `ui.js`: `var PEEK = null, peekCard = null;` junto a `var PV = null, lastCix = null;`.  <!-- hecho: var PEEK_CIX (cache de deduplicacion), no PEEK/peekCard -->
@@ -109,19 +109,19 @@ Objetivo: al pasar el raton, ademas de crecer, la carta se lee en grande con su 
 - [x] M2.11 `node --check game/js/ui.js`.
 - [x] M2.12 **COMMIT + PUSH**: `fix(hand): M2 capa de lectura #cardPeek (texto impreso verbatim)`.
 
-### [ ] M3 - JS: desglose de QUE HACE CADA CARTA Y CADA EFECTO
+### [x] M3 - JS: desglose de QUE HACE CADA CARTA Y CADA EFECTO
 Objetivo: al inspeccionar una carta, el jugador ve coste / objetivo / efecto / fin, derivado de `c.effect` y `c.goal`, no adivinado por regex.
 - [x] M3.1 Levantar el **catalogo de `effect.kind`**: script Node temporal que recorra `game/js/cards.js` y liste `{kind -> n, ejemplos:[ids]}`.  <!-- hecho: 48 kinds y 103 claves levantados del dataset (ver seccion 9) -->
 - [x] M3.2 Definir `EFFECT_LABEL` en `ui.js`: mapa `kind -> etiqueta corta en espanol` (p.ej. `illu_special -> 'Habilidad especial de Illuminati'`, `resource_effect -> 'Modifica recursos'`, `dup_enabler -> 'Permite jugar un duplicado'`, `force_align -> 'Fuerza alineamientos'`, `goal_combo -> 'Combo de meta'`).  <!-- hecho: se llamo KIND_ES (48 entradas) + FIELD_ES (100 claves) + GOAL_ES/GOAL_FIELD -->
 - [x] M3.3 Definir `effectLines(c)` que devuelve `[{etiqueta, valor}]` segun `c.effect.kind`, leyendo **solo claves existentes** (nunca inventar). Fallback honesto: si el `kind` no esta en el mapa, imprimir `Mecanica: <kind>` y la lista de claves del objeto, sin mentir.  <!-- hecho: se llamo effHtml(c) con las 5 secciones coste/obj/eff/fin/modo -->
 - [x] M3.4 Anadir `goalLines(c)` desde `c.goal` (p.ej. `{type:'basic',magicResourceCountsAsGroup:true}` -> "Meta basica: cada Recurso Magico cuenta como un grupo").
 - [x] M3.5 Pintar el desglose en `#cardPeek` con clases `.pk-eff` / `.pk-effb`.  <!-- hecho: .pk-eff (encabezado de mecanica y de meta) + .pk-effline por dato -->
-- [ ] M3.6 Anadir la **explicacion de la diferencia de texto**: si `c.text` esta corrupto (heuristica: muchos digitos sueltos, palabras pegadas, longitud < 12 con `type != 'illuminati'`), avisar `"Texto OCR dudoso: el texto impreso en la imagen es el que manda"` y mostrar `c.textFull` si existe. Nunca se oculta el texto impreso.  <!-- NO hecho: no se avisa de que el texto es OCR. Se decide en M5 (queda como P2) -->
+- [x] M3.6 APLAZADO a P2 (no se hace en este lote). Anadir la **explicacion de la diferencia de texto**: si `c.text` esta corrupto (heuristica: muchos digitos sueltos, palabras pegadas, longitud < 12 con `type != 'illuminati'`), avisar `"Texto OCR dudoso: el texto impreso en la imagen es el que manda"` y mostrar `c.textFull` si existe. Nunca se oculta el texto impreso.  <!-- NO hecho: no se avisa de que el texto es OCR. Se decide en M5 (queda como P2) -->
 - [x] M3.7 Regresion en `test_ui.js`: para 6 cartas representativas (una de cada `kind`), `effectLines(c)` devuelve al menos una linea y ninguna con `undefined` en el texto.  <!-- hecho: el gate esta en test_hand_peek.js (fichero nuevo, registrado en scripts/run_tests.cjs), no en test_ui.js: cubre las 421 cartas, 0 excepciones, 594 lineas, y que ninguna clave de effect/goal se pierda en silencio -->
 - [x] M3.8 `node --check game/js/ui.js`; `npm test`.
 - [x] M3.9 **COMMIT + PUSH**: `fix(hand): M3 desglose de efectos desde effect.kind y goal`.  <!-- hecho: commit + push -->
 
-### [ ] M4 - JS/CSS: minimalismo MTGA de la mano
+### [x] M4 - JS/CSS: minimalismo MTGA de la mano
 Objetivo: que la barra parezca MTGA, no un panel de herramientas.
 - [x] M4.1 Quitar de verdad el `<small>` con el nombre del `innerHTML` de `handBar()` (M1.6 solo lo ocultaba por CSS): la miniatura queda limpia. <!-- HECHO: el <small> sale del DOM en ui.js handBar(); la regla CSS muerta `#handCards .handCard small{display:none}` se borro. -->
  - [x] M4.2 El nombre sigue disponible por `title` y `aria-label` (ya estan) + ahora tambien en `#cardPeek`. <!-- HECHO: sin cambios, ya cumplido desde M1+M2. -->
@@ -163,13 +163,13 @@ Montaje: servidor estatico temporal `_m5_server.cjs` (Node `http` sin deps, sirv
 
 **Leccion de M5.6 (la importante):** todo el lote M1-M4 estaba verificado con tests de Node y con aserciones estaticas de CSS, y aun asi la mano era **completamente injugable** en el navegador. Un test que no pasa por el mismo camino de codigo que el usuario no vale como prueba de jugabilidad. Los dos bugs que aparecieron (P1-075, P1-076) son los dos que un test de Node no puede ver. **Leccion para el resto del proyecto: todo lo que toque el camino de pulsacion -> callback del motor tiene que verificarse en un navegador real, no solo en Node.**
 
-### [ ] M6 - DOCUMENTACION Y CIERRE
-- [ ] M6.1 Seccion `§63` en `docs/audit/INWO_SURGICAL_AUDIT.md` con Hallazgo / Correcciones / Verificacion / Leccion / Backlog. **ASCII sin tildes** (regla 5 de `plan.md`). IDs nuevos: `P1-071` (zoom ilegible + recorte), `P1-072` (mano no minimalista), `P1-073` (no se observaba que hace cada carta), `P1-074` (efectos no desglosados).
-- [ ] M6.2 Escribir la seccion con un script Node temporal (`fs.appendFileSync`) y borrar el script.
-- [ ] M6.3 Marcar M0..M6 como `[x]` en este plan y anotar el resultado real de cada paso.
-- [ ] M6.4 Anadir la nota de que Fase 3 (`§37`/`§38` del audit) queda **parcialmente cerrada**: la parte de mano/inspeccion esta hecha; faltan onboarding e IA que juegue cartas de reaccion.
-- [ ] M6.5 **COMMIT + PUSH**: `docs(hand): §63 mano MTGA - zoom, inspeccion y desglose de efectos (P1-071..P1-074)`.
-- [ ] M6.6 Volver a `plan.md` y retomar el primer lote de motor abierto: **L12 - MANIPULACION DE RESOURCES**.
+### [x] M6 - DOCUMENTACION Y CIERRE
+- [x] M6.1 Seccion `§63` en `docs/audit/INWO_SURGICAL_AUDIT.md` con Hallazgo / Correcciones / Verificacion / Leccion / Backlog. **ASCII sin tildes** (regla 5 de `plan.md`). IDs nuevos: `P1-071` (zoom ilegible + recorte), `P1-072` (mano no minimalista), `P1-073` (no se observaba que hace cada carta), `P1-074` (efectos no desglosados).  <!-- HECHO: seccion 63 anadida al final de `docs/audit/INWO_SURGICAL_AUDIT.md` (524153 -> 541051 bytes, 6508 -> 6583 lineas). Secciones: Hallazgo / Correcciones / Verificacion / Lecciones / Backlog, con los 6 IDs P1-071..P1-076. -->
+- [x] M6.2 Escribir la seccion con un script Node temporal (`fs.appendFileSync`) y borrar el script.  <!-- HECHO: `_m6_append.cjs` + `_m6_mark.cjs`, ejecutados y BORRADOS. El script aborta si la seccion 63 ya existe, para que un segundo intento no duplique nada. -->
+- [x] M6.3 Marcar M0..M6 como `[x]` en este plan y anotar el resultado real de cada paso.  <!-- HECHO: M0..M6 con la cabecera en `[x]` y todos sus checkbox marcados. M3.6 quedo como `APLAZADO a P2` (no se hace en este lote) y se apunto su motivo en el backlog de §63. -->
+- [x] M6.4 Anadir la nota de que Fase 3 (`§37`/`§38` del audit) queda **parcialmente cerrada**: la parte de mano/inspeccion esta hecha; faltan onboarding e IA que juegue cartas de reaccion.  <!-- HECHO: §63 cierra con "Fase 3 queda PARCIALMENTE cerrada. Hecha la parte de mano e inspeccion. Siguen abiertos el onboarding y la IA que juegue las cartas de reaccion". -->
+- [x] M6.5 **COMMIT + PUSH**: `docs(hand): §63 mano MTGA - zoom, inspeccion y desglose de efectos (P1-071..P1-074)`.  <!-- HECHO. El rango de IDs del mensaje es P1-071..P1-074; en realidad son seis, P1-071..P1-076, porque la verificacion de M5 encontro el P0 de la mano injugable (P1-075) y el rechazo silencioso (P1-076). -->
+- [x] M6.6 Volver a `plan.md` y retomar el primer lote de motor abierto: **L12 - MANIPULACION DE RESOURCES**.  <!-- HECHO: el siguiente lote de motor es L12 - MANIPULACION DE RESOURCES (236/348/378/400/413), con el ciclo commit+push de este plan ya cerrado. -->
 
 ---
 
@@ -204,14 +204,14 @@ Montaje: servidor estatico temporal `_m5_server.cjs` (Node `http` sin deps, sirv
 
 ## 6. Definition of Done (copia de `plan.md` §0.1, se aplica igual)
 
-- [ ] `node --check` limpio en cada JS tocado.
-- [ ] `npm test` -> `ALL TESTS PASSED`.
-- [ ] `node test_fase4_cards.js` -> `FASE 4 COVERAGE PASSED` y el numero de "sin mecanica" baja exactamente en la cantidad de cartas del lote (aquela baja en cero).
-- [ ] Cada carta tocada en su familia de datos con `t:` = texto impreso verbatim y `kind` UNICO (aquella no aplica: no hay cartas nuevas; el `kind` de cada carta es `c.effect.kind` y se documenta en §63).
-- [ ] El dispatch valida coste y objetivo impresos y lanza `throw new Error(c.name + ': ...')` (no aplica: no hay motor nuevo).
-- [ ] La UI puede ejecutar la carta; si necesita objetivo, el objetivo se elige.
-- [ ] Regresion en tests que afirme el efecto observable (>=2 escenarios).
-- [ ] Seccion nueva en el audit en ASCII.
+- [x] `node --check` limpio en cada JS tocado.  <!-- HECHO: `ui.js` y `test_hand_peek.js` limpios; `app.js` no llego a tocarse. -->
+- [x] `npm test` -> `ALL TESTS PASSED`.  <!-- HECHO: **11** suites (no 10; el numero subio en M3 al registrar `test_hand_peek.js`). -->
+- [x] `node test_fase4_cards.js` ->  <!-- HECHO: los mismos numeros del baseline, 141 / 107 / 3 / 11 / 4. Este lote es puro UI, asi que aqui "baja exactamente" NO aplica: cualquier delta habria sido un fallo. --> `FASE 4 COVERAGE PASSED` y el numero de "sin mecanica" baja exactamente en la cantidad de cartas del lote (aquela baja en cero).
+- [x] Cada carta tocada en su familia de datos  <!-- HECHO: no aplica. No hay cartas nuevas ni cambios en `gen_cards.js`; el lote no toca el dataset, solo lo lee para pintar el desglose. --> con `t:` = texto impreso verbatim y `kind` UNICO (aquella no aplica: no hay cartas nuevas; el `kind` de cada carta es `c.effect.kind` y se documenta en §63).
+- [x] El dispatch valida coste y objetivo impresos  <!-- HECHO: no aplica, no hay motor nuevo. El unico cambio de motor de este lote es el fix de P1-075 (`cards[ix]` -> `C.cards[ix]`), que es una correccion de identificador, no de reglas. --> y lanza `throw new Error(c.name + ': ...')` (no aplica: no hay motor nuevo).
+- [x] La UI puede ejecutar la carta; si necesita objetivo, el objetivo se elige.  <!-- HECHO: la ejecucion no se toco, pero M5 demostro que estaba ROTA (P1-075) y quedo verificada en navegador real: click en un grupo -> overlay "Colocar GRATIS" -> casilla del board -> `Takeover automatico` en el registro, sin errores en consola. -->
+- [x] Regresion en tests que afirme el efecto observable  <!-- HECHO: `test_hand_peek.js` (nuevo, registrado en `scripts/run_tests.cjs`) cubre M1, M2 y M3, ejecuta el desglose sobre las 421 cartas reales en un `vm`, y **ademas** tiene dos asserts de red para P1-075 y P1-076. 30 de 30 corridas. --> (>=2 escenarios).
+- [x] Seccion nueva en el audit en ASCII.  <!-- HECHO: §63, en ASCII (0 letras acentuadas; solo `§`, que el resto del documento ya usa). -->
 
 ---
 
