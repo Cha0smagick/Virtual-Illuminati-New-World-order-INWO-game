@@ -135,14 +135,33 @@ Objetivo: que la barra parezca MTGA, no un panel de herramientas.
  - [x] M4.10 Cache-busting si se toca `ui.js` (ya en M2) o `style.css` (ya en M1). <!-- HECHO: `?v=40` -> `?v=41` en las 13 referencias de game/index.html. -->
  - [x] M4.11 **COMMIT + PUSH**: `fix(hand): M4 minimalismo MTGA (fila unica, sin nombre bajo miniatura, badge contador)`. <!-- HECHO. Verificado antes del commit: node --check limpio, HAND PEEK PASSED, 30/30 corridas, ALL TESTS PASSED (11), FASE 4 identico al baseline, mojibake 0. -->
 
-### [ ] M5 - VERIFICACION
-- [ ] M5.1 `node --check` en `game/js/ui.js`, `game/js/app.js` y los JS tocados.
-- [ ] M5.2 `npm test` -> `ALL TESTS PASSED (10)`.
-- [ ] M5.3 `node test_fase4_cards.js` -> `FASE 4 COVERAGE PASSED` con los **mismos numeros** del baseline (este lote no toca el motor, asi que la cobertura debe ser identica; cualquier delta es un fallo, no una mejora).
-- [ ] M5.4 Regresiones nuevas de `test_ui.js` probadas **30+ corridas consecutivas** (regla 13 de `plan.md`).
-- [ ] M5.5 Anti-flicker: test headless que simula 60 mousemove alternos sobre una `.handCard` y comprueba que `:hover` no se pierde (se comprueba por invariante geometrica: el rect del hit-box escalado contiene el punto del cursor). Alternativa sin navegador: assert estatico de que la regla CSS no contiene `translateY` en el hover de `.handCard`.
-- [ ] M5.6 Verificacion en navegador real (Playwright) de: hover escala, `#cardPeek` aparece con texto y efectos, mover el raton fuera la oculta, `picked` funciona, la partida se juega igual.
-- [ ] M5.7 **COMMIT + PUSH** de lo que salga de la verificacion.
+### [x] M5 - VERIFICACION
+- [x] M5.1 `node --check` en `game/js/ui.js`, `game/js/app.js` y los JS tocados. <!-- HECHO: `ui=0 app=0 test_hand_peek=0 test_ui=0`, los cuatro limpios. -->
+- [x] M5.2 `npm test` -> `ALL TESTS PASSED (10)`. <!-- HECHO, pero el numero del plan estaba DESACTUALIZADO: la suite son 11 desde M3, cuando `test_hand_peek.js` se registro en `scripts/run_tests.cjs`. Real: `ALL TESTS PASSED (11)`, verificado 3 veces seguidas. -->
+- [x] M5.3 `node test_fase4_cards.js` -> `FASE 4 COVERAGE PASSED` con los **mismos numeros** del baseline. <!-- HECHO: `141 cartas clasificadas, 107 Plots/Resources sin mecanica (techo 176), 3 ramas muertas declaradas, 11 cartas bloqueadas congeladas, 4 huecos de texto declarados`. Identico al baseline, como debe ser: este lote es puro UI. -->
+- [x] M5.4 Regresiones nuevas de `test_ui.js` probadas **30+ corridas consecutivas** (regla 13 de `plan.md`). <!-- HECHO con el gate nuevo `test_hand_peek.js` (M1+M2+M3): 30/30 en verde. `test_ui.js` no se toco en este lote. -->
+- [x] M5.5 Anti-flicker: assert estatico de que la regla CSS no contiene `translateY` en el hover de `.handCard`. <!-- HECHO por la rama estatica (la del plan): 15 bloques de reglas `.handCard`, `hover-con-translate=[]`. Reglas con `overflow:hidden|clip` en todo el CSS: `.nname`, `#cardInfo`, `.vbar`, `#illuDetail`, media query — ninguna ancestro de `.handCard`. La invariante geometrica se verifico ADEMAS en navegador real en M5.6: en reposo la carta mide 112x151.7 y con hover 162.4x220 (x1.45 exacto), el `<img>` escalado queda DENTRO de la caja de la carta (`topInside=true`), no hay ningun ancestro que recorte, y `transform-origin` es `bottom center`, asi que el borde inferior no se mueve y el `:hover` no se puede perder. -->
+- [x] M5.6 Verificacion en navegador real (Playwright). <!-- HECHO, y salio un P0. Ver nota larga abajo. -->
+- [x] M5.7 **COMMIT + PUSH** de lo que salga de la verificacion. <!-- HECHO: `fix(hand): M5 verificacion en navegador real + P0 mano injugable (P1-075, P1-076)`. -->
+
+#### M5.6 - navegador real: lo que se midio, y los DOS bugs que aparecieron
+
+Montaje: servidor estatico temporal `_m5_server.cjs` (Node `http` sin deps, sirviendo el repo en `http://127.0.0.1:8731`), lanzado en PTY, y Playwright contra `http://127.0.0.1:8731/game/index.html`. **Ojo: `/game/` da 404; el servidor solo mapea `/` -> `/game/index.html`.** Servidor y fichero borrados al terminar.
+
+1. **El "atasco" del turno de la IA NO era un bug**: al arrancar la partida se abre el overlay "COMO JUGAR - 4 PASOS" (`app.js:405`, `window.UI.showHowTo(function () { refresh(); maybeRunAI(); })`) y `maybeRunAI()` no se llama hasta cerrarlo. Es diseno, no fallo.
+
+2. **Zoom y capa de lectura, medidos en reposo y con hover** (13 cartas en mano):
+   - reposo `112 x 151.7`; con hover **`162.4 x 220`** = `matrix(1.45,0,0,1.45,0,0)`, `z-index: 30`, borde `rgb(255, 176, 58)`.
+   - `transform-origin: 56px 151.705px` (bottom center). `clipAncestors: []` (nadarece en el CSS). `<img>` escalado dentro de la caja: `topInside=true`.
+   - `#handBar` mide **542 px en reposo, con hover y con la carta ampliada**: la altura no depende del contenido (REGLA DE ORO respetada de verdad, medida, no supuesta). Sube a 563 solo cuando `#actionHint` envuelve a dos lineas, y eso esta en la fila de debajo, asi que las cartas no se mueven.
+   - `#cardPeek` (330x403) aparece con `.pk-n` "Gun Control", `.pk-meta` "Plot - bulk_power", `.pk-text` (105 chars) y la cabecera `.pk-eff` "MECANICA - Cambio de Poder en bloque" + `.pk-effline`, mas el aviso honesto de `mechanicsStatus` y el aviso de valores estimados por OCR.
+   - Al mover el raton fuera: `#cardPeek.hidden = true` y la carta vuelve a 112 px.
+
+3. **P1-075 - P0 REAL: la mano era INJUGABLE en el navegador.** Al pulsar una carta de GRUPO/RECURSO salia `ReferenceError: cards is not defined` en la consola y no pasaba nada. Causa: `ui.js` linea 1085, en `enablersForL11()`, hacia `cards[ix]`; el identificador `cards` **no existe en ningun punto del proyecto** (todo el codebase usa `C.cards`, con `var C = window.INWO_CARDS`). Como `handClick()` la llama en su flujo normal, **todas las pulsaciones de carta que llegasen al final del router lanzaban la excepcion**. Introducido en L11 (commit `2072538`). **Los tests de Node no lo veian**: `test_ui.js` arranca con `human:false` (no se pinta mano) y `test_appflow.js` llama a los flows de `app.js` sin pasar por `handClick`. Solo aparecia en un navegador real. Corregido a `C.cards[ix]`. Verificado: pulsar un grupo abre el overlay "Colocar GRATIS", elegir la flecha libre y queda `Jugador 1 toma posesion automatica de George Bush`; la mano baja de 13 a 12 cartas y el turno sigue.
+
+4. **P1-076 - el rechazo de una regla no llegaba al jugador.** `handClick()` tenia una sola rama sin la red `try/catch` que ya usaban las de resource y takeover: la que llama a `CB.onDeclareAttack`. Con el motor rechazando con un motivo oficial (p.ej. `twoPlayerGuard`: "Nadie ataca antes de que ambos completen su primer turno") la excepcion se iba al listener del DOM: **el jugador no veia nada en el registro, solo un error en la consola**. Corregido con el mismo patron `try { ... } catch (e) { log('! ' + e.message); render(curState); }`. Verificado en navegador: `! Nadie ataca antes de que ambos completen su primer turno` aparece en el registro y `erroresJS: []`.
+
+**Leccion de M5.6 (la importante):** todo el lote M1-M4 estaba verificado con tests de Node y con aserciones estaticas de CSS, y aun asi la mano era **completamente injugable** en el navegador. Un test que no pasa por el mismo camino de codigo que el usuario no vale como prueba de jugabilidad. Los dos bugs que aparecieron (P1-075, P1-076) son los dos que un test de Node no puede ver. **Leccion para el resto del proyecto: todo lo que toque el camino de pulsacion -> callback del motor tiene que verificarse en un navegador real, no solo en Node.**
 
 ### [ ] M6 - DOCUMENTACION Y CIERRE
 - [ ] M6.1 Seccion `§63` en `docs/audit/INWO_SURGICAL_AUDIT.md` con Hallazgo / Correcciones / Verificacion / Leccion / Backlog. **ASCII sin tildes** (regla 5 de `plan.md`). IDs nuevos: `P1-071` (zoom ilegible + recorte), `P1-072` (mano no minimalista), `P1-073` (no se observaba que hace cada carta), `P1-074` (efectos no desglosados).
@@ -157,15 +176,16 @@ Objetivo: que la barra parezca MTGA, no un panel de herramientas.
 ## 4. Criterios de aceptacion del lote (Definition of Done local)
 
 1. `node --check game/js/ui.js` limpio.
-2. `npm test` -> `ALL TESTS PASSED (10)`.
+2. `npm test` -> `ALL TESTS PASSED`. <!-- Numero real: 11 (el plan escribia 10; se registro `test_hand_peek.js` en M3). -->
 3. `node test_fase4_cards.js` -> `FASE 4 COVERAGE PASSED` con los mismos numeros que el baseline.
 4. Ninguna regla CSS de hover de `.handCard` contiene `translateY` ni `translate` (verificable con grep).
 5. Ninguna caja con `overflow:hidden` entre `.handCard` y `body`.
-6. `#handBar` mantiene la altura constante con la mano vacia, con 1 carta y con 30 cartas.
+6. `#handBar` mantiene la altura constante con la mano vacia, con 1 carta y con 30 cartas. <!-- Medido en navegador: 542 px en reposo, con hover y con la carta ampliada. -->
 7. Pasar el raton por cualquier carta de la mano produce una lectura legible: nombre, tipo, Poder, Resistencia, alineamientos, texto impreso verbatim y desglose de efectos.
 8. Ningun texto de la UI dice `undefined`, `null`, `[object Object]` ni `NaN`.
 9. Ficheros con no-ASCII: 0 ocurrencias de `[\u4e00-\u9fff\ufffd]` (mojibake).
-10. `game/index.html` con `?v=39` en los assets tocados.
+10. `game/index.html` con la version de cache al dia en los assets tocados. <!-- `?v=43` tras M5. -->
+11. **Verificacion en navegador real** de la cadena pulsacion -> callback del motor, sin errores en la consola. <!-- Anadido en M5.6 tras descubrir P1-075: los tests de Node no cubren ese camino. Es el criterio que mas habria evitado el P0. -->
 
 ---
 
@@ -212,7 +232,8 @@ Objetivo: que la barra parezca MTGA, no un panel de herramientas.
 ## 8. Baseline congelado (verificado antes de tocar nada)
 
 ```
-npm test                 -> ALL TESTS PASSED (10)
+npm test                 -> ALL TESTS PASSED (10 al inicio; 11 desde M3, al registrar
+                            test_hand_peek.js en scripts/run_tests.cjs)
 node test_fase4_cards.js -> FASE 4 COVERAGE PASSED
    141 cartas clasificadas
    107 Plots/Resources sin mecanica (techo 176)

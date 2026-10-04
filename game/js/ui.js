@@ -1082,7 +1082,14 @@ function enablersForL11(cardObj, hand) {
   if (!want) return [];
   var out = [];
   (hand || []).forEach(function (ix, i) {
-    var e = cards[ix] && cards[ix].effect;
+    /* P1-075: aqui habia `cards[ix]`, un identificador que NO existe en ningun punto
+     * del proyecto (todo el codebase usa `C.cards`, donde `var C = window.INWO_CARDS`).
+     * Como esta funcion la llama handClick(), toda pulsacion de carta que llegase al
+     * flujo normal lanzaba `ReferenceError: cards is not defined` y NO hacia nada:
+     * la mano era injugable en el navegador. Los tests de Node no lo detectaban porque
+     * test_ui.js arranca con human:false (no se pinta mano) y test_appflow.js llama a
+     * los flows de app.js sin pasar por handClick. Solo se ve en un navegador real. */
+    var e = C.cards[ix] && C.cards[ix].effect;
     if (e && e.kind === 'dup_enabler' && e.dupOf === want) out.push(ix);
   });
   return out;
@@ -1144,7 +1151,21 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
     sel = { mode: 'takeoverHost', data: { handIdx: ix } }; render(curState); return;
   }
   if (sel.mode === 'target' && c.type !== 'plot') {
-    var d = sel.data; clearSel(); CB.onDeclareAttack(d.type, d.attackerUid, { handIdx: ix }); return;
+    var d = sel.data; clearSel();
+    /* P1-076: esta rama era la UNICA del router que llamaba a un callback del motor sin
+     * la red try/catch que ya usan las de resource (L1132) y takeover (L1148). Cuando el
+     * motor rechaza el ataque con un motivo oficial — p.ej. twoPlayerGuard: "Nadie ataca
+     * antes de que ambos completen su primer turno" — la excepcion se propagaba al
+     * listener del DOM y el jugador solo veia un error en la consola: ningun mensaje en el
+     * registro, ninguna pista de por que no pasa nada. Ahora el motivo oficial se escribe
+     * en el registro, que es donde el jugador lo lee. */
+    try {
+      CB.onDeclareAttack(d.type, d.attackerUid, { handIdx: ix });
+    } catch (e) {
+      log('⚠ ' + e.message);
+      render(curState);
+    }
+    return;
   }
   if (sel.mode === 'handPick' && sel.data.for === 'deckSellout') { deckHandClick(ix); return; }
   if (sel.mode === 'deckCount' && sel.data.cardIx === ix) { showDeckMenu(ix); return; }

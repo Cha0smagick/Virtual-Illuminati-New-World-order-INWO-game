@@ -143,6 +143,36 @@ if (start >= 0 && end > start) {
     'M3: peekHtml debe devolver texto impreso + desglose + aviso');
 }
 
+/* ---------------------------------------------------------------------------
+ * M5 - P1-075: la mano era INJUGABLE en el navegador y ningun test de Node lo veia.
+ * `enablersForL11()` usaba `cards[ix]`, un identificador que no existe en el proyecto
+ * (la variable del IIFE es `C`, y el array es `C.cards`). Como `handClick()` la llama en
+ * su flujo normal, toda pulsacion de carta que llegase al final del router lanzaba
+ * `ReferenceError: cards is not defined` y no hacia nada. Este assert es la red que
+ * faltaba: cualquier `cards[` desnudo (sin `C.` ni `window.INWO_CARDS.` delante) vuelve
+ * a ser un P0, y aqui se ve en el segundo.
+ * ------------------------------------------------------------------------- */
+{
+  const uiSolo = ui.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const desnudos = [];
+  const re = /(^|[^.\w$])(cards)\s*\[/g;
+  let m;
+  while ((m = re.exec(uiSolo)) !== null) {
+    desnudos.push(uiSolo.slice(Math.max(0, m.index - 60), m.index + 30).replace(/\s+/g, ' '));
+  }
+  ok(desnudos.length === 0,
+    'P1-075: ' + desnudos.length + ' usos del identificador inexistente `cards[` en ui.js -> ' +
+    desnudos.slice(0, 3).join(' || '));
+
+  /* P1-076: la rama que llama al motor desde handClick debe estar dentro de un try/catch,
+   * o un rechazo de regla se pierde en la consola y el jugador no ve nada. */
+  const ramaAtaque = /sel\.mode === 'target'[\s\S]{0,900}?CB\.onDeclareAttack/;
+  ok(ramaAtaque.test(ui), 'P1-076: no se encuentra la rama sel.mode===target -> onDeclareAttack');
+  const trozo = ui.slice(Math.max(0, ui.search(ramaAtaque) - 400), ui.search(ramaAtaque) + 400);
+  ok(/try\s*\{/.test(trozo),
+    'P1-076: la rama que llama a CB.onDeclareAttack debe ir dentro de un try/catch');
+}
+
 if (failures.length) {
   console.error('HAND PEEK FAILURES (' + failures.length + '):');
   failures.forEach(function (f) { console.error('  - ' + f); });
