@@ -428,6 +428,10 @@ function showSetupScreen(cfg) {
 /* ---------- RENDER ---------- */
 function render(state) {
   curState = state;
+  /* P1-073 (M2 de plan_mano_mtga.md): render() repinta #handCards con innerHTML, asi
+   * que la carta que se estaba inspeccionando ya no existe. Sin esto la capa #cardPeek
+   * se quedaria pegada describiendo una carta que ya no esta en la mano. */
+  peekHide();
   var st = state;
   var cur = st.players[st.currentPid];
   $('hdrInfo').innerHTML =
@@ -1299,6 +1303,100 @@ function movePreview(ev) {
   PV.style.top = Math.max(6, y) + 'px';
 }
 function hidePreview() { if (PV) PV.style.display = 'none'; lastCix = null; resetInfoBar(); }
+
+/* ---------- P1-073 / M2: CAPA DE LECTURA DE LA MANO (estilo MTGA) ----------
+ * POR QUE ESTA FUERA DE #handBar Y NO ES EL TOOLTIP #cardPreview:
+ *  1) La REGLA DE ORO de #handBar (ver comentario en style.css) es que su ALTURA sea
+ *     constante. El texto impreso de una carta ocupa un alto arbitrario, asi que no
+ *     puede vivir dentro de la barra: si viviera, cada hover cambiaria la altura de la
+ *     barra -> las cartas se redimensionarian bajo el cursor -> otro mouseover -> bucle
+ *     de parpadeo. Por eso #cardPeek es position:fixed y vive fuera del flujo.
+ *  2) El tooltip #cardPreview sigue al raton y muestra la imagen a 170px: es un tooltip,
+ *     no una lupa. MTGA ancla la ampliacion a la carta y deja el texto en un panel fijo.
+ *     Para la mano se usa SOLO #cardPeek (M2); #cardPreview sigue sirviendo al tablero.
+ * DEDUPLICACION OBLIGATORIA: se cachea la carta en PEEK_CIX y solo se reescribe el
+ * innerHTML cuando cambia. Sin eso, mouseover (que salta en cada transicion de elemento
+ * bajo el cursor) reconstruye el DOM decenas de veces por segundo. */
+var PEEK_CIX = null;
+function peekEl() {
+  var el = $('cardPeek');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'cardPeek'; el.className = 'cardPeek';
+    el.setAttribute('role', 'tooltip');
+    el.hidden = true;
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function peekHtml(c) {
+  var tl = { illuminati: 'Illuminati', group: 'Grupo', resource: 'Recurso', plot: 'Plot' }[c.type] || c.type;
+  var head = '<div class="pk-top">' +
+    '<img class="pk-img" src="../' + c.img + '" alt="' + esc(c.name) + '">' +
+    '<div class="pk-head"><div class="pk-n">' + esc(c.name) + '</div>' +
+    '<div class="pk-meta">' + esc(tl) + (c.subtype ? ' &middot; ' + esc(c.subtype) : '') + '</div>';
+  if (c.power != null || c.resistance != null) {
+    head += '<div class="pk-meta"><b>P</b> ' + (c.power == null ? '&ndash;' : c.power) +
+      ' &middot; <b>R</b> ' + (c.resistance == null ? '&ndash;' : c.resistance) +
+      ((c.alignments && c.alignments.length) ? ' &middot; <b>' + esc(c.alignments.join(', ')) + '</b>' : '') + '</div>';
+  }
+  head += '</div></div>';
+  /* Texto impreso VERBATIM. `text` es el OCR de la carta; cuando falta (huecos
+   * declarados en el audit) se cae a `textFull`, que es la transcripcion secundaria
+   * mas limpia. Nunca se parafrasea: el jugador tiene que leer lo que esta impreso. */
+  var txt = (c.text && String(c.text).trim()) ? String(c.text)
+    : ((c.textFull && String(c.textFull).trim()) ? String(c.textFull) : '');
+  var body = txt ? '<div class="pk-text">' + esc(txt) + '</div>'
+    : '<div class="pk-none">&#128214; Esta carta no tiene texto OCR en el dataset. '
+      + 'El texto oficial esta impreso en la imagen de la carta.</div>';
+  return head + body;
+}
+function peekShow(cix) {
+  if (cix == null) return;
+  var el = peekEl();
+  if (!el) return;
+  var key = /^[0-9]+$/.test(String(cix)) ? parseInt(cix, 10) : cix;
+  var c = cardOf(key);
+  if (!c) return;
+  var k = String(cix);
+  if (PEEK_CIX !== k) { PEEK_CIX = k; el.innerHTML = peekHtml(c); }
+  el.hidden = false;
+  peekPlace(key);
+}
+function peekHide() {
+  var el = $('cardPeek');
+  if (el) el.hidden = true;
+  PEEK_CIX = null;
+}
+/* Ancla la capa sobre la carta, recortada al viewport. Se mide DESPUES de quitar
+ * `hidden` (offsetHeight es 0 con display:none), por eso peekShow la llama al final. */
+function peekPlace(ix) {
+  var el = peekEl();
+  if (!el || el.hidden) return;
+  var bar = $('handCards');
+  if (!bar || !bar.querySelectorAll) return;
+  var nodes = bar.querySelectorAll('.handCard');
+  var node = null;
+  for (var i = 0; i < nodes.length; i++) {
+    if (nodes[i].getAttribute('data-idx') === String(ix)) { node = nodes[i]; break; }
+  }
+  if (!node || typeof node.getBoundingClientRect !== 'function') return;
+  var r = node.getBoundingClientRect();
+  var w = el.offsetWidth || 330;
+  var h = el.offsetHeight || 220;
+  var gap = 10, M = 6;
+  var x = r.left + r.width / 2 - w / 2;
+  /* La mano esta anclada abajo: casi siempre hay sitio arriba. Si no cabe (viewport
+   * bajo, o mano de una sola fila muy pegada al borde), se dibuja DEBAJO y, si tampoco
+   * cabe, se recorta al borde inferior en vez de salirse de la pantalla. */
+  var y = r.top - gap >= h ? r.top - gap - h : r.bottom + gap;
+  if (x + w > window.innerWidth - M) x = window.innerWidth - w - M;
+  if (x < M) x = M;
+  if (y + h > window.innerHeight - M) y = window.innerHeight - h - M;
+  if (y < M) y = M;
+  el.style.left = Math.round(x) + 'px';
+  el.style.top = Math.round(y) + 'px';
+}
 function fxFlash(ok) {
   var d = document.createElement('div');
   d.className = 'fxflash ' + (ok ? 'ok' : 'miss');
@@ -1468,6 +1566,32 @@ function bindEvents() {
     var ix = parseInt(hc.getAttribute('data-idx'), 10);
     handClick(ix);
   });
+  /* P1-073 (M2 de plan_mano_mtga.md): inspeccion de la carta de la mano por DELEGACION.
+   * Se registra aqui y no en init() porque #handCards es un elemento ESTATICO de
+   * index.html que se repinta con innerHTML en cada render: delegar en el contenedor
+   * sobrevive a los repintados, igual que los listeners de las otras ramas de bindEvents.
+   * NO se usa mousemove: la capa es FIJA mientras la carta no cambie (como en MTGA), no
+   * un tooltip que persigue al raton, asi que no hace falta reposicionar por pixel. */
+  $('handCards').addEventListener('mouseover', function (ev) {
+    var t = ev.target && ev.target.closest ? ev.target.closest('.handCard') : null;
+    if (!t) { peekHide(); return; }
+    peekShow(t.getAttribute('data-idx'));
+  });
+  $('handCards').addEventListener('mouseout', function (ev) {
+    var t = ev.target && ev.target.closest ? ev.target.closest('.handCard') : null;
+    if (!t) return;
+    /* relatedTarget dentro de la misma carta = el raton se ha movido al <img> interior:
+     * NO es una salida real, hay que seguir mostrando. */
+    if (ev.relatedTarget && t.contains(ev.relatedTarget)) return;
+    peekHide();
+  });
+  $('handCards').addEventListener('focusin', function (ev) {
+    var t = ev.target && ev.target.closest ? ev.target.closest('.handCard') : null;
+    if (t) peekShow(t.getAttribute('data-idx'));
+  });
+  $('handCards').addEventListener('focusout', function (ev) {
+    if (!ev.relatedTarget) peekHide();
+  });
 }
 
 function init(cb) {
@@ -1494,6 +1618,17 @@ function init(cb) {
   if (evBound) return;          /* listeners de preview ya puestos: no duplicarlos */
   document.addEventListener('mouseover', function (ev) {
     var t = ev.target && ev.target.closest ? ev.target.closest('[data-cix]') : null;
+    /* P1-073 (M2): las cartas de la mano ya NO usan este tooltip flotante; las
+     * inspecciona la capa fija #cardPeek (delegada en bindEvents). Sin esta supresion
+     * la <img data-cix> de la mano abriria LAS DOS capas a la vez. Se oculta PV con
+     * estilo directo y no con hidePreview() a proposito: hidePreview() llama a
+     * resetInfoBar(), que reescribe #cardInfo en cada transicion de elemento bajo el
+     * cursor (reconstruccion de DOM, la causa del parpadeo historico). */
+    if (t && t.closest && t.closest('#handCards')) {
+      hoverCix = null;
+      if (PV) PV.style.display = 'none';
+      return;
+    }
     var cix = t ? t.getAttribute('data-cix') : null;
     if (cix === hoverCix) return;
     hoverCix = cix;
@@ -1565,6 +1700,7 @@ function resetForNewGame() {
   LOGARR.length = 0; engSeen = 0; curState = null;
   sel.mode = null; sel.data = {};
   var cp = document.getElementById('cardPreview'); if (cp) cp.style.display = 'none';
+  peekHide();
 }
 window.UI = {
   init: init,
