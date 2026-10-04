@@ -553,6 +553,7 @@ function chipAct(r) {
   var rc = cardOf(r.cardId), md = rc && rc.effect && rc.effect.mode;
   if (md === 'suicide_squad') return 'resuse';
   if (md === 'gadget_action') return 'gadgetuse';
+  if (md === 'boost_attack') return 'disasterboost';
   return null;
 }
 function chipCard(r) { return cardOf(r.cardId); }
@@ -2030,6 +2031,10 @@ function bindEvents() {
     /* 332 Orbital Mind Control Lasers. Este boton NO existia antes de L12: el motor
      * tenia E.useGadgetAction y la UI tenia el menu de la ventana, pero ningun boton
      * llegaba hasta el, asi que la carta era INJUGABLE aunque el motor la aceptara. */
+    /* L13 / P1-091 - 245 Earthquake Projector. El motor ya valida el 'once per turn'
+     * y el alcance global, asi que aqui no hay ventana: el boton ejecuta la accion y
+     * el +2 se aplica al proximo Disaster o ataque a destruir que se anuncie. */
+    else if (act === 'disasterboost') { var dbUid = btn.getAttribute('data-uid'); if (!dbUid) return; CB.onUseDisasterBoost(dbUid); }
     else if (act === 'gadgetuse') { var guUid = btn.getAttribute('data-uid'); if (!guUid) return; CB.onUseGadgetAction(guUid); }
     else if (act === 'resdestroypick') { sel = { mode: 'resDestroy', data: { resUid: btn.getAttribute('data-uid') } }; log('🎯 Paso 2/2 — elige el Resource objetivo y luego TIRA EL DADO.'); render(curState); }
     else if (act === 'resdestroycancel') { clearSel(); render(curState); }

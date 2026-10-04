@@ -213,6 +213,18 @@ var CB = {
     try { E.resolveResDestroy(act || {}); after(act && act.pass ? 'Resource no usado' : 'Dado tirado'); }
     catch (e) { log('! ' + e.message); }
   },
+  /* L13 / P1-091 - 245 Earthquake Projector. Su impreso dice 'This device can act
+   * once per turn. It can increase the Power of any Attack to Destroy a Place, or
+   * of any Disaster card, by 2. Gadget ACTION': el objetivo es CUALQUIER ataque, no
+   * una carta concreta, asi que el motor lo aplica al proximo Disaster/ataque a
+   * destruir que se anuncie y NO abre ventana de eleccion. Aqui solo se le da al
+   * jugador el boton que ejecuta la accion (lo pone chipAct en el panel de
+   * Resources). El catch es el mismo patron que onUseResDestroy: un rechazo por
+   * regla del motor llega al registro y no solo a la consola (P1-076). */
+  onUseDisasterBoost: function (resourceUid) {
+    try { E.useDisasterBoost(E.getState().currentPid, { resourceUid: resourceUid }); after('Earthquake Projector se activa: +2 al Poder del proximo ataque'); }
+    catch (e) { log('! ' + e.message); }
+  },
   onMoveGroup: function (uid, newParentUid) { E.moveGroup(E.getState().currentPid, uid, newParentUid); after('Grupo movido'); },
   onEndTurn: function () { endTurnFlow(); }
 };
