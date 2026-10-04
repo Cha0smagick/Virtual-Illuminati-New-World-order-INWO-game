@@ -556,7 +556,41 @@ d) y no en
   `E.alignsOfNode` deja de reportarla. Verificado con **14 aserciones** verdes.
 
 
-## [ ] L10 - EFECTOS PERMANENTES LIGADOS ("Link this card to X")
+> - **§61 (hecho): L10 EFECTOS PERMANENTES LIGADOS - 310 + 280 (P1-067, P1-068, P1-069).**
+>   La premisa del lote era mas PEQUEÑA que el trabajo real, al reves que en L9: de los
+>   tres mecanismos que `plan.md` pedia, **dos ya existian**. El link permanente ya es
+>   `pl.linkedPlots` (engine.js:452, lo escriben 7 cartas desde Power Increase) y
+>   anadir atributo a un grupo ya es `node.attrsAdded` + `hasAttr` (P1-017). Lo UNICO
+>   que faltaba era Global Power, y se resolvio en el sitio correcto: **un termino mas
+>   en `countsForGoals`** (engine.js:144), que es el gate unico de "este grupo cuenta
+>   para las metas" y por el que pasan los 7 recorridos de meta. "Global Power igual a
+>   su Poder regular" significa que el grupo **deja de contar**, asi que es un flag
+>   (`nd.globalNeutral`), no una resta.
+>   Kind nuevo `link_effect` con dos modos declarados por carta: `grant_attr` (310 anade
+>   `media` al NODO) y `grant_global` (280 solo el link). Costes con precedente: 280 =
+>   `illumTokens--`; 310 = **dos pasadas atomicas** (el `walk` REUNE sin gastar y solo
+>   se paga al completar), el mismo esquema que 357 en L9 y deliberadamente distinto de
+>   `force_align`, que gasta fichas y luego lanza.
+>   **3 P1 encontrados por la regresion, no leyendo codigo:**
+>   **P1-067** Global Power como termino del gate central y no parche en los 7 consumidores;
+>   **P1-068** `node.attrsAdded` **no viene inicializado** (la creacion de nodos del motor
+>   en engine.js:1635 solo pone uid/cardId/children/tokens) => `TypeError` al jugar 310;
+>   **P1-069** **sobre-restriccion copiada de otra familia**: arrastre el limite "no puede
+>   haber mas de una en juego" de Power Increase, que su texto SI imprime pero el de
+>   310 y 280 **no** => 280 no se podia jugar dos veces sin motivo oficial. Ahora el
+>   limite es opt-in (`eff.onePerPlayer`).
+>   **310 y 280 salen de `BLOCKED_CARDS`** (estaban por `P1-DATA-03 Global Power
+>   ausente`): el subsistema ya existe. Congeladas 13 -> **11**. **`purge` sigue
+>   congelada por el mismo motivo y es ahora desbloqueable** con este mecanismo.
+>   Regresion: **22 aserciones** en `test_fase2_rules.js`, con atomicidad del pago de 310
+>   (rechaza y NO muta nada), camino feliz completo, y **anti-P1-050 generico**.
+>   Gates: **137 clasificadas** (antes 135), **111 sin mecanica** (antes 113), techo 176
+>   sin tocar, kinds distintos 48. **10/10 suites + 90/90 flake.**
+>   **LECCION PERMANENTE:** copiar una restriccion de una familia de cartas hermana es un
+>   DEFECTO, no un atajo - si el limite no esta en el texto de la carta, no existe. Y el
+>   prefijo real de una asercion que pasa es `ok   - ` (con relleno): un filtro mal
+>   escrito reporta "0 aserciones" y "todo verde" a la vez.
+## [x] L10 - EFECTOS PERMANENTES LIGADOS - CERRADO en §61 (310 Media Connections + 280 Hidden Influence) ("Link this card to X")
 
 - **Cartas (12)**: 197 Ark of the Covenant · 209 Book of Kells · 235 Cyborg Soldiers ·
   237 Death Mask · 248 Eliza · 286 Immortality Serum · 280 Hidden Influence ·

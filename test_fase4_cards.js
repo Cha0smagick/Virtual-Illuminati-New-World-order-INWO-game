@@ -130,9 +130,7 @@ const KNOWN_TEXT_GAPS = {
  * mecanica de "asesinado"/resurreccion, que el motor no tiene. */
 const BLOCKED_CARDS = {
   'headinajar': 'P1-016 cerrada, pero falta la mecanica de "asesinado"/resurreccion (§30.1)',
-  'hiddeninfluence': 'P1-DATA-03 Global Power ausente (§30.3)',
   'purge': 'P1-DATA-03 Global Power ausente (§30.3)',
-  'mediaconnections': 'P1-DATA-03 Global Power ausente (the node-attr part closed by P1-017, but the Global Power data is not)',
   /* §38 — las 5 de la familia de reaccion inmediata que NO tienen mecanica que las
      sostenga. No es pereza: cada motivo esta comprobado contra el motor. */
   'andstaydead': '§38 sin mecanica de resurreccion en el motor, asi que "gone forever" no seria observable (INJUGABLE)',

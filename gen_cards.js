@@ -1856,6 +1856,37 @@ const L9_FX = {
 };
 const L9_FXN = {};
 for (const k in L9_FX) { L9_FXN[norm(k)] = L9_FX[k]; }
+/* L10 — 310 Media Connections y 280 Hidden Influence. Textos verbatim:
+ *   310 "The group of your choice becomes a Media group, if it was not already
+ *        one, with Global Power equal to its regular Power. Link this card to
+ *        the [X]. This requires action(s) from Media group(s) with a total
+ *        Power of 6 or more. It may be played at any time. Requires Media Action"
+ *   280 "The group of your choice now has Global Power equal to its regular
+ *        Power, Link this card to the [X]. This requires an action from your
+ *        Illuminati. It may be played at any time. Requires Illuminati Action"
+ * kind 'link_effect', dos modos:
+ *   grant_attr  (310) ademas de perder Global Power, anade el atributo `media`
+ *               al NODO (no a la carta): se hace con `node.attrsAdded`, que ya
+ *               existe y se lee con `hasAttr(card,attr,node)` (P1-017). El texto
+ *               dice "if it was not already one", luego la adicion es idempotente.
+ *   grant_global(280) solo el link + la perdida de Global Power.
+ * "Global Power igual a su Poder regular" = el grupo DEJA DE CONTAR para las metas.
+ * NO es un parche por consumidor: es un termino mas de `countsForGoals`
+ * (engine.js:144), el gate unico por el que pasan los 7 recorridos de meta.
+ * NO se anaden a `ACTION_COST_KINDS`: esa lista (P1-055) es para kinds cuyo gate
+ * cobra `requireActionFromAttr`, y estos dos cobran con `payAttr`+`payMinPower`
+ * (310) o `payIllum` (280).
+ * `instant:true` porque las dos dicen "It may be played at any time" — sin eso
+ * `requireOwnMain` las rechazaria fuera de la fase main (mismo mecanismo que P1-047). */
+const L10_FX = {
+  'Media Connections': { kind:'link_effect', mode:'grant_attr', grantAttr:'media',
+    payAttr:'media', payMinPower:6, instant:true,
+    t:'The group of your choice becomes a Media group, if it was not already one, with Global Power equal to its regular Power. Link this card to the [X]. This requires action(s) from Media group(s) with a total Power of 6 or more. It may be played at any time. Requires Media Action' },
+  'Hidden Influence': { kind:'link_effect', mode:'grant_global', payIllum:true, instant:true,
+    t:'The group of your choice now has Global Power equal to its regular Power, Link this card to the [X]. This requires an action from your Illuminati. It may be played at any time. Requires Illuminati Action' }
+};
+const L10_FXN = {};
+for (const k in L10_FX) { L10_FXN[norm(k)] = L10_FX[k]; }
 /* P1-055 — kinds cuyo gate en engine.js COBRA un `requireActionFromAttr`
  * ("debes gastar la acción de un grupo tuyo con el atributo X"). Lista cerrada a
  * propósito: un kind nuevo con ese coste debe registrarse aquí Y traer su gate, para
@@ -2158,7 +2189,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

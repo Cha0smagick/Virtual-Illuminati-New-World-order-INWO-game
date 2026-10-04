@@ -141,8 +141,17 @@ function curPower(node){
    Antes estas dos comprobaciones vivían sueltas en cada recorrido de meta, y
    ningún recorrido miraba `devastated`: un grupo devastado seguía sumando para
    la victoria. Se centraliza aquí para que la regla exista en un solo sitio. */
+/* P1-067 (L10) — `globalNeutral` es el MISMO tipo de regla, y por eso va AQUI y no
+   en cada recorrido. 280 Hidden Influence y 310 Media Connections dicen "now has
+   Global Power equal to its regular Power": es decir, el grupo DEJA de tener
+   Global Power, y Global Power es exactamente "lo que aporta a las metas". Por eso
+   se implementa como un termino mas de este unico gate, y no como un parche en los
+   7 consumidores (countControlled, sumPeacefulPower, el goal de Criminal Overlords,
+   alignsCovered, sumTotalPower, el recuento de iglesias de messiah y E.goalStatus):
+   todos pasan por aqui, luego un termino los cubre a todos y no puede quedar uno
+   olvidado. El flag lo escriben las cartas de L10 con kind 'link_effect'. */
 function countsForGoals(nd){
-  return nd.cardId!=null&&!nd.paralyzed&&!nd.devastated;
+  return nd.cardId!=null&&!nd.paralyzed&&!nd.devastated&&!nd.globalNeutral;
 }
 
 /* P1-011 — Poder con el que se defiende un objetivo.
@@ -3547,6 +3556,112 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
       nd2.powerOverride=want;
       pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:targetUid});
       log(c.name+': Poder de '+tc2.name+' fijado a '+want+' (linkeado)');
+      break;}
+    case 'link_effect':{
+      /* P1-067 (L10) — 310 Media Connections y 280 Hidden Influence. Los dos
+       * mecanismos que "inventaba" el lote YA EXISTEN y por eso este case es
+       * corto: (a) el link ya es `linkedPlots` (L452, proyeccion L711, y lo
+       * escriben 7 cartas permanentes desde Power Increase); (b) anadir atributo
+       * a un nodo ya es `node.attrsAdded` (engine.js:406-417, se lee con
+       * `hasAttr(card,attr,node)`). LO UNICO que no existia es "Global Power
+       * igual a su Poder regular", y se resolvio en el sitio correcto: un
+       * termino mas en `countsForGoals` (engine.js:144), que es el gate unico de
+       * "este grupo cuenta para las metas" — los 7 consumidores pasan por ahi.
+       *
+       * Textos verbatim:
+       *   310 "The group of your choice becomes a Media group, if it was not
+       *        already one, with Global Power equal to its regular Power. Link
+       *        this card to the [X]. This requires action(s) from Media group(s)
+       *        with a total Power of 6 or more. It may be played at any time.
+       *        Requires Media Action"
+       *   280 "The group of your choice now has Global Power equal to its
+       *        regular Power, Link this card to the [X]. This requires an action
+       *        from your Illuminati. It may be played at any time. Requires
+       *        Illuminati Action"
+       * => (a) el objetivo es TU grupo ("your chosen group"); (b) el link es
+       * PERMANENTE, asi que la carta va a linkedPlots y no al descarte
+       * (inwo_rules_extracted.txt:819-847); (c) 310 es idempotente respecto al
+       * atributo ("if it was not already one"), pero el link NO: aunque el
+       * atributo ya estuviera, la carta se linkea y el grupo pierde Global Power
+       * — por eso el no-op oficial de Power Increase ("no effect on a Group that
+       * already has...") NO se aplica aqui, porque su precondicion es sobre el
+       * Poder, no sobre el atributo; (d) "at any time" => las dos se declaran
+       * `instant` en gen_cards.js y NO pasan por requireOwnMain.
+       * Los costes son disjuntivos/asimetricos y cada uno con su precedente:
+       * 280 = `illumTokens--` (mismo patron que 386 The Auditor from Hell), y
+       * 310 = "action(s) from Media group(s) with a total Power of 6 or more"
+       * => el mismo esquema de DOS PASADAS que se escribio para 357 en L9: el
+       * walk REUNE sin gastar y solo se paga al completar, porque si gather y
+       * pay se mezclan se gastan fichas y luego se lanza (es exactamente el
+       * defecto que `force_align` todavia tiene). */
+      var ndL10=targetUid?findNode(targetUid):null;
+      if(!ndL10)throw new Error(c.name+': elige un grupo de tu estructura para linkear la carta');
+      var tcL10=card(ndL10.cardId);
+      if(tcL10.type!=='group')
+        throw new Error(c.name+': el objetivo debe ser un Group, y '+tcL10.name+' es '+tcL10.type);
+      if(findOwnerPid(targetUid)!==pid)
+        throw new Error(c.name+': el grupo debe ser tuyo ("your chosen group")');
+      /* P1-069 — el "no puede haber mas de una en juego" de `power_increase`
+       * NO se copia aqui. Ese limite viene de una frase que la familia Power
+       * Increase si imprime ("No player may have more than one {Name} in
+       * play.") y que 310 y 280 NO tienen: sus textos verbatim no la contienen.
+       * Copiarla dejaba 280 y 310 imposibles de jugar dos veces sin que su texto
+       * lo dijera. Pasa a ser opt-in por declaracion (`onePerPlayer`) para que
+       * el dato que decide el limite este en la carta y no en el kind. */
+      if(eff.onePerPlayer&&pl.linkedPlots.some(function(lp){return lp.cardId===handIdx;}))
+        throw new Error(c.name+': no puede haber mas de una en juego por jugador');
+      /* --- COSTE, validado ANTES de mutar nada (leccion §54) --- */
+      var paidL10=null;
+      if(eff.payIllum){
+        if(pl.illumTokens<1)
+          throw new Error(c.name+': requiere la accion de tu Illuminati y no tienes ninguna ficha');
+        paidL10={via:'illuminati'};
+      }else if(eff.payAttr){
+        var needL10=eff.payMinPower||6;
+        var pickedL10=[];
+        walk(pl.structure,function(nL10){
+          if(needL10<=0)return;
+          if(nL10.tokens<1)return;
+          if(noTokensFlag(nL10))return;
+          var cL10=card(nL10.cardId);
+          if(!cL10||cL10.type!=='group')return;
+          if(!hasAttr(cL10,eff.payAttr,nL10))return;
+          pickedL10.push({uid:nL10.uid,name:cL10.name,power:curPower(nL10)});
+          needL10-=curPower(nL10);
+        });
+        if(needL10>0)
+          throw new Error(c.name+': tus grupos '+eff.payAttr+' sin ficha solo aportan Poder '+
+            ((eff.payMinPower||6)-needL10)+' de los '+(eff.payMinPower||6)+' que exige la carta');
+        paidL10={via:eff.payAttr,power:(eff.payMinPower||6),groups:pickedL10.map(function(g){return g.name;})};
+      }
+      /* --- MUTACION (todo ya validado) --- */
+      if(eff.payIllum)pl.illumTokens--;
+      else pickedL10.forEach(function(g){spendGroupToken(pid,g.uid);});
+      if(eff.mode==='grant_attr'&&eff.grantAttr){
+        /* P1-068 — `attrsAdded` NO viene inicializado en el nodo: la creacion de
+         * nodos del propio motor (engine.js:1635) solo pone uid/cardId/children/
+         * tokens, igual que mi fixture de test. Asumirlo array es lo mismo que
+         * asumir que existe: TypeError al jugar la carta. Se inicializa aqui
+         * (defensivo en la escritura), que es el patron que ya usan
+         * `alignsAdded`/`alignsRemoved` en 3031-3032, 3478-3484 y 3534-3535.
+         * Lo ha encontrado la sonda de L10 jugando 310 de verdad, no leyendo el
+         * codigo: las 15 cartas que ya escriben attrsAdded lo hacen porque sus
+         * kinds las declaraban y por eso inicializan, y 310 es la primera que lo
+         * hace sin que nada lo inicializara antes. */
+        if(!ndL10.attrsAdded)ndL10.attrsAdded=[];
+        if(ndL10.attrsAdded.indexOf(eff.grantAttr)<0)ndL10.attrsAdded.push(eff.grantAttr);
+        log(c.name+': '+tcL10.name+' ahora es un grupo '+eff.grantAttr);
+      }
+      if(eff.mode==='grant_attr'||eff.mode==='grant_global'){
+        /* Global Power igual a su Poder regular = el grupo deja de contar para
+         * las metas. NO se borra nada mas: es un flag, no una resta. */
+        ndL10.globalNeutral=true;
+        log(c.name+': '+tcL10.name+' pierde su Global Power (deja de contar para las metas)');
+      }
+      pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:targetUid});
+      log(c.name+': la carta queda linkeada a '+tcL10.name+' de forma permanente');
+      lastResult={ok:true,plot:c.name,linked:tcL10.name,targetUid:targetUid,
+        grantAttr:(eff.grantAttr||null),globalNeutral:!!ndL10.globalNeutral,cost:paidL10};
       break;}
     case 'resistance_increase':{
       /* P1-014 — familia "Resistance Increase" (2 cartas: Commitment, Never

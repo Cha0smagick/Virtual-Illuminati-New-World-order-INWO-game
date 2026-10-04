@@ -5821,6 +5821,158 @@ ok(!!L9c332 && !!L9c357 &&
   ok(!!raw2L9.alignRetro[grpL9.idx] && (raw2L9.alignRetro[grpL9.idx].added || []).filter(function (x) { return x === 'liberal'; }).length === 1,
      'L9 el overlay retro de 357 se aplico sin duplicar la alineacion');
 })();
+/* ---------- L10 - EFECTOS PERMANENTES LIGADOS (310, 280) ---------- */
+(function () {
+  function ixOfL10(id) { for (var i = 0; i < C.cards.length; i++) if (C.cards[i].id === id) return i; return -1; }
+  function rawL10() { return E._raw(); }
+  function plantL10(pid, uid, cardId, tokens) {
+    var pl = rawL10().players[pid];
+    var nd = { uid: uid, cardId: cardId, children: [], tokens: tokens == null ? 1 : tokens };
+    pl.structure.children.push(nd);
+    return nd;
+  }
+  /* Inserta en la mano por IDENTIDAD de catalogo. `E.giveCard` NO sirve: exige
+   * que la carta ya este en el mazo del jugador y lanza "No tienes esa carta"
+   * (medido), asi que el fixture tiene que meterla a mano. Se saca del mazo de
+   * Plots para que la cuenta sea la que el test cree, no la que dejó el reparto. */
+  function toHandL10(pid, cardId) {
+    var pl = rawL10().players[pid];
+    if (pid === 0) { var j = rawL10().plotDeck.indexOf(cardId); if (j >= 0) rawL10().plotDeck.splice(j, 1); }
+    pl.hand.push(cardId);
+    return cardId;
+  }
+  function nodeL10(pid, uid) {
+    var kids = rawL10().players[pid].structure.children;
+    for (var i = 0; i < kids.length; i++) if (kids[i].uid === uid) return kids[i];
+    return null;
+  }
+  function linksOfL10(pid) { return rawL10().players[pid].linkedPlots; }
+  function copiesL10(pid, cardId) {
+    var h = rawL10().players[pid].hand, n = 0;
+    for (var i = 0; i < h.length; i++) if (h[i] === cardId) n++;
+    return n;
+  }
+  function throwMsgL10(fn) { try { fn(); return null; } catch (e) { return e.message; } }
+
+  var I310 = ixOfL10('mediaconnections'), I280 = ixOfL10('hiddeninfluence');
+  var AMA = ixOfL10('ama'), BIGM = ixOfL10('bigmedia'), HOLLY = ixOfL10('hollywood'), TABLOIDS = ixOfL10('tabloids');
+  var E310 = I310 >= 0 ? C.cards[I310].effect : null;
+  var E280 = I280 >= 0 ? C.cards[I280].effect : null;
+
+  ok(I310 >= 0 && I280 >= 0, 'L10 las 2 cartas de L10 estan en el catalogo');
+  ok(!!E310 && E310.kind === 'link_effect' && E310.mode === 'grant_attr' &&
+     !!E280 && E280.mode === 'grant_global', 'L10 310 y 280 declaran kind link_effect con sus dos modos (grant_attr / grant_global)');
+  ok(!!E310 && E310.grantAttr === 'media' && E310.payAttr === 'media' && E310.payMinPower === 6,
+     'L10 310 concede el atributo media al NODO y se paga con Poder total media >= 6');
+  ok(!!E280 && E280.payIllum === true,
+     'L10 280 se paga con una accion del Illuminati (coste distinto, no disyuntivo)');
+
+  /* Anti-P1-050 GENERICO: para cada atributo que una carta declara como coste de
+   * accion tiene que existir al menos un Grupo real con ese atributo y Poder >= 1.
+   * Es la asercion que habria atrapado el error de medicion de §54. */
+  (function () {
+    var attrs = {}, bad = [];
+    C.cards.forEach(function (c) {
+      var e = c.effect || {};
+      if (e.payAttr) attrs[e.payAttr] = 1;
+      if (Array.isArray(e.payAttrAny)) e.payAttrAny.forEach(function (a) { attrs[a] = 1; });
+    });
+    Object.keys(attrs).forEach(function (a) {
+      var pag = 0;
+      C.cards.forEach(function (c) {
+        if (c.type === 'group' && (c.power || 0) >= 1 &&
+            (c.attributes || []).some(function (x) { return String(x).toLowerCase() === a; })) pag++;
+      });
+      if (pag < 1) bad.push(a);
+    });
+    ok(bad.length === 0, 'L10 anti-P1-050: todo atributo usado como coste de accion tiene >= 1 Grupo pagador real -> sin pagadores: ' + JSON.stringify(bad));
+  }());
+
+  /* --- FIXTURE: P0 en su turno principal (control del camino feliz, leccion de
+   * la sonda verde-por-vacio de §57) --- */
+  E.newGame([{ name: 'A', human: false }, { name: 'B', human: false }]);
+  E.setIlluminati(0, 'bavarianilluminati1');
+  E.setIlluminati(1, 'servantsofcthulhu1');
+  E.startGame();
+  for (var w = 0; w < 8; w++) {
+    var st = E.getState();
+    if (st.phase === 'main' && st.currentPid === 0) break;
+    E.endTurn();
+  }
+  var ill0 = rawL10().players[0].illumTokens;
+  ok(E.getState().phase === 'main' && E.getState().currentPid === 0, 'L10 el fixture deja a P0 en su turno principal');
+  ok(ill0 >= 1, 'L10 el fixture da a P0 al menos una ficha de accion del Illuminati (para 280) -> ' + ill0);
+
+  /* ---------- 310: camino NEGATIVO y ATOMICIDAD del coste ---------- */
+  plantL10(0, 'tgt', AMA, 1);
+  toHandL10(0, I310);
+  plantL10(0, 'mA', BIGM, 1);
+  var linkBefore = linksOfL10(0).length;
+  var tokBefore = nodeL10(0, 'mA').tokens;
+  var msgA = throwMsgL10(function () { E.playPlot(0, I310, 'tgt', {}); });
+  ok(!!msgA && /aportan Poder/.test(msgA),
+     'L10 310 RECHAZA el pago insuficiente con el mensaje que dice cuanto aporto (2 pasadas atomicas) -> ' + msgA);
+  ok(linksOfL10(0).length === linkBefore && nodeL10(0, 'tgt').globalNeutral === undefined &&
+     nodeL10(0, 'mA').tokens === tokBefore && copiesL10(0, I310) === 1,
+     'L10 el pago insuficiente NO MUTA NADA: sin link, sin globalNeutral, ficha intacta y la carta sigue en la mano');
+
+  /* ---------- 310: camino feliz ---------- */
+  plantL10(0, 'mB', HOLLY, 1);
+  var out310 = E.playPlot(0, I310, 'tgt', {});
+  var ndTgt = nodeL10(0, 'tgt');
+  ok(ndTgt && ndTgt.attrsAdded && ndTgt.attrsAdded.indexOf('media') === 0 && ndTgt.attrsAdded.length === 1,
+     'L10 310 convierte el grupo objetivo en Media por NODO (attrsAdded, no la carta) -> ' + JSON.stringify(ndTgt && ndTgt.attrsAdded));
+  ok(!!ndTgt.globalNeutral,
+     'L10 310 deja al grupo sin Global Power: el grupo DEJA DE CONTAR para las metas (countsForGoals)');
+  ok(linksOfL10(0).length === linkBefore + 1 && linksOfL10(0)[linkBefore].linkedTo === 'tgt',
+     'L10 310 deja la carta LINKED al grupo de forma permanente -> ' + linksOfL10(0).length);
+  ok(nodeL10(0, 'mA').tokens === 0 && nodeL10(0, 'mB').tokens === 0,
+     'L10 310 gasta la ficha de los DOS grupos Media que exige el coste (Poder 4 + 3 >= 6)');
+  ok(rawL10().plotDiscard.indexOf(I310) < 0 && copiesL10(0, I310) === 0,
+     'L10 la carta 310 sale de la mano y NO va al descarte de Plots (es un link permanente)');
+  ok(!!(out310.lastPlotResult && out310.lastPlotResult.cost && out310.lastPlotResult.cost.via === 'media' &&
+       out310.lastPlotResult.cost.groups.length === 2 && out310.lastPlotResult.globalNeutral === true),
+     'L10 310 publica en lastPlotResult el coste realmente pagado y el efecto -> ' + JSON.stringify(out310.lastPlotResult && out310.lastPlotResult.cost));
+
+  /* ---------- 280: camino feliz + ATOMICIDAD de "solo mi Illuminati" ---------- */
+  var ill1 = rawL10().players[0].illumTokens;
+  toHandL10(0, I280);
+  plantL10(0, 'tgt2', TABLOIDS, 1);
+  var out280 = E.playPlot(0, I280, 'tgt2', {});
+  var ndT2 = nodeL10(0, 'tgt2');
+  ok(!!ndT2.globalNeutral && ndT2.attrsAdded === undefined,
+     'L10 280 deja al grupo sin Global Power y NO le anade atributo (280 no otorga Media) -> attrsAdded=' + JSON.stringify(ndT2.attrsAdded));
+  ok(rawL10().players[0].illumTokens === ill1 - 1,
+     'L10 280 cobra exactamente una ficha de la accion del Illuminati -> ' + ill1 + ' -> ' + rawL10().players[0].illumTokens);
+  ok(linksOfL10(0).length === linkBefore + 2 && linksOfL10(0)[linkBefore + 1].linkedTo === 'tgt2',
+     'L10 280 tambien deja la carta LINKED de forma permanente');
+
+  /* Segundo 280 sin fichas: la primera 280 ya gasto la unica ficha del Illuminati,
+   asi que este debe ser el rechazo por COSTE. Antes de P1-069 este caso fallaba
+   por otra cosa: el case arrastraba el limite "no puede haber mas de una en
+   juego" de la familia Power Increase, que el texto de 280 no dice. Con P1-069 el
+   limite es opt-in (`onePerPlayer`) y este rechazo vuelve a ser el del texto. */
+  var linkB2 = linksOfL10(0).length;
+  toHandL10(0, I280);
+  var msgB = throwMsgL10(function () { E.playPlot(0, I280, 'tgt2', {}); });
+  ok(!!msgB && /Illuminati/.test(msgB),
+     'L10 280 RECHAZA el pago si no queda ficha del Illuminati -> ' + msgB);
+  ok(linksOfL10(0).length === linkB2 && nodeL10(0, 'tgt2').globalNeutral === true,
+     'L10 el rechazo de 280 no crea un link nuevo ni borra el efecto anterior (idempotencia del flag)');
+
+  /* P1-069 explicito: 280 y 310 NO son "una por jugador" (su texto no lo dice), y
+     una segunda 280 con ficha SÍ se juega y crea su segundo link. */
+  rawL10().players[0].illumTokens = 1;
+  plantL10(0, 'tgt3', BIGM, 1);
+  var out280b = E.playPlot(0, I280, 'tgt3', {});
+  ok(linksOfL10(0).length === linkB2 + 1 && !!nodeL10(0, 'tgt3').globalNeutral && !!out280b,
+     'L10 P1-069: 280 se puede jugar mas de una vez (su texto NO limita a una por jugador) -> links=' + linksOfL10(0).length);
+
+  /* El flag es POR NODO: el grupo del rival sigue contando. */
+  plantL10(1, 'rival', AMA, 1);
+  ok(nodeL10(1, 'rival').globalNeutral === undefined,
+     'L10 perder Global Power es POR NODO: un grupo intacto del rival sigue contando para sus metas');
+})();
 console.log('');
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');

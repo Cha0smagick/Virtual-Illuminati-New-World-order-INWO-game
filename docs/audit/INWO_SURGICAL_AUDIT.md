@@ -6243,3 +6243,165 @@ Node real: `C:/Program Files/nodejs/node.exe` (recordatorio: `ctx_execute(langua
 - **`E.alignsOfNode` no tiene equivalente para el overlay retro desde la UI**: `retroAlignsOf` es interno. Si alguna vez una carta necesita **enseñar** las alineaciones reescritas de un grupo destruido, hara falta proyectarlo en `publicState()`.
 - **Siguiente lote de `plan.md`: L10 EFECTOS PERMANENTES LIGADOS**, que ahora recoge 310 y 280 ademas de su alcance original.
 - Backlog de motor sin cambios: **P1-041** (mazos de Plot por jugador; desbloquea 191 y 395), la desviacion preexistente de fichas de accion, y los 4 PRINT de token extra (12, 61, 215, 335) que usan `placeBonusAction` pero necesitan su condicion de pago.
+
+## 61. L10 - EFECTOS PERMANENTES LIGADOS (310 Media Connections, 280 Hidden Influence) (P1-067, P1-068, P1-069)
+
+### Hallazgo
+`plan.md` describe L10 como un lote de tres mecanismos a construir (link permanente,
+atributo de grupo, Global Power). **Dos de los tres YA EXISTIAN** y solo el tercero
+faltaba de verdad. Es la segunda vez en dos lotes (L9 y L10) que la premisa de
+`plan.md` es mas pequeña que el trabajo real, pero en sentido inverso: en L9 era mas
+GRANDE de lo que decia, aqui es mas PEQUEÑA.
+
+- **El link ya estaba implementado y es la via oficial**: `pl.linkedPlots`
+  (init engine.js:452), proyectado en `publicState()` (engine.js:711), y escrito por
+  al menos siete cartas de efecto permanente (Power Increase, Resistance Increase,
+  Messiah y cuatro mas). La forma canonica es una linea:
+  `pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:targetUid});`
+  El comentario de Power Increase (engine.js:3520-3522) dice ya por que: *"la carta
+  queda LINKED al grupo de forma permanente (inwo_rules_extracted.txt:819-847) y por
+  eso va a linkedPlots, no al descarte"*.
+- **Anadir atributo a un grupo ya estaba**: `node.attrsAdded`, que se lee con
+  `hasAttr(card,attr,node)` (P1-017, precedente en engine.js:3609 con el comentario
+  *"nodo, no carta"*). El texto de 310 dice "becomes a Media group": eso es
+  `attrsAdded.push('media')`, y "if it was not already one" es idempotencia.
+- **Global Power NO existia** (`globalPower` = 0 hits en engine.js).
+
+Textos verbatim:
+- **310**: *"The group of your choice becomes a Media group, if it was not already
+  one, with Global Power equal to its regular Power. Link this card to the [X]. This
+  requires action(s) from Media group(s) with a total Power of 6 or more. It may be
+  played at any time. Requires Media Action"*
+- **280**: *"The group of your choice now has Global Power equal to its regular
+  Power, Link this card to the [X]. This requires an action from your Illuminati. It
+  may be played at any time. Requires Illuminati Action"*
+
+### Correcciones
+
+**1. P1-067 - "Global Power igual a su Poder regular" = el grupo deja de contar, y ese
+gate YA EXISTIA.**
+`countsForGoals(nd)` (engine.js:144-146) es el gate unico de "este grupo cuenta para
+las metas", y su propio comentario (engine.js:138-143) explica que se centralizo ahi
+justo para que la regla exista en un solo sitio: *"Antes estas dos comprobaciones
+vivian sueltas en cada recorrido de meta, y ningun recorrido miraba `devastated`"*.
+Los siete consumidores pasan por el: `countControlled`, `sumPeacefulPower`, el goal de
+Criminal Overlords, `alignsCovered`, `sumTotalPower`, el recuento de iglesias de
+`messiah` y `E.goalStatus`. La correccion es **un termino mas**:
+`!nd.globalNeutral`. Un flag, no una resta: no se borra nada, solo se deja de contar.
+
+**2. `case 'link_effect'`** insertado entre `power_increase` y
+`resistance_increase` (engine.js:3560+), con dos modos declarados por carta
+(`grant_attr` / `grant_global`), el link via `linkedPlots`, y los dos costes con su
+precedente: `illumTokens--` para 280 (mismo patron que 386 The Auditor from Hell) y
+el esquema de **dos pasadas atomicas** para 310 ("action(s) from Media group(s) with a
+total Power of 6 or more"): el `walk` REUNE sin gastar y solo se paga al completar.
+Es el esquema que se escribio para 357 en L9, y deliberadamente distinto de
+`force_align`, que si gasta fichas y luego lanza.
+
+**3. `L10_FX` + `L10_FXN` en `gen_cards.js`**, enganchado en la cadena `pfx`. NO se
+anaden a `ACTION_COST_KINDS` (esa lista de P1-055 es para kinds cuyo gate cobra
+`requireActionFromAttr`; estos dos cobran con `payAttr`/`payIllum`). Se declaran
+`instant:true` porque las dos dicen "It may be played at any time", que es el mismo
+mecanismo que P1-047.
+
+### P1 findings (corregidos en este lote)
+
+- **P1-067** - Global Power implementado como termino de `countsForGoals` (no como
+  parche en los 7 consumidores, que es donde habria quedado uno olvidado).
+- **P1-068** - `node.attrsAdded` **no viene inicializado**: la creacion de nodos del
+  propio motor (engine.js:1635) solo pone `uid/cardId/children/tokens`. Asumirlo array
+  daba `TypeError` al jugar 310. Lo ha encontrado la sonda jugando la carta de verdad,
+  no leyendo codigo. Fix: inicializacion defensiva en la escritura, que es el patron
+  que ya usan `alignsAdded`/`alignsRemoved` en engine.js:3031-3032, 3478-3484 y
+  3534-3535. Las quince cartas que ya escribian `attrsAdded` lo hacian porque sus
+  kinds lo declaraban y por eso inicializaban; 310 es la primera que lo escribe sin que
+  nada lo inicializara antes.
+- **P1-069** - **sobre-restriccion copiada de otra familia**: `power_increase` rechaza
+  una segunda copia con *"no puede haber mas de una en juego por jugador"*, y su texto
+  SI imprime esa frase ("No player may have more than one {Name} in play."). Los textos
+  de 310 y 280 **no la contienen**, y el case la arrastraba, asi que 280 no se podia
+  jugar dos veces sin motivo oficial. Fix: el limite pasa a ser opt-in por declaracion
+  (`eff.onePerPlayer`), para que el dato que lo decide viva en la carta y no en el kind.
+
+### Dos cartas liberadas de BLOCKED_CARDS
+`test_fase4_cards.js` mantiene una lista de cartas clasificadas que siguen bloqueadas,
+con el motivo, y falla si una de ellas ya no deberia estarlo. Las dos estaban
+congeladas por `P1-DATA-03 Global Power ausente`, y el subsistema **ya existe** desde
+este lote, asi que se han retirado de la lista: `mediaconnections` y `hiddeninfluence`.
+**`purge` sigue congelada por el mismo motivo P1-DATA-03** y ahora es desbloqueable
+con el mecanismo que este lote acaba de construir; queda en el backlog en vez de
+resolverse de mas, porque es otra carta y su propio texto.
+
+`cartas congeladas`: 13 -> **11**.
+
+### Regresion nueva: 22 aserciones en `test_fase2_rules.js`
+Bloque `/* ---------- L10 - EFECTOS PERMANENTES LIGADOS (310, 280) ---------- */`, en
+su propio IIFE con helpers propios (los de sobrecarga multiple no se usan desde fuera).
+Cubre: las 2 cartas y sus declaraciones; **anti-P1-050 generico** (todo atributo usado
+como coste de accion tiene >= 1 Grupo pagador real: `sin pagadores: []`); control del
+camino feliz; **atomicidad del pago de 310** (con un solo Media de Poder 4 < 6 rechaza
+y NO muta nada: sin link, sin `globalNeutral`, ficha intacta, carta en mano); el camino
+feliz completo (atributo en el nodo, `globalNeutral`, link, las DOS fichas de Media
+gastadas, la carta fuera de la mano y **fuera del descarte de Plots**, y `lastPlotResult`
+publicando el coste real `{"via":"media","power":6,"groups":["Big Media","Hollywood"]}`);
+280 con su coste de Illuminati y **sin** tocar atributos; el rechazo por falta de ficha;
+**P1-069 explicito** (con ficha, una segunda 280 SI se juega y crea su segundo link); y
+que la perdida de Global Power es **por nodo** (un grupo intacto del rival sigue
+contando).
+
+### Blast radius
+`countsForGoals` es el unico punto tocado de forma transversal, y lo hacen todos sus
+consumidores, luego la regla se aplica de una vez y no puede quedar un recorrido
+sin cubrir. Ninguna otra ventana, `pendingEvent` ni `ai.js`: las dos cartas son Plots
+con `targetUid`, como `power_increase`, asi que no abren ventana. No se toca `ui.js` ni
+`app.js`: el render de objetivo y de link ya existe para las familias permanentes.
+El unico cambio de comportamiento fuera de L10 es que **un grupo con
+`globalNeutral` deja de puntuar**, y solo lo pueden tener nodos que 310 o 280 hayan
+tocado.
+
+### Verificacion (Node real)
+`node --check` en los cuatro ficheros tocados, `gen_cards.js` con 421 cartas y sin
+deriva, **10/10 suites**, y **90/90 flake** (30 x `test_fase2_rules` +
+`test_fase4_cards` + `test_p0_invariants`).
+
+Gates de FASE 4 tras L10: **137 cartas clasificadas** (antes 135), **111 Plots/Resources
+sin mecanica** (antes 113), techo `MAX_PENDING_PLR` 176 sin tocar, **11 cartas
+bloqueadas** (antes 13), 3 ramas muertas declaradas, 4 huecos de texto. Kinds distintos
+en el catalogo: 48 (antes 47), con `link_effect: 2` en el histograma.
+
+### Lecciones
+1. **Copiar una restriccion de otra familia de carta es un defecto, no un atajo.** El
+   limite "una por jugador" de Power Increase viene de una frase que su texto imprime.
+   Ponerlo en un kind nuevo lo convierte en una regla que la carta no dice, y el
+   sintoma (280 no se puede jugar dos veces) no parece un bug de configuracion. **El
+   texto de la carta es la ley; si el limite no esta en el texto, no existe**, aunque
+   exista en una carta hermana.
+2. **Una regex contra un mensaje de error que no has verificado falla sin avisar.**
+   `/aportar Poder/` no casaba con el mensaje real "solo **aportan** Poder 4". Un
+   caracter de diferencia y la asercion se rompe sola. Antes de afirmar sobre una cadena
+   generada, imprimirla.
+3. **El prefijo real de una asercion que pasa es `ok   - ` (con relleno), no `ok - `.**
+   Un filtro de fallos mal escrito reportaba "0 aserciones L10" y "todo verde" a la vez:
+   verde por filtro, no por test. Cuando el conteo de aserciones de un bloque sea 0,
+   sospechar del filtro antes que del bloque.
+
+### Limites declarados
+- `E.giveCard` **no** sirve para meter una carta en la mano en un test: exige que la
+  carta ya este en el mazo del jugador y lanza "No tienes esa carta" (medido). El
+  fixture usa insercion directa en `E._raw().players[pid].hand`, que es estado vivo.
+- `purge` sigue bloqueada por `P1-DATA-03 Global Power ausente` y es ahora
+  desbloqueable con el mecanismo de este lote.
+- El gate de "una sola copia" de las familias permanentes que **si** la piden en su
+  texto sigue en su `case`; no se ha unificado con `eff.onePerPlayer` porque unificarla
+  es un cambio de otro lote.
+
+### Backlog
+- `purge` (P1-DATA-03): desbloqueable con `nd.globalNeutral` + `countsForGoals`, que ya
+  existen.
+- Unificar los gates de "una sola copia" de las familias permanentes sobre
+  `eff.onePerPlayer`, para que el limite se lea del dato y no del kind.
+- **P1-041** (mazos de Plot por jugador; desbloquea 191 y 395) - decision de arquitectura.
+- Desviacion preexistente de las fichas de accion (se arrastran entre turnos; el juego
+  oficial dice que se pierden al final del turno).
+- Los 4 PRINT de token extra (12, 61, 215, 335) usan `placeBonusAction` pero
+  necesitan su propia condicion de pago.
