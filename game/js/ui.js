@@ -1049,20 +1049,65 @@ function route(uid) {
     else render(curState);
   } catch (e) { log('\u26A0 ' + e.message); clearSel(); render(curState); }
 }
+/* L11 - JUGAR UN DUPLICADO DESDE LA MANO. Devuelve los indices de mano de las
+   cartas habilitadoras que encajan con `cardObj`, o [] si no hay ninguna.
+   El motor hace la validacion real (alcance, registro del original y coste): aqui
+   solo se decide que cartas se OFRECEN, para no projectar en publicState() los
+   registros de destruidos/asesinados de cada jugador. */
+function enablersForL11(cardObj, hand) {
+  var want = cardObj.type === 'illuminati' ? 'personality' : (cardObj.type === 'group' ? 'group' : null);
+  if (!want) return [];
+  var out = [];
+  (hand || []).forEach(function (ix, i) {
+    var e = cards[ix] && cards[ix].effect;
+    if (e && e.kind === 'dup_enabler' && e.dupOf === want) out.push(ix);
+  });
+  return out;
+}
+
 function handClick(ix) {
   var c = cardOf(ix);
   var myMain = curState.phase === 'main' && curState.players[curState.currentPid].human;
   if (!myMain || !CB) return;
+  /* L11 - paso 2/2 y 3/3 del duplicado. Se comprueba ANTES que el flujo normal,
+     porque un Group no se puede jugar desde la mano de ninguna otra manera. */
+  if (sel.mode === 'dupEnabler' || sel.mode === 'dupParent') {
+    var d11 = sel.data;
+    if (sel.mode === 'dupEnabler' && enablersForL11(c, [ix]).length) {
+      sel = { mode: 'dupParent', data: { dupIdx: d11.dupIdx, enablerIdx: ix } };
+      log('?? Ahora elige el grupo donde colocar el duplicado.');
+      render(curState);
+      return;
+    }
+    if (sel.mode === 'dupParent' && c.type === 'group') {
+      var e11 = d11.enablerIdx, dup11 = d11.dupIdx;
+      clearSel();
+      if (CB.onPlayDuplicate) CB.onPlayDuplicate(dup11, e11, ix);
+      render(curState);
+      return;
+    }
+    log('? Primero elige la habilitadora; despues, un grupo donde colocar el duplicado.');
+    render(curState);
+    return;
+  }
   if (curState.attack && !curState.attack.resolved && curState.attack.pid === curState.currentPid && c.type === 'plot') {
     var kind = c.effect && c.effect.kind;
     if (kind === 'boost10' || kind === 'boost10_attack') CB.onBoost(ix, false);
     else log('ℹ Este Plot no es un +10. Solo los Plots de apoyo pueden aumentar este ataque.');
     return;
   }
-  if (sel.mode === 'handPick' && sel.data.for === 'resource') {
+if (sel.mode === 'handPick' && sel.data.for === 'resource') {
     clearSel();
-    if (c.type !== 'resource') { log('⚠ Eso no es un RECURSO. Este botón es solo para cartas de recurso.'); return; }
-    try { CB.onPlayResource(ix); } catch (e) { log('\u26A0 ' + e.message); }
+    if (c.type !== 'resource') { log('? Eso no es un RECURSO. Este botón es solo para cartas de recurso.'); return; }
+    try { CB.onPlayResource(ix); } catch (e) { log('⚠ ' + e.message); }
+    return;
+  }
+  /* L11 - entrada al flujo de duplicado: solo si hay habilitadora que encaje. */
+  if ((c.type === 'group' || c.type === 'illuminati') &&
+      enablersForL11(c, curState.players[curState.currentPid].hand).length) {
+    sel = { mode: 'dupEnabler', data: { dupIdx: ix } };
+    log('?? Elige la habilitadora que libera el duplicado de ' + c.name + '.');
+    render(curState);
     return;
   }
   if (sel.mode === 'handPick' && sel.data.for === 'takeover') {

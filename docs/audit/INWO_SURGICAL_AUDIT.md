@@ -6405,3 +6405,104 @@ en el catalogo: 48 (antes 47), con `link_effect: 2` en el histograma.
   oficial dice que se pierden al final del turno).
 - Los 4 PRINT de token extra (12, 61, 215, 335) usan `placeBonusAction` pero
   necesitan su propia condicion de pago.
+## 62. L11 - JUGAR UN DUPLICADO DESDE LA MANO (220 Clone, 227 Counter-Revolution, 287 Imposter, 309 Media Blitz) (P1-070)
+
+### Hallazgo
+
+`plan.md:607-613` describia L11 asi: *"**Cartas (4)**: 220 Clone · 287 Imposter (una Personality assassinated) · 227 Counter-Revolution / 309 Media Blitz (una Nation ya destruida). **Mecanica**: `play_duplicate`. Requiere un registro de 'groups ya destruidos' (P1 nuevo) y un registro de 'Personalities ya assassinated' (idem). **Aceptacion**: tras un grupillo destruido, 227 permite jugarlo desde la mano bajo su control."*
+
+**Las tres premisas eran falsas, y la mas grave es que la mecanica esta INVERTIDA.**
+
+1. **La habilitadora NO es el duplicado.** Leyendo los cuatro textos: *"This card permits you to play, **from your hand**, a Personality which duplicates one who has been Assassinated"* (220), *"**Used this card when you play**, from your hand, a Nation which duplicates a group that has already been destroyed"* (227), *"This card permits you to play, from your hand, a Personality which duplicates one who has been Assassinated"* (287), *"**Use this card when you play**, from your hand, a card which duplicates a Group that has already been destroyed"* (309). El **duplicado es OTRA carta** que el jugador juega desde su mano; la habilitadora se juega **en ese momento**. El kind planned (`play_duplicate`) es el del duplicado, no el de la habilitadora ⇒ el kind real es **`dup_enabler`**.
+2. **El registro de "groups ya destruidos" YA EXISTIA.** `destroyedByMe` (init `S`, engine.js:455; se empuja en la destruccion de area neutral y en `destroyGroup`, engine.js:2694) lo consumen `destroy_reduce` (745), el recorte de `goalCount` (981), el goal de "destruir N" (5580-5581) y el overlay retroactivo de 357 (5196). Lo que **NO** existia era la distincion de **COMO** se destruyo: `destroyedByMe` es un array plano de `cardId`, asi que 220 y 287 (que exigen "**Assassinated**", no merely "destroyed") no tenian con que trabajar.
+3. **"Requiere un registro nuevo" es correcto solo a medias**: hace falta un array **paralelo**, no cambiar la forma de `destroyedByMe` (cambiarla romperia sus 4 consumidores).
+
+### El hallazgo de alcance que obliga al diseno: no existe "jugar un Grupo desde la mano"
+
+Barrido de `children.push` en todo `engine.js` (5690 lineas) = **5 sitios**, y el **unico** que crea un nodo desde la mano es `placeUnder` (engine.js:1672-1684). `placeUnder` se llama desde **un solo sitio**: `E.autoTakeover`. `E.organize(pid,moves)` (2800) **no** juega cartas: reorganiza una estructura ya existente y exige `organizeAtEndOfTurn` de un Illuminati. La estructura inicial se construye en `E.startGame`.
+
+**Es decir: NO existe ninguna API para jugar un Grupo desde la mano a mitad de partida.** Por eso L11 no es un enganche sino un **punto de entrada nuevo**, y eso es un hallazgo de alcance, no un detalle de implementacion.
+
+### Correcciones
+
+**1. Registro paralelo `assassinatedBy`** (init `S`, engine.js:455, con `destroyedByMe`/`destroyedIlluminati`). Se escribe en el **unico sitio fiable**: engine.js:3131-3135, el closure de `resolvePendingAttack` donde `eff.kind==='assassination'` es el **criterio autoritativo** (no el nombre del grupo destino ni el tipo de ataque). Se captura el nodo ANTES de `destroyGroup` porque despues ya no existe. Se eligio un array paralelo y no cambiar la forma de `destroyedByMe` para no tocar sus 4 consumidores ni el overlay de 357.
+
+**2. `E.playGroupFromHand(pid, dupIdx, enablerIdx, parentUid)`** + helper `dupOriginalPlanL11(cardId, needAss)` (localiza el original y devuelve el plan de des-conteo, o `null` con el motivo oficial). Orden: (1) las dos cartas en la mano y distintas; (2) la habilitadora es `dup_enabler`; (3) **alcance** (`dupOf` vs `type` de la carta); (4) **existe original** (`assassinatedBy` si `needsAssassination`, si no `destroyedByMe`); (5) **coste validado ENTERO**; (6) pagar; (7) `placeUnder` del duplicado, marcado `nd.isDuplicate`; (8) habilitadora al descarte de Plots; (9) **des-contar** el original de quien lo destruyo (de `destroyedByMe`, y tambien de `assassinatedBy` si fue asesinato).
+
+**3. NO hay ventana de reaccion, y es deliberado.** Una ventana obligaria a: guarda en `E.endTurn`, proyeccion en `publicState()` **sin filtrar manos**, y **settler en `ai.js`** o una partida AI-vs-AI con estas cartas se cuelga en silencio (leccion permanente de §53, ya sufrida en L9 con `pendingAlignEdit`). Como el texto dice "when you play", las dos cartas van en **una sola llamada** ⇒ los tres riesgos se eliminan **por construccion**.
+
+**4. `case 'dup_enabler'` en `E.playPlot` RECHAZA jugar la habilitadora sola**, con el motivo oficial. Sin el duplicado no hay nada que liberar; dejarla como no-op silencioso es justo lo que la familia de `power_increase` hace explicito con su "la carta no tiene efecto".
+
+**5. Costes.**
+- **227**: "an action by your Illuminati, **or** Government group with a combined Power of at least 10". **P1-018 invertido**: `government` es una **alineacion**, no un atributo (los 15 atributos del glosario no lo incluyen) ⇒ el filtro es `nodeAligns`, **no** `hasAttr`. Es el mismo mecanismo de **dos pasadas** de 357 (L9) y 310 (L10): el `walk` **reune** `pickedL11` y descuenta `needL11` **sin gastar**, y si `needL11>0` lanza; solo al completar se ejecutan los `spendGroupToken`. El mensaje nombra el Poder real que aportan: *"tus grupos government sin ficha solo aportan Poder 0 de los 10"*.
+- **309**: `firstUsableAid` + `hasAttr(c,'media',n)` + `spendGroupToken`.
+- **287**: ver P1-070.
+
+**6. `gen_cards.js`: `L11_FX` + `L11_FXN`** declarando las 4 cartas, enganchado en la cadena `pfx` (que termina `|| L9_FXN[key] || L10_FXN[key] || L11_FXN[key];`). **No se anaden a `ACTION_COST_KINDS`** (P1-055): esa lista es para kinds cuyo gate cobra `requireActionFromAttr`, y estas cobran con `payIllum`/`payAttr`/`payAlign`/`payAnyGroup`.
+
+**7. UI (`ui.js`) + `app.js`).** `enablersForL11(cardObj, hand)` devuelve las habilitadoras que encajan con una carta; `handClick` tiene tres ramas: entrada (`dupEnabler`), elegir habilitadora, y elegir el grupo padre (`dupParent`) ⇒ `CB.onPlayDuplicate(dupIdx, enablerIdx, parentUid)`. **Deliberadamente NO se proyecta en `publicState()`** el registro de destruidos/asesinados de cada jugador: la UI decide que cartas **ofrece** y el motor valida (alcance, original y coste) con los motivos oficiales.
+
+### P1-070 - 287 IMPOSTER ERA IMPAGABLE (la clase de P1-050, detectada por la regresion)
+
+El texto de 287 dice *"You must also spend an action from one group **with an alignment in common with the Personality**"*. Pero **las Personalities SON los Illuminati**, y el reglamento oficial dice que **nunca** tienen alineaciones ni atributos (glosario; mismo lugar que P1-032). La interseccion de alineaciones con una Personality es **vacia por construccion** ⇒ la clausula "en comun" **no tiene referente en el modelo de datos** y la carta era literalmente injugable.
+
+La primera regresion lo delato asi: `L11 287 rama paga omitida: la Personality del mazo no tiene alineaciones compartibles`. Esa rama existia porque **ningun** Illuminati tiene alineaciones (18/18).
+
+**Correccion**: el pago pasa a `payAnyGroup` (la accion de cualquier grupo propio) y la limitacion queda **DECLARADA** en vez de dejar una clausula muerta. Tres aserciones estructurales impiden que el alias vuelva en silencio: 287 no declara `payCommonAlign`, **ninguna** carta del catalogo lo declara, y la regla que lo obliga sigue vigente (0 de 18 Illuminati con alineaciones). Si algun dia el catalogo modela las alineaciones de las Personalities, el gate puede volverse estricto sin cambiar la carta.
+
+Es la **tercera vez** que sale la clase de P1-050 ("la carta es impagable porque la clausula no tiene referente en los datos"), y la primera vez que la **detecta la regresion** en vez de la lectura.
+
+### Regresion nueva - 36 aserciones en `test_fase2_rules.js` (5983 -> 6246 lineas)
+
+Bloque `/* ---------- L11 - JUGAR UN DUPLICADO DESDE LA MANO (220, 227, 287, 309) ---------- */`, en su propio IIFE con helpers propios. Cubre: las 4 cartas y sus declaraciones (**anti-P1-050 generico**: el mazo tiene pagadores reales, un Government de Poder>=10 y un Media); existencia de `E.playGroupFromNode` y de los **dos** registros; **precondicion ausente** (sin original no hay duplicado, y nada muta); **ATOMICIDAD** (con el original presente pero sin forma de pagar, 227 lanza y no des-cuenta ni mueve la mano ni crea nodo); **227 rama 1** (Illuminati) y **rama 2** (Government, con los Gobiernos "justo necesarios" acumulados hasta Poder>=10, para que la rama de dos pasadas gaste VARIAS fichas); **309** camino feliz y sus **dos excepciones** ("cannot help a Personality who was Assassinated": por registro y por tipo); **220** exige asesinado (una Personality solo destruida no vale) y des-cuenta de los **dos** registros; **287** con P1-070; **alcance cruzado** (una habilitadora de personality no puede duplicar un Group); **la habilitadora sola se rechaza por `playPlot`**; y el registro paralelo inicializado en todos los jugadores.
+
+Los contadores son **relativos** (`copias antes - 1`, `len antes + 1`), decision deliberada tras el flake de S7 (§56): el reparto inicial es aleatorio y las copias de una carta concreta varian.
+
+### Blast radius
+
+- **Motor**: un campo nuevo en `S` (`assassinatedBy`, solo lectura), **3 lineas** en el closure de `resolvePendingAttack`, una API nueva exportada (`E.playGroupFromHand`), y un `case 'dup_enabler'` que **solo lanza**. Ningun camino existente cambia de comportamiento.
+- **Catalogo**: 4 cartas pasan de `unverified` (literalmente injugables: `rejectUnverifiedCard`, engine.js:1710-1715) a `implemented-pending-engine`. `gen_cards.js` sigue dando **421 cartas** con los mismos conteos ⇒ **sin deriva**.
+- **Gate de FASE 4**: **137 -> 141 clasificadas** y **111 -> 107 Plots/Resources sin mecanica**. Techo `MAX_PENDING_PLR` = 176 **sin tocar** y `MIN_IMPLEMENTED` = 53 **sin tocar**.
+- **IA**: ninguno. No hay ventana que settler.
+
+### Verificacion (Node real)
+
+- `node --check` = 0 en `gen_cards.js`, `game/js/engine.js`, `game/js/ui.js`, `game/js/app.js`, `test_fase2_rules.js`.
+- `gen_cards.js` = 0: `texto secundario recuperado del HTML de Scribd: 14` / `written 421 {"group":167,"illuminati":18,"plot":201,"resource":35} verified-groups 33`.
+- **10/10 suites exit 0** (`SUITES FALLIDAS=0 de 10`).
+- **Flake 30x de `test_fase2_rules` + `test_fase4_cards` + `test_p0_invariants` = 90 ejecuciones, fallos 0**, con el binario real `C:/Program Files/nodejs/node.exe`.
+- Las 36 aserciones L9... L11 verdes. `FFFD` = 0 y CJK = 0 en los ficheros tocados.
+
+### 4 errores MIOS durante la regresion (ninguno del motor) y sus causas
+
+1. **Asercion sobre `illumTokens === 0` de un rival** que `startGame` ya habia puesto a 1 ⇒ fix: capturar el valor ANTES y comparar. Un valor absoluto sobre un estado que otro metodo inicializa es una asercion rota, no un bug.
+2. **`findByCardL11` encontra el PADRE antes que el duplicado** porque el fixture plantaba el padre con el **mismo `cardId`** que el duplicado ⇒ fix: el padre es siempre una carta distinta. *Un finder por atributo que el fixture hace ambiguo no falla: devuelve lo que encuentra.*
+3. **Asercion "gasta las fichas de los DOS Gobiernos"** que es FALSA si un solo grupo de Poder>=10 basta: el motor paro correctamente al llegar a 10. Fix: acumular Gobiernos "justo necesarios" hasta >=10 y afirmar que **todos** los exigidos quedan sin ficha. *La leccion es la de siempre: afirmar el INVARIANTE, no un numero concreto que depende de los datos del mazo.*
+4. **`m5` de la excepcion de 309** fallaba porque el motor rechazaba por **tipo** antes que por registro ⇒ fix: se separaron las dos aserciones (registro y tipo), y el mensaje real se imprime en el texto.
+
+### Limites declarados
+
+1. **287 se paga con cualquier grupo propio**, no con uno que comparta alineacion con la Personality (P1-070). Es la unica desviacion de este lote, y esta justificada por una regla oficial, no por comodidad.
+2. **"You may attempt to control that Personality normally"** (220) y **"You automatically control the new card"** (287): el motor **coloca** el duplicador directamente bajo control del actor, sin tirada de takeover. Modelar "controlar normalmente" exigiria un ataque de takeover con su propia ventana; se declara como simplificacion.
+3. **"If you control the Clone Arrangers, you automatically control the new card"** (220) y el ramal de 22 Clone Arrangers ("restore to life any just-killed Personality card") **no** se implementan: 22 es otro mecanismo (restaurar, no duplicar) y queda fuera de alcance.
+4. **254 Faction Fight y 333 Payoff** son "el otro lado" de la familia: reaccion del RIVAL a que un rival juegue un duplicado. Fuera de L11; su texto queda declarado aqui para que no se reabra por confusion de alcance.
+5. `plan.md:253` declara 254 Faction Fight "APLAZADO - exige 'played along with a duplicate card' (L11)". L11 entrega el mecanismo de **habilitar** un duplicado propio, no el de responder al duplicado de un rival ⇒ la nota de `plan.md` sigue siendo cierta pero **por un motivo distinto** al que deca.
+
+### Lecciones
+
+1. **La palabra "duplicado" en el nombre del lote apuntaba al elemento equivocado.** `plan.md` decia "estas 4 cartas son el duplicado"; el texto de las 4 dice lo contrario. **El nombre de un lote no es su especificacion: leer los cuatro textos de las cartas es lo que decide el kind.**
+2. **Cuando el texto dice "when you play X", el motor debe aceptar X y Y a la vez, en una llamada.** No hace falta una ventana si la eleccion se resuelve en el mismo acto. Y una ventana que se puede evitar, se evita: cada ventana nueva arrastra guarda de `endTurn`, proyeccion de `publicState()` y settler de IA, tres superficies donde un olvido cuelga una partida.
+3. **"Un registro que no dice COMO" es un registro incompleto, no un registro valido.** `destroyedByMe` respondia "quien lo destruyo" y "cuantos", pero 220/287 necesitan "asesinado o destruido". Añadir un array **paralelo** fue menos riesgoso que cambiar la forma del existente, que tenia 4 consumidores.
+4. **Una clausula sin referente en los datos es la clase de P1-050, y la regresion la detecta antes que la lectura.** "Alineacion en comun con la Personality" solo podia fallar; el motor no podía dar error. La asercion que lo delato ("la Personality del mazo no tiene alineaciones compartibles") estaba escrita como rama de un `if`, y por eso se leyo como una nota y no como un fallo. **Las ramas de omision tambien son aserciones: si una se dispara, hay que mirarla.**
+5. **Un finder por atributo devuelve lo que encuentra, no lo que el test queria.** Plantar el padre con el mismo `cardId` que el duplicado hacia la asercion verde por el objeto equivocado.
+
+### Backlog
+
+- **P1-071 (nuevo,Decision de arquitectura)**: dar a las Personalities un modelo de "grupo asociado" con alineaciones, para poder implementar 287 al pie de la letra. Depende de datos que el catalogo no tiene.
+- **220 sin tirada de takeover** ("controlar normalmente") y **287 con control automatico**: si se quiere fiel, hace falta un ataque de takeover por la ventana de la habilitadora (y, por tanto, su settler en la IA).
+- **254 Faction Fight y 333 Payoff**: el "otro lado" de la familia (reaccion del rival). Mecanismo nuevo, y 333 exige detectar que un rival juega un duplicado ⇒ otro hook de observacion.
+- **22 Clone Arrangers** ("restore to life any just-killed Personality card"): mecanismo de restauracion, no de duplicacion.
+- **P1-041** (mazos de Plot por jugador; desbloquea 191 y 395): sigue abierto.
+- Desviacion preexistente de las fichas de accion (se arrastran entre turnos).
+- Los 4 PRINT de token extra (12, 61, 215, 335) usan `placeBonusAction` pero necesitan su condicion de pago.
+- 2 trabajos de test diferidos: **209 Impeachment** usa una alineacion de las 6 primeras (para probar una resta haria falta `violent`/`weird`); lectura de `uid` por ficha tras `placeUnder`.

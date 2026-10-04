@@ -452,7 +452,14 @@ E.newGame=function(configs){
       illumId:null,illumTokens:0,
       usedResourceThisTurn:false,usedExtraDrawThisTurn:false,
       hand:[],structure:{uid:'p'+p+'-root',cardId:null,children:[]},
-      resources:[],exposedPlots:[],discards:[],destroyedByMe:[],destroyedIlluminati:[],
+      /* L11: assassinatedBy es el registro PARALELO de destroyedByMe. destroyedByMe
+         guarda SOLO el cardId (L2694) y NO dice COMO se destruyo la carta; 220 Clone
+         y 287 Imposter exigen "una Personality que haya sido ASESINADA", no merely
+         "destruida". Cambiar la forma de destroyedByMe rompere sus 3 consumidores
+         (745 destroy_reduce, 981, 5580-5581) y el overlay retroactivo de 357 (5196),
+         asi que se anade un array paralelo en vez de tocar el que ya existe.
+         L11: no cambiar la forma de destroyedByMe; assassinados van aparte. */
+      resources:[],exposedPlots:[],discards:[],destroyedByMe:[],destroyedIlluminati:[],assassinatedBy:[],
       /* P1-013: los Plots linkeados a un grupo se quedan en la mesa
          indefinidamente (OFFICIAL_RULES_FINDINGS §8: "Linked Plots ... remain
          on the table indefinitely"), a diferencia de un Plot exposure normal.
@@ -1675,6 +1682,135 @@ function placeUnder(pid,handIdx,parentUid){
   pl.hand.splice(hi,1);
   return nd;
 }
+
+/* ================= L11 - JUGAR UN DUPLICADO DESDE LA MANO (220, 227, 287, 309) =================
+ * HALLAZGO DE ALCANCE que obliga a este diseno: barrido de `children.push` en todo
+ * engine.js = 5 sitios, y el UNICO que crea un nodo desde la mano es `placeUnder`
+ * (L1680), que a su vez se llama desde UN solo sitio: `E.autoTakeover`. Es decir,
+ * **NO existe ninguna API para jugar un Grupo desde la mano a mitad de partida**.
+ * Por eso estas 4 cartas no son "un enganche" sino un PUNTO DE ENTRADA NUEVO.
+ *
+ * Y la mecanica real es la INVERSA de lo que decia el plan: la habilitadora (220/
+ * 227/287/309) NO es el duplicado. El duplicado es OTRA carta que el jugador juega
+ * desde la mano, y la habilitadora se juega EN ESE MOMENTO ("Used this card when
+ * you play..."). Por eso aqui NO hay ventana de reaccion: se juegan LAS DOS cartas
+ * en una sola llamada. Eso elimina por construccion los 4 riesgos que las ventanas
+ * nuevas traen (guarda de endTurn, proyeccion en publicState, settler en ai.js) y
+ * por eso una partida AI-vs-AI con estas cartas no puede colgarse.
+ *
+ * Efecto comun a las 4: "The original X no longer counts as destroyed for the goals
+ * of whoever destroyed it" => des-contar el original del contador de quien lo destruyo.
+ * 309 anade su propia excepcion ("cannot help a Personality who was Assassinated")
+ * y por eso declara `dupOf:'group'` y NO `needsAssassination`.
+ */
+/* Localiza el ORIGINAL que esta habilitadora libera y devuelve el plan de
+ * des-conteo. Falla con el motivo oficial si el original no existe, y lo hace
+ * ANTES de que la funcion llamante haya tocado nada (atomicidad). */
+function dupOriginalPlanL11(cardId,needAss){
+  for(var q=0;q<S.players.length;q++){
+    var oq=S.players[q];
+    var inAss=(oq.assassinatedBy||[]).indexOf(cardId)>=0;
+    var inDes=oq.destroyedByMe.indexOf(cardId)>=0;
+    if(needAss?!inAss:!inDes)continue;
+    return {ownerPid:q,ownerName:oq.name,assassinated:inAss,wasInDestroyed:inDes};
+  }
+  return null;
+}
+E.playGroupFromHand=function(pid,dupIdx,enablerIdx,parentUid){
+  requireOwnMain(pid);
+  var pl=S.players[pid];
+  /* --- 1. las DOS cartas en la mano --- */
+  if(pl.hand.indexOf(enablerIdx)<0)throw new Error('La carta habilitadora no esta en tu mano');
+  if(pl.hand.indexOf(dupIdx)<0)throw new Error('El duplicado no esta en tu mano');
+  if(dupIdx===enablerIdx)throw new Error('La habilitadora y el duplicado no pueden ser la misma carta');
+  var ec=card(enablerIdx),dc=card(dupIdx);
+  if(!ec||!dc)throw new Error('Carta inexistente');
+  if(!ec.effect||ec.effect.kind!=='dup_enabler')
+    throw new Error(ec.name+' no es una carta habilitadora de duplicados');
+  var eff=ec.effect;
+  /* --- 2. ALCANCE: la habilitadora tiene que encajar con el duplicado --- */
+  var needAss=!!eff.needsAssassination;
+  var wantType=(eff.dupOf==='personality')?'illuminati':'group';
+  if(dc.type!==wantType)
+    throw new Error(ec.name+' solo habilita duplicar '+(eff.dupOf==='personality'?'una Personality':'un Group')+' y '+dc.name+' es '+dc.type);
+  var plan=dupOriginalPlanL11(dupIdx,needAss);
+  if(plan==null)
+    throw new Error(ec.name+': no hay ningun '+(needAss?'asesinado':'destruido')+' al que '+dc.name+' pueda duplicar');
+  /* --- 3. COSTE: validado ENTERO antes de mutar nada (dos pasadas, atomicidad) --- */
+  var spendL11=[],costL11={via:null,groups:[]};
+  if(eff.payIllum&&eff.payMinPower){
+    /* 227 Counter-Revolution: "an action by your Illuminati, OR by Government group
+       with a combined Power of at least 10". P1-018: `government` es una ALINEACION,
+       no un atributo (los 14 atributos del glosario no lo incluyen), asi que el
+       filtro es nodeAligns y NO hasAttr. Leerlo como atributo seria clausula muerta. */
+    if(pl.illumTokens>=1)costL11={via:'illuminati',groups:[]};
+    else{
+      var needL11=eff.payMinPower,pickedL11=[];
+      walk(pl.structure,function(n){
+        if(needL11<=0)return;
+        if(!(n.tokens>=1)||noTokensFlag(n))return;
+        var nc=card(n.cardId);
+        if(!nc||nc.type!=='group')return;
+        if(nodeAligns(n,nc).indexOf(eff.payAlign)<0)return;
+        var pw=curPower(n);
+        if(pw>0){pickedL11.push({uid:n.uid,name:nc.name,power:pw});needL11-=pw;}
+      });
+      if(needL11>0)throw new Error(ec.name+': tus grupos '+eff.payAlign+' sin ficha solo aportan Poder '+(eff.payMinPower-needL11)+' de los '+eff.payMinPower);
+      costL11={via:eff.payAttr2||eff.payAlign,power:eff.payMinPower,groups:pickedL11.map(function(g){return g.name;})};
+      pickedL11.forEach(function(g){spendL11.push(g.uid);});
+    }
+  }else if(eff.payAttr){
+    /* 309 Media Blitz: "must spend an action by a Media group". */
+    var anL11=firstUsableAid(pid,function(cL11,nL11){return hasAttr(cL11,eff.payAttr,nL11);});
+    if(!anL11)throw new Error(ec.name+': necesitas la accion de un grupo tuyo con el atributo '+eff.payAttr);
+    costL11={via:eff.payAttr,groups:[anL11.name]};
+    spendL11.push(anL11.uid);
+  }else if(eff.payAnyGroup){
+    /* 287 Imposter. P1-070: el texto dice "an action from one group with an
+     * alignment IN COMMON with the Personality", pero las Personalities SON los
+     * Illuminati y el reglamento oficial dice que NUNCA tienen alineaciones ni
+     * atributos (glosario; mismo sitio que P1-032). La clausula "en comun" se
+     * queda pues SIN REFERENTE en el modelo de datos: implementarla literalmente
+     * la dejaria IMPAGABLE (la clase exacta de P1-050, pero detectada por la
+     * regresion y no leyendo el codigo). Se paga con la accion de cualquier grupo
+     * propio y la limitacion queda DECLARADA en el audit en vez de dejar una
+     * clausula muerta. Si algun dia el catalogo modela las alineaciones de las
+     * Personalities, este gate puede volverse estricto sin cambiar la carta. */
+    var anG=null;
+    walk(pl.structure,function(n){
+      if(anG||!(n.tokens>=1)||noTokensFlag(n))return;
+      var nc=card(n.cardId);
+      if(nc&&nc.type==='group')anG={uid:n.uid,name:nc.name,align:null};
+    });
+    if(!anG)throw new Error(ec.name+': necesitas la accion de un grupo tuyo');
+    costL11={via:'any-group',groups:[anG.name]};
+    spendL11.push(anG.uid);
+  }
+  /* --- 4. MUTAR (todo validado): primero el coste --- */
+  spendL11.forEach(function(uL11){spendGroupToken(pid,uL11);});
+  if(costL11.via==='illuminati')pl.illumTokens--;
+  /* --- 5. el duplicado entra en juego (placeUnder ya lo quita de la mano) --- */
+  var nd=placeUnder(pid,dupIdx,parentUid);
+  nd.isDuplicate=true;
+  nd.dupOfCardId=dupIdx;
+  /* --- 6. la habilitadora es un Plot jugado: al descarte --- */
+  removeFromHand(pl,enablerIdx);
+  S.plotDiscard.push(enablerIdx);
+  /* --- 7. DES-CONTAR el original de quien lo destruyo (el efecto comun a las 4) --- */
+  var oq=S.players[plan.ownerPid];
+  var kd=oq.destroyedByMe.indexOf(dupIdx);
+  if(kd>=0)oq.destroyedByMe.splice(kd,1);
+  if(plan.assassinated){
+    var ka=(oq.assassinatedBy||[]).indexOf(dupIdx);
+    if(ka>=0)oq.assassinatedBy.splice(ka,1);
+  }
+  log(pl.name+' juega '+dc.name+' como DUPLICADO con '+ec.name+
+      ' ('+(needAss?'asesinado':'destruido')+' por '+plan.ownerName+'): ya no cuenta como destruido');
+  var out=publicState();
+  out.lastPlotResult={ok:true,plot:ec.name,duplicate:dc.name,cost:costL11,
+    releasedFrom:plan.ownerName,releasedFromPid:plan.ownerPid,assassinated:plan.assassinated};
+  return out;
+};
 
 E.autoTakeover=function(pid,handIdx,parentUid){
   requireOwnMain(pid);
@@ -3131,7 +3267,14 @@ function applyPlotInstantAttackRoll(ann,roll,total,forcedFail,byCard){
   var need=(eff.destroyMargin==null)?(eff.kind==='assassination'?0:null):eff.destroyMargin;
   if(need!=null&&res.margin>need){
     res.destroyed=true;
+    /* L11: aqui `eff.kind==='assassination'` es el CRITERIO AUTORITATIVO de que la
+     * destruccion fue un asesinato (no el nombre del grupo destino, ni el tipo de
+     * ataque). destroyGroup(2681) empuja a destroyedByMe sin decir como; este es el
+     * UNICO sitio fiable para marcar el registro paralelo. */
+    var ndAssaL11=findNode(ann.tUid);
     destroyGroup(ann.pid,ann.tUid);
+    if(eff.kind==='assassination'&&ndAssaL11&&ndAssaL11.cardId!=null)
+      S.players[ann.pid].assassinatedBy.push(ndAssaL11.cardId);
     log((eff.kind==='assassination'?'ASESINATO: ':'DESTRUCCIÓN: ')+tc.name+' (margen '+res.margin+'>'+need+')');
   }else{
     res.destroyed=false;
@@ -5242,6 +5385,19 @@ case 'bulk_power':{
       log(c.name+': '+pl.name+' va a reescribir la historia de uno de '+destrR.length+' grupo(s) destruido(s) · coste '+costR+' pagado con '+(paidR.via==='illuminati'?'una accion del Illuminati':paidR.groups.map(function(g){return g.name;}).join(' + ')));
       lastResult={ok:true,plot:c.name,pending:true,reason:'reescribe la historia de un grupo destruido',
         retroCandidates:destrR.length,cost:costR,paidWith:paidR};
+      break;}
+    case 'dup_enabler':{
+      /* L11 - 220/227/287/309 NO son jugables por su cuenta: su texto dice "Used this
+       * card WHEN YOU PLAY, from your hand, ... which duplicates a Group/Personality
+       * that has already been destroyed/Assassinated". Sin el duplicado no hay nada
+       * que liberar, asi que jugar la habilitadora sola dejaria la carta sin efecto
+       * (el "no-op silencioso" que la familia de power_increase ya hace explicito con
+       * su "la carta no tiene efecto"). Se rechaza con el motivo oficial para que el
+       * jugador sepa que tiene que ir por E.playGroupFromHand, que juega LAS DOS
+       * cartas en una sola llamada. */
+      throw new Error(c.name+' no se juega sola: usala al mismo tiempo que el duplicado '+
+        (eff.dupOf==='personality'?'de una Personality asesinada':'de un Group ya destruido')+
+        ', que debes jugar desde tu mano');
       break;}
     case 'embezzlement':{
       if(!S.pendingEvent)

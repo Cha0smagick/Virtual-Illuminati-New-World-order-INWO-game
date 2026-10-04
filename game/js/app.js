@@ -181,6 +181,17 @@ var CB = {
    * ha hecho la UI (pick + selects), asi que solo se reenvia la decision. Usamos
    * currentPid (NO humanPid) porque `useGadgetAction` exige requireOwnMain: el
    * Gadget solo se puede usar en TU turno, a diferencia de la ventana de 405. */
+  /* L11 - JUGAR UN DUPLICADO DESDE LA MANO (220/227/287/309). La habilitadora y el
+     duplicado se juegan en UNA SOLA llamada: el texto de las 4 cartas dice "Used
+     this card WHEN YOU PLAY, from your hand, ...", asi que no hay ventana de
+     reaccion y no hace falta settler en la IA. El motor devuelve los errores
+     oficiales (falta de original, de alcance o de coste) y aqui se muestran. */
+  onPlayDuplicate: function (dupIdx, enablerIdx, parentUid) {
+    try {
+      E.playGroupFromHand(E.getState().currentPid, dupIdx, enablerIdx, parentUid);
+      after('Duplicado jugado');
+    } catch (e) { log('! ' + e.message); }
+  },
   onUseGadgetAction: function (resourceUid) {
     try { E.useGadgetAction(E.getState().currentPid, { resourceUid: resourceUid }); after('Accion de Gadget abierta'); }
     catch (e) { log('! ' + e.message); }

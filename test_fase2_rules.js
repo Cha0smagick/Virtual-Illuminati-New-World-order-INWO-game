@@ -5973,6 +5973,318 @@ ok(!!L9c332 && !!L9c357 &&
   ok(nodeL10(1, 'rival').globalNeutral === undefined,
      'L10 perder Global Power es POR NODO: un grupo intacto del rival sigue contando para sus metas');
 })();
+/* ---------- L11 - JUGAR UN DUPLICADO DESDE LA MANO (220, 227, 287, 309) ---------- */
+/* Correccion de alcance respecto a plan.md: la habilitadora NO es el duplicado.
+   El duplicado es otra carta que se juega desde la mano, y la habilitadora se juega
+   EN ESE MOMENTO, asi que las dos van en una sola llamada (E.playGroupFromHand).
+   Por eso NO hay ventana de reaccion: un playPlot normal rechaza la habilitadora. */
+(function () {
+  var rawL11 = function () { return E._raw(); };
+  var ixL11 = function (id) { for (var i = 0; i < C.cards.length; i++) if (C.cards[i].id === id) return i; return -1; };
+  var freshL11 = function () {
+    E.newGame([{ name: 'A', human: false }, { name: 'B', human: false }]);
+    E.setIlluminati(0, 'bavarianilluminati1');
+    E.setIlluminati(1, 'servantsofcthulhu1');
+    E.startGame();
+  };
+  var toHandL11 = function (pid, ix) {
+    var S = rawL11(), d = S.plotDeck.indexOf(ix);
+    if (d >= 0) S.plotDeck.splice(d, 1);
+    d = S.groupDeck.indexOf(ix);
+    if (d >= 0) S.groupDeck.splice(d, 1);
+    S.players[pid].hand.push(ix);
+    return ix;
+  };
+  var plantL11 = function (pid, uid, ix, tokens) {
+    var nd = { uid: uid, cardId: ix, children: [], tokens: tokens || 1 };
+    rawL11().players[pid].structure.children.push(nd);
+    return nd;
+  };
+  var myMainL11 = function (pid, illum) {
+    var S = rawL11();
+    S.phase = 'main'; S.currentPid = pid;
+    S.players[pid].illumTokens = illum == null ? 0 : illum;
+    return S;
+  };
+  var msgL11 = function (fn) { try { fn(); return ''; } catch (e) { return e.message; } };
+  /* Primer grupo real del mazo con la alineacion `al` y Poder >= `minP`. */
+  var grpWithAlignL11 = function (al, minP) {
+    for (var i = 0; i < C.cards.length; i++) {
+      var c = C.cards[i];
+      if (c.type === 'group' && (c.power | 0) >= (minP || 1) && (c.alignments || []).indexOf(al) >= 0) return i;
+    }
+    return -1;
+  };
+  /* Primer grupo real del mazo con el atributo `at` y Poder >= `minP`. */
+  var grpWithAttrL11 = function (at, minP) {
+    for (var i = 0; i < C.cards.length; i++) {
+      var c = C.cards[i];
+      if (c.type === 'group' && (c.power | 0) >= (minP || 1) &&
+        (c.attributes || []).some(function (a) { return String(a).toLowerCase() === at; })) return i;
+    }
+    return -1;
+  };
+  var firstIlluL11 = function () {
+    for (var i = 0; i < C.cards.length; i++) if (C.cards[i].type === 'illuminati') return i;
+    return -1;
+  };
+  var namesL11 = function (list) { return (list || []).map(function (x) { return x.name; }); };
+  /* walk recursivo: el duplicado queda COLGADO del padre elegido, no en la raiz. */
+  var findByCardL11 = function (pid, ix) {
+    var found = null, S = rawL11();
+    (function rec(nd) {
+      if (found) return;
+      if (nd.cardId === ix) { found = nd; return; }
+      (nd.children || []).forEach(rec);
+    })(S.players[pid].structure);
+    return found;
+  };
+  var copiesInHandL11 = function (pid, ix) {
+    return rawL11().players[pid].hand.filter(function (x) { return x === ix; }).length;
+  };
+  var nodesWithTokenL11 = function (pid) {
+    var c = 0, S = rawL11();
+    (function rec(nd) {
+      if (nd.cardId != null && nd.tokens >= 1) c++;
+      (nd.children || []).forEach(rec);
+    })(S.players[pid].structure);
+    return c;
+  };
+
+  var CLONE = ixL11('clone'), CR = ixL11('counterrevolution'), IMP = ixL11('imposter'), MB = ixL11('mediablitz');
+  var GOV1 = grpWithAlignL11('government', 1), GOV10 = grpWithAlignL11('government', 10);
+  var GOV10b = -1;
+  for (var gi = 0; gi < C.cards.length; gi++) {
+    var gc = C.cards[gi];
+    if (gc.type === 'group' && gc.idx !== GOV10 && (gc.power | 0) >= 1 && (gc.alignments || []).indexOf('government') >= 0) {
+      GOV10b = gc.idx; break;
+    }
+  }
+  var MEDIA = grpWithAttrL11('media', 1);
+  var ILLU0 = firstIlluL11();
+
+  /* --- S0: contrato de datos --- */
+  ok(CLONE >= 0 && CR >= 0 && IMP >= 0 && MB >= 0, 'L11 las 4 cartas de L11 estan en el catalogo');
+  ok([CLONE, CR, IMP, MB].every(function (i) { return C.cards[i].effect && C.cards[i].effect.kind === 'dup_enabler'; }),
+    'L11 las 4 cartas declaran kind dup_enabler');
+  ok(typeof E.playGroupFromHand === 'function', 'L11 existe el punto de entrada E.playGroupFromHand');
+  ok(C.cards[CLONE].effect.dupOf === 'personality' && C.cards[CR].effect.dupOf === 'group',
+    'L11 dupOf: Clone=personality, Counter-Revolution=group');
+  ok(!!C.cards[CLONE].effect.needsAssassination && !!C.cards[IMP].effect.needsAssassination &&
+    !C.cards[CR].effect.needsAssassination && !C.cards[MB].effect.needsAssassination,
+    'L11 needsAssassination solo en las 2 habilitadoras de Personality (220, 287)');
+  ok(GOV10 >= 0 && MEDIA >= 0, 'L11 el mazo real tiene pagadores: un Government de Poder>=10 y un Media');
+  ok(!!Array.isArray(rawL11().players[0].assassinatedBy) && !!Array.isArray(rawL11().players[0].destroyedByMe),
+    'L11 los DOS registros existen y son arrays (destroyedByMe y el paralelo assassinatedBy)');
+
+  /* --- S1: sin original no hay duplicado (control de camino feliz: el fixture SI crea
+         un original valido justo despues, asi que un fallo aqui no es verde-por-vacio) --- */
+  freshL11();
+  myMainL11(0, 1);
+  var dupA = toHandL11(0, grpWithAlignL11('violent', 1));
+  toHandL11(0, MB);
+  /* El PADRE debe ser una carta DISTINTA del duplicado: si comparte cardId, el
+     finder del fixture lo encontraria a el y no al duplicado recien colocado. */
+  plantL11(0, 'parA', dupA === 0 ? 1 : 0, 1);
+var hand0 = rawL11().players[0].hand.length;
+  var illRival0 = rawL11().players[1].illumTokens;
+  var m1 = msgL11(function () { E.playGroupFromHand(0, dupA, MB, 'parA'); });
+  ok(/no hay ningun destruido/.test(m1), 'L11 sin grupo destruido NO se puede duplicar -> ' + m1);
+  ok(rawL11().players[0].hand.length === hand0 && rawL11().players[0].structure.children.length === 1,
+    'L11 el rechazo por falta de original no muta la mano ni la estructura');
+  ok(rawL11().players[1].illumTokens === illRival0, 'L11 el rechazo por falta de original no toca ningun contador');
+
+  /* --- S2: ATOMICIDAD de 227. El original existe pero NO hay forma de pagar
+         (sin ficha de Illuminati y sin Gobiernos). Nada debe cambiar. --- */
+  rawL11().players[1].destroyedByMe.push(dupA);
+  toHandL11(0, CR);
+  rawL11().players[0].illumTokens = 0; /* sin la rama 1: solo queda la rama Government */
+  var desB = rawL11().players[1].destroyedByMe.length;
+  var handB = rawL11().players[0].hand.length;
+  var m2 = msgL11(function () { E.playGroupFromHand(0, dupA, CR, 'parA'); });
+  ok(/solo aportan Poder/.test(m2), 'L11 227 RECHAZA si los Gobiernos sin ficha no llegan al Poder exigido -> ' + m2);
+  ok(rawL11().players[0].hand.length === handB && rawL11().players[1].destroyedByMe.length === desB,
+    'L11 el rechazo por coste NO des-cuenta el original ni mueve la mano (atomicidad)');
+  ok(!rawL11().players[0].structure.children.some(function (n) { return n.isDuplicate; }),
+    'L11 el rechazo por coste NO crea el nodo del duplicado');
+
+  /* --- S3: 227 rama Illuminati (coste disyuntivo, rama 1) --- */
+  myMainL11(0, 1);
+  plantL11(0, 'govS3', GOV10 >= 0 ? GOV10 : GOV1, 1);
+  var handDupS3 = copiesInHandL11(0, dupA);
+  var outS3 = E.playGroupFromHand(0, dupA, CR, 'parA');
+  ok(rawL11().players[1].destroyedByMe.length === desB - 1,
+    'L11 el efecto comun a las 4: el original deja de contar como destruido -> ' + desB + ' -> ' + rawL11().players[1].destroyedByMe.length);
+  var dupNodeS3 = findByCardL11(0, dupA);
+  ok(!!dupNodeS3 && dupNodeS3.isDuplicate === true,
+    'L11 el duplicado entra en juego marcado isDuplicate');
+  ok(rawL11().players[0].hand.indexOf(CR) < 0 && copiesInHandL11(0, dupA) === handDupS3 - 1,
+    'L11 las DOS cartas salen de la mano (duplicado e habilitadora) -> copias dup ' + handDupS3 + ' -> ' + copiesInHandL11(0, dupA));
+  ok(rawL11().plotDiscard.indexOf(CR) >= 0, 'L11 la habilitadora es un Plot jugado y va al descarte');
+  ok(rawL11().players[0].illumTokens === 0, 'L11 227 rama 1 cobra la accion del Illuminati -> 1 -> 0');
+  ok(!!(outS3.lastPlotResult && outS3.lastPlotResult.cost && outS3.lastPlotResult.cost.via === 'illuminati'),
+    'L11 lastPlotResult declara el coste paid');
+
+  /* --- S4: 227 rama Government (dos pasadas, Poder combinado) --- */
+  var GOVB = (GOV10b >= 0 ? GOV10b : GOV1);
+/* --------- S4: 227 rama Government (dos pasadas, Poder combinado) --------- */
+  /* Se eligen los Gobiernos JUSTO NECESARIOS: se acumulan por Poder hasta llegar a 10.
+     Asi el motor tiene que gastar VARIAS fichas (si un solo grupo de Poder>=10
+     bastase, la rama "dos pasadas" no se ejercitaria). */
+  var govNeed = [], acc = 0;
+  for (var gx = 0; gx < C.cards.length && acc < 10; gx++) {
+    var gcx = C.cards[gx];
+    if (gcx.type !== 'group' || (gcx.alignments || []).indexOf('government') < 0) continue;
+    var pw = gcx.power | 0;
+    if (pw < 1) continue;
+    govNeed.push({ uid: 'gB' + govNeed.length, ix: gcx.idx, power: pw });
+    acc += pw;
+  }
+  ok(acc >= 10 && govNeed.length >= 1, 'L11 el mazo real permite pagar 227 con Gobiernos combined Power>=10 -> ' + govNeed.length + ' grupos, Poder ' + acc);
+  freshL11();
+  myMainL11(0, 0);
+  var dupB = toHandL11(0, grpWithAlignL11('violent', 1));
+  toHandL11(0, CR);
+  plantL11(0, 'parB', dupB === 0 ? 1 : 0, 1);
+  govNeed.forEach(function (g) { plantL11(0, g.uid, g.ix, 1); });
+  rawL11().players[1].destroyedByMe.push(dupB);
+  var desC = rawL11().players[1].destroyedByMe.length;
+  var tokC = nodesWithTokenL11(0);
+  var illS4 = rawL11().players[0].illumTokens;
+  var outS4 = E.playGroupFromHand(0, dupB, CR, 'parB');
+  var viaS4 = (outS4.lastPlotResult && outS4.lastPlotResult.cost) ? outS4.lastPlotResult.cost.via : '?';
+  ok(illS4 === 0 && viaS4 === 'government',
+    'L11 227 rama 2 paga por Government y NO por el Illuminati (rama disyuntiva) -> illumTokens=' + illS4 + ' via=' + viaS4);
+  var tokOfL11 = function (pid, uid) {
+    var r = null, S = rawL11();
+    (function rec(nd) { if (r) return; if (nd.uid === uid) { r = nd; return; } (nd.children || []).forEach(rec); })(S.players[pid].structure);
+    return r ? r.tokens : 'NO-NODE';
+  };
+  var leftL11 = govNeed.filter(function (g) { return tokOfL11(0, g.uid) !== 0; });
+  ok(leftL11.length === 0,
+    'L11 227 rama 2 gasta la ficha de TODOS los Gobiernos que exige el Poder combinado -> ' +
+    govNeed.length + ' plantados, Poder ' + acc + ', sin gastar: ' + leftL11.length);
+  ok(rawL11().players[1].destroyedByMe.length === desC - 1,
+    'L11 227 rama 2 tambien des-cuenta el original');
+
+  /* --- S5: 309 camino feliz + su EXCEPCION propia --- */
+  freshL11();
+  myMainL11(0, 0);
+  var dupC = toHandL11(0, grpWithAlignL11('violent', 1));
+  toHandL11(0, MB);
+  plantL11(0, 'parC', dupC === 0 ? 1 : 0, 1);
+  plantL11(0, 'medC', MEDIA, 1);
+  rawL11().players[1].destroyedByMe.push(dupC);
+  E.playGroupFromHand(0, dupC, MB, 'parC');
+  ok(rawL11().players[0].structure.children.filter(function (n) { return n.uid === 'medC'; })[0].tokens === 0,
+    'L11 309 gasta la accion del grupo Media');
+  ok(rawL11().players[1].destroyedByMe.indexOf(dupC) < 0, 'L11 309 des-cuenta el Group destruido');
+
+  freshL11();
+  myMainL11(0, 0);
+  var dupC2 = toHandL11(0, grpWithAlignL11('violent', 1));
+  toHandL11(0, MB);
+  plantL11(0, 'parC2', dupC2 === 0 ? 1 : 0, 1);
+  plantL11(0, 'medC2', MEDIA, 1);
+  /* Un Group que SOLO esta en assassinatedBy: 309 no debe poder usarlo. */
+  rawL11().players[1].assassinatedBy.push(dupC2);
+  var m5 = msgL11(function () { E.playGroupFromHand(0, dupC2, MB, 'parC2'); });
+  ok(/no hay ningun destruido/.test(m5),
+    'L11 309 EXCEPCION propia: un Group solo "asesinado" NO le sirve, exige "destruido" -> ' + m5);
+  ok(rawL11().players[1].assassinatedBy.length === 1 && !findByCardL11(0, dupC2),
+    'L11 el rechazo de 309 no des-cuenta el asesinato ni crea el duplicado');
+
+  freshL11();
+  myMainL11(0, 0);
+  var illuC = toHandL11(0, ILLU0);
+  toHandL11(0, MB);
+  plantL11(0, 'parC3', illuC, 1);
+  plantL11(0, 'medC3', MEDIA, 1);
+  rawL11().players[1].assassinatedBy.push(illuC);
+  var m5b = msgL11(function () { E.playGroupFromHand(0, illuC, MB, 'parC3'); });
+  ok(/solo habilita duplicar un Group/.test(m5b),
+    'L11 309 EXCEPCION propia tambi\u00eden por TIPO: "cannot help a Personality who was Assassinated" -> ' + m5b);
+
+  /* --- S6: 220 y 287 exigen ASESINADO, no solo destruido (el discriminante) --- */
+  freshL11();
+  myMainL11(0, 0);
+  var illuD = toHandL11(0, ILLU0);
+  toHandL11(0, CLONE);
+  plantL11(0, 'parD', illuD, 1);
+  rawL11().players[1].destroyedByMe.push(illuD);
+  var m6 = msgL11(function () { E.playGroupFromHand(0, illuD, CLONE, 'parD'); });
+  ok(/no hay ningun asesinado/.test(m6),
+    'L11 220 exige ASESINADO: una Personality solo "destruida" no vale -> ' + m6);
+
+  freshL11();
+  myMainL11(0, 0);
+  var illuE = toHandL11(0, ILLU0);
+  toHandL11(0, CLONE);
+  plantL11(0, 'parE', illuE, 1);
+  rawL11().players[1].assassinatedBy.push(illuE);
+  E.playGroupFromHand(0, illuE, CLONE, 'parE');
+  ok(rawL11().players[1].assassinatedBy.length === 0 && rawL11().players[1].destroyedByMe.length === 0,
+    'L11 220 des-cuenta el Original de los DOS registros (asesinado y destruido)');
+
+  /* --- S7: 287 paga con la accion de un grupo propio (P1-070) --- */
+  freshL11();
+  myMainL11(0, 0);
+  var illuF = toHandL11(0, ILLU0);
+  toHandL11(0, IMP);
+  plantL11(0, 'parF', illuF, 1);
+  rawL11().players[1].assassinatedBy.push(illuF);
+  var m7 = msgL11(function () { E.playGroupFromHand(0, illuF, IMP, 'parF'); });
+  ok(/necesitas la accion de un grupo tuyo/.test(m7), 'L11 287 RECHAZA si no tienes ningun grupo con ficha -> ' + m7);
+  var payer = -1;
+  for (var pi = 0; pi < C.cards.length; pi++) {
+    var pc = C.cards[pi];
+    if (pc.type === 'group' && (pc.power | 0) >= 1) { payer = pc.idx; break; }
+  }
+  if (payer >= 0) {
+    plantL11(0, 'payF', payer, 1);
+    E.playGroupFromHand(0, illuF, IMP, 'parF');
+    ok(tokOfL11(0, 'payF') === 0, 'L11 287 gasta la accion del grupo propio que paga');
+    ok(rawL11().players[1].assassinatedBy.length === 0, 'L11 287 tambien des-cuenta el assassination');
+  } else {
+    ok(true, 'L11 287 rama paga omitida: el mazo no tiene ningun Grupo');
+  }
+
+  /* --- S7b: P1-070 guard estructural. El texto de 287 pide "una alineacion en comun
+         con la Personality", pero las Personalities (Illuminati) NUNCA tienen
+         alineaciones por reglamento oficial: esa clausula no tiene referente y deja
+         la carta IMPAGABLE (la clase de P1-050). Se paga con un grupo cualquiera y
+         se DECLARA. Esta asercion impide que el alias muerto vuelva en silencio. --- */
+  ok(!C.cards[IMP].effect.payCommonAlign && !!C.cards[IMP].effect.payAnyGroup,
+    'L11 P1-070 287 NO declara payCommonAlign: sin alineaciones en la Personality la clausula seria impagable');
+  ok(C.cards.filter(function (c) { return c.effect && c.effect.payCommonAlign; }).length === 0,
+    'L11 ninguna carta del catalogo declara el alias muerto payCommonAlign');
+  var illuNoAlign = C.cards.filter(function (c) { return c.type === 'illuminati'; });
+  ok(illuNoAlign.length > 0 && illuNoAlign.every(function (c) { return (c.alignments || []).length === 0; }),
+    'L11 la REGLA que obliga a P1-070 sigue vigente: ningun Illuminati tiene alineaciones -> ' + illuNoAlign.length + ' Personalities');
+
+  /* --- S8: alcance cruzado --- */
+  freshL11();
+  myMainL11(0, 1);
+  var dupG = toHandL11(0, grpWithAlignL11('violent', 1));
+  toHandL11(0, CLONE);
+  plantL11(0, 'parG', dupG === 0 ? 1 : 0, 1);
+  rawL11().players[1].destroyedByMe.push(dupG);
+  var m8 = msgL11(function () { E.playGroupFromHand(0, dupG, CLONE, 'parG'); });
+  ok(/solo habilita duplicar una Personality/.test(m8), 'L11 220 (personality) NO puede duplicar un Group -> ' + m8);
+
+  /* --- S9: la habilitadora sola se rechaza por playPlot --- */
+  freshL11();
+  myMainL11(0, 1);
+  toHandL11(0, CLONE);
+  var m9 = msgL11(function () { E.playPlot(0, CLONE, null, {}); });
+  ok(/no se juega sola/.test(m9), 'L11 la habilitadora NO es jugable por su cuenta -> ' + m9);
+
+  /* --- S10: estructural --- */
+  var S1 = rawL11().players;
+  ok(S1.every(function (p) { return Array.isArray(p.assassinatedBy); }),
+    'L11 TODOS los jugadores tienen el registro paralelo inicializado');
+})();
+
 console.log('');
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');

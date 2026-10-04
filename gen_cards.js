@@ -1887,6 +1887,49 @@ const L10_FX = {
 };
 const L10_FXN = {};
 for (const k in L10_FX) { L10_FXN[norm(k)] = L10_FX[k]; }
+
+/* L11 - JUGAR UN DUPLICADO DESDE LA MANO (220 Clone, 227 Counter-Revolution,
+ * 287 Imposter, 309 Media Blitz).
+ *
+ * CORRECCION DE ALCANCE respecto a plan.md: plan.md decia que el kind seria
+ * `play_duplicate` y que estas 4 cartas "eran el duplicado". Es al reves: la
+ * habilitadora NO es el duplicado. El duplicado es OTRA carta que el jugador juega
+ * desde su mano, y la habilitadora se juega EN ESE MOMENTO ("Used this card when
+ * you play, from your hand, a Nation which duplicates a group that has already been
+ * destroyed"). Por eso el kind es `dup_enabler` y se consume en
+ * E.playGroupFromHand (que juega LAS DOS cartas en una sola llamada), NO en
+ * playPlot: jugar la habilitadora sola se rechaza.
+ *
+ * Hallazgo de alcance que obliga al diseno: barrido de `children.push` en todo
+ * engine.js = 5 sitios, y el unico que crea un nodo desde la mano es `placeUnder`,
+ * que se llama desde UN solo sitio (`E.autoTakeover`). NO existe ninguna API para
+ * jugar un Grupo desde la mano a mitad de partida, asi que L11 es un punto de
+ * entrada NUEVO, no un enganche.
+ *
+ * CAMPOS:
+ *  - dupOf: 'personality' | 'group'   -> que tipo de carta puede duplicar.
+ *  - needsAssassination: true         -> exige "Assassinated", no merely "destroyed".
+ *  - payIllum + payAlign + payMinPower-> 227: accion del Illuminati O grupos con esa
+ *    ALINEACION y Poder combinado >= N. OJO: `government` es una ALINEACION, no un
+ *    atributo (P1-018), asi que el gate usa nodeAligns y NO hasAttr.
+ *  - payAttr                          -> 309: una accion de un grupo con ese atributo.
+ *  - payCommonAlign                   -> 287: una accion de un grupo con una
+ *    alineacion EN COMUN con la Personality duplicada.
+ * No se anaden a ACTION_COST_KINDS (P1-055): esas son kinds cuyo gate cobra
+ * requireActionFromAttr, y estas cobran con payIllum/payAttr/payAlign/payCommonAlign.
+ */
+const L11_FX = {
+  'Clone': { kind:'dup_enabler', dupOf:'personality', needsAssassination:true,
+    t:'This card permits you to play, from your hand, a Personality which duplicates one who has been Assassinated. You may attempt to control that Personality normally. If you control the Clone Arrangers, you automatically control the new card. The original Personality no longer counts as destroyed for the goals of whoever killed it.' },
+  'Counter-Revolution': { kind:'dup_enabler', dupOf:'group', payIllum:true, payAlign:'government', payMinPower:10,
+    t:'Used this card when you play, from your hand, a Nation which duplicates a group that has already been destroyed. This also requires action(s) by your Illuminati, or by Government group with a combined Power of at least 10. You may now play that Nation as though it had never been destroyed. The original Nation no longer counts as destroyed for the goals of whoever destroyed it! Requires Government or Illuminati Action' },
+  'Imposter': { kind:'dup_enabler', dupOf:'personality', needsAssassination:true, payAnyGroup:true,
+    t:'This card permits you to play, from your hand, a Personality which duplicates one who has been Assassinated. You must also spend an action from one group with an alignment in common with the Personality. You automatically control the new card. The original Personality no longer counts as "destroyed" for the goals of whoever killed them' },
+  'Media Blitz': { kind:'dup_enabler', dupOf:'group', payAttr:'media',
+    t:'Use this card when you play, from your hand, a card which duplicates a Group that has already been destroyed. You must spend an action by a Media group. You may now play that Group card as though it had never been destroyed. The original Group no longer counts as destroyed for the goals of whoever destroyed it! This card cannot help a Personality who was Assassinated. Requires Media Action' }
+};
+const L11_FXN = {};
+for (const k in L11_FX) { L11_FXN[norm(k)] = L11_FX[k]; }
 /* P1-055 — kinds cuyo gate en engine.js COBRA un `requireActionFromAttr`
  * ("debes gastar la acción de un grupo tuyo con el atributo X"). Lista cerrada a
  * propósito: un kind nuevo con ese coste debe registrarse aquí Y traer su gate, para
@@ -2189,7 +2232,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

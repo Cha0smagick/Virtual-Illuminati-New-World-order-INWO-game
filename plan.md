@@ -604,13 +604,19 @@ d) y no en
 - **Aceptacion**: 235 sobre un grupo Violento duplica su Poder; al destruir ese grupo, la carta
   ligada desaparece (afirmado en el mazo de Plots, no contando cartas).
 
-## [ ] L11 - JUGAR UN DUPLICADO DESDE LA MANO
+## [x] L11 - JUGAR UN DUPLICADO DESDE LA MANO - CERRADO en §62 (alcance corregido: kind `dup_enabler`)
 
-- **Cartas (4)**: 220 Clone · 287 Imposter (una Personality assassinated) ·
-  227 Counter-Revolution / 309 Media Blitz (una Nation ya destruida).
-- **Mecanica**: `play_duplicate`. Requiere un registro de "groups ya destruidos" (P1 nuevo) y un
-  registro de "Personalities ya assassinated" (idem). Los dos son datos nuevos minimos.
-- **Aceptacion**: tras un grupillo destruido, 227 permite jugarlo desde la mano bajo su control.
+> - **§62 (hecho): L11 - 220 Clone + 227 Counter-Revolution + 287 Imposter + 309 Media Blitz (P1-070).**
+> - **Correccion 1 - la mecanica estaba INVERTIDA.** `plan.md` decia que estas 4 cartas eran "el duplicado" (`play_duplicate`). Los 4 textos dicen *"permits you to play, **from your hand**, a [X] which duplicates one who..."* y *"**Used this card when you play**, from your hand..."*: el duplicado es OTRA carta y la habilitadora se juega EN ESE MOMENTO. El kind real es **`dup_enabler`** y se consume en una API nueva.
+> - **Correccion 2 - el registro de destruidos YA existia.** `destroyedByMe` (init 455, se empuja en `destroyGroup` 2694) lo consumen `destroy_reduce` (745), `goalCount` (981), el goal de destruir-N (5580-5581) y el overlay de 357 (5196). Lo que no existia era **COMO** se destruyo: es un array plano de `cardId`. Se anade un array **paralelo** `assassinatedBy`, escrito en el UNICO sitio fiable (3131-3135, donde `eff.kind==='assassination'` es el criterio autoritativo), para no romper los 4 consumidores.
+> - **Correccion 3 - NO existe "jugar un Grupo desde la mano".** Barrido de `children.push` en engine.js = 5 sitios; el unico que crea un nodo desde la mano es `placeUnder`, que se llama desde UN solo sitio (`E.autoTakeover`). `E.organize` reorganiza, no juega. L11 es un **punto de entrada nuevo** (`E.playGroupFromHand(pid,dupIdx,enablerIdx,parentUid)`), no un enganche.
+> - **Sin ventana de reaccion, DELIBERADAMENTE.** Las dos cartas van en una sola llamada, asi que se eliminan por construccion los 3 riesgos de toda ventana nueva (guarda de `endTurn`, proyeccion de `publicState()`, settler en `ai.js`). `case 'dup_enabler'` en `playPlot` **rechaza** jugar la habilitadora sola, con el motivo oficial.
+> - **Coste de 227 con P1-018 invertido**: `government` es una **alineacion**, no un atributo ⇒ filtro por `nodeAligns`, no `hasAttr`. Dos pasadas atomicas (el `walk` reune sin gastar; solo al completar se paga), igual que 357 y 310.
+> - **P1-070 - 287 IMPOSTER ERA IMPAGABLE** (3a vez que sale la clase de P1-050, y la 1a que la detecta la regresion): "an action from one group **with an alignment in common with the Personality**", pero las Personalities SON los Illuminati y **nunca** tienen alineaciones (regla oficial; 0 de 18). La clausula no tiene referente en los datos. Se paga con `payAnyGroup` y la limitacion queda **DECLARADA**; 3 aserciones estructurales impiden que el alias muerto vuelva.
+> - **Regresion: 36 aserciones** (5983 -> 6246 lineas) con precondicion ausente, **atomicidad**, 227 en sus 2 ramas, 309 con sus 2 excepciones, 220 exigiendo asesinado, 287 con P1-070, alcance cruzado, rechazo de la habilitadora sola, y el **guard estructural** de P1-070.
+> - **UI/app**: `enablersForL11` + 3 ramas en `handClick` (`dupEnabler` -> `dupParent`) + `CB.onPlayDuplicate`. Sin proyectar los registros de cada jugador en `publicState()`.
+> - **Gate de FASE 4**: **137 -> 141 clasificadas**, 111 -> 107 sin mecanica. Techo 176 y minimo 53 **sin tocar**. Catalogo **421 cartas sin deriva**. **10/10 suites** y **90/90 flake** con Node real.
+> - **Limites declarados**: 287 se paga con cualquier grupo (P1-070); el takeover de 220 ("controlar normalmente") y el control automatico de 287 son simplificaciones; 22 Clone Arrangers, 254 Faction Fight y 333 Payoff quedan FUERA (restaurar / reaccion del rival). **P1-071** (nuevo): modelar el "grupo asociado" de las Personalities para poder implementar 287 al pie de la letra.
 
 ## [ ] L12 - MANIPULACION DE RESOURCES
 
