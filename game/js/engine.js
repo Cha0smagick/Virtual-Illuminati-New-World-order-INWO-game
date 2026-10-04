@@ -1903,6 +1903,16 @@ E.playResource=function(pid,handIdx,linkedToUid){
   switch(resFx){
     case 'bulk_power': applyBulkPower(pid, c, c.effect); break;
     case 'draw_hook': break;
+    case 'resource_effect':{
+      /* L12 - 378 Suicide Squad y 413 Warehouse 23 son Resource cards: colocar la carta NO
+       * ejecuta su efecto. 378 dice 'Can be used to...', o sea que se USA despues, y 413
+       * solo acumula. Aqui solo se VALIDA el modo y nada mas; el registro de la capacidad
+       * va DESPUES del push, en la misma entrada, igual que hace draw_hook con su gancho.
+       * 236/348/400 son Plot cards y NO pasan por aqui. */
+      if(c.effect.mode!=='warehouse'&&c.effect.mode!=='suicide_squad')
+        throw new Error(c.name+': un Resource no puede llevar el modo '+String(c.effect.mode)+' (esa mecanica es de una Plot card)');
+      break;
+    }
     default: throw new Error('El Resource "' + c.name + '" tiene una mecanica (' + resFx + ') que E.playResource todavia no ejecuta');
   }
   pl.illumTokens--;pl.usedResourceThisTurn=true;
@@ -1911,6 +1921,19 @@ E.playResource=function(pid,handIdx,linkedToUid){
   var entry={uid:'r'+(S.uidCounter++),cardId:handIdx,linkedTo:link,tokens:0};
   if(resFx==='draw_hook')entry.drawHook={deck:c.effect.hook.deck,pick:c.effect.hook.pick||1,
                                           rest:c.effect.hook.rest||null,alt:c.effect.hook.alt||null};
+  /* L12 - registro de la capacidad del Resource en la MISMA entrada recien empujada.
+   * 413: stash es la lista de Resources escondidos bajo ella. 378: action es el gancho de
+   * su ACCION (Can be used to destroy any Resource belonging to a rival), que consumira
+   * E.useResDestroy con el mismo uid. Se declara DESPUES del push para poder dejar la
+   * referencia en la MISMA entrada: es la leccion del propio draw_hook. */
+  if (resFx==='resource_effect' && c.effect.mode==='warehouse'){
+    entry.stash=[];
+    log(c.name+' queda enlazada: puedes esconderle Resources nuevos bajo ella y exponerlos cuando quieras');
+  }
+  if (resFx==='resource_effect' && c.effect.mode==='suicide_squad'){
+    entry.action={kind:'resource_effect',mode:'suicide_squad'};
+    log(c.name+' queda enlazada: tiene una ACCION para destruir un Resource de un rival (tira 1d6)');
+  }
   pl.resources.push(entry);
   log(pl.name+' juega el recurso '+c.name);
   if(resFx==='draw_hook')log(c.name+' queda enlazado: cambiara los proximos robos de '+pl.name);
@@ -3585,6 +3608,12 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
    * turn". El timing ES la ventana (S.pendingTurnStart) y lo valida su case. Sin
    * esta puerta requireOwnMain la rechazaria SIEMPRE: durante la ventana la fase
    * es 'begin', no 'main' (P1-047). */
+  /* L12: 236 Deasil Engine, 348 Purge y 400 The Weak Link imprimen 'Play this card at
+   * any time' (400 anade 'except during a privileged attack', cuyo veto se comprueba
+   * DENTRO de su case, igual que el de 278 Hex). Se comparan contra el KIND, no contra
+   * ids de carta, por el criterio que ya explican los comentarios de L1/L2/L8a.
+   * 413 Warehouse 23 es un Resource y no pasa por aqui. */
+  ||eff0.kind==='resource_effect'
   ||eff0.kind==='turn_start_block');
   if(instant){
     if(S.phase==='setup')throw new Error('No se pueden jugar Plot cards durante la preparación');
@@ -5502,6 +5531,118 @@ case 'bulk_power':{
                   target:card(ndR.cardId).name,roll:null,margin:null,destroyed:false,
                   notes:['Cancelado por '+c.name]};
       break;}
+    case 'resource_effect':{
+      /* L12 - MANIPULACION DE RESOURCES. 236/348/400 son Plot cards y llegan aqui por
+       * E.playPlot; 378/413 son Resource cards y llegan por E.playResource (su case esta
+       * al lado de bulk_power/draw_hook).
+       * LIMITE DECLARADO, escrito en el propio motor desde case resource_destroy: el mazo
+       * NO tiene clasificacion de Resources, 34 de los 35 tienen subtype:null, el mismo
+       * motivo por el que se solto el Gadget Resource de 270. No se inventa ninguna
+       * categoria. Por eso las tres cartas que el impreso limita a Gadget (236),
+       * Artifact o Gadget (400) o Agent (348) NO filtran por eso: la palabra impresa
+       * viaja en printedRestrict como declaracion, y el objetivo es cualquier Resource de
+       * un rival. Es el mismo criterio que aplico 278 Hex a su 'A Magic Resource'.
+       * ORDEN DE VALIDACION: primero el OBJETIVO impreso y despues el COSTE impreso, para
+       * que una carta rechazada no deje fichas gastadas ni estado a medias. */
+      var rFx=eff.mode;
+      /* --- 236 Deasil Engine --- */
+      if(rFx==='reverse'){
+        /* El parentesis del impreso: si se juega otro Deasil Engine inmediatamente, los
+         * dos se cancelan. */
+        if(eff.cancelsPair&&S.pendingResDestroy&&S.pendingResDestroy.mode==='reverse'){
+          S.pendingResDestroy=null;
+          log(c.name+' se cancela con otro '+c.name+' inmediato: no ocurre nada');
+          lastResult={ok:true,cancelledPair:true,card:c.name,kind:'resource_effect'};
+          break;}
+        var revR=findResourceEntry(opts.resUid);
+        if(!revR)throw new Error(c.name+': elige el Resource que va a correr hacia atras (el motor no lo elige por ti)');
+        var arrR=S.players[revR.pid].resources;
+        var deadR=arrR.splice(arrR.indexOf(revR.entry),1)[0];
+        /* 'destroying itself. Its owner must discard it.' */
+        S.groupDiscard.push(deadR.cardId);
+        log(c.name+': el Resource '+card(deadR.cardId).name+' de '+S.players[revR.pid].name+
+            ' corre hacia atras y se autodestruye; '+S.players[revR.pid].name+' lo descarta');
+        lastResult={ok:true,negated:true,card:c.name,kind:'resource_effect',mode:'reverse',
+          target:card(deadR.cardId).name,targetPid:revR.pid,owner:S.players[revR.pid].name,paidWith:null};
+        break;}
+      /* --- 348 Purge --- */
+      if(rFx==='purge'){
+        var tP=findNode(opts.targetUid);
+        if(!tP)throw new Error(c.name+': elige el grupo que la va a usar (el motor no lo elige por ti)');
+        var ownP=findOwnerPid(opts.targetUid);
+        if(ownP==null)throw new Error(c.name+': ese grupo ya no esta en juego');
+        /* 'as an action for the group that uses it': la ficha la gasta ESE grupo y no el
+         * jugador que la juega (mismo criterio que P1-017). */
+        if(noTokensFlag(tP))throw new Error(c.name+': '+card(tP.cardId).name+' no puede actuar ahora');
+        if(typeof tP.tokens!=='number'||tP.tokens<1)
+          throw new Error(c.name+': '+card(tP.cardId).name+' no tiene fichas de accion para usar '+c.name);
+        var isIlluP=(tP.uid===S.players[ownP].illumId);
+        if(isIlluP){
+          /* 'Used by your Illuminati, it destroys all Agent cards currently in play which
+           * duplicate your own Illuminati group.' LIMITE DEL MAZO: el deck lleva una sola
+           * copia de cada Illuminati, asi que no puede existir una carta que lo duplique.
+           * Se DECLARA, no se simula, y no queda como carta decorativa a medias. */
+          log(c.name+': tu Illuminati purga, pero el mazo no tiene copias de tu Illuminati que purgar (limite del mazo, no de la carta)');
+          lastResult={ok:true,card:c.name,kind:'resource_effect',mode:'purge',byIlluminati:true,
+            target:card(tP.cardId).name,owner:S.players[ownP].name,paidWith:{uid:tP.uid,name:card(tP.cardId).name},
+            notes:['Ningun Agent puede duplicar a tu Illuminati: el mazo tiene una sola copia']};
+          break;}
+        /* 'Used by another group, it reduces the groups Power and Global Power by 1, but
+         * makes it permanently immune to duplicate Group cards played by rivals.' En este
+         * motor Global Power es exactamente lo que aporta a las metas y globalNeutral es
+         * su interruptor (L162-L172, P1-067), asi que globalNeutral=true ES el -1 Global
+         * Power. El -1 Power no dice permanently en el impreso: se pliega en powerTax, que
+         * el nodo resta mientras la carta siga enlazada. dupImmune SI es permanente. */
+        tP.tokens--;
+        tP.powerTax=(tP.powerTax||0)+1;
+        tP.globalNeutral=true;
+        tP.dupImmune=true;
+        pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:tP.uid});
+        log(c.name+' usada por '+card(tP.cardId).name+': -1 Poder, deja de aportar a las '+
+            'metas (-1 Global Power) y queda inmune de forma permanente a Group duplicadas de rivales');
+        lastResult={ok:true,card:c.name,kind:'resource_effect',mode:'purge',byIlluminati:false,
+          target:card(tP.cardId).name,owner:S.players[ownP].name,paidWith:{uid:tP.uid,name:card(tP.cardId).name},
+          globalNeutral:true,dupImmune:true,linked:true};
+        break;}
+      /* --- 400 The Weak Link --- */
+      if(rFx==='weak_link'){
+        if(eff.notDuringPrivileged&&S.attack&&S.attack.privilege)
+          throw new Error(c.name+': no se puede jugar durante un ataque privilegiado');
+        var wlR=findResourceEntry(opts.resUid);
+        if(!wlR)throw new Error(c.name+': elige el Resource de un rival que vas a destruir (el motor no lo elige por ti)');
+        if(wlR.pid===pid)
+          throw new Error(c.name+': solo destruye Resources de un rival (el impreso dice owned by a rival)');
+        /* COSTE DISYUNTIVO, reunir antes de gastar (patron de 357 Rewriting History,
+         * seccion 50): primero tu Illuminati y, si no hay ficha, Poder COMBINADO de grupos
+         * con uno de los atributos impresos hasta el minimo. Si el pago no se completa, no
+         * se ha gastado nada. El objetivo ya esta validado. */
+        var costW=eff.payMinPower,paidW=null,attrsW=(eff.payAttrAny||[]);
+        if(eff.payIllum&&pl.illumTokens>=1){pl.illumTokens--;paidW={via:'illuminati',groups:[]};}
+        if(!paidW){
+          var needW=(typeof costW==='number'?costW:0),pickedW=[];
+          walk(pl.structure,function(nW){
+            if(needW<=0)return;
+            if(nW.cardId==null||noTokensFlag(nW))return;
+            if(typeof nW.tokens!=='number'||nW.tokens<1)return;
+            for(var aW=0;aW<attrsW.length;aW++)if(hasAttr(card(nW.cardId),attrsW[aW],nW)){needW-=(curPower(nW)||0);pickedW.push(nW.uid);return;}
+          });
+          if(needW>0)throw new Error(c.name+' necesita la accion de tu Illuminati o de grupos '+
+            (attrsW.length?attrsW.join(', '):'con atributo')+' con un Poder combinado de al menos '+
+            (typeof costW==='number'?costW:0)+' (te faltan '+needW+' de Poder)');
+          for(var gW=0;gW<pickedW.length;gW++)spendGroupToken(pid,pickedW[gW]);
+          paidW={via:'groups',groups:pickedW.slice()};
+        }
+        var arrW=S.players[wlR.pid].resources;
+        var deadW=arrW.splice(arrW.indexOf(wlR.entry),1)[0];
+        S.groupDiscard.push(deadW.cardId);
+        log(c.name+': el Resource '+card(deadW.cardId).name+' de '+S.players[wlR.pid].name+' se destruye (accion pagada con '+
+            (paidW.via==='illuminati'?'tu Illuminati':paidW.groups.length+' grupo(s) con Poder combinado')+')');
+        lastResult={ok:true,negated:true,card:c.name,kind:'resource_effect',mode:'weak_link',
+          target:card(deadW.cardId).name,targetPid:wlR.pid,owner:S.players[wlR.pid].name,
+          paidWith:paidW.via==='illuminati'?{via:'illuminati'}:{via:'groups',groups:paidW.groups.length}};
+        break;}
+      throw new Error(c.name+': modo de resource_effect desconocido ('+String(rFx)+')');
+    }
     default:{
       throw new Error('La carta "'+c.name+'" tiene una mecánica no implementada.');
     }
