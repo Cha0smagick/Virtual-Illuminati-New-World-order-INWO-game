@@ -1317,6 +1317,341 @@ function hidePreview() { if (PV) PV.style.display = 'none'; lastCix = null; rese
  * DEDUPLICACION OBLIGATORIA: se cachea la carta en PEEK_CIX y solo se reescribe el
  * innerHTML cuando cambia. Sin eso, mouseover (que salta en cada transicion de elemento
  * bajo el cursor) reconstruye el DOM decenas de veces por segundo. */
+/* ---------- P1-074 / M3: DESGLOSE DE MECANICA DE LA CARTA ----------
+ * QUE HACE ESTE BLOQUE Y POR QUE:
+ * El jugador pasa el raton por la mano y, hasta ahora, solo veia el texto impreso (que es
+ * OCR) y los P/R. Con eso no puede saber QUE PAGA, A QUIEN VA ni QUE HACE. Este bloque
+ * responde a las tres preguntas desglosando los campos ESTRUCTURADOS del dataset:
+ * `c.effect.kind` + el resto de claves de `c.effect`, y `c.goal` para los Illuminati.
+ *
+ * PROHIBIDO.parsear `c.text` con regex (regla 2 de plan.md: no inventar la mecanica).
+ * `c.effect.kind` es la verdad porque es exactamente lo que despacha `engine.js`. Las
+ * tablas de abajo se levantaron leyendo las 421 cartas del dataset, no de memoria.
+ *
+ * HONESTIDAD DE LAS ETIQUETAS: los alineamientos y atributos se imprimen en INGLES
+ * (peaceful, violent, bank, computer...) porque asi estan en el dataset y asi estan
+ * impresos en las cartas. Solo se traducen las etiquetas ESTRUCTURALES (Que pagas /
+ * A quien va / Que hace / Cuando acaba / Condiciones). Para que ninguna frase diga mas de
+ * lo que el dato afirma, toda clave de `c.effect` que la tabla NO declare se imprime
+ * igualmente al final con su nombre crudo y su valor, marcada como dato sin glosa.
+ * Y `statusHtml` avisa, carta por carta, del estado real de la mecanica en el motor.
+ *
+ * Las clases CSS (.pk-eff, .pk-effline, .pk-warn, .pk-none) ya existen desde M1. */
+var EFF_SEC = {
+  coste: 'Que pagas', obj: 'A quien va', eff: 'Que hace',
+  fin: 'Cuando acaba', modo: 'Condiciones'
+};
+/* Las 48 familias de mecanica que declara el dataset (45 mecánicas + 3 sinPseudo). */
+var KIND_ES = {
+  illu_special: 'Poder especial de Illuminati', align_edit: 'Editar alineamientos',
+  align_rule: 'Regla de alineamiento', angst: 'Angustia', assassination: 'Asesinato',
+  attack_boost: 'Refuerzo de ataque', bodyguard: 'Guardia de corps', boost10: 'Refuerzo de +10',
+  bribery: 'Soborno', bulk_power: 'Cambio de Poder en bloque', computervirus: 'Virus informatico',
+  deck_manip: 'Manipulacion de mazo y robo', def_triple: 'Triplica la defensa',
+  dictatorship: 'Dictadura', disaster: 'Desastre', draw_hook: 'Robo por gancho',
+  dup_enabler: 'Habilita jugar un duplicado', embezzlement: 'Malversacion',
+  force_align: 'Forzar Alineamiento', force_discard_exposed: 'Descartar carta expuesta',
+  group_boost_timed: 'Refuerzo de grupo temporal', link_effect: 'Efecto ligado a una carta',
+  messiah: 'El Mesias', mistakenidentity: 'Identidad equivocada',
+  mothersmarch: 'La marcha de las madres', murphyslaw: 'La ley de Murphy',
+  peek_block: 'Mirar y bloquear', peek_expose: 'Mirar y exponer', peek_rob: 'Mirar y robar',
+  peek_steal: 'Mirar y robar la carta', power_increase: 'Aumentar Poder',
+  privileged_attack: 'Ataque Privilegiado', res_nullify: 'Anular Recurso',
+  resistance_increase: 'Aumentar Resistencia', resource_destroy: 'Destruir Recurso',
+  second_bullet: 'Segunda bala', stealing_the_plans: 'Robar los planos',
+  takeover_return: 'Devolver un Takeover', talisman: 'Talisman', timewarp: 'Distorsion temporal',
+  token_gift: 'Regalar action tokens', token_strip: 'Quitar action tokens',
+  token_wither: 'Action tokens marchitos', tripled_once: 'Triplicar una vez',
+  turn_start_block: 'Bloquear el inicio de turno', unverified: 'Mecanica sin mapear',
+  ability_unverified: 'Habilidad sin mapear', goal: 'Meta'
+};
+/* vEs: imprime cualquier valor del dataset en una sola linea legible. */
+function vEs(v) {
+  if (v == null) return '';
+  if (Array.isArray(v)) return v.map(function (x) { return vEs(x); }).join(', ');
+  if (typeof v === 'boolean') return v ? 'si' : 'no';
+  return String(v);
+}
+/* Una entrada de `moves` (las 19 variantes reales: align/aligns/attr/attrs + power/
+ * resistance + become/maxPower/notAligns/subtype/scaleBy). */
+function movedEs(m) {
+  var out = [];
+  if (m.aligns && m.aligns.length) out.push('grupos <b>' + esc(m.aligns.join(' + ')) + '</b>' + (m.match === 'all' ? ' a la vez' : ''));
+  else if (m.attrs && m.attrs.length) out.push('grupos con atributo <b>' + esc(m.attrs.join(' o ')) + '</b>');
+  else if (m.align) out.push('grupos <b>' + esc(m.align) + '</b>');
+  else if (m.attr) out.push('grupos con atributo <b>' + esc(m.attr) + '</b>');
+  else out.push('todos los grupos');
+  if (m.notAligns && m.notAligns.length) out.push('que <b>no</b> sean ' + esc(m.notAligns.join(' ni ')));
+  if (m.subtype) out.push('de subtipo ' + esc(m.subtype));
+  if (m.maxPower != null) out.push('con Poder maximo ' + m.maxPower);
+  if (m.become) out.push('pasan a <b>' + esc(m.become) + '</b>');
+  var d = [];
+  if (m.power != null) d.push((m.power >= 0 ? '+' : '') + m.power + ' Poder');
+  if (m.resistance != null) d.push((m.resistance >= 0 ? '+' : '') + m.resistance + ' Resistencia');
+  if (d.length) out.push(d.join(', '));
+  if (m.scaleBy) out.push('escalado por cada <b>' + esc(m.scaleBy.align || '') + '</b> tuyo (' + esc(m.scaleBy.count || 'propio') + ')');
+  return out.join(' · ');
+}
+function movesEs(v) { return (v || []).map(function (m) { return movedEs(m); }).join('<br>'); }
+/* `power` es numero o array de {value, ifAttr, ifNames}. */
+function powEs(v) {
+  if (typeof v === 'number') return (v >= 0 ? '+' : '') + v + ' Poder';
+  if (!Array.isArray(v)) return '';
+  return v.map(function (x) {
+    var t = [];
+    if (x.value != null) t.push((x.value >= 0 ? '+' : '') + x.value + ' Poder');
+    if (x.ifAttr) t.push('si el objetivo tiene atributo <b>' + esc(vEs(x.ifAttr)) + '</b>');
+    if (x.ifNames) t.push('si es <b>' + esc(vEs(x.ifNames)) + '</b>');
+    return t.join(' ');
+  }).join('<br>');
+}
+/* `bonus` es un OBJETO en el dataset (verificado: Array.isArray -> 0 cartas), pero se
+ * contemplan las dos formas por si el generador cambia. */
+function bonusEs(v) {
+  if (v == null) return '';
+  if (Array.isArray(v)) return v.map(function (b) { return bonusEs(b); }).join('<br>');
+  var out = [];
+  if (v.control != null) out.push('+<b>' + v.control + '</b> de Control');
+  if (v.destroy != null) out.push('+<b>' + v.destroy + '</b> al destruir');
+  if (v.anyDestroy != null) out.push('+<b>' + v.anyDestroy + '</b> ante cualquier destruccion');
+  if (v.targetAttr) out.push('contra atributo <b>' + esc(vEs(v.targetAttr)) + '</b>');
+  if (v.targetAlign) out.push('contra Alineamiento <b>' + esc(vEs(v.targetAlign)) + '</b>');
+  if (v.includesInstant) out.push('tambien contra Instant');
+  return out.join(' · ');
+}
+function altUseEs(v) {
+  if (!v || typeof v !== 'object') return 'uso alternativo: ' + esc(vEs(v));
+  var out = ['uso alternativo como <b>' + esc(v.kind || vEs(v)) + '</b>'];
+  if (v.targetAttr) out.push('contra atributo <b>' + esc(vEs(v.targetAttr)) + '</b>');
+  if (v.targetNames) out.push('contra <b>' + esc(vEs(v.targetNames)) + '</b>');
+  var b = bonusEs(v.bonus); if (b) out.push(b);
+  return out.join(' · ');
+}
+function onPlayEs(v) {
+  if (v && v.stripActionFromNames) return 'al jugarse, <b>' + esc(vEs(v.stripActionFromNames)) + '</b> pierde(n) su accion';
+  return 'al jugarse: ' + esc(vEs(v));
+}
+function destroyOnlyEs(v) {
+  if (!v || typeof v !== 'object') return 'solo destructivo: ' + esc(vEs(v));
+  var out = [];
+  if (v.aligns) out.push('solo puede destruir Alineamientos <b>' + esc(vEs(v.aligns)) + '</b>');
+  out.push('puede destruir un Illuminati rival: <b>' + (v.allowRivalIlluminati ? 'si' : 'no') + '</b>');
+  return out.join(' · ');
+}
+function boostBySubtypeEs(v) {
+  if (!v || typeof v !== 'object') return esc(vEs(v));
+  var out = [];
+  if (v.personality != null) out.push('+<b>' + v.personality + '</b> a Personality');
+  if (v.other != null) out.push('+<b>' + v.other + '</b> a los otros');
+  return out.join(' · ');
+}
+function defenseBonusEs(v) {
+  if (v && typeof v === 'object' && v.anyAttack != null) return 'defensa ante cualquier ataque: <b>+' + v.anyAttack + '</b>';
+  return 'defensa: <b>+' + esc(vEs(v)) + '</b>';
+}
+function hookEs(v) {
+  if (!v || typeof v !== 'object') return esc(vEs(v));
+  var out = [];
+  if (v.deck) out.push('al revelar el mazo: <b>' + esc(vEs(v.deck)) + '</b>');
+  if (v.pick != null) out.push('roba <b>' + v.pick + '</b>');
+  if (v.rest) out.push('el resto: <b>' + esc(vEs(v.rest)) + '</b>');
+  if (v.alt) out.push('alternativa: <b>' + esc(vEs(v.alt)) + '</b>');
+  return out.join(' · ');
+}
+/* Las 100 claves reales de `c.effect` (de 103; se excluyen `kind` = encabezado, `t` =
+ * texto impreso verbatim que ya sale arriba, y `code` = identificador interno del
+ * Illuminati). Formato: [clave, seccion, plantilla]; %s se sustituye por el valor
+ * escapado. El orden de las entradas es el orden en que se imprimen: coste, obj, eff,
+ * fin, modo. */
+var FIELD_ES = [
+  ['payAttr', 'coste', 'un <em>action token</em> de un grupo con atributo <b>%s</b>'],
+  ['payAttrAny', 'coste', 'un <em>action token</em> de un grupo con atributo <b>%s</b>'],
+  ['payAlign', 'coste', 'un <em>action token</em> de un grupo <b>%s</b>'],
+  ['payAnyGroup', 'coste', 'un <em>action token</em> de cualquier grupo'],
+  ['payPower', 'coste', 'un grupo con Poder <b>%s</b>'],
+  ['payMinPower', 'coste', 'un grupo con Poder minimo <b>%s</b>'],
+  ['payIllum', 'coste', 'una accion de tu Illuminati'],
+  ['payGroupAction', 'coste', 'la accion de un grupo'],
+  ['payShareAlign', 'coste', 'un grupo con el mismo Alineamiento que tu'],
+  ['payNotTheAttackers', 'coste', 'algo que no sean los grupos atacantes'],
+  ['illumToken', 'coste', 'un <em>action token</em> de tu Illuminati'],
+  ['illumTokenAll', 'coste', 'un <em>action token</em> de CADA uno de tus Illuminati'],
+  ['illumCode', 'coste', 'un <em>action token</em> del Illuminati <b>%s</b>'],
+  ['illumAction', 'coste', 'gasta la accion de tu Illuminati'],
+  ['actionTokens', 'coste', '<b>%s</b> action tokens'],
+  ['requireActionFromAttr', 'coste', 'la accion debe venir de un grupo con atributo <b>%s</b>'],
+  ['requiresActionFrom', 'coste', 'la accion debe venir de <b>%s</b>'],
+  ['needsAssassination', 'coste', 'ademas exige un Asesinato'],
+  ['requiresPlotDiscard', 'coste', 'ademas exige descartar un Plot'],
+  ['minPower', 'coste', 'un grupo con Poder minimo <b>%s</b>'],
+
+  ['target', 'obj', 'objetivo: <b>%s</b>'],
+  ['targetAttr', 'obj', 'solo grupos con atributo <b>%s</b>'],
+  ['targetAlign', 'obj', 'solo grupos <b>%s</b>'],
+  ['targetCardId', 'obj', 'solo la carta <b>%s</b>'],
+  ['targetSubtype', 'obj', 'solo subtipo <b>%s</b>'],
+  ['targetSubtypes', 'obj', 'solo subtipos: <b>%s</b>'],
+  ['giftAttr', 'obj', 'regala tokens a un grupo con atributo <b>%s</b>'],
+  ['giftAlign', 'obj', 'regala tokens a un grupo <b>%s</b>'],
+  ['stripAttr', 'obj', 'quita tokens a grupos con atributo <b>%s</b>'],
+  ['stripPlayers', 'obj', 'afecta a <b>%s</b> jugador(es)'],
+  ['witherAttr', 'obj', 'los grupos con atributo <b>%s</b> pierden sus tokens'],
+  ['atkType', 'obj', 'ataque de tipo <b>%s</b>'],
+  ['alignFromTarget', 'obj', 'toma el Alineamiento del objetivo'],
+  ['addAlign', 'obj', 'añade el Alineamiento <b>%s</b>'],
+
+  ['value', 'eff', 'valor <b>%s</b>'],
+  ['boostValue', 'eff', 'bonificacion <b>%s</b>'],
+  ['boostVsDictatorship', 'eff', 'bonificacion contra Dictadura: <b>%s</b>'],
+  ['boostBySubtype', 'eff', boostBySubtypeEs],
+  ['mul', 'eff', 'multiplica por <b>%s</b>'],
+  ['stat', 'eff', 'estadistica afectada: <b>%s</b>'],
+  ['power', 'eff', powEs],
+  ['moves', 'eff', movesEs],
+  ['bonus', 'eff', bonusEs],
+  ['destroyBonus', 'eff', 'defensa contra destruccion: <b>+%s</b>'],
+  ['assassinationBonus', 'eff', 'defensa contra Asesinato: <b>+%s</b>'],
+  ['defenseBonus', 'eff', defenseBonusEs],
+  ['destroyMargin', 'eff', 'margen de destruccion <b>%s</b>'],
+  ['baseBonus', 'eff', 'bonificacion base <b>%s</b>'],
+  ['perChurch', 'eff', '<b>%s</b> por cada Iglesia que controles'],
+  ['churchAttr', 'eff', 'cuenta como Iglesia si tiene el atributo <b>%s</b>'],
+  ['grantAttr', 'eff', 'concede el atributo <b>%s</b>'],
+  ['forceAlign', 'eff', 'fuerza el Alineamiento a <b>%s</b>'],
+  ['alignMag', 'eff', 'trata a los grupos <b>%s</b> como si fueran Magia'],
+  ['align', 'eff', 'afecta a grupos <b>%s</b>'],
+  ['dupOf', 'eff', 'permite jugar un duplicado de <b>%s</b>'],
+  ['drawPlot', 'eff', 'roba <b>%s</b> Plot(s)'],
+  ['drawPlotAtStart', 'eff', 'roba un Plot al empezar tu turno'],
+  ['drawPlotOnDestroy', 'eff', 'al destruirla, roba un Plot'],
+  ['maxTotal', 'eff', 'maximo <b>%s</b> en total'],
+  ['bonusMaxPerGroup', 'eff', 'maximo <b>%s</b> de bonus por grupo'],
+  ['burnMax', 'eff', 'quema como maximo <b>%s</b> cartas'],
+  ['canExposeAll', 'eff', 'puede exponer todas las cartas secretas'],
+  ['canTakeResource', 'eff', 'puede tomar tambien un Recurso'],
+  ['handTypes', 'eff', 'solo cartas de mano de tipo: <b>%s</b>'],
+  ['addSummonerPower', 'eff', 'el convocante suma <b>%s</b> de Poder'],
+  ['border', 'eff', 'afecta al umbral de <b>%s</b>'],
+  ['per', 'eff', 'por cada <b>%s</b> se resuelve otra vez'],
+  ['scope', 'eff', 'alcance: <b>%s</b>'],
+
+  ['untilNextTurn', 'fin', 'el efecto dura hasta el proximo turno'],
+  ['untilCurrentTurn', 'fin', 'el efecto dura solo hasta el final de este turno'],
+  ['mode', 'fin', 'modo de lasting: <b>%s</b>'],
+
+  ['instant', 'modo', 'es <b>Instant</b>: se responde antes de que resuelva'],
+  ['anyTime', 'modo', 'puede jugarse en cualquier momento'],
+  ['ownTurn', 'modo', 'solo en tu propio turno'],
+  ['ownToo', 'modo', 'tambien puede aplicarse a tus propios grupos'],
+  ['illumOnly', 'modo', 'solo lo puede usar tu propio Illuminati'],
+  ['illumOrSecretAlign', 'modo', 'tu Illuminati o un Alineamiento secreto'],
+  ['notDuringPrivileged', 'modo', 'no durante un Ataque Privilegiado'],
+  ['noDictatorship', 'modo', 'no funciona contra Dictadura'],
+  ['destroyOnly', 'modo', destroyOnlyEs],
+  ['onPlay', 'modo', onPlayEs],
+  ['hook', 'modo', hookEs],
+  ['altUse', 'modo', altUseEs],
+  ['rejectAttr', 'modo', 'rechaza objetivos con atributo <b>%s</b>'],
+  ['requireAttr', 'modo', 'el objetivo debe tener el atributo <b>%s</b>'],
+  ['requireAttrAny', 'modo', 'el objetivo debe tener uno de estos atributos: <b>%s</b>'],
+  ['victimMayBeAided', 'modo', 'la victima puede recibir ayuda al ser atacada'],
+  ['attackIsMagic', 'modo', 'cuenta como ataque Magia'],
+  ['magicOnlyIfCasterHasMagic', 'modo', 'solo cuenta como Magia si el atacante tiene <b>%s</b>'],
+  ['mayAddPowerFromAligns', 'modo', 'puede anadir Poder de sus Alineamientos'],
+  ['alsoBlocks', 'modo', 'ademas bloquea el ataque rival'],
+  ['privilegedPerTurn', 'modo', 'Ataque Privilegiado <b>%s</b> vez por turno'],
+  ['keepOnFailedControl', 'modo', 'permanece en juego aunque falle el Control'],
+  ['organizeAtEndOfTurn', 'modo', 'reorganizas al final de cada turno'],
+  ['immuneToAligns', 'modo', 'inmune a estos Alineamientos: <b>%s</b>'],
+  ['plotHandLimit', 'modo', 'limita tu mano a <b>%s</b> Plot(s)'],
+  ['tokensNotSameAttack', 'modo', 'los tokens no cuentan para el mismo ataque'],
+  ['twice', 'modo', 'se resuelve dos veces'],
+  ['addPerRivalNamed', 'modo', 'Poder extra por rival nombrado (<b>%s</b>)']
+];
+var FIELD_MAP = {};
+for (var _fi = 0; _fi < FIELD_ES.length; _fi++) FIELD_MAP[FIELD_ES[_fi][0]] = true;
+/* Las 5 familias de meta de los Illuminati y sus 9 claves reales (`double` es objeto). */
+var GOAL_ES = {
+  basic: 'Meta basica', power_total: 'Suma total de Poder',
+  destroy_reduce: 'La meta baja al destruir', peaceful_power_in_play: 'Poder Pacifico en juego',
+  goal_cards: 'Cartas de meta'
+};
+var GOAL_FIELD = {
+  magicResourceCountsAsGroup: 'cada Recurso Magia cuenta como un grupo',
+  total: 'total: <b>%s</b>',
+  needEachAlign: 'necesitas al menos un grupo de cada Alineamiento',
+  reducePerDestroy: '<b>%s</b> menos por destruccion',
+  winAt: 'ganas en <b>%s</b>',
+  sharedVictory: 'victoria compartida',
+  max: 'maximo <b>%s</b> cartas de meta'
+};
+function doubleEs(v) {
+  if (!v || typeof v !== 'object') return 'doble: <b>' + esc(vEs(v)) + '</b>';
+  var out = ['grupo duplicado'];
+  if (v.align) out.push('Alineamiento <b>' + esc(v.align) + '</b>');
+  if (v.attr) out.push('atributo <b>' + esc(v.attr) + '</b>');
+  if (v.powerAtLeast != null) out.push('con Poder minimo <b>' + v.powerAtLeast + '</b>');
+  return out.join(' · ');
+}
+function goalHtml(c) {
+  var g = c.goal;
+  if (!g || !g.type) return '';
+  var h = '<div class="pk-eff">META · ' + esc(GOAL_ES[g.type] || g.type) + '</div>';
+  var lines = [];
+  Object.keys(GOAL_FIELD).forEach(function (k) {
+    if (g[k] == null) return;
+    lines.push('<div class="pk-effline"><em>Objetivo</em> ' + GOAL_FIELD[k].replace('%s', esc(vEs(g[k]))) + '</div>');
+  });
+  if (g.double != null) lines.push('<div class="pk-effline"><em>Objetivo</em> ' + doubleEs(g.double) + '</div>');
+  Object.keys(g).forEach(function (k) {
+    if (k === 'type' || k === 'double' || GOAL_FIELD[k]) return;
+    lines.push('<div class="pk-effline"><em>Objetivo</em> <b>' + esc(k) + '</b> = ' + esc(vEs(g[k])) + '</div>');
+  });
+  return h + lines.join('');
+}
+/* Desglose de la carta. Solo imprime lo que la carta TIENE: una clave ausente no produce
+ * ninguna linea. try/catch por entrada para que un valor inesperado no rompa la capa. */
+function effHtml(c) {
+  var e = c.effect;
+  if (!e || !e.kind) return goalHtml(c);
+  var h = '<div class="pk-eff">MECANICA · ' + esc(KIND_ES[e.kind] || e.kind) + '</div>';
+  var seen = {}, lines = [];
+  for (var i = 0; i < FIELD_ES.length; i++) {
+    var k = FIELD_ES[i][0];
+    if (!Object.prototype.hasOwnProperty.call(e, k)) continue;
+    var v = e[k];
+    if (v == null || v === false) continue;
+    var txt = '';
+    try { txt = typeof FIELD_ES[i][2] === 'function' ? FIELD_ES[i][2](v, e, c) : String(FIELD_ES[i][2]).replace('%s', esc(vEs(v))); }
+    catch (err) { txt = esc(vEs(v)); }
+    if (!txt) continue;
+    var line = '<div class="pk-effline"><em>' + EFF_SEC[FIELD_ES[i][1]] + '</em> ' + txt + '</div>';
+    if (!seen[line]) { seen[line] = 1; lines.push(line); }
+  }
+  /* Ningun dato oculto: lo que la tabla no declare sale con su nombre crudo. */
+  Object.keys(e).forEach(function (k) {
+    if (k === 'kind' || k === 't' || k === 'code' || FIELD_MAP[k]) return;
+    lines.push('<div class="pk-effline"><em>' + EFF_SEC.eff + '</em> <b>' + esc(k) + '</b> = ' + esc(vEs(e[k])) + '</div>');
+  });
+  return h + lines.join('') + goalHtml(c);
+}
+/* Aviso HONESTO del estado real de la mecanica en el motor (leido de mechanicsStatus). */
+function statusHtml(c) {
+  var h = '', k = c.effect && c.effect.kind, s = c.mechanicsStatus;
+  if (s === 'unverified' || k === 'unverified')
+    h += '<div class="pk-warn">&#9888; <b>Mecanica pendiente de mapear</b> en el motor.</div>';
+  else if (s === 'source-text-unmapped')
+    h += '<div class="pk-warn">&#9888; El texto de fuente todavia no esta mapeado a una mecanica.</div>';
+  else if (k === 'ability_unverified' || s === 'ability_unverified')
+    h += '<div class="pk-warn">&#9888; <b>Habilidad pendiente de mapear</b> en el motor.</div>';
+  else if (s === 'implemented-pending-engine')
+    h += '<div class="pk-warn">&#9888; Mecanica mapeada en los datos. La marca del dataset dice que el motor aun no la ejecuta, pero esa marca puede ir retrasada respecto al motor.</div>';
+  if (c.estimated)
+    h += '<div class="pk-none">Valores estimados a partir del OCR de la imagen, sin confirmar con la fuente oficial.</div>';
+  if (!h && !(c.effect && c.effect.kind) && !(c.goal && c.goal.type))
+    h += '<div class="pk-none">El dataset no declara ninguna mecanica para esta carta.</div>';
+  return h;
+}
 var PEEK_CIX = null;
 function peekEl() {
   var el = $('cardPeek');
@@ -1349,7 +1684,10 @@ function peekHtml(c) {
   var body = txt ? '<div class="pk-text">' + esc(txt) + '</div>'
     : '<div class="pk-none">&#128214; Esta carta no tiene texto OCR en el dataset. '
       + 'El texto oficial esta impreso en la imagen de la carta.</div>';
-  return head + body;
+  /* P1-074 (M3): debajo del texto impreso, el desglose de la mecanica (que paga, a quien
+   * va, que hace, cuando acaba, condiciones) leido de los campos estructurados del
+   * dataset, mas el aviso honesto del estado de esa mecanica en el motor. */
+  return head + body + effHtml(c) + statusHtml(c);
 }
 function peekShow(cix) {
   if (cix == null) return;

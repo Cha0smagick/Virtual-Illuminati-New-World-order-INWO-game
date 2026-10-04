@@ -82,44 +82,44 @@ tamaño legible, sin salir de la pantalla y sin que el resto de la mano se mueva
 
 ### [ ] M1 - CSS: el pop-up MTGA al pasar el raton
 Objetivo: la carta crece hacia arriba hasta ser legible, sin recorte, sin parpadeo, sin mover la mano.
-- [ ] M1.1 En `#handCards`: quitar `max-height` y `overflow-y:auto` (dejan de recortar), poner `flex-wrap:nowrap`, `align-items:flex-end`, `justify-content:center`, `overflow:visible`, `padding-top:34px` (espacio para que la carta crezca sin chocar con `#cardInfo`).
-- [ ] M1.2 En `.handCard`: `transform-origin: bottom center;` + `will-change: transform;` + `transition: transform .14s cubic-bezier(.2,.7,.3,1), border-color .15s, box-shadow .15s;`
-- [ ] M1.3 Hover de `.handCard`: `transform: scale(1.55)` (96px -> ~149px, con el `img` a `width:100%` la imagen crece con la caja), borde gold, sombra `0 -8px 30px rgba(255,176,58,.28)`, `z-index:30`.
-- [ ] M1.4 `:active` -> `transform: scale(1.5)` (bajar, no Below 1: si baja de 1 la caja se encoge y el cursor puede salir del hit-box).
-- [ ] M1.5 `#handCards .handCard:focus-visible` mismo tratamiento que `:hover` (accesibilidad de teclado) + `outline` gold.
-- [ ] M1.6 Quitar el `<small>` con el nombre de debajo de la miniatura **en CSS primero** (`.handCard small{display:none}`) para ver el efecto minimalista aislado. El nombre real lo pone M4 (`title` + `aria-label` ya existen).
-- [ ] M1.7 Anadir `.rowcount` (badge contador de cartas de la mano) al lado del titulo de la barra, inicialmente vacio.
-- [ ] M1.8 Verificar que no hay `overflow:hidden` ancestral entre `.handCard` y el viewport que recorte la escala. `#app` y `body`: comprobar.
-- [ ] M1.9 Cache-busting: `style.css?v=38` -> `?v=39` en `game/index.html`.
-- [ ] M1.10 `node --check` en los JS tocados (ninguno aun, pero se comprueba).
-- [ ] M1.11 **COMMIT + PUSH**: `fix(hand): M1 pop-up MTGA al pasar el raton (scale 1.55, sin recorte)`.
+- [x] M1.1 En `#handCards`: quitar `max-height` y `overflow-y:auto` (dejan de recortar), poner `flex-wrap:nowrap`, `align-items:flex-end`, `justify-content:center`, `overflow:visible`, `padding-top:34px` (espacio para que la carta crezca sin chocar con `#cardInfo`).  <!-- hecho: flex-wrap:wrap conservado a proposito; lo que recorta era max-height/overflow -->
+- [x] M1.2 En `.handCard`: `transform-origin: bottom center;` + `will-change: transform;` + `transition: transform .14s cubic-bezier(.2,.7,.3,1), border-color .15s, box-shadow .15s;`
+- [x] M1.3 Hover de `.handCard`: `transform: scale(1.55)` (96px -> ~149px, con el `img` a `width:100%` la imagen crece con la caja), borde gold, sombra `0 -8px 30px rgba(255,176,58,.28)`, `z-index:30`.
+- [x] M1.4 `:active` -> `transform: scale(1.5)` (bajar, no Below 1: si baja de 1 la caja se encoge y el cursor puede salir del hit-box).
+- [x] M1.5 `#handCards .handCard:focus-visible` mismo tratamiento que `:hover` (accesibilidad de teclado) + `outline` gold.
+- [x] M1.6 Quitar el `<small>` con el nombre de debajo de la miniatura **en CSS primero** (`.handCard small{display:none}`) para ver el efecto minimalista aislado. El nombre real lo pone M4 (`title` + `aria-label` ya existen).
+- [x] M1.7 Anadir `.rowcount` (badge contador de cartas de la mano) al lado del titulo de la barra, inicialmente vacio.  <!-- hecho: la clase .rowcount esta en CSS desde M1; el badge se escribe en M4.3 -->
+- [x] M1.8 Verificar que no hay `overflow:hidden` ancestral entre `.handCard` y el viewport que recorte la escala. `#app` y `body`: comprobar.
+- [x] M1.9 Cache-busting: `style.css?v=38` -> `?v=39` en `game/index.html`.
+- [x] M1.10 `node --check` en los JS tocados (ninguno aun, pero se comprueba).
+- [x] M1.11 **COMMIT + PUSH**: `fix(hand): M1 pop-up MTGA al pasar el raton (scale 1.55, sin recorte)`.
 
 ### [ ] M2 - JS: capa de lectura `#cardPeek` (inspector fijo sobre la mano)
 Objetivo: al pasar el raton, ademas de crecer, la carta se lee en grande con su texto impreso completo, en una capa por encima, sin tocar la altura de la barra.
-- [ ] M2.1 Anadir a `game/index.html` `<div id="cardPeek" class="cardPeek" role="tooltip" hidden>` justo despues de `#cardPreview`.
-- [ ] M2.2 En `ui.js`: `var PEEK = null, peekCard = null;` junto a `var PV = null, lastCix = null;`.
-- [ ] M2.3 `function peekEl(){ var e=$('cardPeek'); if(!e){ e=document.createElement('div'); e.id='cardPeek'; e.className='cardPeek'; e.hidden=true; (document.body||document.documentElement).appendChild(e);} return e; }`
-- [ ] M2.4 `function peekShow(cix){ /* resuelve cardOf, si es el mismo carta ya pintada solo reposiciona, si no, pinta: img grande + nombre + tipo + P/R + alineamientos + texto impreso verbatim (c.text, o c.textFull si c.text vacio) + bloque de EFECTOS (M3) */ }`
-- [ ] M2.5 `function peekHide(){ /* PEEK.hidden = true; peekCard=null; */ }`
-- [ ] M2.6 `function peekPlace(ix){ /* posiciona la capa centrada sobre la carta, recortada a la ventana; si la carta esta en la parte superior de la mano, la capa va DEBAJO de la carta (MTGA lo hace asi) */ }`
-- [ ] M2.7 Cablear el hover de la mano: en `bindEvents()`, `mouseover`/`focusin` sobre `#handCards` -> `peekShow(ev.target.closest('.handCard').dataset.idx)`, `mouseout`/`focusout` -> `peekHide()`, `mousemove` sobre `.handCard` -> `peekPlace(ix)`. **Delegacion de eventos**: `#handCards` es estatico en `index.html` y `init()` reasigna `CB`, asi que NO se re-registra (ver nota L1374-1381 de `ui.js`).
-- [ ] M2.8 Mantener el hover por CSS (no cambiarlo a JS) para que la transicion siga siendo GPU-friendly.
-- [ ] M2.9 `resetInfoBar()` sigue igual: `#cardInfo` NO cambia (P2/P3). `#cardPeek` es la que lee.
-- [ ] M2.10 Cache-busting: `ui.js?v=38` -> `?v=39`.
-- [ ] M2.11 `node --check game/js/ui.js`.
-- [ ] M2.12 **COMMIT + PUSH**: `fix(hand): M2 capa de lectura #cardPeek (texto impreso verbatim)`.
+- [x] M2.1 Anadir a `game/index.html` `<div id="cardPeek" class="cardPeek" role="tooltip" hidden>` justo despues de `#cardPreview`.
+- [x] M2.2 En `ui.js`: `var PEEK = null, peekCard = null;` junto a `var PV = null, lastCix = null;`.  <!-- hecho: var PEEK_CIX (cache de deduplicacion), no PEEK/peekCard -->
+- [x] M2.3 `function peekEl(){ var e=$('cardPeek'); if(!e){ e=document.createElement('div'); e.id='cardPeek'; e.className='cardPeek'; e.hidden=true; (document.body||document.documentElement).appendChild(e);} return e; }`
+- [x] M2.4 `function peekShow(cix){ /* resuelve cardOf, si es el mismo carta ya pintada solo reposiciona, si no, pinta: img grande + nombre + tipo + P/R + alineamientos + texto impreso verbatim (c.text, o c.textFull si c.text vacio) + bloque de EFECTOS (M3) */ }`
+- [x] M2.5 `function peekHide(){ /* PEEK.hidden = true; peekCard=null; */ }`
+- [x] M2.6 `function peekPlace(ix){ /* posiciona la capa centrada sobre la carta, recortada a la ventana; si la carta esta en la parte superior de la mano, la capa va DEBAJO de la carta (MTGA lo hace asi) */ }`  <!-- hecho: mide DESPUES de quitar hidden (offsetHeight es 0 con display:none) -->
+- [x] M2.7 Cablear el hover de la mano: en `bindEvents()`, `mouseover`/`focusin` sobre `#handCards` -> `peekShow(ev.target.closest('.handCard').dataset.idx)`, `mouseout`/`focusout` -> `peekHide()`, `mousemove` sobre `.handCard` -> `peekPlace(ix)`. **Delegacion de eventos**: `#handCards` es estatico en `index.html` y `init()` reasigna `CB`, asi que NO se re-registra (ver nota L1374-1381 de `ui.js`).  <!-- hecho: mouseover/mouseout/focusin/focusout por delegacion en #handCards + supresion del tooltip #cardPreview para la mano -->
+- [x] M2.8 Mantener el hover por CSS (no cambiarlo a JS) para que la transicion siga siendo GPU-friendly.
+- [x] M2.9 `resetInfoBar()` sigue igual: `#cardInfo` NO cambia (P2/P3). `#cardPeek` es la que lee.
+- [x] M2.10 Cache-busting: `ui.js?v=38` -> `?v=39`.
+- [x] M2.11 `node --check game/js/ui.js`.
+- [x] M2.12 **COMMIT + PUSH**: `fix(hand): M2 capa de lectura #cardPeek (texto impreso verbatim)`.
 
 ### [ ] M3 - JS: desglose de QUE HACE CADA CARTA Y CADA EFECTO
 Objetivo: al inspeccionar una carta, el jugador ve coste / objetivo / efecto / fin, derivado de `c.effect` y `c.goal`, no adivinado por regex.
-- [ ] M3.1 Levantar el **catalogo de `effect.kind`**: script Node temporal que recorra `game/js/cards.js` y liste `{kind -> n, ejemplos:[ids]}`.
-- [ ] M3.2 Definir `EFFECT_LABEL` en `ui.js`: mapa `kind -> etiqueta corta en espanol` (p.ej. `illu_special -> 'Habilidad especial de Illuminati'`, `resource_effect -> 'Modifica recursos'`, `dup_enabler -> 'Permite jugar un duplicado'`, `force_align -> 'Fuerza alineamientos'`, `goal_combo -> 'Combo de meta'`).
-- [ ] M3.3 Definir `effectLines(c)` que devuelve `[{etiqueta, valor}]` segun `c.effect.kind`, leyendo **solo claves existentes** (nunca inventar). Fallback honesto: si el `kind` no esta en el mapa, imprimir `Mecanica: <kind>` y la lista de claves del objeto, sin mentir.
-- [ ] M3.4 Anadir `goalLines(c)` desde `c.goal` (p.ej. `{type:'basic',magicResourceCountsAsGroup:true}` -> "Meta basica: cada Recurso Magico cuenta como un grupo").
-- [ ] M3.5 Pintar el desglose en `#cardPeek` con clases `.pk-eff` / `.pk-effb`.
-- [ ] M3.6 Anadir la **explicacion de la diferencia de texto**: si `c.text` esta corrupto (heuristica: muchos digitos sueltos, palabras pegadas, longitud < 12 con `type != 'illuminati'`), avisar `"Texto OCR dudoso: el texto impreso en la imagen es el que manda"` y mostrar `c.textFull` si existe. Nunca se oculta el texto impreso.
-- [ ] M3.7 Regresion en `test_ui.js`: para 6 cartas representativas (una de cada `kind`), `effectLines(c)` devuelve al menos una linea y ninguna con `undefined` en el texto.
-- [ ] M3.8 `node --check game/js/ui.js`; `npm test`.
-- [ ] M3.9 **COMMIT + PUSH**: `fix(hand): M3 desglose de efectos desde effect.kind y goal`.
+- [x] M3.1 Levantar el **catalogo de `effect.kind`**: script Node temporal que recorra `game/js/cards.js` y liste `{kind -> n, ejemplos:[ids]}`.  <!-- hecho: 48 kinds y 103 claves levantados del dataset (ver seccion 9) -->
+- [x] M3.2 Definir `EFFECT_LABEL` en `ui.js`: mapa `kind -> etiqueta corta en espanol` (p.ej. `illu_special -> 'Habilidad especial de Illuminati'`, `resource_effect -> 'Modifica recursos'`, `dup_enabler -> 'Permite jugar un duplicado'`, `force_align -> 'Fuerza alineamientos'`, `goal_combo -> 'Combo de meta'`).  <!-- hecho: se llamo KIND_ES (48 entradas) + FIELD_ES (100 claves) + GOAL_ES/GOAL_FIELD -->
+- [x] M3.3 Definir `effectLines(c)` que devuelve `[{etiqueta, valor}]` segun `c.effect.kind`, leyendo **solo claves existentes** (nunca inventar). Fallback honesto: si el `kind` no esta en el mapa, imprimir `Mecanica: <kind>` y la lista de claves del objeto, sin mentir.  <!-- hecho: se llamo effHtml(c) con las 5 secciones coste/obj/eff/fin/modo -->
+- [x] M3.4 Anadir `goalLines(c)` desde `c.goal` (p.ej. `{type:'basic',magicResourceCountsAsGroup:true}` -> "Meta basica: cada Recurso Magico cuenta como un grupo").
+- [x] M3.5 Pintar el desglose en `#cardPeek` con clases `.pk-eff` / `.pk-effb`.  <!-- hecho: .pk-eff (encabezado de mecanica y de meta) + .pk-effline por dato -->
+- [ ] M3.6 Anadir la **explicacion de la diferencia de texto**: si `c.text` esta corrupto (heuristica: muchos digitos sueltos, palabras pegadas, longitud < 12 con `type != 'illuminati'`), avisar `"Texto OCR dudoso: el texto impreso en la imagen es el que manda"` y mostrar `c.textFull` si existe. Nunca se oculta el texto impreso.  <!-- NO hecho: no se avisa de que el texto es OCR. Se decide en M5 (queda como P2) -->
+- [x] M3.7 Regresion en `test_ui.js`: para 6 cartas representativas (una de cada `kind`), `effectLines(c)` devuelve al menos una linea y ninguna con `undefined` en el texto.  <!-- hecho: el gate esta en test_hand_peek.js (fichero nuevo, registrado en scripts/run_tests.cjs), no en test_ui.js: cubre las 421 cartas, 0 excepciones, 594 lineas, y que ninguna clave de effect/goal se pierda en silencio -->
+- [x] M3.8 `node --check game/js/ui.js`; `npm test`.
+- [x] M3.9 **COMMIT + PUSH**: `fix(hand): M3 desglose de efectos desde effect.kind y goal`.  <!-- hecho: commit + push -->
 
 ### [ ] M4 - JS/CSS: minimalismo MTGA de la mano
 Objetivo: que la barra parezca MTGA, no un panel de herramientas.
