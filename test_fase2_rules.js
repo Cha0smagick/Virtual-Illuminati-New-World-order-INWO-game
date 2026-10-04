@@ -6456,6 +6456,308 @@ ok(!!noPay400 && /Poder/.test(noPay400), 'L12 400 RECHAZA el pago insuficiente c
 ok(copiesInHandL12(0, IX.weaklink) === 1 && E._raw().players[0].resources.length === 0,
    'L12 400 el pago insuficiente NO MUTA NADA: la carta sigue en la mano y no se ha colocado ningun Resource');
 
+/* ============ L13 - DEFENSA CONTRA DISASTRES (243, 410, 188, 244, 245) ============ */
+/* P1-088..P1-091. Fixtures propios del lote. LECCION de P1-078: el reparto inicial es
+ * ALEATORIO, asi que todo lo que se mete en la mano PURGA antes y los asertos cuentan
+ * por el uid CONCRETO o por delta, nunca por numero absoluto de cartas.
+ * LECCION de P1-086: E._raw().players[pid].resources es un ARRAY VIVO, asi que de ahi
+ * solo se lee, nunca se guarda la referencia para usarla despues de un splice.
+ *
+ * POR QUE NO SE AFIRMA LA ARITMETICA (str = power - defPower - pos): announcePlot-
+ * InstantAttack, applyPlotInstantAttackRoll, defenderPower y destroyDefenseBonus NO
+ * estan exportadas en E. Todo lo que se afirma aqui es el EFECTO OBSERVABLE que deja
+ * el motor: nd.devastated, la AUSENCIA del uid cuando el grupo se destruye, y las
+ * lineas del REGISTRO. Se juega la carta de verdad, con el MISMO dado y el MISMO
+ * Poder, y lo unico que cambia entre los dos lados del contraste es la carta de L13.
+ *
+ * NUMEROS MEDIDOS (no supuestos): roll2d6() = d6()+d6() y d6() = 1+floor(rand*6), asi
+ * que con Math.random fijo r: 0.20 -> 4, 0.40 -> 6, 0.50 -> 8, 0.75 -> 10. Ojo: 11 y 12
+ * SIEMPRE fallan (motor: 'FALLO automatico (11-12 siempre fallan)'), asi que ningun
+ * contraste puede depender de un 11 o un 12. positionBonus() da 10 en depth 1, 5 en
+ * depth 2 y 0 a partir de depth 3: por eso los Places de estos escenarios se plantan
+ * con TRES niveles (g1 -> g2 -> pX), para que pos=0 y el contraste sea solo de la
+ * defensa. Dinosaur Park (idx 32) tiene Poder 1 y NO tiene 'huge', que es lo que
+ * necesitan Tornado y Meteor Strike (Tornado RECHAZA los objetivos con 'huge');
+ * Brazil (idx 12) tiene Poder 5 y SI tiene 'huge' (para Earthquake y Volcano). */
+
+  /* Devuelve el nodo VIVO por uid, o null si ya no esta (destruido). Recorre el arbol
+   * entero: es el unico modo de observar un destroyBonus o un devastated sin tocar el
+   * motor. */
+  function nodeByUidL13(pid, uid) {
+    var stack = [E._raw().players[pid].structure];
+    while (stack.length) {
+      var n = stack.pop();
+      if (n.uid === uid) return n;
+      for (var i = 0; i < n.children.length; i++) stack.push(n.children[i]);
+    }
+    return null;
+  }
+  /* Planta un nodo DENTRO del nodo parentUid (null = raiz). El plant() de siempre mete
+   * en la raiz, o sea depth 1, y depth 1 trae +10 de positionBonus que ahogaria el
+   * contraste. Este helper es el que permite depth 3. */
+  function plantAtL13(pid, parentUid, uid, cardId, tokens) {
+    var parent = parentUid ? nodeByUidL13(pid, parentUid) : E._raw().players[pid].structure;
+    if (!parent) return null;
+    var node = { uid: uid, cardId: cardId, children: [], tokens: tokens };
+    parent.children.push(node);
+    return node;
+  }
+  /* Inserta N copias en la mano PURGANDO antes (leccion de P1-078). El mazo real tiene
+   * una sola copia, pero el fixture puede meter las que necesite: lo que se prueba es
+   * el efecto de la carta, no la distribucion del mazo. */
+  function toHandXL13(pid, cardId, times) {
+    var h = E._raw().players[pid].hand;
+    for (var k = h.length - 1; k >= 0; k--) if (h[k] === cardId) h.splice(k, 1);
+    for (var j = 0; j < (times || 1); j++) h.push(cardId);
+    return times || 1;
+  }
+  /* Fija Math.random para que roll2d6() sea determinista. 0.20->4  0.40->6  0.50->8
+   * 0.75->10. Devuelve el restaurador (mismo patron que forceD6 de L12). */
+  function force2d6L13(r) {
+    var real = Math.random;
+    Math.random = function () { return r; };
+    return function () { Math.random = real; };
+  }
+  /* REGLA 14 de plan.md: nunca log[length-1] (jugar una Plot abre VENTANA DE SUCESO
+   * ABIERTA) y en el motor el registro son OBJETOS {t,p,msg}, no strings. */
+  function logHasL13(re) {
+    return (E.getState().log || []).some(function (x) { return re.test(x.msg || String(x)); });
+  }
+  function logTailL13(n) {
+    return JSON.stringify((E.getState().log || []).slice(-(n || 3)).map(function (x) { return x.msg || String(x); }));
+  }
+  /* Parse del indice de las cartas del lote y de los ayudantes de los escenarios. */
+  var C13 = {
+    ew: 243, aid: 410, air: 188, earth: 244, proj: 245,
+    tornado: 404, meteor: 313, quake: 246, volcano: 409, kudzu: 267,
+    placeSoft: 32,   /* Dinosaur Park, Poder 1, SIN huge: Tornado y Meteor Strike */
+    placeHuge: 12,   /* Brazil, Poder 5, CON huge: Earthquake (power 12) y Tornado NO lo aceptan */
+    p3: 18,        /* Center for Disease Control, Poder 3, SIN atributos: el unico medido que Volcano (rejectAttr huge) acepta */
+    grpMagic: 140,   /* Stonehenge, Poder 3, CON magic: paga el "Magic Action" de 188 y hace de contenedor */
+    grpBig: 148      /* Texas, Poder 14, SIN magic: el que 244 NO debe dejar oponerse */
+  };
+
+  /* ownMainTurnL12() DEVUELVE true en el acto si P0 ya esta en su turno principal, y
+   * por eso no avanza nada. Para el Relief de 410 hace falta pasar por el turno del
+   * rival y volver: hasta que S.turn no llega a reliefPending.untilTurn (= el turno en
+   * que se creo + 1) el Relief no puede dispararse. Este ayudante FUERZA ese ciclo. */
+  function nextOwnTurnL13() { E.endTurn(); return ownMainTurnL12(); }
+  /* Un Disaster que ACIERTA puede abrir VENTANA DE REACCION (reactionWindowOpen):
+   * E.playPlot guarda S.pendingAttack y NO aplica nada hasta que alguien la cierre.
+   * Sin este ayudante, leer nd.devastated justo despues de jugar el Disaster es una
+   * LOTERIA: dependia de si el rival tenia o no una carta de reaccion que ofrecer.
+   * MEDIDO en la corrida de 30: 9 de 30 fallaron por eso, y siempre con el mismo
+   * par de aserciones (el Tornado que devasta, y el Meteor Strike de 410).
+   * E.resolvePendingAttack() tira los dados y aplica el ataque (asi lo usa el test de
+   * P1-016). Es IDEMPOTENTE: si no hay ventana devuelve un motivo y no lanza, asi que
+   * se puede llamar siempre despues de un Disaster sin comprobar nada antes. */
+  function settleL13() { try { E.resolvePendingRoll(); } catch (e) { return String((e && e.message) || e); } try { E.resolvePendingAttack(); } catch (e2) { return String((e2 && e2.message) || e2); } return ''; }
+  /* Arranque de partido + turno principal de P0, igual que en L12. */
+  function beginL13() {
+    fresh('adeptsofhermes1', 'servantsofcthulhu1');
+    return ownMainTurnL12();
+  }
+
+  /* Un Place con depth 3, para que positionBonus sea 0 (con depth 1 el +10 de posicion
+   * ahogaria todos los contrastes). Los dos grupos-contenedor van con tokens 0 y el PLACE
+   * TAMBIÉN con tokens 0: firstUsableAid() exige tokens>=1, asi que un contenedor o el propio
+   * Place que se opusieran contaminarian el contraste de 244. Los tokens del nodo no afectan
+   * a defPower (que usa curPower), solo a si puede gastar ficha: por eso A, B y E no cambian.
+   * Los grupos que SI deben oponerse o pagar un coste se plantan a mano con tokens 1. */
+  function stageL13(placeIdx, placeUid) {
+    plantAtL13(0, null, placeUid + '_g1', C13.grpMagic, 0);
+    plantAtL13(0, placeUid + '_g1', placeUid + '_g2', C13.grpMagic, 0);
+    plantAtL13(0, placeUid + '_g2', placeUid, placeIdx, 0);
+    return placeUid;
+  }
+
+  /* ---------- A - 243 EARLY WARNING: el criterio de aceptacion del LOTE ---------- */
+  /* El criterio de plan.md pide dos cosas: destroyBonus>=10 y un Disaster que
+   * habria fallado por 1 con margen real. Aqui se cumple con el MISMO dado, el MISMO
+   * Poder de Disaster y el MISMO Place: se juega Tornado dos veces contra dos Places
+   * identicos, y lo unico que cambia es que uno tiene los +10. No se afirma la
+   * aritmetica de str (que es interna y no esta exportada), se afirma el EFECTO. */
+  ok(beginL13(), 'L13 A el fixture deja a P0 en su turno principal');
+  stageL13(C13.placeSoft, 'pA');
+  stageL13(C13.placeSoft, 'pB');
+  toHandXL13(0, C13.ew, 1);
+  var costA13 = throwMsgL12(function () { E.playPlot(0, C13.ew, 'pB', {}); });
+  ok(!costA13, 'L13 243 Early Warning se juega eligiendo un Place -> ' + (costA13 || 'OK'));
+  var pA13 = nodeByUidL13(0, 'pA'), pB13 = nodeByUidL13(0, 'pB');
+  ok(pB13 && pB13.destroyBonus >= 10, 'L13 243 da +10 de DEFENSA al Place elegido -> destroyBonus=' + (pB13 ? String(pB13.destroyBonus) : 'PLACE AUSENTE'));
+  ok(pA13 && pA13.destroyBonus === undefined, 'L13 243 NO se aplica al otro Place (control del objetivo) -> destroyBonus=' + (pA13 ? String(pA13.destroyBonus) : 'AUSENTE'));
+  toHandXL13(0, C13.tornado, 2);
+  var rstA13 = force2d6L13(0.75);
+  E.playPlot(0, C13.tornado, 'pA', {});
+  settleL13();
+  var devA13 = !!(nodeByUidL13(0, 'pA') && nodeByUidL13(0, 'pA').devastated);
+  E.playPlot(0, C13.tornado, 'pB', {});
+  settleL13();
+  rstA13();
+  var devB13 = !!(nodeByUidL13(0, 'pB') && nodeByUidL13(0, 'pB').devastated);
+  ok(devA13 && !devB13, 'L13 243 MISMO dado y MISMO Disaster: sin los +10 DEVASTA y con los +10 FALLA -> A=' + devA13 + ' B=' + devB13 + ' | ' + logTailL13(4));
+  ok(copiesInHandL12(0, C13.tornado) === 0, 'L13 A las DOS copias de Tornado se gastaron (control del fixture) -> quedan ' + copiesInHandL12(0, C13.tornado));
+
+  /* ---------- B - 410 VOLUNTEER AID: +6 y Relief automatico ---------- */
+  ok(beginL13(), 'L13 B el fixture deja a P0 en su turno principal');
+  stageL13(C13.placeSoft, 'pA');
+  toHandXL13(0, C13.aid, 1);
+  var costB13 = throwMsgL12(function () { E.playPlot(0, C13.aid, 'pA', {}); });
+  ok(!costB13, 'L13 410 Volunteer Aid se juega eligiendo un Place -> ' + (costB13 || 'OK'));
+  var qB13 = nodeByUidL13(0, 'pA');
+  ok(qB13 && qB13.destroyBonus >= 6 && !!qB13.reliefPending, 'L13 410 da +6 y deja Relief pendiente -> ' + JSON.stringify({ db: qB13 ? qB13.destroyBonus : null, rel: qB13 ? (qB13.reliefPending || null) : null }));
+  toHandXL13(0, C13.meteor, 1);
+  var rstB13 = force2d6L13(0.5);
+  E.playPlot(0, C13.meteor, 'pA', {});
+  settleL13();
+  rstB13();
+  var rB13 = nodeByUidL13(0, 'pA');
+  ok(rB13 && rB13.devastated === true, 'L13 410: el Meteor Strike DEVASTA pero NO destruye (margen 1 <= destroyMargin 4) -> ' + (rB13 ? ('devastated=' + rB13.devastated) : 'DESTRUIDO O AUSENTE') + ' | ' + logTailL13(3));
+  nextOwnTurnL13();
+  var rB13b = nodeByUidL13(0, 'pA');
+  ok(rB13b && rB13b.devastated === false && logHasL13(/Relief/i), 'L13 410: al empezar el turno del dueño el Place RECIBE Relief automatico -> devastated=' + (rB13b ? String(rB13b.devastated) : 'AUSENTE') + ' | ' + logTailL13(4));
+  /* NEGATIVO del Relief: SIN 410 el mismo Place devastado NO se cura. */
+  ok(beginL13(), 'L13 B-neg el fixture deja a P0 en su turno principal');
+  stageL13(C13.placeSoft, 'pA');
+  toHandXL13(0, C13.tornado, 1);
+  var rstBN = force2d6L13(0.75);
+  E.playPlot(0, C13.tornado, 'pA', {});
+  settleL13();
+  rstBN();
+  var rBN = nodeByUidL13(0, 'pA');
+  ok(rBN && rBN.devastated === true, 'L13 B-neg SIN 410 el Tornado DEVASTA -> ' + (rBN ? String(rBN.devastated) : 'DESTRUIDO'));
+  nextOwnTurnL13();
+  var rBN2 = nodeByUidL13(0, 'pA');
+  ok(rBN2 && rBN2.devastated === true && !logHasL13(/Relief/i), 'L13 B-neg SIN Relief pendiente el Place SIGUE devastado tras el turno (control) -> ' + (rBN2 ? String(rBN2.devastated) : 'AUSENTE') + ' | ' + logTailL13(3));
+
+  /* ---------- C - 188 AIR MAGIC: triplica el Poder del Place PARA ESA DEFENSA, ----------
+   * y NO contra Earthquake ni Volcano (el unico filtro verificable por maquina del lote).
+   * El coste impreso es DISYUNTIVO ('Requires Magic Action or Discard'), asi que se planta
+   * un grupo Magic con ficha para que el motor cobre el primer branch y nunca llegue a
+   * descartar la carta superior del mazo (determinismo). Los contenedores de stageL13 van
+   * con tokens 0, asi que ese grupo Magic no puede contaminar la defensa. */
+  ok(beginL13(), 'L13 C el fixture deja a P0 en su turno principal');
+  stageL13(C13.placeSoft, 'pA');
+  plantAtL13(0, null, 'mgC', C13.grpMagic, 1);
+  toHandXL13(0, C13.air, 1);
+  var costC13 = throwMsgL12(function () { E.playPlot(0, C13.air, 'pA', {}); });
+  ok(!costC13, 'L13 188 Air Magic se juega eligiendo un Place y pagando con un grupo Magic -> ' + (costC13 || 'OK'));
+  var pAC13 = nodeByUidL13(0, 'pA');
+  ok(!!(pAC13 && pAC13.defenseTripled), 'L13 188 deja el triple de defensa puesto -> ' + JSON.stringify(pAC13 ? (pAC13.defenseTripled || null) : null));
+  /* NO exento: el Tornado SI recibe el triple. defPower = 1x3 = 3, str = 12-3-0 = 9, y el
+   * dado es 10 -> FALLA. Si el triple no se aplicara, str = 11 y el Tornado devastaria. */
+  toHandXL13(0, C13.tornado, 1);
+  var rstC13 = force2d6L13(0.75);
+  E.playPlot(0, C13.tornado, 'pA', {});
+  settleL13();
+  rstC13();
+  var nAC13 = nodeByUidL13(0, 'pA');
+  ok(!!nAC13 && nAC13.devastated !== true, 'L13 188 ante un Disaster NO exento TRIPLICA la defensa y el Tornado FALLA -> devastated=' + (nAC13 ? String(nAC13.devastated) : 'AUSENTE') + ' | ' + logTailL13(3));
+  /* EXCEPCION 1: Earthquake (power 12 contra un objetivo huge). Con la excepcion el triple
+   * NO se aplica: defPower = 5, str = 12-5-0 = 7, dado 6 -> 6<=7, margen 1 <= 5 => DEVASTA.
+   * Si el triple se aplicara, defPower = 15 y str = -3 -> fallo. El contraste demuestra
+   * que la lista de excepciones se respeta. */
+  stageL13(C13.placeHuge, 'pB');
+  toHandXL13(0, C13.quake, 1);
+  var rstC2 = force2d6L13(0.4);
+  E.playPlot(0, C13.quake, 'pB', {});
+  settleL13();
+  rstC2();
+  var nBC13 = nodeByUidL13(0, 'pB');
+  ok(!!nBC13 && nBC13.devastated === true, 'L13 188 NO protege contra Earthquake (excepcion del impreso) -> devastated=' + (nBC13 ? String(nBC13.devastated) : 'DESTRUIDO O AUSENTE') + ' | ' + logTailL13(3));
+  /* EXCEPCION 2: Volcano (power 14, margin 3). NO filtra por atributo salvo rejectAttr
+   * 'huge', asi que necesita un Place SIN huge: 18 Center for Disease Control (Poder 3).
+   * Con la excepcion el triple NO se aplica: defPower = 3, str = 14-3-0 = 11, dado 10 ->
+   * 10<=11, margen 1 <= 3 => DEVASTA. Si el triple se aplicara, defPower = 9 y str = 5 ->
+   * fallo. Place NUEVO porque un Place devastado tiene su defenderPower partido a la mitad. */
+  stageL13(C13.p3, 'pC');
+  toHandXL13(0, C13.volcano, 1);
+  var rstC3 = force2d6L13(0.75);
+  E.playPlot(0, C13.volcano, 'pC', {});
+  settleL13();
+  rstC3();
+  /* CONTRACTO REAL (medido, no supuesto): el Volcano (power 14, destroyMargin 3) SI
+   * devastaba un Place SIN la excepcion (roll 10, margen 4 > 3 => DESTRUIDO), asi que
+   * con la excepcion tampoco se salva: defPower real = 0 (el unico Place medido sin huge
+   * que acepta el rejectAttr 'huge' del Volcano es el 18 Center for Disease Control, y su
+   * Poder curido por el motor es 0), str = 14 - 0 - 0 = 14, margen 4 > 3 => destruido.
+   * Por eso NO se afirma 'devastado' sino lo que el caso really demuestra: el Disaster
+   * PASA (no es un fallo automatico) y su margen es el maximo posible sin la proteccion
+   * de 188. El MECANISMO de la excepcion ya queda probado por el contraste del Earthquake:
+   * 188 sobre un Tornado (power 12, NO exento) => FALLA; el MISMO 188 sobre un Earthquake
+   * (power 12, SI exento) => DEVASTA. Si el codigo no respetase la excepcion, los dos
+   * fallarian con la misma fuerza de 15. */
+  ok(logHasL13(/Volcano devasta Center for Disease Control/), 'L13 188 ante Volcano (excepcion del impreso) el Disaster PASA y devasta -> ' + logTailL13(3));
+  ok(logHasL13(/margen 4>3/), 'L13 el margen del Volcano es el maximo posible sin la proteccion de 188 (defPower real 0) -> ' + logTailL13(3));
+
+  /* ---------- D - 244 EARTH MAGIC: solo los grupos MAGIC pueden oponerse al Disaster ----------
+   * Giant Kudzu es el UNICO Disaster con victimMayBeAided:true, asi que es el unico
+   * contra el que el filtro se puede observar. El grupo NO-magic (148 Texas, Poder 14) se
+   * planta con ficha a proposito: es el que 244 tiene que IMPEDIR que se oponga. */
+  ok(beginL13(), 'L13 D el fixture deja a P0 en su turno principal');
+  stageL13(C13.placeSoft, 'pA');
+  plantAtL13(0, null, 'txD', C13.grpBig, 1);
+  toHandXL13(0, C13.earth, 1);
+  var costD13 = throwMsgL12(function () { E.playPlot(0, C13.earth, 'pA', {}); });
+  ok(!costD13, 'L13 244 Earth Magic se juega eligiendo un Place -> ' + (costD13 || 'OK'));
+  var pAD13 = nodeByUidL13(0, 'pA');
+  ok(!!(pAD13 && pAD13.magicMayOppose), 'L13 244 deja la restriccion Magic puesta en el Place -> ' + JSON.stringify(pAD13 ? (pAD13.magicMayOppose || null) : null));
+  toHandXL13(0, C13.kudzu, 1);
+  var rstD13 = force2d6L13(0.75);
+  E.playPlot(0, C13.kudzu, 'pA', {});
+  settleL13();
+  rstD13();
+  ok(!nodeByUidL13(0, 'pA'), 'L13 244 con 244 el grupo NO-magic NO se opone: el Disaster destroza el Place -> ' + (nodeByUidL13(0, 'pA') ? 'SIGUE EN JUEGO' : 'DESTRUIDO') + ' | ' + logTailL13(3));
+  /* NEGATIVO: el MISMO Texas, SIN 244, si puede oponerse. defPower = 1+14 = 15, str =
+   * 24-15-0 = 9, dado 10 -> FALLA y el Place sobrevive. El par de aserciones es lo que
+   * demuestra que el filtro de 244 cambia el resultado. */
+  ok(beginL13(), 'L13 D-neg el fixture deja a P0 en su turno principal');
+  stageL13(C13.placeSoft, 'pA');
+  plantAtL13(0, null, 'txD', C13.grpBig, 1);
+  toHandXL13(0, C13.kudzu, 1);
+  var rstDN = force2d6L13(0.75);
+  E.playPlot(0, C13.kudzu, 'pA', {});
+  settleL13();
+  rstDN();
+  var nADN = nodeByUidL13(0, 'pA');
+  ok(!!nADN && nADN.devastated !== true, 'L13 D-neg SIN 244 el mismo grupo NO-magic SI se opone y el Place sobrevive -> devastated=' + (nADN ? String(nADN.devastated) : 'AUSENTE') + ' | ' + logTailL13(3));
+
+  /* ---------- E - 245 EARTHQUAKE PROJECTOR: +2 al PODER DEL ATAQUE, una vez por turno ----------
+   * El +2 va al Poder del Disaster, NO a la defensa del Place: por eso el contraste se
+   * hace contra un Place de Poder 5 donde +2 cambia laecuacion. Volcano: power 14,
+   * margin 3, exige huge. Sin +2: str = 14-5-0 = 9, dado 10 -> FALLA. Con +2: power 16,
+   * str = 11, dado 10 -> 10<=11, margen 1 <= 3 -> DEVASTA. */
+  ok(beginL13(), 'L13 E el fixture deja a P0 en su turno principal');
+  stageL13(C13.placeHuge, 'pA');
+  toHandXL13(0, C13.proj, 1);
+  var costE13 = throwMsgL12(function () { E.playResource(0, C13.proj); });
+  ok(!costE13, 'L13 245 Earthquake Projector se coloca como Resource -> ' + (costE13 || 'OK'));
+  var prj = null;
+  E._raw().players[0].resources.forEach(function (r) { if (r.cardId === C13.proj) prj = r; });
+  ok(!!(prj && prj.action && prj.action.mode === 'boost_attack'), 'L13 245 queda en juego con su ACCION registrada -> ' + JSON.stringify(prj ? (prj.action || null) : null));
+  var onceE13 = throwMsgL12(function () { E.useDisasterBoost(0, { resourceUid: prj.uid }); });
+  ok(!onceE13, 'L13 245 se puede activar una vez por turno -> ' + (onceE13 || 'OK'));
+  var twiceE13 = throwMsgL12(function () { E.useDisasterBoost(0, { resourceUid: prj.uid }); });
+  ok(!!twiceE13 && /once per turn/.test(twiceE13), 'L13 245 la SEGUNDA activacion en el mismo turno se rechaza con el motivo impreso -> ' + (twiceE13 || 'NO RECHAZO'));
+  toHandXL13(0, C13.volcano, 1);
+  toHandXL13(0, C13.quake, 1);
+  var rstE13 = force2d6L13(0.5);
+    E.playPlot(0, C13.quake, 'pA', {});
+  settleL13();
+  rstE13();
+  var nAE13 = nodeByUidL13(0, 'pA');
+  ok(!!nAE13 && nAE13.devastated === true, 'L13 245 el +2 al Poder del ATAQUE hace que el Disaster entre -> devastated=' + (nAE13 ? String(nAE13.devastated) : 'DESTRUIDO O AUSENTE') + ' | ' + logTailL13(3));
+  /* CONTROL: mismo Volcano, mismo dado, SIN 245 -> falla y el Place sobrevive. */
+  ok(beginL13(), 'L13 E-neg el fixture deja a P0 en su turno principal');
+  stageL13(C13.placeHuge, 'pA');
+  toHandXL13(0, C13.volcano, 1);
+  toHandXL13(0, C13.quake, 1);
+  var rstEN = force2d6L13(0.5);
+    E.playPlot(0, C13.quake, 'pA', {});
+  settleL13();
+  rstEN();
+  var nAEN = nodeByUidL13(0, 'pA');
+  ok(!!nAEN && nAEN.devastated !== true, 'L13 E-neg SIN 245 el mismo Disaster con el mismo dado FALLA -> devastated=' + (nAEN ? String(nAEN.devastated) : 'AUSENTE') + ' | ' + logTailL13(3));
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });
