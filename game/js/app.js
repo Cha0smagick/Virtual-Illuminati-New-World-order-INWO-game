@@ -200,6 +200,19 @@ var CB = {
     try { E.resolveAlignEdit(act || {}); after(act && act.pass ? 'Gadget no usado' : 'Alineacion editada'); }
     catch (e) { log('! ' + e.message); }
   },
+  /* L12 / P1-083 - 378 Suicide Squad. Abre y cierra la ventana de la accion de un
+   * Resource ya en juego. El objetivo NO lo elige el motor: se abre una ventana y el
+ * jugador elige cual de los Resources del rival destruir (DoD 6). El catch es el
+ * mismo patron que onUseGadgetAction/onResolveAlignEdit, para que un rechazo por
+ * regla del motor llegue al registro y no solo a la consola (P1-076). */
+  onUseResDestroy: function (resourceUid) {
+    try { E.useResDestroy(E.getState().currentPid, { resourceUid: resourceUid }); after('Accion de Resource abierta'); }
+    catch (e) { log('! ' + e.message); }
+  },
+  onResolveResDestroy: function (act) {
+    try { E.resolveResDestroy(act || {}); after(act && act.pass ? 'Resource no usado' : 'Dado tirado'); }
+    catch (e) { log('! ' + e.message); }
+  },
   onMoveGroup: function (uid, newParentUid) { E.moveGroup(E.getState().currentPid, uid, newParentUid); after('Grupo movido'); },
   onEndTurn: function () { endTurnFlow(); }
 };

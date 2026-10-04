@@ -495,7 +495,7 @@ function panelHtml(st, pid) {
     '<span class="handbadge">mano: ' + p.handCounts.plots + 'P/' + p.handCounts.groups + 'G</span></div>';
   h += '<div class="tree">' + nodeHtml(p.structure, st, pid, 0) + '</div>';
   if (p.resources.length) {
-    h += '<div class="resRow">' + p.resources.map(function (r) { return chipMini(cardOf(r.cardId), r.uid); }).join('') + '</div>';
+      h += '<div class="resRow">' + p.resources.map(function (r) { return chipMini(chipCard(r), r.uid, chipAct(r)); }).join('') + '</div>';
   }
   if (p.exposedPlots.length) {
     h += '<div class="expRow">' + p.exposedPlots.map(function (ix) { return chipMini(cardOf(ix), null); }).join('') + '</div>';
@@ -543,11 +543,33 @@ function nodeHtml(nd, st, pid, depth) {
   return h;
 }
 
-function chipMini(c, uid) {
+/* L12 / P1-083 - que ACCION tiene este Resource en juego, si alguna. Se lee de la
+ * CARTA y no de `r.action`: `publicState` no proyecta ese campo, asi que leerlo de
+ * ahi seria pedir algo que el estado publico no expone. 378 Suicide Squad imprime
+ * 'Can be used to...' (accion de Resource) y 332 Orbital Mind Control Lasers imprime
+ * su accion de Gadget (mode 'gadget_action'). Cualquier otra carta Resource no tiene
+ * boton, que es exactamente lo que imprime ('no se puede usar hasta exponerlo' etc). */
+function chipAct(r) {
+  var rc = cardOf(r.cardId), md = rc && rc.effect && rc.effect.mode;
+  if (md === 'suicide_squad') return 'resuse';
+  if (md === 'gadget_action') return 'gadgetuse';
+  return null;
+}
+function chipCard(r) { return cardOf(r.cardId); }
+function chipMini(c, uid, act) {
   if (!c) return '';
   var label = 'Carta: ' + c.name;
   if (uid) {
-    return '<button type="button" class="cardChip" data-uid="' + esc(uid) + '" aria-label="' + esc(label) + '" title="' + esc(c.name) + '">' + imgTag(c, 'thumb sm') + '</button>';
+    /* L12 / P1-083 - segundo boton: USAR LA ACCION del Resource. Se dibuja solo si el
+     * motor ha registrado `action` en la entrada (378 Suicide Squad) o si la carta
+     * imprime una accion de Gadget (332 Orbital Mind Control Lasers, que hasta L12
+     * no tenia ningun boton y por eso era INJUGABLE aunque el motor la aceptara).
+     * El `data-act` lo decide quien llama, no aqui: este boton es un boton generico. */
+    var actBtn = act ? '<button type="button" class="cardChip act" data-act="' + esc(act) +
+      '" data-uid="' + esc(uid) + '" aria-label="Usar la accion de ' + esc(c.name) +
+      '" title="Usar la accion de ' + esc(c.name) + '">&#9654;</button>' : '';
+    return actBtn + '<button type="button" class="cardChip" data-uid="' + esc(uid) + '" aria-label="' + esc(label) + '" title="' + esc(c.name) + '">' + imgTag(c, 'thumb sm') + '</button>';
+    return actBtn + '<button type="button" class="cardChip" data-uid="' + esc(uid) + '" aria-label="' + esc(label) + '" title="' + esc(c.name) + '">' + imgTag(c, 'thumb sm') + '</button>';
   }
   return '<span class="cardChip" title="' + esc(c.name) + '">' + imgTag(c, 'thumb sm') + '</span>';
 }
@@ -702,6 +724,43 @@ function attackPanel(st) {
     }
     aeHtml += '<button data-act="aligneditpass" title="No usar la acción del Gadget">Pasar</button>';
     $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar">' + aeHtml + '</div>');
+  }
+
+  /* L12 / P1-083 - 378 Suicide Squad. El jugador elige el Resource del rival que
+   * va a destruir: el motor NUNCA lo autoelige (DoD 6, y el mismo criterio con el
+   * que se escribio la ventana de 332). Se listan uno por uno los Resources de los
+   * RIVALES; los propios no aparecen porque el impreso dice 'belonging to a rival'.
+   * Se pinta como pendbar igual que la de 332: los controles de una familia de
+   * mecanica no se mezclan con los de otra (regla 6 de plan.md). */
+  var RD = st.pendingResDestroy;
+  if (RD && st.currentPid === RD.byPid) {
+    var rdCards = [];
+    for (var rk = 0; rk < st.players.length; rk++) {
+      if (rk === st.currentPid) continue;
+      var rl = st.players[rk].resources || [];
+      for (var rj = 0; rj < rl.length; rj++) {
+        var rc2 = cardOf(rl[rj].cardId);
+        if (!rc2) continue;
+        rdCards.push({ uid: rl[rj].uid, name: rc2.name, who: st.players[rk].name });
+      }
+    }
+    var rdUid = (sel && sel.mode === 'resDestroy') ? sel.data.resUid : null;
+    var rdName = '';
+    for (var rm = 0; rm < rdCards.length; rm++) if (rdCards[rm].uid === rdUid) rdName = rdCards[rm].name;
+    var rdHtml = '<b>Soldiers suicidas</b>: elige el Resource del rival que va a destruir. ' +
+      '<span class="hint">Se tira un dado: 1 sobrevives, 2-5 caeis las dos, 6 sobrevive el rival</span><br>';
+    if (rdUid) {
+      rdHtml += '<b>Objetivo:</b> ' + esc(rdName) + ' <button data-act="resdestroyapply" title="Tirar el dado">Tirar el dado</button> ' +
+        '<button data-act="resdestroycancel">&#8592; otro Resource</button> ';
+    } else if (rdCards.length) {
+      rdHtml += rdCards.map(function (x) {
+        return '<button data-act="resdestroypick" data-uid="' + esc(x.uid) + '" title="' + esc(x.who) + '">' + esc(x.name) + '</button> ';
+      }).join('');
+    } else {
+      rdHtml += '<span class="bad">Ningun rival tiene Resources en juego.</span> ';
+    }
+    rdHtml += '<button data-act="resdestroypass" title="No usar la accion">Pasar</button>';
+    $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar">' + rdHtml + '</div>');
   }
   var P = st.pendingAttack;
   if (P) {
@@ -1947,6 +2006,24 @@ function bindEvents() {
       CB.onResolveAlignEdit({ targetUid: aeUid, op: aeOpV, align: aeAlV });
     }
     else if (act === 'aligneditpass') { clearSel(); CB.onResolveAlignEdit({ pass: true }); }
+    /* L12 / P1-083 - accion de un Resource ya en juego (378 Suicide Squad). El boton
+     * lo pone chipAct() en la fila de Resources del jugador. El `clearSel()` ANTES de
+     * hablar con el motor es el mismo patron que aligneditapply: si el motor rechaza,
+     * la seleccion queda limpia y no se queda un objetivo fantasma en la UI. */
+    else if (act === 'resuse') { var rdUid0 = btn.getAttribute('data-uid'); if (!rdUid0) return; CB.onUseResDestroy(rdUid0); }
+    /* 332 Orbital Mind Control Lasers. Este boton NO existia antes de L12: el motor
+     * tenia E.useGadgetAction y la UI tenia el menu de la ventana, pero ningun boton
+     * llegaba hasta el, asi que la carta era INJUGABLE aunque el motor la aceptara. */
+    else if (act === 'gadgetuse') { var guUid = btn.getAttribute('data-uid'); if (!guUid) return; CB.onUseGadgetAction(guUid); }
+    else if (act === 'resdestroypick') { sel = { mode: 'resDestroy', data: { resUid: btn.getAttribute('data-uid') } }; log('🎯 Paso 2/2 — elige el Resource objetivo y luego TIRA EL DADO.'); render(curState); }
+    else if (act === 'resdestroycancel') { clearSel(); render(curState); }
+    else if (act === 'resdestroyapply') {
+      var rdU = (sel && sel.mode === 'resDestroy') ? sel.data.resUid : null;
+      clearSel();
+      if (!rdU) { log('⚠ Elige primero el Resource objetivo.'); render(curState); return; }
+      CB.onResolveResDestroy({ resUid: rdU });
+    }
+    else if (act === 'resdestroypass') { clearSel(); CB.onResolveResDestroy({ pass: true }); }
     else if (act === 'privilege') { CB.onTogglePrivilege(); }
       else if (act === 'aid') { sel = { mode: 'aid', data: {} }; render(curState); }
       else if (act === 'oppose') { sel = { mode: 'oppose', data: {} }; render(curState); }
