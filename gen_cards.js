@@ -1930,6 +1930,94 @@ const L11_FX = {
 };
 const L11_FXN = {};
 for (const k in L11_FX) { L11_FXN[norm(k)] = L11_FX[k]; }
+/* L12.c - DATOS: familia `resource_effect` (236, 348, 378, 400, 413).
+ * Generador canonico (build_cards.js es legacy y NO debe regenerar el dataset).
+ * Regla 2 de plan.md: no se inventa la mecanica. Todo lo de aqui sale del texto
+ * impreso (sourceText de research/audit_reports/scribd_card_text.json, que es
+ * transcripcion de la carta, NO OCR) y de los precedents que el motor ya
+ * escribe por su cuenta.
+ *
+ * LIMITE DECLARADO que se aplica a las 5 cartas, con la cita del propio motor
+ * en `case 'resource_destroy'` (engine.js L4794-4800): "el mazo NO tiene
+ * clasificacion de Resources: 34 de los 35 tienen subtype:null (medido en L4,
+ * el mismo motivo por el que se solto el 'Gadget Resource' de 270). No se
+ * inventa ninguna categoria." Por eso NO se filtra por Gadget/Artifact/Agent:
+ * el requisito impreso se guarda en `printedRestrict` (declaracion textual,
+ * NO usada por el motor para descartar objetivos) y se declara como limite en
+ * la seccion del auditor. Es el mismo criterio que aplico 278 Hex, que imprime
+ * "A Magic Resource" y filtra unicamente por el COSTE, nunca por el objetivo.
+ *
+ * `unique` (413) y `roll` (378) no existen como clave en ninguna otra familia;
+ * son nuevas de este lote y se declaran en el commit.
+ * `instant`, `mode`, `payIllum`, `payAttrAny`, `payMinPower` y
+ * `notDuringPrivileged` SI son vocabulario ya usado (233/367, 357, 332, 278).
+ */
+const L12_FX = {
+  /* 236 Deasil Engine - PLOT. "at any time", "Neither use counts as an action":
+   * jugar el Plot no consume accion de ningun grupo. El objetivo es un Resource
+   * de CUALQUIER bando ("make any Gadget Resource run backwards ... Its owner
+   * must discard it"), y el jugador lo elige. La excepcion de la carta es real y
+   * se implementa: si el objetivo es otro Deasil Engine, ambos se cancelan. */
+  'deasilengine': { kind:'resource_effect', mode:'reverse', instant:true, costsNoAction:true,
+    targetAnyOwner:true, cancelsPair:true, printedRestrict:'gadget',
+    t:'Play this card at any time to make any Gadget Resource run backwards, destroying itself. Its owner must discard it. (But if anyone plays another Deasil Engine immediately, they cancel out!) Neither use counts as an action.' },
+  /* 348 Purge - PLOT. Dos modos segun quien lo use. El IMPRESO dice "as an action
+   * for the group that uses it" => la ficha la gasta el grupo objetivo, no quien
+   * la juega: el mismo camino que `case 'resource_destroy'`, que paga con
+   * spendGroupToken del grupo que aporta la accion. "Link this card to the
+   * group" => la carta queda ligada al grupo que la uso. */
+  'purge': { kind:'resource_effect', mode:'purge', instant:true, needsActionFromTarget:true,
+    linksToTarget:true, targetOwnGroup:true,
+    byIlluminati:'destroy_duplicate_agents',
+    byOtherGroup:{ powerDelta:-1, globalPowerDelta:-1, immuneToRivalDuplicates:true },
+    printedRestrict:'agent',
+    t:'This card may be played at any time during your turn, as an action for the group that uses it. It can be used in two ways: Used by your Illuminati, it destroys all Agent cards currently in play which duplicate your own Illuminati group. Used by another group, it reduces the groups Power and Global Power by 1, but makes it permanently immune to duplicate Group cards played by rivals. Link this card to the group. Requires Action' },
+  /* 378 Suicide Squad - RESOURCE. NO es un efecto al colocarlo: el impreso dice
+   * "Can be used to destroy ...", o sea que queda una ACCION disponible mientras
+   * esta en juego (patron `draw_hook` de 233/367: colocar el Resource solo registra
+   * `entry.action`; la resolucion la dispara el jugador). "May be used at any
+   * time except during a privileged attack" => la accion es at any time con ese
+   * veto, igual que 332. El 1d6 usa el `d6()` que YA esta en engine.js L15. */
+  'suicidesquad': { kind:'resource_effect', mode:'suicide_squad', instant:true,
+    notDuringPrivileged:true, needsAction:true, targetAnyRivalResource:true, roll:'d6',
+    on1:'target_destroyed_self_survives',
+    on2to5:'both_destroyed',
+    on6:'self_destroyed_target_survives',
+    printedRestrict:'any_resource',
+    t:'Can be used to destroy any Resource belonging to a rival. May be used at any time except during a privileged attack. Roll one die: 1: Target is destroyed. Suicide Squad survives and may be again. 2-5: Target and Suicide Squad are both destroyed. 6: Suicide Squad fails and is destroyed. Target survives. Discard any card that is destroyed.' },
+  /* 400 The Weak Link - PLOT. UNICO `t:` de todo el proyecto sin transcripcion
+   * secundaria: card_data_merge.json declara `sourceStatus:"secondary-not-found"`
+   * y no esta en scribd_card_text.json, asi que el texto sale del OCR de la
+   * imagen con los errores de escaneo corregidos ("wel"->well, "ond fourrd"->and
+   * found, "Sdence"->Science, "llluminati"->Illuminati) y el flavour eliminado
+   * ("The enemy treasure was well guarded . . ."), que es exactamente lo que
+   * hacen las demas familias del generador (solo reglas, no narracion). El
+   * hueco de fuente se conserva declarado: no se inventa una transcripcion.
+   * El COSTE es el de 357 Rewriting History (`case 'align_edit'`): primero la
+   * accion del Illuminati y, si no hay ficha, REUNIR Poder de grupos Science,
+   * Magic o Computer hasta 6 ANTES de gastar (force_align gasta dentro del walk
+   * y luego lanza, o sea gasta fichas y falla: aqui no). */
+  'theweaklink': { kind:'resource_effect', mode:'weak_link', instant:true,
+    notDuringPrivileged:true, payIllum:true,
+    payAttrAny:['science','magic','computer'], payMinPower:6,
+    targetAnyRivalResource:true, printedRestrict:'artifact_or_gadget',
+    t:'Play this card at any time except during a privileged attack. It requires an action by your Illuminati, or Science, Magic or Computer groups with a combined Power of at least 6. [Destroy] a Resource Artifact or Gadget owned by a rival' },
+  /* 413 Warehouse 23 - RESOURCE, Unique (el impreso lo dice, ver `t:`). Al
+   * jugarla se abre su accion: mirar mano o mazo, elegir 1 Resource Artifact o
+   * Gadget y jugarlo como takeover automatico gratis (patron 344 `bulk_power`
+   * para el efecto inmediato + `draw_hook` para el resto). El stash de Resources
+   * escondidos se registra en la MISMA entrada de pl.resources (`entry.stash`),
+   * con el campo puesto DESPUES del push, que es lo que dice el comentario del
+   * propio motor para `draw_hook`. */
+  'warehouse23': { kind:'resource_effect', mode:'warehouse', unique:true, stash:true,
+    firstPlay:{ action:'free_takeover_from_hand_or_deck', pick:1, printedRestrict:'artifact_or_gadget' },
+    canHideNewResources:true, mustExposeBeforeUse:true, exposeOnce:true,
+    rivalsCannotSeeInside:true, goesWithIt:true,
+    t:'When you first play this card, you may immediately look through your hand or deck and choose one Artifact or Gadget Resource card, to play as a free automatic takeover. You may play any new Resources by hiding them under this card. You cant use them until you expose them, and once expose they must stay exposed, but you can expose one at any time and (if its powers allow it) use it immediately. Your rivals cannot look at or affect the cards inside Warehouse 23 except by capturing or destroying it. If it is capture or destroyed, its cards go with it. Unique' }
+};
+const L12_FXN = {};
+for (const k in L12_FX) { L12_FXN[norm(k)] = L12_FX[k]; }
+
 /* P1-055 — kinds cuyo gate en engine.js COBRA un `requireActionFromAttr`
  * ("debes gastar la acción de un grupo tuyo con el atributo X"). Lista cerrada a
  * propósito: un kind nuevo con ese coste debe registrarse aquí Y traer su gate, para
@@ -2232,7 +2320,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

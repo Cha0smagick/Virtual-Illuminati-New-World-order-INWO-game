@@ -130,7 +130,17 @@ const KNOWN_TEXT_GAPS = {
  * mecanica de "asesinado"/resurreccion, que el motor no tiene. */
 const BLOCKED_CARDS = {
   'headinajar': 'P1-016 cerrada, pero falta la mecanica de "asesinado"/resurreccion (§30.1)',
-  'purge': 'P1-DATA-03 Global Power ausente (§30.3)',
+  /* P1-079 - 348 Purge SALE de BLOCKED_CARDS. Estaba congelada por "P1-DATA-03
+   * Global Power ausente (§30.3)", pero ese subsistema YA EXISTE: es `globalNeutral`,
+   * implementado en L10 (§61, P1-067). El modelo del motor es que un grupo tiene
+   * Global Power (= lo que aporta a las metas) SALVO que tenga globalNeutral=true,
+   * momento en que deja de tenerla: L162-165 lo declara por escrito, L172 lo filtra
+   * con `!nd.globalNeutral`, 310 Media Connections lo pone (L3826) y 280 Hidden
+   * Influence lo quita por enlace (L3734-3753). El modo B de 348 ("it reduces the
+   * group's Power and Global Power by 1") es exactamente nd.globalNeutral=true.
+   * PRECEDENTE: 310 y 280 salieron de esta misma lista en L10 por el mismo motivo
+   * (plan.md: "310 y 280 salen de BLOCKED_CARDS, estaban por P1-DATA-03 Global
+   * Power"). 348 sale por el mismo motivo. Explicacion completa en §64 del audit. */
   /* §38 — las 5 de la familia de reaccion inmediata que NO tienen mecanica que las
      sostenga. No es pereza: cada motivo esta comprobado contra el motor. */
   'andstaydead': '§38 sin mecanica de resurreccion en el motor, asi que "gone forever" no seria observable (INJUGABLE)',
