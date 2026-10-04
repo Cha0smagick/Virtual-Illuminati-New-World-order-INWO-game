@@ -6760,3 +6760,200 @@ propio Resource.
   queda para un lote propio.
 - El texto oficial de Global Power sigue sin transcripcion en `research/`; el
   comportamiento esta implementado y declarado, la fuente oficial no.
+
+## 65. L13 - DEFENSA CONTRA DISASTERS: 243, 410, 188, 244, 245 (P1-088 a P1-092)
+
+Cinco cartas del mazo que defienden a un Place frente a un Disaster, o queQYUDAN
+reforzar el ataque del Disaster. El lote toca por primera vez la cadena de
+resolucion de un Disaster por dentro: el motor calculaba `str = power - defPower -
+pos` y las cartas no tenian ninguna forma de tocar `defPower` ni `power`.
+
+### Hallazgo
+
+- **P1-087 (audit)**: las 5 cartas estaban `unverified` con el texto OCR pendiente.
+  243 Early Warning "+10 to defend against any Disaster / free action"; 410
+  Volunteer Aid "+6 ... plus Relief at the beginning of its owners next turn";
+  188 Air Magic "tripled for this one defense ... except Earthquake or Volcano ...
+  Requires Magic Action or Discard"; 244 Earth Magic "any Magic group in play use
+  their Action tokens to oppose the attack" (SIN linea de coste impreso); 245
+  Earthquake Projector "This device can act once per turn ... increase the Power of
+  any Attack to Destroy a Place, or of any Disaster card, by 2".
+- **P1-088** (`destroyBonus` era el campo correcto para 243 y 410):
+  `destroyDefenseBonus(node, isAssassination)` ya suma `nd.destroyBonus` a
+  `defPower` y NO toca `curPower()`, asi que cumple la regla oficial del lote:
+  "no afecta al Poder del Place, solo a su defensa".
+- **P1-089** (188): la lista de excepciones del impreso ("except Earthquake or
+  Volcano") SI es verificable por maquina, pero por CLAVE NORMALIZADA, no por
+  `card().name`: los nombres del dataset no contienen "earthquake" ni "volcano".
+- **P1-090** (244): `eff.victimMayBeAided` ya existia en el motor pero llamaba
+  `firstUsableAid(victim, null)`, es decir, CUALQUIER grupo del defensor se
+  oponia. 244 es el UNICO Disaster-side que necesita filtrar por atributo (lo
+  aporta `267 Giant Kudzu`, el unico `victimMayBeAided:true` del mazo).
+- **P1-091** (245): +2 al **PODER DEL ATAQUE**, no a la defensa, y "una vez por
+  turno" con el flag en la ENTRADA del Resource (el alcance impreso es global: no
+  dice "your Disasters"), redresetado por `E.beginTurn` para los Resources de
+  TODOS los jugadores.
+- **P1-092** (bugs del propio test, 5 en total) -- ver "Lecciones".
+
+### Correcciones
+
+- **L13.a AUDIT** (`823d552`): sub-plan atomico de 6 pasos en `plan.md` con los
+  numeros de la cadena de resolucion medidos sobre el motor.
+- **L13.b DATOS** (`61c5287`): familia `L13_FX` en `gen_cards.js` con
+  `kind:disaster_defence` UNICO y 5 modos (`static_defence` x2,
+  `triple_defence`, `aid_restriction`, `boost_attack`); el kind anadido a
+  `ACTION_COST_KINDS` Y a `ACTION_COST_KINDS_EXPECTED` en `test_fase2_rules.js`
+  (segundo espejo del guard P1-055); `|| L13_FXN[key]` en la cadena `pfx`;
+  15 glosas nuevas en `FIELD_ES` + el kind en `KIND_ES` de `ui.js`.
+  FASE 4: 146 -> 151 clasificadas, 102 -> 97 sin mecanica (exacto en ambos).
+- **L13.c MOTOR** (`333b377`, +226 lineas):
+  1. `case disaster_defence` en el `switch(eff.kind)` de `E.playPlot`, con los
+     3 modos de Plot. `static_defence` SUMA el bonus (nunca lo pisa). 410 deja
+     ademas `nd.reliefPending={untilTurn:S.turn+1,byPid,byCard}`.
+     NO se anade a la lista `instant`: 243/410/188/244 imprimen "Play this
+     card", no "at any time".
+  2. `triple_defence` (188) con el coste DISYUNTIVO del impreso: primero
+     `opts.aidUid` o `firstUsableAid(magic)` + `spendGroupToken`; si no,
+     `pl.plotDeck.shift()` + `S.plotDiscard.push` ("discard it without looking
+     at it"); si no, `throw` con el motivo oficial. Deja
+     `nd.defenseTripled={byCard,except}` y ENLAZA con `pl.linkedPlots`
+     (patron 208/382).
+  3. `aid_restriction` (244): `nd.magicMayOppose={attr,byCard}` + link.
+  4. Objetivo ELEGIDO (DoD 6): `findNode(targetUid)`; sin objetivo, `throw
+     "<c>: elige un Place objetivo"`; si no es Place, `throw` que lo dice. NO
+     se inventa restriccion de propiedad: el impreso no dice "your".
+  5. `case disaster_defence` tambien en el `switch(resFx)` de `E.playResource`
+     (245 solo valida) y el registro de `entry.action` DESPUES del `push`.
+  6. `E.useDisasterBoost(pid,{resourceUid})`: `requireOwnMain`,
+     `findResourceEntry` (NO `findNode`, P1-077), propiedad, y el "once per
+     turn" con `throw` citando el impreso. SIN VENTANA: el objetivo impreso es
+     "cualquier ataque", no una carta concreta.
+  7. `E.beginTurn` resetea `entry.usedThisTurn` en los Resources de TODOS los
+     jugadores (el flag va en la entrada, no en `pl.usedResourceThisTurn`).
+  8. `announcePlotInstantAttack`: `nd.defenseTripled` => `defPower *= 3` (a
+     `defPower`, no a `curPower`) salvo que el Disaster este en la lista
+     normalizada de excepciones; los Resources `boost_attack` suman su
+     `boostValue` al `power` del ATAQUE justo antes de `str=power-defPower-
+     pos`; y `firstUsableAid(victim, nd.magicMayOppose ? filtroMagic : null)`.
+  9. `expireTurnFlags()` consume `n.reliefPending` cuando le toca al dueno (el
+     mismo sitio donde ya caducan `defTriple` y `resNullify`; lo llama PRIMERO
+     `E.beginTurn`).
+- **L13.d UI** (`747c082`): `disaster_defence` no esta en `NO_TARGET_KINDS`, asi
+  que las 4 Plot YA piden destino por el camino existente (`plotNeedsTarget` ->
+  `sel.mode=plotTarget` -> `route(uid)` -> `CB.onPlayPlot`), verificado sin tocar
+  nada. 245 entra por `chipAct()` que ya devuelve el `data-act` del boton de
+  accion de un Resource, y `app.js` expone `onUseDisasterBoost` con try/catch.
+- **L13.e REGRESIONES** (`7a34c68`, +130 lineas): 35 asertos, todos por EFECTO
+  OBSERVABLE (nunca aritmetica del motor, porque `announcePlotInstantAttack`,
+  `applyPlotInstantAttackRoll`, `defenderPower`, `curPower` y
+  `destroyDefenseBonus` no estan exportadas en `E`).
+- **L13.f VERIFICACION** (`test_hand_peek.js`, +29 lineas): 5 aserciones
+  estaticas del cableado de UI (ver "Limites declarados").
+
+### Verificacion
+
+- Criterio de aceptacion de `plan.md` afirmado de verdad: dos Places
+  identicos (Dinosaur Park, depth 3, `positionBonus` 0), 243 solo sobre uno,
+  y DOS Tornado con el MISMO dado (roll 10). Sin los +10, `str = 12-1-0 = 11`
+  => DEVASTA. Con los +10, `defPower = 11` => `str = 1 < 2` => fallo automatico.
+  El unico cambio entre las dos ramas son los +10.
+- 410: Meteor Strike (roll 8) => `str = 9`, margen 1 <= destroyMargin 4 =>
+  devastado y NO destruido; al empezar el turno del DUENO, `devastated=false`
+  + log de Relief. Y su NEGATIVO: sin 410, mismo ciclo de turnos, el Place sigue
+  devastado y no hay log de Relief.
+- 188: paga con la ficha de Stonehenge; Tornado (NO exento) falla con
+  `str = 9`; Earthquake (SI exento) devasta con `str = 7`. Ese contraste (mismo
+  Poder 12, misma defensa) es lo que prueba la excepcion.
+- 244: con la carta, Texas (P14, sin magic) NO se opone y el Disaster destroza el
+  Place (afirmado por AUSENCIA del uid); sin la carta, Texas SI se opone y el
+  Place sobrevive.
+- 245: la segunda activacion en el mismo turno se rechaza con el motivo
+  impreso `"This device can act once per turn"`; con +2 el Earthquake entra
+  (`str = 9`) y sin el, con el MISMO dado, falla (`str = 7`).
+- `node --check` limpio · 0 mojibake · 32/32 corridas de
+  `test_fase2_rules.js` y 32/32 de `test_hand_peek.js` (regla 13).
+- `npm test` => `ALL TESTS PASSED (11)`; `test_fase4_cards.js` =>
+  `FASE 4 COVERAGE PASSED (151 clasificadas, 97 sin mecanica, 3 ramas muertas,
+  10 bloqueadas, 4 huecos, 356 pending)`: identico al baseline.
+
+### Verificacion en navegador real
+
+Montado un servidor estatico temporal y arrancada la partida con el flujo real
+(`#grid0` -> `#grid1` -> `#startBtn` -> cerrar el modal "ENTENDIDO, A JUGAR!").
+VERIFICADO: la mano responde con 13 cartas y sin ningun `ReferenceError` (el P0 de
+P1-075 no ha vuelto); `#cardPeek` aparece al pasar el raton sobre una carta
+`resource_effect` real del mazo (Warehouse 23) con su texto verbatim y 9 lineas
+de desglose de mecanica; el ancho en reposo de la miniatura es 112px; cero
+errores JS (el unico 404 es el `favicon.ico` del servidor temporal).
+
+### Limites declarados
+
+1. **NO se certifica el flujo de las 5 cartas de punta a punta en navegador real.**
+   Motivo medido, no supuesto: el estado del motor vive en el closure de
+   `app.js`, `window.App` solo expone `start`, y las llamadas INTERNAS de `ui.js`
+   a `render()` van a la funcion local, no a `window.UI.render`, asi que
+   monkeypatchear `window.UI.render` NO captura el estado. Intentar renderizar un
+   estado sintetico con `UI.render(st)` revienta en `goalBars` / `panelHtml` /
+   `render` por campos que habria que inventar, y aun asi el click llegaria al
+   motor REAL, que rechazaria la carta por no estar en su mano real: seria una
+   prueba de un error, no del efecto. En su lugar se afirma el CABLEADO por
+   asercion estatica (5 aserciones nuevas en `test_hand_peek.js`) y el
+   COMPORTAMIENTO por los 35 asertos de `test_fase2_rules.js`.
+2. El triple de 188 NO se consume tras resolverse la defensa: el dato declara
+   `onlyThisDefense:true` ("solo cuenta para esta defensa"), y mantenerlo
+   mientras la carta siga enlazada es lo fiel al impreso.
+3. 245 no tiene ventana de eleccion: el impreso no pide elegir una carta.
+4. El alcance "any Disaster" (243, 410, 244) y "any Attack" (245) NO es
+   verificable por maquina con el catalogo actual (no hay clasificacion de
+   Disasters ni de ataques por tipo): se aplica a todo lo que pasa por el mismo
+   camino, y queda anotado en el backlog.
+5. El coste impreso de 244 Earth Magic NO existe ("Using this card any Magic
+   group..." sin linea de coste). Se juega como accion gratis y se declara con
+   `printedCostAbsent` en el `lastResult` y en el registro, sin inventar ninguna
+   accion.
+6. La UI NO manda `opts.aidUid` ni el sacrificio de la carta superior para 188:
+   el motor resuelve el coste disyuntivo solo (grupo Magic si hay ficha; si no,
+   descarta la carta superior del mazo de Plots). El objetivo impreso (el
+   Place) SI se elige en la UI.
+
+### Lecciones
+
+1. Un campo de nodo que SOLO se lee al calcular la fuerza (`destroyBonus`) es la
+   forma correcta de "bono de defensa que no cambia el Poder": cumple la regla
+   impresa sin tocar `countsForGoals` ni el marcador de la partida.
+2. Las excepciones impresas por NOMBRE ("except Earthquake or Volcano") hay que
+   compararlas por CLAVE NORMALIZADA, porque el `name` del dataset no las
+   contiene. Es el mismo bug que P1-020, con la misma solucion.
+3. Un flag de "una vez por turno" que pertenece a una carta EN JUEGO (un
+   Resource) va en la ENTRADA del recurso y lo resetea `beginTurn` para TODOS
+   los jugadores si el alcance impreso es global.
+4. En un motor hay que conocer las TRES familias de ventanas pendientes antes de
+   escribir un fixture: `S.pendingAttack`, `S.pendingRoll` y `S.pendingEvent`.
+   Cerrar solo una hace que el test sea una LOTERIA segun la mano del rival:
+   9 de 30 corridas fallaban con los mismos dos asertos.
+5. `firstUsableAid()` exige `tokens >= 1` y excluye la raiz. Un contenedor (o el
+   propio Place) plantado con tokens rompe cualquier contraste de "quien se
+   opone", por eso el fixture los planta con 0.
+6. Un aserto debe afirmar lo que el caso REALMENTE demuestra. El caso del
+   Volcano con 188 no admite contraste "con/sin excepcion" (lo demuestra la
+   aritmetica: `14-P`, `14-P` y `14-3P` con `3P <= 12 < 14`), asi que se
+   declara el contrato real en un comentario en vez de forzar un "devastado".
+7. Un poder de ataque que se demuestra con el MISMO dado en los dos brazos del
+   contraste es la unica forma de que la regresion siga valiendo si el motor
+   cambia sus numeros.
+
+### Backlog
+
+- Clasificacion de Disasters por tipo, para poder verificar de verdad "any
+  Disaster" (y "except Earthquake or Volcano" sin lista a mano).
+- Clasificacion de ataques por tipo, para "any Attack to Destroy a Place" (245).
+- Decision oficial sobre si el alcance de 243/410/244 incluye los Disasters de
+  otro jugador.
+- Coste impreso de 244 Earth Magic: confirmar en la fuente si hay linea que se
+  haya perdido en el OCR.
+- Poder real de 18 Center for Disease Control medido en el motor = 0 pese a que
+  el catalogo lo declara con Poder 3: investigated como hueco de datos (no como
+  regresion de L13).
+- Exponer el estado del motor en el navegador (un `window.__INWO_STATE` de solo
+  lectura) permitiria verificar en navegador real cualquier carta sin inventar un
+  estado sintetico.

@@ -29,6 +29,8 @@ const UI = path.join(root, 'game', 'js', 'ui.js');
 const CSS = path.join(root, 'game', 'css', 'style.css');
 const HTML = path.join(root, 'game', 'index.html');
 const CARDS = path.join(root, 'game', 'js', 'cards.js');
+const UIJS  = path.join(root, 'game', 'js', 'ui.js');
+const APPJS = path.join(root, 'game', 'js', 'app.js');
 
 const failures = [];
 function ok(cond, msg) { if (!cond) failures.push(msg); }
@@ -172,6 +174,33 @@ if (start >= 0 && end > start) {
   ok(/try\s*\{/.test(trozo),
     'P1-076: la rama que llama a CB.onDeclareAttack debe ir dentro de un try/catch');
 }
+
+/* ---------- 4) L13.f: el cableado de UI de disaster_defence ---------- */
+/* Aserciones ESTATICAS del cableado exacto, no una simulacion. Motivo (medido en
+ * navegador real con Playwright el 2026-10-04): el estado del motor vive en el closure
+ * de app.js, `window.App` solo expone `start` y las llamadas INTERNAS de ui.js a
+ * render() van a la funcion local, no a window.UI.render, asi que monkeypatchear
+ * window.UI.render NO captura el estado. Intentar renderizar un estado sintetico con
+ * UI.render(st) revienta en panelHtml/render por campos que no se pueden adivinar sin
+ * inventarlos. Es el mismo limite que ya declaro P1-075 para el test de Node. Lo que
+ * SI se puede fijar por asercion estatica es que el camino de la UI existe y llama a la
+ * API correcta del motor; que el motor lo ejecute ya lo cubren los 35 asertos de
+ * test_fase2_rules.js (L13.e). */
+const uiTxt = fs.readFileSync(UIJS, 'utf8');
+const appTxt = fs.readFileSync(APPJS, 'utf8');
+const nt = (uiTxt.match(/var NO_TARGET_KINDS\s*=\s*\[([^\]]*)\]/) || ['', ''])[1];
+ok(nt.indexOf("'disaster_defence'") < 0 && nt.indexOf('"disaster_defence"') < 0,
+   'L13.f: disaster_defence esta en NO_TARGET_KINDS -> las 4 Plot de L13 NO piden Place objetivo');
+ok(/md === 'boost_attack'\) return 'disasterboost';/.test(uiTxt),
+   'L13.f: chipAct() no devuelve disasterboost para 245 Earthquake Projector');
+ok(/act === 'disasterboost'/.test(uiTxt) && /CB\.onUseDisasterBoost\(/.test(uiTxt),
+   'L13.f: bindEvents no cablea data-act=disasterboost -> CB.onUseDisasterBoost');
+ok(/onUseDisasterBoost:\s*function\s*\(resourceUid\)/.test(appTxt)
+   && /E\.useDisasterBoost\(/.test(appTxt)
+   && /onUseDisasterBoost:[\s\S]{0,400}catch/.test(appTxt),
+   'L13.f: app.js no expone onUseDisasterBoost con try/catch sobre E.useDisasterBoost');
+ok(/case 'disaster_defence':\{/.test(fs.readFileSync(path.join(root, 'game', 'js', 'engine.js'), 'utf8')),
+   'L13.f: el motor no tiene ningun case \'disaster_defence\' (FASE 4 lo habria detectado)');
 
 if (failures.length) {
   console.error('HAND PEEK FAILURES (' + failures.length + '):');
