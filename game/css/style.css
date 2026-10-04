@@ -276,6 +276,7 @@ main {
    override de abajo, que gana por especificidad). */
 img[src*="Illuminati/"] { transform: rotate(90deg) scale(.735); }
 #cardPreview img[src*="Illuminati/"],
+#cardPeek img[src*="Illuminati/"],
 img.dbig[src*="Illuminati/"] { transform: none; }
 
 /* Tamaños de miniatura por contexto */
@@ -344,45 +345,81 @@ img.sm { width: 46px; height: auto; }
 .pendbar b { color: var(--amber); }
 .pendbar .bad { color: var(--red); font-weight: 700; }
 .pendbar button { margin-left: auto; }
-/* padding-top: 4px — #handCards tiene overflow-y:auto, que recorta a sus hijos.
-   Sin este margen, la carta sobre la que se hace hover (scale 1.05 => ~2.4px de
-   desbordamiento por arriba) se recortaba en el borde superior del contenedor. */
+/* ============================================================================
+   P1-071 — POP-UP ESTILO MTGA (fase 3, paso M1 del plan_mano_mtga.md)
+   Que estaba roto: (a) el hover hacia scale(1.05) => 96px -> 101px, un 5% que no
+   permite leer nada; (b) #handCards tenia max-height:240px + overflow-y:auto, que
+   RECORTA la caja escalada, asi que subir el factor no habria servido de nada;
+   (c) align-items:flex-start dejaba las cartas pegadas al borde de arriba y el
+   crecimiento hacia abajo chocaba con el borde inferior del contenedor.
+
+   Como queda ahora:
+   - SIN max-height y SIN overflow en #handCards => nada recorta la escala.
+     Ninguna caja ancestral (body, #app, main, #board) tiene overflow:hidden, asi
+     que la carta escalada se dibuja encima del tablero.
+   - transform-origin: bottom center => la carta crece HACIA ARRIBA desde el borde
+     inferior. El borde inferior no se mueve y la caja nueva CONTIENE la caja
+     original, asi que ningun punto del cursor puede quedar fuera del hit-box: no
+     hay forma de que se pierda el hover y, por tanto, no hay parpadeo posible.
+   - align-items: flex-end => todas las cartas comparten el borde inferior de la
+     fila, igual que en Arena.
+   - flex-wrap: wrap se mantiene a proposito: si la mano es enorme, las cartas bajan
+     de fila en lugar de desbordarse sobre las acciones de la derecha. Y como
+     transform NO afecta al layout, el hover no puede re-acomodar nada (esa era la
+     causa del bucle infinito historical).
+   - z-index: 30 en hover/focus => la carta escalada pasa por encima de #cardInfo y
+     del tablero (#handBar ya crea stacking context con position:sticky + z-index).
+   ============================================================================ */
 #handCards {
   grid-area: cards; min-width: 0;
-  max-height: 240px; overflow-y: auto; scrollbar-gutter: stable;
-  display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start;
-  border-right: 1px solid var(--hairline); padding: 4px 12px 4px 4px;
+  max-height: none; overflow: visible;
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; justify-content: center;
+  border-right: 1px solid var(--hairline); padding: 6px 12px 4px 4px;
 }
 #actionHint { grid-area: hint; }
+/* Badge con el numero de cartas de la mano. Vive en la barra pero NO dentro de
+   #handCards, para que contar cartas no cambie la topologia de la fila. */
+.rowcount {
+  font-family: var(--f-type); font-size: 11px; letter-spacing: .12em;
+  color: var(--muted); margin-left: 8px; white-space: nowrap;
+}
+.rowcount b { color: var(--gold); font-size: 13px; }
 #handCards .handCard {
   /* position/z-index viven en la regla base, NO solo en :hover.
      Antes eran solo-hover: el elemento pasaba de position:static (sin stacking
      context, z-index inerte) a position:relative al entrar, y ese flip de
      stacking context en cada entrada/salida era la 2a fuente de parpadeo. */
   position: relative; z-index: 1;
+  transform-origin: bottom center; will-change: transform;
   width: 96px; flex: none; cursor: pointer;
-  border: 1px solid var(--hairline); border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, .07); border-radius: 5px;
   background: rgba(0, 0, 0, .3);
-  transition: transform .12s, border-color .15s, box-shadow .15s;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .45);
+  transition: transform .14s cubic-bezier(.2, .7, .3, 1), border-color .15s, box-shadow .15s;
 }
-#handCards .handCard img { width: 100%; height: auto; border-radius: 3px 3px 0 0; }
-/* SOLO scale, nunca translateY. Un translateY(-6px) saca la carta de debajo del
-   cursor cuando este esta a <=6px del borde inferior: se pierde :hover, la
-   transicion de 120ms la devuelve, el cursor vuelve a estar encima => bucle
-   infinito de 120ms que el ojo lee como parpadeo. scale() solo CRECE la caja,
-   asi que cualquier punto dentro de la caja original sigue dentro: imposible que
-   se pierda el hover. El "lift" se comunica con sombra + borde, no moviendo el hit-box. */
+#handCards .handCard img {
+  width: 100%; height: auto; border-radius: 4px 4px 0 0; display: block;
+}
+/* P1-072 — la miniatura va limpia: el nombre queandia debajo en un <small> de 10px
+   era ilegible a 96px y solo anadia ruido. El nombre real esta en el title, en el
+   aria-label y en la capa de lectura #cardPeek (paso M2 del plan). */
+#handCards .handCard small { display: none; }
 #handCards .handCard:hover,
 #handCards .handCard:focus-visible {
-  transform: scale(1.05);
+  transform: scale(1.55);
   border-color: var(--gold);
-  box-shadow: 0 10px 24px rgba(255, 176, 58, .25);
-  z-index: 6;
+  box-shadow: 0 -10px 30px rgba(255, 176, 58, .28), 0 0 0 1px rgba(255, 176, 58, .5);
+  z-index: 30;
 }
 #handCards .handCard:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 /* :active reemplaza el transform del hover (misma propiedad) => composicion
-   explicita, sin salto: baja a .96 y vuelve a 1.05 al soltar. */
-#handCards .handCard:active { transform: scale(.96); z-index: 6; }
+   explicita, sin salto. NO baja de 1: si la caja se encoge, el borde superior se
+   mueve hacia abajo y el cursor puede quedar fuera del hit-box. */
+#handCards .handCard:active {
+  transform: scale(1.5);
+  box-shadow: 0 -6px 18px rgba(255, 176, 58, .3), 0 0 0 1px rgba(255, 176, 58, .55);
+  z-index: 30;
+}
 /* Faltaba por completo: ui.js anade la clase `picked` al seleccionar, pero no
    habia ninguna regla .handCard.picked => la seleccion no daba ninguna senal
    visual (solo cambiaba aria-pressed). */
@@ -393,7 +430,9 @@ img.sm { width: 46px; height: auto; }
 }
 #handCards .handCard.picked:hover,
 #handCards .handCard.picked:focus-visible {
-  box-shadow: 0 0 0 2px var(--gold), 0 10px 24px rgba(255, 176, 58, .3);
+  transform: scale(1.55);
+  box-shadow: 0 0 0 2px var(--gold), 0 -10px 30px rgba(255, 176, 58, .32);
+  z-index: 30;
 }
 
 .bgrp {
@@ -707,6 +746,60 @@ img.sm { width: 46px; height: auto; }
 .cp-meta { font-family: var(--f-type); font-size: 10.5px; letter-spacing: .1em; color: var(--cyan); margin: 3px 0; }
 .cp-t { clear: both; font-size: 12px; color: #cfd6ef; line-height: 1.45; margin-top: 6px; }
 
+/* ============================================================================
+   P1-073 — CAPA DE LECTURA #cardPeek (fase 3, paso M2 del plan_mano_mtga.md)
+   Es la pieza que hace que "se pueda observar que hace cada carta". No es un
+   tooltip que sigue al raton (#cardPreview ya lo hace): es un panel fijo que se
+   ancla sobre la carta de la mano y se reposiciona al mover el raton dentro de
+   ella. Vive fuera de #handBar porque la barra tiene altura constante por
+   principio (ver la REGLA DE ORO mas arriba).
+   ============================================================================ */
+.cardPeek {
+  position: fixed; z-index: 70; left: 0; top: 0;
+  width: 330px; max-height: 62vh; overflow-y: auto; overscroll-behavior: contain;
+  box-sizing: border-box;
+  padding: 10px 12px 11px;
+  background: linear-gradient(180deg, rgba(16, 23, 58, .985), rgba(8, 12, 32, .985));
+  border: 1px solid var(--gold); border-radius: 6px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .72), 0 0 0 1px rgba(255, 176, 58, .22);
+  pointer-events: none; text-align: left;
+}
+.cardPeek[hidden] { display: none; }
+.cardPeek .pk-top { display: flex; gap: 10px; align-items: flex-start; }
+.cardPeek .pk-img {
+  width: 128px; flex: none; border-radius: 4px;
+  border: 1px solid var(--hairline); background: #0a0e20;
+}
+.cardPeek .pk-head { min-width: 0; flex: 1; }
+.cardPeek .pk-n {
+  font-family: var(--f-disp); font-size: 15px; letter-spacing: .06em;
+  color: var(--gold-hi); line-height: 1.2;
+}
+.cardPeek .pk-meta {
+  font-family: var(--f-type); font-size: 10.5px; letter-spacing: .09em;
+  color: var(--cyan); margin-top: 4px; line-height: 1.45;
+}
+.cardPeek .pk-meta b { color: var(--gold); }
+/* Texto impreso VERBATIM. Es lo que dice la carta de verdad; el desglose de
+   efectos (pk-eff) es la lectura ayuda, nunca sustituye a esto. */
+.cardPeek .pk-text {
+  clear: both; margin-top: 8px; padding-top: 7px;
+  border-top: 1px solid var(--hairline);
+  font-size: 12px; line-height: 1.5; color: #dfe5fb; white-space: pre-wrap;
+}
+.cardPeek .pk-eff {
+  margin-top: 7px; font-family: var(--f-type); font-size: 10.5px;
+  letter-spacing: .1em; color: var(--gold); opacity: .85;
+}
+.cardPeek .pk-effline { font-size: 11.5px; line-height: 1.45; color: #cfd6ef; letter-spacing: 0; }
+.cardPeek .pk-effline em { color: var(--cyan); font-style: normal; }
+.cardPeek .pk-warn {
+  margin-top: 7px; padding: 5px 7px; border-left: 3px solid var(--amber);
+  background: rgba(255, 176, 58, .09);
+  font-size: 11px; line-height: 1.45; color: #f2e0bd;
+}
+.cardPeek .pk-none { margin-top: 7px; font-size: 11.5px; font-style: italic; color: var(--muted); }
+
 /* ---------- FLASH ÉXITO/FALLO ---------- */
 .fxflash {
   position: fixed; top: 42%; left: 50%;
@@ -742,7 +835,20 @@ img.sm { width: 46px; height: auto; }
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "info" "cards" "btns" "hint";
   }
+  /* P1-071 — en pantallas estrechas la fila unica se sale de la pantalla, asi que
+     aqui SI se recorta a lo alto (el factor de zoom baja a 1.3 y el crecimiento hacia
+     arriba se deforma en lugar de recortarse). Es el mismo compromiso que ya hacia la
+     version anterior de la barra, solo que aqui es aceptable porque en vertical la
+     carta Crece hacia arriba Y hacia abajo a la vez. */
   #handCards, #actionBtns { max-height: none; border-right: none; }
+  #handCards {
+    max-height: 260px; overflow-y: hidden; overflow-x: auto;
+    scrollbar-width: thin; justify-content: flex-start;
+  }
+  #handCards .handCard { transform-origin: bottom center; }
+  #handCards .handCard:hover, #handCards .handCard:focus-visible { transform: scale(1.3); }
+  #handCards .handCard:active { transform: scale(1.26); }
+  #handCards .handCard.picked:hover, #handCards .handCard.picked:focus-visible { transform: scale(1.3); }
   #actionBtns { width: auto; }
   #cardInfo { height: 52px; min-height: 52px; max-height: 52px; }
   .stamp { right: -30px; font-size: 11px; }
