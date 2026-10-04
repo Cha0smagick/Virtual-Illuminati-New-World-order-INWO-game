@@ -6309,6 +6309,153 @@ var hand0 = rawL11().players[0].hand.length;
 })();
 
 console.log('');
+
+/* ============ L12 - MANIPULACION DE RESOURCES (236, 348, 378, 400, 413) ============ */
+/* P1-083 / P1-086. Fixtures propios del lote, con la LECCION de P1-078: el reparto
+ * inicial es ALEATORIO, asi que toHandL12 PURGA antes de insertar y los asertos
+ * cuentan por delta o por el uid CONCRETO, nunca por numero absoluto de cartas. */
+/* L12: ejecuta fn y devuelve el mensaje del error, o "" si no hubo ninguno. El
+ * helper es PROPIO del lote y no reutiliza throwMsgL10 (que pertenece al bloque
+ * L10 y no existe fuera de su IIFE). Ningun rechazo del motor debe abortar la
+ * suite: se coloca dentro de este bloque, no dentro de un ok(). */
+function throwMsgL12(fn) {
+  try { fn(); } catch (e) { return String((e && e.message) || e); }
+  return "";
+}
+function toHandL12(pid, cardId) {
+  var rs = E._raw().players[pid];
+  for (var k = rs.hand.length - 1; k >= 0; k--) if (rs.hand[k] === cardId) rs.hand.splice(k, 1);
+  rs.hand.push(cardId);
+  return cardId;
+}
+/* planta un Resource como lo hace el motor de verdad: en pl.resources, NO en el
+ * arbol de grupos (P1-077). Los 3 son 233 Crystal Skull, una carta Resource real
+ * del mazo, para que card() la resuelva. */
+function plantResWithAction(pid, uid, cardId, action) {
+  var rs = E._raw().players[pid].resources;
+  var e = { uid: uid, cardId: cardId, linkedTo: null, tokens: 0 };
+  if (action) e.action = action;
+  rs.push(e);
+  return e;
+}
+/* copiesOf NO existe fuera de los IIFE de los lotes anteriores (L5c, L7, L8c, L11 lo
+ * declaran dentro de su propio bloque), asi que el lote trae la suya. Misma regla que
+ * toHandL12: cuenta copias por IDENTIDAD de carta en la mano del jugador. */
+function copiesInHandL12(pid, cardId) {
+  var h = E._raw().players[pid].hand, n = 0;
+  for (var i = 0; i < h.length; i++) if (h[i] === cardId) n++;
+  return n;
+}
+function resUidStillThere(pid, uid) {
+  var rs = E._raw().players[pid].resources;
+  for (var i = 0; i < rs.length; i++) if (rs[i].uid === uid) return true;
+  return false;
+}
+/* fuerza el resultado del dado. d6() = 1 + Math.floor(Math.random()*6), asi que
+ * 0.00 -> 1, 0.40 -> 3, 0.99 -> 6. Devuelve la funcion real para restaurarla. */
+function forceD6(v) {
+  var real = Math.random;
+  Math.random = function () { return v; };
+  return function () { Math.random = real; };
+}
+/* deja a P0 en su turno principal y lo AFIRMA: si el fixture no llega, todas las
+ * aserciones siguientes estarian midiendo el turno equivocado. */
+function ownMainTurnL12() {
+  for (var k = 0; k < 14; k++) {
+    var s = E.getState();
+    if (s.phase === 'main' && s.currentPid === 0) return true;
+    E.endTurn();
+  }
+  var s2 = E.getState();
+  return s2.phase === 'main' && s2.currentPid === 0;
+}
+
+fresh('adeptsofhermes1', 'servantsofcthulhu1');
+ok(ownMainTurnL12(), 'L12 el fixture deja a P0 en su turno principal (control del camino feliz)');
+
+var IX = { deasil: 236, purge: 348, suicide: 378, weaklink: 400, warehouse: 413, ally: 233 };
+
+console.log('--- L12 / 378 Suicide Squad: la accion del Resource en juego ---');
+fresh('adeptsofhermes1', 'servantsofcthulhu1');
+ok(ownMainTurnL12(), 'L12 378: el fixture deja a P0 en su turno principal');
+toHandL12(0, IX.suicide);
+E.playResource(0, IX.suicide);
+var own378 = E._raw().players[0].resources;
+ok(own378.length === 1 && own378[0].cardId === IX.suicide && own378[0].action && own378[0].action.mode === 'suicide_squad',
+   'L12 378 al colocarse queda en Resources con su accion registrada -> ' + JSON.stringify(own378[0] || null));
+var uid378 = own378[0].uid; /* P1-086: own378 es el ARRAY VIVO de pl.resources; cuando el dado 6
+  * destruye Suicide Squad el splice deja el array vacio y own378[0] seria undefined. El uid
+  * se captura una vez, en un escalar, y se usa en todas las aserciones siguientes. */
+plantRes(1, 'rivalRes1', IX.ally);
+plantRes(1, 'rivalRes2', IX.ally);
+/* SIN resourceUid el motor NO PUEDE inventar un Resource: se lo exigimos. El uid
+ * del propio 378 SI es valido (esta en su propia mesa), asi que pasarlo seria una
+ * llamada legitima: por eso la prueba sin uid va con {} y no con el uid propio. */
+var noUid378 = throwMsgL12(function () { E.useResDestroy(0, {}); });
+ok(!!noUid378, 'L12 378 necesita un uid de Resource (no lo inventa) -> ' + (noUid378 || 'NO RECHAZO'));
+E.useResDestroy(0, { resourceUid: uid378 });
+/* Y el Resource PROPIO no sirve de objetivo: el impreso dice "belonging to a rival".
+ * resolveResDestroy limpia la ventana ANTES de validar, asi que tras el rechazo la
+ * ventana queda cerrada y el registro intacto. */
+var ownTgt378 = throwMsgL12(function () { E.resolveResDestroy({ resUid: uid378 }); });
+ok(!!ownTgt378 && /rival/.test(ownTgt378) && !E.getState().pendingResDestroy && resUidStillThere(0, uid378),
+   'L12 378 RECHAZA un Resource propio y no destruye nada (impreso: belonging to a rival) -> ' + (ownTgt378 || 'NO RECHAZO'));
+E.useResDestroy(0, { resourceUid: uid378 });
+ok(!!E.getState().pendingResDestroy, 'L12 378 useResDestroy abre la ventana FUERA de playPlot (at any time)');
+/* SIN objetivo elegido el motor NO autoelige nada (DoD 6): la ventana se cierra y
+ * el Resource del rival sigue intacto. */
+E.resolveResDestroy({});
+ok(!E.getState().pendingResDestroy && resUidStillThere(1, 'rivalRes1') && resUidStillThere(1, 'rivalRes2'),
+   'L12 378 sin resUid NO autoelige objetivo: la ventana se cierra y no se destruye nada');
+
+/* DADO 1: "Target is destroyed. Suicide Squad survives and may be again." */
+var rr378 = forceD6(0.00);
+E.useResDestroy(0, { resourceUid: uid378 });
+E.resolveResDestroy({ resUid: 'rivalRes1' });
+rr378();
+var ssAfter1 = E._raw().players[0].resources;
+ok(resUidStillThere(0, uid378) && !resUidStillThere(1, 'rivalRes1') && resUidStillThere(1, 'rivalRes2'),
+   'L12 378 con dado 1: el Resource rival desaparece de pl.resources por su uid concreto y Suicide Squad sobrevive -> rival1=' + resUidStillThere(1, 'rivalRes1') + ' rival2=' + resUidStillThere(1, 'rivalRes2') + ' propio=' + resUidStillThere(0, uid378));
+/* REGLA 14 de plan.md: NUNCA log[length-1] (jugar una Plot abre VENTANA DE SUCESO
+ * ABIERTA). Y OJO: en el motor el registro son OBJETOS {t,p,msg}, no strings:
+ * un .some(l=>/dado 1/.test(l)) sobre el objeto da false sin decir por que. */
+ok(E.getState().log.some(function (x) { return /dado 1/.test(x.msg || String(x)); }),
+   'L12 378 con dado 1 el registro dice que salio el dado 1 -> ' + JSON.stringify((E.getState().log||[]).slice(-3).map(function (x) { return x.msg || String(x); })));
+
+/* DADO 6: "Suicide Squad fails and is destroyed. Target survives." */
+var rr378b = forceD6(0.99);
+E.useResDestroy(0, { resourceUid: uid378 });
+E.resolveResDestroy({ resUid: 'rivalRes2' });
+rr378b();
+ok(!resUidStillThere(0, uid378) && resUidStillThere(1, 'rivalRes2'),
+   'L12 378 con dado 6: Suicide Squad se destruye y el objetivo sobrevive -> propio=' + resUidStillThere(0, uid378) + ' rival2=' + resUidStillThere(1, 'rivalRes2'));
+
+console.log('--- L12 / 236 Deasil Engine y 400 The Weak Link: NO mutan nada sin objetivo ---');
+fresh('adeptsofhermes1', 'servantsofcthulhu1');
+ok(ownMainTurnL12(), 'L12 236/400: el fixture deja a P0 en su turno principal');
+plantRes(1, 'rivalResX', IX.ally);
+toHandL12(0, IX.deasil);
+var noTgt236 = throwMsgL12(function () { E.playPlot(0, IX.deasil, null, {}); });
+ok(!!noTgt236 && /atras/.test(noTgt236), 'L12 236 RECHAZA sin Resource objetivo y lo dice (el motor no lo elige) -> ' + (noTgt236 || 'NO RECHAZO'));
+ok(copiesInHandL12(0, IX.deasil) === 1 && resUidStillThere(1, 'rivalResX'),
+   'L12 236 sin objetivo NO MUTA NADA: la carta sigue en la mano y el Resource rival intacto');
+E.playPlot(0, IX.deasil, null, { resUid: 'rivalResX' });
+ok(!resUidStillThere(1, 'rivalResX') && E._raw().groupDiscard.indexOf(IX.ally) >= 0,
+   'L12 236 con objetivo: el Resource se destruye (ya no esta en pl.resources) y su carta va al descarte');
+
+/* 400 The Weak Link: sin Poder combinado el pago NO se completa y NO se gasta nada. */
+/* 236 ya destruyo rivalResX (es lo que su rama_affirma). 400 necesita un Resource
+ * rival VIVO, asi que se planta uno nuevo: reutilizar el uid consumido mediria el
+ * error del objetivo y no el del pago. */
+plantRes(1, 'rivalRes400', IX.ally);
+toHandL12(0, IX.weaklink);
+E._raw().players[0].illumTokens = 0;
+plant(0, 'weakG1', IX.ally, 1);
+var noPay400 = throwMsgL12(function () { E.playPlot(0, IX.weaklink, null, { resUid: 'rivalRes400' }); });
+ok(!!noPay400 && /Poder/.test(noPay400), 'L12 400 RECHAZA el pago insuficiente con el motivo oficial -> ' + (noPay400 || 'NO RECHAZO'));
+ok(copiesInHandL12(0, IX.weaklink) === 1 && E._raw().players[0].resources.length === 0,
+   'L12 400 el pago insuficiente NO MUTA NADA: la carta sigue en la mano y no se ha colocado ningun Resource');
+
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });
