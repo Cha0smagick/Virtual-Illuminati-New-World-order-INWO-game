@@ -782,6 +782,75 @@ d) y no en
 - **Aceptacion**: un Place con 243 tiene `destroyBonus >= 10`; un Disaster fallido por 1 con
   margen real, no solo por aritmetica.
 
+
+### [x] L13.a - AUDIT: LOS 5 IMPRESOS Y EL MOTOR (HECHO, P1-087)
+
+- [x] L13.a.1 **243 Early Warning** (plot): `Gives one Place a +10 to defend against any Disaster. Playing this card a free action.` => +10 de defensa, ACCION GRATIS (sin coste impreso de grupo).
+- [x] L13.a.2 **410 Volunteer Aid** (plot): `Gives one Place a +6 to defend against any Disaster. If the Place is still devastated by the Disaster, it automatically gets Relief at the beginning of its owners next turn. Playing this card is a free action.` => +6 de defensa + Relief automatico. **HUECO MEDIDO: `relief` = 0 ocurrencias en TODO engine.js => el subsistema Relief NO EXISTE**; `devastated` si existe (L160/172/183/3371/3372/4394/5305/5395/6008), luego el Relief es limpiar ese flag y restaurar la ficha.
+- [x] L13.a.3 **188 Air Magic** (plot): `Play this card to help protect a Place against any Disaster, except Earthquake or Volcano. The Power of the Place is tripled for this one defense. Playing this card is an action for a Magic group. Alternatively, you may sacrifice the top Plot card from your deck, to power this card. Discard it without looking at it.` => triplica el Poder del Place PARA ESA DEFENSA; NO contra Earthquake ni Volcano; coste = accion Magic **o** sacrificar la carta superior del mazo de Plots sin mirarla. El `text` OCR contradice ("an action for 2 Magic group"): manda `textFull`.
+- [x] L13.a.4 **244 Earth Magic** (plot): `Play this card to help protect a Place against a Disaster. Using this card any Magic group in play use their Action tokens to oppose the attack.` => los grupos Magic pueden oponerse. **SIN linea de coste impreso => LIMITE A DECLARAR** (accion gratis, documentado).
+- [x] L13.a.5 **245 Earthquake Projector** (resource, impreso Gadget + ACTION): `This device can act once per turn. It can increase the Power of any Attack to Destroy a Place, or of any Disaster card, by 2.` => +2 al Poder del ATAQUE (no a la defensa), una vez por turno, alcance GLOBAL mientras este en juego.
+- [x] L13.a.6 **La cadena de resolucion del Disaster, MEDIDA** (verbatim en el audit): `announcePlotInstantAttack(pid,pc,tUid,opts)` L3229-3311 devuelve `{pid,cardIdx,cardName,tUid,nd,tc,eff,victim,power,defPower,pos,str,notes}`; L3290 `defPower=defenderPower(nd,true)`; **L3295 `pgI=destroyDefenseBonus(nd,eff.kind==='assassination')` y `defPower+=pgI`**; L3297-3300 `if(eff.victimMayBeAided&&victim>=0){var vn=firstUsableAid(victim,null); if(vn){spendGroupToken(victim,vn.uid);defPower+=curPower(vn);}}` (**NO filtra por atributo**); L3303 `illuDefenseBonus(victim)`; L3306 `positionBonus(victim,tUid)`; **L3307 `str=power-defPower-pos`**. `applyPlotInstantAttack(ann)` L3318-3336 tira `roll2d6()` y llama a `applyPlotInstantAttackRoll(ann,total,str,false,null)` L3342-3406: 11-12 fallan siempre, exito si `roll<=str`, `margin=str-roll`; al exito `nd.devastated=true;nd.tokens=0` + subarbol; `need=eff.destroyMargin` (null => nunca destruye, solo devasta); si `margin>need` => `destroyGroup`.
+- [x] L13.a.7 **Helpers y flags**: `destroyDefenseBonus(node,isAssa)` L247-253 suma `node.destroyBonus` + `node.assassinationBonus`; `defenderPower(node,isDestroy)` L181-185 = `curPower(node)` con `/2` si `devastated`; `countsForGoals(nd)` L171-173 EXCLUYE a los devastados (`!nd.devastated`) => un devastado no cuenta para la victoria; las escrituras de `destroyBonus` estan en L5596 (208 Bodyguard) y L5600 (382 Talisman).
+- [x] L13.a.8 **Donde va el Relief de 410**: `expireTurnFlags()` **L1101-1131** (limpia `defTriple`/`resNullify`/`timedBoost`/`bonusAction` comparando `S.turn>=n.X.untilTurn`), llamado LO PRIMERO en `E.beginTurn` **L1164**. Precedente exacto: `n.defTriple` (L1104) ya es "un triple defensivo de una carta que caduca por turno".
+- [x] L13.a.9 **`E.beginTurn` es L1151** (`E.beginTurn=function(pid,isFirst){`, NO `function beginTurn`): `S.turn++`, luego `expireTurnFlags()`, luego resetea `pl.flags.*` y **`pl.usedResourceThisTurn=false`** (el "once per turn" de 245 puede apoyarse en el flag propio de la entrada + este reset).
+- [x] L13.a.10 **`case 'disaster':` = engine.js L4221-4286**: L4237-4268 el `altUse{kind:'destroy_bonus'}` (P1-021) delega en `A2.boosts` y **no gasta ficha**; **L4269 `if(!targetUid)throw new Error(eff.kind==='assassination'?'Elige una Personality objetivo':'Elige un Place objetivo')`** = el mensaje de "sin objetivo" que 188/243/244 reutilizan; L4276-4285 `announcePlotInstantAttack` + `reactionWindowOpen` + `openRollWindow`.
+- [x] L13.a.11 **Los 13 `disaster` MEDIDOS** con sus `destroyMargin`: atomicmonster 6 (coastal) · **earthquake 5** · epidemic null · hurricane null (coastal) · meteorstrike 4 · nuclearaccident 4 · plagueofdemons 5 (huge) · giantkudzu 6 **`victimMayBeAided:true` (el UNICO)** · rainoffrogs 6 · theoregoncrud 5 (huge) · tidalwave 10 (coastal) · tornado 4 (huge) · **volcano 3 (huge)**. => **la excepcion "except Earthquake or Volcano" de 188 SI es verificable por maquina** (`earthquake` y `volcano` son claves normalizadas exactas), y **comparar por clave normalizada, NO por `card().name`** (busqueda de nombres "earthquake"/"volcano"/"volcanic" en cards.js = 0 coincidencias: el dataset no tiene esos nombres legibles).
+- [x] L13.a.12 **Posiciones en `gen_cards.js`**: `const L12_FX = {` L1955 · `const L12_FXN = {}` L2018 · `for (const k in L12_FX) { L12_FXN[norm(k)] = L12_FX[k]; }` L2019 · L2020 en blanco => **`L13_FX` va justo despues de L2019**; `ACTION_COST_KINDS` L2034; la cadena `pfx` L2323 (una sola linea) anadir `|| L13_FXN[key]` antes del `;`.
+- [x] L13.a.13 **P1-055 (red del generador)**: `ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block']` (L2034). Si `disaster_defence` declara `requireActionFromAttr` (lo necesitan 188 y 244) hay que **anadir el kind a `ACTION_COST_KINDS` Y su gate en `engine.js`**, o el generador LANZA. **Decidido: 188 declara `requireActionFromAttr:'magic'`; 244 NO** (su coste no es una accion, es una habilitacion permanente), asi que solo se anade `disaster_defence` a `ACTION_COST_KINDS`.
+- [x] L13.a.14 **`test_fase4_cards.js`**: `const BLOCKED_CARDS = {` **ya no esta en L131** (P1-079 sustituyo la entrada `purge` por un bloque de 11 lineas de comentario) => localizar con `findIndex`, nunca por numero de linea. **Ninguna de las 5 cartas de L13 esta congelada** (medido).
+
+### [ ] L13.b - DATOS: familia `disaster_defence` en `gen_cards.js`
+
+- [ ] L13.b.1 Las 5 cartas en `L13_FX` (inserta justo despues de L2019 de `gen_cards.js`), con **`kind:'disaster_defence'` UNICO** (ninguna lo usa hoy: los kinds vivos son `disaster`(13), `resource_effect`(5), `illu_special`(18) y 44 mas). **Proximo ID de hallazgo libre: P1-088.**
+- [ ] L13.b.2 `t:` **verbatim** de `textFull` para las 4 con fuente; 244 sin linea de coste => el `t:` es el impreso tal cual y el limite declarado va en `costFree:true`.
+- [ ] L13.b.3 Campos derivados, sin inventar nada fuera del precedent medido: 243 `{defenseBonus:10, vsAnyDisaster:true, costFree:true}` · 410 `{defenseBonus:6, vsAnyDisaster:true, costFree:true, reliefPending:true}` · 188 `{tripleDefense:true, tripleExcept:['earthquake','volcano'], requireActionFromAttr:'magic', orSacrificeTopPlot:true, notPrivileged:false}` · 244 `{aidAttr:'magic', vsAnyDisaster:true, costFree:true}` · 245 `{boostPower:2, boostTarget:['destroy_attack','disaster'], oncePerTurn:true}`.
+- [ ] L13.b.4 **NO anadir `subtype`/`attributes` a nada**: el mismo limite declarado que L12 (el motor lo escribe en `resource_destroy` L4794-4800: "el mazo NO tiene clasificacion de Resources... No se inventa ninguna categoria").
+- [ ] L13.b.5 Anadir `|| L13_FXN[key]` a la cadena `pfx` (L2323) y **`'disaster_defence'` a `ACTION_COST_KINDS`** (L2034), ambos con la justificacion escrita.
+- [ ] L13.b.6 Regenerar con **`npm run build:cards`** (nunca `build_cards.js`). **FASE 4 debe dar clasificadas 146->151 y sin mecanica 102->97 (exactamente 5)**, bloqueadas 10, huecos 4, 356 pending.
+- [ ] L13.b.7 Anadir `disaster_defence` a `KIND_ES` y las claves nuevas a `FIELD_ES` en `game/js/ui.js` (bloque M3) + subir `?v=47` a `?v=48`.
+- [ ] L13.b.8 `node --check gen_cards.js` + `npm test` + **COMMIT + PUSH**.
+
+### [ ] L13.c - MOTOR: `case 'disaster_defence'`
+
+- [ ] L13.c.1 `case 'disaster_defence':{...}` REAL dentro del `switch(eff.kind)` de `E.playPlot`, insertado **antes del `default:` de L5505** (el gate de FASE 4 detecta `/case\s+'([a-z0-9_]+)'\s*:/` sobre todo el motor: un `else if` NO cuenta).
+- [ ] L13.c.2 **Objetivo ELEGIDO, nunca autoelegido** (DoD 6): `if(!targetUid)throw new Error('Elige un Place objetivo')` con el MISMO mensaje que L4269. El `firstUsableAid` de `victimMayBeAided` hoy es `firstUsableAid(victim,null)` sin filtro: con el flag de 244 pasa a `function(cc,nn){return hasAttr(cc,'magic',nn);}`.
+- [ ] L13.c.3 **243/410 escriben sobre el NODO**: `nd.destroyBonus=(nd.destroyBonus||0)+eff.defenseBonus` (precedente L5596/L5600). **Eso NO toca `curPower`**, asi que cumple la regla oficial: el Poder del Place no cambia, solo su defensa. Si `nd.destroyBonus` ya habia valor (otro Bodyguard/Talisman), se SUMA, no se pisa.
+- [ ] L13.c.4 **Relief de 410 en `expireTurnFlags()`** (L1101-1131), con el precedente `n.defTriple` exacto: `n.reliefPending={untilTurn:S.turn+1,byPid:ownPid}` al jugar, y alPrincipio del turno del dueno `if(n.reliefPending&&S.turn>=n.reliefPending.untilTurn&&findOwnerPid(n.uid)===n.reliefPending.byPid){ if(n.devastated){n.devastated=false; log(...);} n.reliefPending=null; }`.
+- [ ] L13.c.5 **188 en `announcePlotInstantAttack`**: antes de L3307, si el Place tiene el flag de triplicado y la carta del Disaster **NO** es `earthquake`/`volcano` (comparando la clave normalizada con `toLowerCase().replace(/[^a-z0-9]/g,'')`, como el fix de P1-020 en L4255), `defPower*=3`. Si el Disaster SI es earthquake/volcano => el flag no aplica y se registra en `notes`.
+- [ ] L13.c.6 **244 habilita a los Magic** y 188/244 se **quedan en juego** (el impreso no dice "discard"): `pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:nd.uid})` (patron de `talisman` L5498) y sus efectos son **flags de nodo** que caducan cuando la carta se va. `nd.magicMayOppose` y `nd.defenseTripled` se limpian en la misma pasada que limpia los links rotos (el motor ya purga los `linkedPlots` cuyo `linkedTo` murio).
+- [ ] L13.c.7 **245 es un Resource, no un Plot**: `case 'disaster_defence':` en el `switch(resFx)` de `E.playResource` SOLO valida el modo; el registro (`entry.action={kind:'disaster_defence',mode:'boost_disaster'}`) va **DESPUES del `push`** (patron `draw_hook`/`action` de L12).
+- [ ] L13.c.8 `E.useDisasterBoost(pid,{resourceUid})` + `E.resolveDisasterBoost(act)` **en paralelo (NO unificado)** a `S.pendingResDestroy` de 378 (regla 6 de `plan.md`: un lote = una familia de mecanica; aqui 3 sub-familias distintas comparten `kind` porque todas son "defensa contra Disaster" y comparten el mismo camino de flag).
+- [ ] L13.c.9 El +2 de 245 se suma a **`power` del ataque** (NO a `defPower`), antes de L3307, y se marca `entry.usedThisTurn=true` ("once per turn"), reseteado por el mismo `E.beginTurn` que ya resetea `pl.usedResourceThisTurn`.
+- [ ] L13.c.10 `throw new Error(c.name + ': ...')` con motivo OFICIAL en cada rechazo; `lastResult` como canal de resultado observable.
+- [ ] L13.c.11 `node --check` + `npm test` + FASE 4 con 151/97/3/10/4/356.
+
+### [ ] L13.d - UI: las 5 cartas ejecutables con objetivo elegido
+
+- [ ] L13.d.1 `ui.js`: las 3 Plot cards (243/410/188/244) entran por el camino normal de `handClick` (ya son plots) y **exigen destino**: el boton de jugar tiene que pedir un Place antes de llamar al motor (DoD 6, patron `plotNeedsTarget` existente).
+- [ ] L13.d.2 `app.js`: callback con la red `try/catch` de `onUseResDestroy` (P1-076: un rechazo por regla del motor DEBE llegar al registro, no solo a la consola).
+- [ ] L13.d.3 245: boton "usar accion" en el `chipMini(c, uid, act)` de la fila de Resources, con la ventana de objetivo (`pendbar`) listando los ataques/Disasters todavia no resueltos.
+- [ ] L13.d.4 `?v=47` -> `?v=48`.
+- [ ] L13.d.5 **Verificacion en navegador real** (leccion de P1-075: un test de Node NO prueba jugabilidad): 243/410 con un Place de 5 de Poder contra un Disaster de Poder 14 con `destroyMargin 5`.
+
+### [ ] L13.e - REGRESION en `test_fase2_rules.js`
+
+- [ ] L13.e.1 **Aceptacion de plan.md, afirmada de verdad**: un Place con 243 tiene `destroyBonus>=10` **Y** un Disaster que sin 243 tendria `str - roll = 1` (exito por el margen minimo) **con 243 falla de verdad** (mismo dado, mismo Poder, `str` 10 puntos menor). No basta la aritmetica del assert: se ejecuta `applyPlotInstantAttackRoll` con `forcedFail=false` y un `roll` real de la rama del jugador.
+- [ ] L13.e.2 **410**: el Relief se verifica por el efecto observable: el Place queda `devastated=true`, se pasa el turno hasta el del dueno, y se afirma `devastated===false` con una linea de registro que lo diga. Y el NEGATIVO: si el Place NO sigue devastado, el Relief no hace nada.
+- [ ] L13.e.3 **188**: (a) con `tripleDefense` y un Disaster que NO es earthquake/volcano, `defPower` sale triplicado; (b) contra `earthquake` y contra `volcano` el flag NO aplica. Afirmar por el `ann.str` que devuelve `announcePlotInstantAttack`, no por aritmetica.
+- [ ] L13.e.4 **244**: con el flag, `firstUsableAid` elige un grupo Magic y **RECHAZA** uno no-Magic; sin el flag, cualquier grupo puede oponerse (el comportamiento actual, que no se rompe).
+- [ ] L13.e.5 **245**: +2 al `power` del ataque, y el "once per turn" (segunda activacion en el mismo turno => throw con el motivo oficial).
+- [ ] L13.e.6 Determinismo: fixtures propios del lote, `toHand*` **purga antes** (leccion de P1-078) y asertos por el **uid concreto** o por delta, nunca por numero absoluto de cartas. Asertos de log con `.some(x=>/.../.test(x.msg||String(x)))`, **nunca `log[length-1]`** (regla 14: el log son objetos `{t,p,msg}`).
+- [ ] L13.e.7 **30+ corridas consecutivas** en verde (regla 13).
+- [ ] L13.e.8 COMMIT + PUSH.
+
+### [ ] L13.f - CIERRE
+
+- [ ] L13.f.1 `## 65.` en `docs/audit/INWO_SURGICAL_AUDIT.md` (**ASCII sin tildes**, con script Node temporal + `fs.appendFileSync` cuya guarda **aborte si `## 65.` ya existe**, borrarlo despues), con Hallazgo / Correcciones / Limites declarados / Verificacion / Lecciones / Backlog.
+- [ ] L13.f.2 IDs **P1-087..P1-091**: uno por cada paso de L13 y uno por cada carta.
+- [ ] L13.f.3 Marcar `## [x] L13` y sus sub-pasos con el **resultado real** y las desviaciones.
+- [ ] L13.f.4 COMMIT + PUSH.
+
 ## [ ] L14 - MANIPULACION DE TURNO
 
 - **Cartas (5)**: 364 Seize the Time! (roba el turno de otro) · 405 Unlucky 13 (ENTREGADA
