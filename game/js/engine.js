@@ -453,7 +453,7 @@ E.newGame=function(configs){
   S={
       phase:'setup',turn:0,round:1,currentPid:-1,turnCompleted:false,
     players:[],groupDeck:[],plotDeck:[],groupDiscard:[],plotDiscard:[],
-    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,pendingAlignEdit:null,alignRetro:{},alignRule:null,log:[],uidCounter:100,winner:null,
+    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,pendingAlignEdit:null,pendingResDestroy:null,alignRetro:{},alignRule:null,log:[],uidCounter:100,winner:null,
     config:{goalCount:(configs.goalCount||12)},
     lastRoll:null
   };
@@ -754,6 +754,8 @@ function publicState(){
     neutralArea:clone(S.neutralArea),
     attack:S.attack?clone(S.attack):null,
     log:S.log.slice(-400),
+    pendingResDestroy:S.pendingResDestroy?{byPid:S.pendingResDestroy.byPid,
+      byName:S.players[S.pendingResDestroy.byPid]?S.players[S.pendingResDestroy.byPid].name:'?'}:null,
     victoryStatus:victoryStatus()
   };
 }
@@ -1595,6 +1597,77 @@ E.alignsOfNode=function(uid){
  * privilegiado, asi que se rechaza si hay un ataque vivo. Abre una ventana
  * (S.pendingAlignEdit) para que la UI pueda pedir grupo + operacion + alineacion
  * sin ensuciar la firma de la llamada. */
+/* ---------- L12.d-2 - ACCION DE UN RESOURCE EN JUEGO (378 Suicide Squad) ----------
+ * Por que NO se reusa E.useGadgetAction de 332: la ventana pendingAlignEdit esta
+ * cableada en la UI (app.js onUseGadgetAction / onResolveAlignEdit, ui.js L664-705) con
+ * los controles de alineacion, y meterle una destruccion de Resource por el mismo
+ * hueco obligaria a la UI a distinguir dos familias de mechanics en el mismo menu. La
+ * ventana va en su propio campo, en paralelo (regla 6 de plan.md: un lote = una
+ * familia de mechanics, no se mezclan).
+ *
+ * 378 impreso: "Can be used to destroy any Resource belonging to a rival. May be used
+ * at any time except during a privileged attack. Roll one die: 1: Target is destroyed.
+ * Suicide Squad survives and may be again. 2-5: Target and Suicide Squad are both
+ * destroyed. 6: Suicide Squad fails and is destroyed. Target survives. Discard any card
+ * that is destroyed."
+ * Traduccion mecanica: se elige un Resource de un rival (OBJETIVO ELEGIDO por el
+ * jugador, nunca automatico) y se tira UN solo d6. 1 => solo cae el objetivo y 378
+ * sobrevive para volver a usarse. 2-5 => caen los dos. 6 => cae 378 y el objetivo
+ * sobrevive. Cada carta destruida va a S.groupDiscard ("Discard any card that is
+ * destroyed").
+ *
+ * LIMITE DECLARADO: 332 dice "at any time" y aun asi exige turno propio, porque
+ * useGadgetAction llama a requireOwnMain (comentario en app.js L179-183). 378 dice
+ * "at any time except during a privileged attack", o sea que su texto es MAS
+ * permisivo, pero se aplica el mismo criterio que 332 para no abrir una segunda via
+ * de accion fuera de turno sin ventana que la UI sepa cerrar. El veto del ataque
+ * privilegiado SI se comprueba, porque el impreso lo prohibe expresamente. Queda
+ * anotado en el backlog de la seccion 64 del auditor.
+ *
+ * El objetivo nunca se autoelige: si act.resUid no llega, la ventana se cierra sin
+ * hacer nada. Es a proposito; el mismo defecto estaba en case resource_destroy
+ * (278 Hex), donde sin resUid el splice(-1,1) borra el ULTIMO Resource en silencio.
+ */
+E.useResDestroy=function(pid,opts){
+  opts=opts||{};
+  requireOwnMain(pid);
+  if(S.pendingResDestroy)throw new Error('Ya hay una accion de Resource esperando resolucion');
+  var R=findResourceEntry(opts.resourceUid);
+  if(!R)throw new Error('Ese Resource no esta en juego');
+  if(R.pid!==pid)throw new Error('Ese Resource no es tuyo');
+  var rc=card(R.entry.cardId), rEff=(rc.effect||{}), act=R.entry.action;
+  if(!act||act.kind!=='resource_effect'||act.mode!=='suicide_squad')
+    throw new Error(rc.name+': su accion todavia no esta implementada');
+  if(rEff.notDuringPrivileged&&S.attack&&S.attack.privilege)
+    throw new Error(rc.name+': no se puede usar durante un ataque privilegiado');
+  S.pendingResDestroy={byPid:pid,resourceUid:R.entry.uid,mode:act.mode};
+  return publicState();
+};
+E.resolveResDestroy=function(act){
+  act=act||{};
+  var W=S.pendingResDestroy;
+  if(!W)return publicState();
+  S.pendingResDestroy=null;
+  if(act.pass)return publicState();
+  if(act.resUid==null)return publicState();
+  var T=findResourceEntry(W.resourceUid);
+  if(!T)throw new Error('El Resource que iba a actuar ya no esta en juego');
+  var SS=card(T.entry.cardId);
+  var V=findResourceEntry(act.resUid);
+  if(!V)throw new Error(SS.name+': ese Resource ya no esta en juego');
+  if(V.pid===T.pid)throw new Error(SS.name+': solo puede destruir Resources de un rival');
+  var targetName=card(V.entry.cardId).name;
+  var roll=d6(), killedT=false, killedS=false, msg='';
+  if(roll===1)killedT=true; else if(roll<=5){killedT=true;killedS=true;} else killedS=true;
+  if(killedT){var arrT=S.players[V.pid].resources;arrT.splice(arrT.indexOf(V.entry),1);S.groupDiscard.push(V.entry.cardId);}
+  if(killedS){var arrS=S.players[T.pid].resources;arrS.splice(arrS.indexOf(T.entry),1);S.groupDiscard.push(T.entry.cardId);}
+  if(roll===1)msg=SS.name+' sale bien: '+targetName+' se destruye y '+SS.name+' sobrevive y puede usarse otra vez';
+  else if(roll<=5)msg=SS.name+' sacrifica la carta: '+targetName+' y '+SS.name+' quedan destruidas y se descartan';
+  else msg=SS.name+' falla y se destruye; '+targetName+' sobrevive';
+  log(msg+' (dado '+roll+')');
+  return publicState();
+};
+
 E.useGadgetAction=function(pid,opts){
   opts=opts||{};
   requireOwnMain(pid);
@@ -5824,6 +5897,7 @@ E.endTurn=function(){
    * gastado todavia. Terminar el turno aqui dejaria la ventana colgada para el
    * rival, que no es el dueno. Se cierra antes que nada. */
   if(S.pendingAlignEdit)throw new Error('No se puede terminar el turno sin resolver la accion de tu Gadget');
+  if(S.pendingResDestroy)throw new Error('No se puede terminar el turno sin resolver la accion de tu Resource');
   var pid=S.currentPid;
   var pl=S.players[pid];
   if(!pl)throw new Error('No hay jugador activo');
