@@ -2018,6 +2018,55 @@ const L12_FX = {
 const L12_FXN = {};
 for (const k in L12_FX) { L12_FXN[norm(k)] = L12_FX[k]; }
 
+/* ---------- L13 - DEFENSA CONTRA DISASTRES (243, 410, 188, 244, 245) ----------
+ * Cada carta imprime QUIEN recibe el efecto (un Place) y el motor tiene el sitio
+ * exacto donde se aplica: `destroyDefenseBonus(nd, isAssa)` se suma a `defPower`
+ * DENTRO de announcePlotInstantAttack, y `defPower` solo se resta al calcular
+ * `str = power - defPower - pos`. Con eso se cumple la regla oficial del lote:
+ * estos bonuses NO tocan `curPower`, asi que el Poder del Place para las metas
+ * ni para atacar no cambia, solo su DEFENSA contra un Disaster.
+ * 188 y 244 se ENLAZAN al nodo (patron de 208 Bodyguard / 382 Talisman, que
+ * empujan a `pl.linkedPlots`) porque su texto dice que el efecto sigue mientras la
+ * carta siga en juego. 243 y 410 NO se enlazan: su texto dice 'Gives one Place a
+ * +N', que es un efecto permanente del Place, sin condicion de carta viva.
+ * LIMITES DECLARADOS (no inventados):
+ *  - El impreso de 188 y 244 pide proteger de 'a Disaster' pero el motor no tiene
+ *    clasificacion de Disaster mas alla del kind `disaster` y sus `requireAttr`.
+ *    Por eso el alcance se declara en los datos (anyDisaster / boostsDisasters)
+ *    en vez de inventar un filtro que el mazo no puede verificar.
+ *  - 244 Earth Magic NO imprime linea de coste. Se juega sin cobrar nada y se
+ *    marca printedCostAbsent para que el tooltip lo diga (P1-074).
+ *  - La excepcion de 188 ('except Earthquake or Volcano') SI es verificable: el
+ *    mazo tiene `earthquake` y `volcano` como cartas de Disaster, y se compara
+ *    por CLAVE NORMALIZADA (name.toLowerCase().replace(/[^a-z0-9]/g,'')) porque
+ *    los nombres legibles de esas cartas no aparecen en el dataset (medido).
+ *  - `requireActionFromAttr` en 188 obliga a anadir 'disaster_defence' a
+ *    ACTION_COST_KINDS: el gate P1-055 del generador lanza si un kind declara
+ *    coste por atributo sin gate. El cobro lo hace el case del motor, que ademas
+ *    admite la via alternativa del impreso (sacrificar la carta superior). */
+const L13_FX = {
+  'earlywarning': { kind:'disaster_defence', mode:'static_defence',
+    defenseBonus:10, freeAction:true, anyDisaster:true,
+    t:'Gives one Place a +10 to defend against any Disaster. Playing this card is a free action.' },
+  'volunteeraid': { kind:'disaster_defence', mode:'static_defence',
+    defenseBonus:6, freeAction:true, anyDisaster:true,
+    reliefPending:true, reliefUntil:'nextOwnerTurn',
+    t:'Gives one Place a +6 to defend against any Disaster. If the Place is still devastated by the Disaster, it automatically gets Relief at the beginning of its owners next turn. Playing this card is a free action.' },
+  'airmagic': { kind:'disaster_defence', mode:'triple_defence',
+    requireActionFromAttr:'magic', orSacrificeTopPlot:true,
+    triplesPower:true, onlyThisDefense:true, exceptDisasters:['earthquake','volcano'],
+    t:'Play this card to help protect a Place against any Disaster, except Earthquake or Volcano. The Power of the Place is tripled for this one defense. Playing this card is an action for a Magic group. Alternatively, you may sacrifice the top Plot card from your deck, to power this card. Discard it without looking at it. Requires Magic Action or Discard' },
+  'earthmagic': { kind:'disaster_defence', mode:'aid_restriction',
+    anyDisaster:true, aidAttr:'magic', printedCostAbsent:true,
+    t:'Play this card to help protect a Place against a Disaster. Using this card any Magic group in play use their Action tokens to oppose the attack.' },
+  'earthquakeprojector': { kind:'disaster_defence', mode:'boost_attack',
+    boostValue:2, oncePerTurn:true, boostsDisasters:true, boostsDestroyAttack:true,
+    globalWhileInPlay:true,
+    t:'This device can act once per turn. It can increase the Power of any Attack to Destroy a Place, or of any Disaster card, by 2. Gadget ACTION' }
+};
+const L13_FXN = {};
+for (const k in L13_FX) { L13_FXN[norm(k)] = L13_FX[k]; }
+
 /* P1-055 — kinds cuyo gate en engine.js COBRA un `requireActionFromAttr`
  * ("debes gastar la acción de un grupo tuyo con el atributo X"). Lista cerrada a
  * propósito: un kind nuevo con ese coste debe registrarse aquí Y traer su gate, para
@@ -2031,7 +2080,7 @@ for (const k in L12_FX) { L12_FXN[norm(k)] = L12_FX[k]; }
  *   attack_boost          → engine.js ~4023
  *   force_discard_exposed → engine.js ~4311
  *   turn_start_block      → engine.js ~4387 (L8c) */
-const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block'];
+const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence'];
 
 
 function plotSub(name) {
@@ -2320,7 +2369,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

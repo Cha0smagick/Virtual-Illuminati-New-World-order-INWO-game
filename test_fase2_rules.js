@@ -5676,7 +5676,7 @@ function sealedInstantAttack(pid, power, targetUid, opts) {
  * P1-054. Este bloque es el ESPEJO EN TEST del guard estructural del generador, y es
  * GENERICO: recorre el catalogo real, no lista ids, asi que sigue valiendo cuando
  * entren cartas nuevas. */
-var ACTION_COST_KINDS_EXPECTED = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block'];
+var ACTION_COST_KINDS_EXPECTED = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence'];
 var actionCostCards = [];
 var aliasUsers = [];
 C.cards.forEach(function(card) {
