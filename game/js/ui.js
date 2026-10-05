@@ -1464,6 +1464,7 @@ var KIND_ES = {
   takeover_return: 'Devolver un Takeover', talisman: 'Talisman', timewarp: 'Distorsion temporal',
   token_gift: 'Regalar action tokens', token_strip: 'Quitar action tokens',
   token_wither: 'Action tokens marchitos', tripled_once: 'Triplicar una vez',
+  turn_control: 'Manipulacion de turno',
   turn_start_block: 'Bloquear el inicio de turno', unverified: 'Mecanica sin mapear',
   ability_unverified: 'Habilidad sin mapear', goal: 'Meta'
 };
@@ -1707,6 +1708,13 @@ var FIELD_ES = [
   ['boostsDisasters','eff','+<b>%s</b> al Poder de cualquier carta Disaster'],
   ['boostsDestroyAttack','eff','+<b>%s</b> al Poder de cualquier ataque a DESTRUIR un Place'],
   ['globalWhileInPlay','modo','alcance <b>global</b> mientras la carta este en juego'],
+  ['windowTurnStart','modo','solo se juega en la ventana del <b>comienzo</b> del turno de un rival'],
+  ['interruptTarget','obj','el turno que se interrumpe es el de un <b>rival</b>'],
+  ['allGroupsGetTokens','eff','todos tus grupos reciben <b>1</b> ficha de accion'],
+  ['noDrawForAnyReason','eff','no puedes robar Plot ni Grupo <b>por ningun motivo</b>'],
+  ['oncePerGamePerPlayer','modo','<b>una sola vez</b> por partida y por jugador'],
+  ['returnTurnAfter','fin','al terminar tu turno vuelve al jugador interrumpido'],
+  ['unlessSomeoneWins','fin','salvo que alguien <b>ya haya ganado</b>']
 ];
 var FIELD_MAP = {};
 for (var _fi = 0; _fi < FIELD_ES.length; _fi++) FIELD_MAP[FIELD_ES[_fi][0]] = true;

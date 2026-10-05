@@ -2067,6 +2067,72 @@ const L13_FX = {
 const L13_FXN = {};
 for (const k in L13_FX) { L13_FXN[norm(k)] = L13_FX[k]; }
 
+/* ---------- L14 - MANIPULACION DE TURNO (364 Seize the Time!) ----------
+ *
+ * ALCANCE. L14 se dividio en cuatro lotes (P1-093, nota de alcance de la cabecera de
+ * L14 en plan.md) porque el bloque original mezclaba tres familias de mecanica
+ * distintas, contra la regla 6 del propio plan. Este lote es SOLO 364.
+ *
+ * 364 Seize the Time! es la unica carta con esta mecanica. Impreso verbatim (el
+ * `text` de OCR esta truncado en "once in a", asi que manda `textFull`):
+ *
+ *   Seize the Time! Play this card at the beginning of any other players turn. It
+ *   becomes your turn instead. After your turn is over, the turn passes back to the
+ *   player whose turn you interrupted (unless someone won). During your special
+ *   turn, all your groups get Action tokens, but you may not draw Plot or Group
+ *   cards for any reason. No player may use this card more than once in a game!
+ *
+ * DECLARACION DE INTERPRETACION (no inventada: es el unico sentido literal posible).
+ * "It becomes your turn instead" no puede implementarse como "el jugador pierde su
+ * turno": la carta no dice que el rival lose nada, dice que el turno PASA a ser del
+ * actor. Como el turno del rival ya estaba empezado y a medias (el momento de la
+ * ventana `S.pendingTurnStart` es justo DESPUES de que el rival jugara su turno
+ * entero, segun el precedente de 405 Unlucky 13), la lectura fiel es: arranca un
+ * TURNO NUEVO para el actor y, cuando ese turno especial termine, el turno vuelve al
+ * rival. Por eso el motor necesita recordar a quien devolverle el turno
+ * (`S.returnTurnTo`) y por eso el "only once in a game" va en el JUGADOR
+ * (`pl.flags.seizeTimeUsed`), no en la carta: el impreso dice "No PLAYER may use this
+ * card more than once", o sea el limite es del jugador, y en un mazo normal solo hay
+ * una copia de la carta asi que el flag del jugador es lo que hace falta.
+ *
+ * TIMING. NO se declara `instant:true` aunque el texto diga "at any time" en otras
+ * cartas de este lote: 364 imprime "at the beginning of any other player's turn", que
+ * NO es "at any time". Es exactamente la ventana `S.pendingTurnStart`, el mismo
+ * precedente que 405 (case 'turn_start_block'). Anadirla a la lista `instant` de
+ * `E.playPlot` aplicaria `requireOwnMain(pid)` y dejaria la carta INJUGABLE, porque en
+ * el momento de la ventana no es el turno de nadie. Por eso `instant:false` queda
+ * declarado en el dato: documenta que el timing lo aporta el case, no la lista.
+ *
+ * COSTE. El impreso NO pide ninguna accion ("Play this card at the beginning of any
+ * other player's turn", sin "Requires Action"). Se declara `freeAction:true` y NO se
+ * toca `ACTION_COST_KINDS`, porque ese kind no lleva `requireActionFromAttr` y la red
+ * de generacion P1-055 solo exige entrada ahi a los kinds que declaran ese campo.
+ *
+ * "ALL YOUR GROUPS GET ACTION TOKENS". Se aplica al ARBOL DEL ACTOR en el momento de
+ * robar el turno: un grupo colocado despues, dentro de ese mismo turno especial, no
+ * lleva ficha. Es la lectura literal ("during your special turn, all your groups get
+ * Action tokens" describe el estado del turno al que se entra, no una promesa para
+ * grupos que aun no existen) y queda anotada en el backlog de la seccion 66 del audit.
+ *
+ * "UNLESS SOMEONE WON" y "you may not draw for any reason". El primero sale gratis:
+ * el retorno del turno lo decide `E.endTurn`, que ya respeta el cierre de partida. El
+ * segundo necesita `noDrawForAnyReason:true`: los flags `pl.flags.plotDrawn` y
+ * `pl.flags.groupDrawn` los RESETEa `E.beginTurn` (engine.js:1187-1194), asi que no
+ * sirven para vetar el robo de un turno entero; hace falta un flag propio que se
+ * compruebe en el robo y se limpie al empezar el turno siguiente.
+ */
+const L14_FX = {
+  'seizethetime': { kind:'turn_control', mode:'seize_turn',
+    windowTurnStart:true, freeAction:true,
+    interruptTarget:true, allGroupsGetTokens:true,
+    noDrawForAnyReason:true, oncePerGamePerPlayer:true,
+    returnTurnAfter:true, unlessSomeoneWins:true,
+    t:'Seize the Time! Play this card at the beginning of any other players turn. It becomes your turn instead. After your turn is over, the turn passes back to the player whose turn you interrupted (unless someone won). During your special turn, all your groups get Action tokens, but you may not draw Plot or Group cards for any reason. No player may use this card more than once in a game!' }
+};
+const L14_FXN = {};
+for (const k in L14_FX) { L14_FXN[norm(k)] = L14_FX[k]; }
+
+
 /* P1-055 — kinds cuyo gate en engine.js COBRA un `requireActionFromAttr`
  * ("debes gastar la acción de un grupo tuyo con el atributo X"). Lista cerrada a
  * propósito: un kind nuevo con ese coste debe registrarse aquí Y traer su gate, para
@@ -2369,7 +2435,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias
