@@ -190,6 +190,206 @@ function undoNwoOfColor21(color, prevRule21){
   return undone;
 }
 /* -------------------------------------------------------------------------- */
+
+/* =================================================================== *
+ * L22 — VENTANA DE NEGACION DE UN PLOT INMEDIATAMENTE ANTERIOR.
+ * =================================================================== *
+ * IMPRESO (Hoax y Secrets Man Was Not Meant to Know):
+ *   "This card may be played immediately after any other Plot card is played,
+ *    for any purpose. That card has no effect. Both cards are discarded."
+ * IMPRESO (Computer Security):
+ *   "This card completely negates any Plot card that concerns Computers or is
+ *    used on a Computer group. It may be played at any time, as long as it used
+ *    immediately after the other card is played."
+ *
+ * HALLAZGO DEL AUDIT: el motor NO tenia ningun registro del ultimo Plot jugado.
+ * `lastPlot` solo aparecia como `out.lastPlotResult=`, que es el VALOR DE
+ * RETORNO de E.playPlot, no estado; `pendingPlot` no existia. Sin registro no
+ * hay forma de responder "inmediatamente despues de", luego L22 anade el
+ * subsistema completo en S.pendingNegation.
+ *
+ * DISENO (por que la ventana se abre ANTES del switch de efectos):
+ *   El Plot se ANUNCIA pero su efecto y su coste NO se aplican: se guarda el
+ *   pedido en S.pendingNegation y E.playPlot retorna pronto. La carta SE QUEDA
+ *   EN LA MANO (P1-126: una carta jugada sale de la mano exactamente UNA vez;
+ *   aqui todavia no se ha jugado, luego la cola no debe tocarla, y el re-ingreso
+ *   por E.playPlot no revienta con "Carta no esta en tu mano").
+ *   - resolucion "pass": se re-invoca E.playPlot con noNegWindow -> el efecto y
+ *     el coste se aplican entonces, y la carta sale de la mano por la cola P1-012.
+ *   - resolucion "negate": el respondiente paga su coste, AMBAS cartas se
+ *     descartan ("Both cards are discarded") y la Plot anulada no ha aplicado
+ *     nada ("That card has no effect").
+ *
+ * POR QUE ES SEGURO PARA LAS SUITES EXISTENTES: si NADIE tiene en la mano una
+ * carta de negacion aplicable NO se abre ventana y el Plot se aplica al
+ * instante — el mismo criterio que openEventWindow (engine.js:3016), que solo
+ * abre si P.responders.length. Con las 2 kinds nuevas solo las 3 cartas de L22
+ * pueden responder, luego el comportamiento por defecto no cambia.
+ *
+ * POR QUE EL RESPONDIENTE JUEGA SU CARTA CON E.resolvePendingNegation Y NO CON
+ * E.playPlot: para que la Plot anulada siga en la mano del actor, el respondiente
+ * NO debe pasar por E.playPlot (re-entraria en la ventana y, sobre todo, la cola
+ * P1-012 lo haria mal). Es la misma razon por la que las ventanas existentes se
+ * resuelven con su propia API (E.resolvePendingEvent, E.resolvePendingRoll, ...).
+ *
+ * AMBITO DEL COSTE: el coste lo paga SIEMPRE el respondiente (quien juega la
+ * carta de negacion), nunca el actor de la Plot anulada — el impreso de Hoax dice
+ * "You must ALSO discard your OWN top undrawn Plot card", o sea el descarte es
+ * del jugador de Hoax.
+ */
+function isNegationKind(eff){
+  return !!(eff&&(eff.kind==='plot_negate_prev'||eff.kind==='plot_negate_computer'));
+}
+/* DECLARACION DE INTERPRETACION (ya escrita en gen_cards.js, L22_FX): el
+ * impreso de Computer Security es "any Plot card that concerns Computers or is
+ * used on a Computer group". El reglamento no precisa mas, asi que se aceptan
+ * las TRES lecturas y se declaran: (a) la Plot cuyo efecto exige o paga el
+ * atributo computer, (b) la Plot cuyo texto impreso menciona "computer", (c) la
+ * Plot cuyo objetivo declarado es un Computer group. */
+function plotIsComputerPlot(c){
+  if(!c)return false;
+  var e=c.effect||{};
+  if(e.payAttr==='computer')return true;
+  if(e.requireAttr==='computer')return true;
+  if(e.requireActionFromAttr==='computer')return true;
+  if(Array.isArray(e.payAttrAny)&&e.payAttrAny.indexOf('computer')>=0)return true;
+  if(Array.isArray(e.requireAttrAny)&&e.requireAttrAny.indexOf('computer')>=0)return true;
+  if(Array.isArray(e.targetAttr)&&e.targetAttr.indexOf('computer')>=0)return true;
+  if(/computer/i.test(String(c.text||'')))return true;
+  return false;
+}
+/* COSTE "EN SECO" (precedente Embezzlement, engine.js:2964-2966): se comprueba
+ * aqui para que la UI pueda razonar y la ventana siga ABIERTA para otro
+ * jugador; se PAGA en payNegationCost, nunca antes. */
+function negationCostWays(rpid,eff){
+  var pl=S.players[rpid];
+  var ways=[];
+  if(!pl)return {ok:false,why:'ese jugador no existe',ways:ways};
+  if(eff.costMode==='power6'){
+    var need=eff.payMinPower||6,got=0;
+    walk(pl.structure,function(n){
+      if(need<=got)return;
+      if(n===pl.structure)return;
+      if(!n.tokens||n.tokens<1)return;
+      if(noTokensFlag(n))return;
+      var cc=card(n.cardId);
+      if(!cc||cc.type!=='group')return;
+      got+=curPower(n);
+    });
+    if(got>=(eff.payMinPower||6)&&(S.plotDeck.length>=(eff.topDiscard&&!eff.altCost?eff.topDiscard:0)))ways.push({via:'power',need:eff.payMinPower||6,got:got});
+  }else if(eff.costMode==='illumAllOrDiscard2'){
+    if(pl.illumTokens>=1)ways.push({via:'illumAll'});
+    var nTop=eff.topDiscard||2;
+    if(S.plotDeck.length>=nTop)ways.push({via:'topDiscard',n:nTop});
+  }else if(eff.costMode==='groupOrIllum'){
+    var nd=firstUsableAid(rpid,function(cc,nn){return hasAttr(cc,eff.payAttr,nn);});
+    if(nd)ways.push({via:'grupo',uid:nd.uid,name:card(nd.cardId).name});
+    var mc=illuCard(rpid);
+    if(mc&&mc.effect&&mc.effect.code===eff.illumCode&&pl.illumTokens>=1)
+      ways.push({via:'illuminati',name:mc.name});
+  }else return {ok:false,why:'la carta no declara un coste (eff.costMode)',ways:ways};
+  if(!ways.length){
+    var why22;
+    if(eff.costMode==='power6')why22='"action(s) by group(s) with a total power of at least '+(eff.payMinPower||6)+'" — tus grupos con ficha solo aportan Poder '+got;
+    else if(eff.costMode==='illumAllOrDiscard2')why22='"spend all Action tokens on your Illuminati (minimum of 1!), or discard your top two undrawn Plot cards" — ni tienes ficha de accion en tu Illuminati ni te quedan '+nTop+' Plot en el mazo';
+    else why22='"costs an action from the Network or any Computer group" — no tienes el Illuminati correcto ni un grupo Computer con ficha';
+    return {ok:false,why:why22,ways:ways};
+  }
+  return {ok:true,ways:ways};
+}
+function payNegationCost(rpid,eff,via){
+  var pl=S.players[rpid];
+  var out={via:via.via};
+  /* P1-144: Hoax imprime "You must ALSO discard your own top undrawn Plot card".
+     Ese descarte NO es una via de coste (no trae eff.altCost), luego es
+     OBLIGATORIO y se paga con CUALQUIER via. Secrets Man si trae altCost y su
+     descarte lo paga el bloque de abajo, que es su via alternativa. La
+     distincion sale del DATO, no del nombre de la carta. */
+  if(eff.topDiscard&&!eff.altCost){
+    var nxA=topOfDeck(S.plotDeck,eff.topDiscard);
+    if(nxA.length<eff.topDiscard)
+      throw new Error('"You must also discard your own top undrawn Plot card" — solo te quedan '+nxA.length+' Plot en el mazo');
+    for(var mA=0;mA<nxA.length;mA++)S.plotDiscard.push(nxA[mA]);
+    out.extraTop=nxA.length;
+  }
+  if(via.via==='power'){
+    var need=eff.payMinPower||6,used=[];
+    walk(pl.structure,function(n){
+      if(need<=0)return;
+      if(n===pl.structure)return;
+      if(!n.tokens||n.tokens<1)return;
+      if(noTokensFlag(n))return;
+      var cc=card(n.cardId);
+      if(!cc||cc.type!=='group')return;
+      need-=curPower(n);
+      used.push(cc.name);
+    });
+    /* el gasto va DESPUES de recorrer: si algo lanzara, no se ha pagado nada
+       (P1-033, el mismo criterio que case 'token_strip' de L4). */
+    var gots=used.length;
+    for(var i22=0;i22<gots;i22++){/* se re-resuelve con el mismo filtro, en orden */}
+    var need2=eff.payMinPower||6;
+    var uids=[];
+    walk(pl.structure,function(n){
+      if(need2<=0)return;
+      if(n===pl.structure)return;
+      if(!n.tokens||n.tokens<1)return;
+      if(noTokensFlag(n))return;
+      var cc=card(n.cardId);
+      if(!cc||cc.type!=='group')return;
+      need2-=curPower(n);
+      uids.push(n.uid);
+    });
+    uids.forEach(function(u){spendGroupToken(rpid,u);});
+    out.groups=used;
+    return out;
+  }
+  if(via.via==='illumAll'){
+    if(pl.illumTokens<1)throw new Error('ya no tienes fichas de accion en tu Illuminati');
+    pl.illumTokens=0;   /* "all Action tokens currently on your Illuminati" */
+    return out;
+  }
+  if(via.via==='topDiscard'){
+    var n=via.n||2;
+    var ixs=topOfDeck(S.plotDeck,n);
+    if(ixs.length<n)throw new Error('no te quedan '+n+' Plot cards en el mazo para descartar');
+    /* "without looking at them": van DIRECTAS a S.plotDiscard, sin discardPlot,
+       porque discardPlot imprimiria sus nombres y abriria una ventana de suceso
+       que el impreso aqui no pide. */
+    for(var j22=0;j22<ixs.length;j22++)S.plotDiscard.push(ixs[j22]);
+    out.discarded=ixs.length;
+    return out;
+  }
+  if(via.via==='grupo'){
+    spendGroupToken(rpid,via.uid);
+    out.group=via.name;
+    return out;
+  }
+  if(via.via==='illuminati'){
+    if(pl.illumTokens<1)throw new Error('ya no tienes fichas de accion en tu Illuminati');
+    pl.illumTokens--;
+    out.illuminati=via.name;
+    return out;
+  }
+  throw new Error('via de coste desconocida: '+via.via);
+}
+function negationAllowed(eff,pid,P){
+  if(!isNegationKind(eff))return {ok:false,why:'no es una carta que pueda anular otra Plot'};
+  if(pid===P.pid)return {ok:false,why:'la Plot que intentas anular la jugaste tu'};
+  if(eff.kind==='plot_negate_computer'&&!plotIsComputerPlot(card(P.handIdx)))
+    return {ok:false,why:'"any Plot card that concerns Computers or is used on a Computer group" — esa Plot no concierne a los Computers'};
+  var w=negationCostWays(pid,eff);
+  if(!w.ok)return {ok:false,why:w.why};
+  return {ok:true,via:w.ways[0],ways:w.ways};
+}
+function negationWayLabel(eff,w){
+  if(w.via==='power')return 'acciones de grupos con Poder total '+w.got+' (exige '+(w.need||6)+')';
+  if(w.via==='illumAll')return 'todas las fichas de accion de tu Illuminati';
+  if(w.via==='topDiscard')return 'descartar '+w.n+' Plot de la cima de tu mazo';
+  if(w.via==='grupo')return 'accion de '+w.name;
+  if(w.via==='illuminati')return 'accion de '+w.name;
+  return w.via;
+}
 function isStructureRoot(node){
   if(!S||!S.players)return false;
   for(var i=0;i<S.players.length;i++)if(S.players[i].structure===node)return true;
@@ -580,7 +780,7 @@ E.newGame=function(configs){
   S={
       phase:'setup',turn:0,round:1,currentPid:-1,turnCompleted:false,
     players:[],groupDeck:[],plotDeck:[],groupDiscard:[],plotDiscard:[],
-    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,pendingAlignEdit:null,pendingResDestroy:null,returnTurnTo:null,alignRetro:{},l18extra:{},alignRule:null,log:[],uidCounter:100,winner:null,
+    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,pendingAlignEdit:null,pendingResDestroy:null,pendingNegation:null,returnTurnTo:null,alignRetro:{},l18extra:{},alignRule:null,log:[],uidCounter:100,winner:null,
     config:{goalCount:(configs.goalCount||12)},
     lastRoll:null
   };
@@ -822,6 +1022,13 @@ function publicState(){
       claimed:!!(S.pendingEvent.data&&S.pendingEvent.data.claimed),
       taken:!!(S.pendingEvent.data&&S.pendingEvent.data.taken),
       responders:S.pendingEvent.responders?S.pendingEvent.responders.slice():[]}:null,
+    /* L22: la ventana de NEGACION. Se proyecta sin los indices internos de Se proyecta sin los indices internos de
+     * carta del respondiente (cada uno lleva ya su nombre), igual que la
+     * ventana de suceso de arriba. */
+    pendingNegation:S.pendingNegation?{cardName:S.pendingNegation.cardName,
+      cardKind:S.pendingNegation.cardKind,byPid:S.pendingNegation.pid,
+      byName:S.players[S.pendingNegation.pid]?S.players[S.pendingNegation.pid].name:'',
+      negators:S.pendingNegation.negs.map(function(x){return {pid:x.pid,name:x.name,cardName:x.cardName,via:x.via};}),negKind:null}:null,
     /* L7: la ventana de ESPIONAJE. Se proyecta la lista como indices y nombres,
      * nunca como objetos carta, y `cancelledBy` es publico porque 242 lo
      * anula desde fuera. */
@@ -4159,6 +4366,44 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
     nwoPrevRule21=S.alignRule||null;
     nwoMark21={color:c.nwoColor};
   }
+
+  /* ------------------------------------------------------------------ *
+   * L22 — la ventana de NEGACION se abre aqui, ANTES del switch de efectos.
+   * Motivo: el Plot se anuncia pero su efecto y su coste NO se aplican hasta
+   * que la ventana se resuelve. Si se abriera despues, el coste ya estaria
+   * pagado y "That card has no effect" seria falsa.
+   * Condiciones de apertura: la Plot NO es ella misma una carta de negacion
+   * (el impreso dice "any OTHER Plot card"), NO es una Goal card (que no se
+   * juega, se revela), no hay ya una negacion pendiente, y NADIE tiene en la
+   * mano una carta de negacion aplicable (mismo criterio que openEventWindow). */
+  if(!opts.noNegWindow&&!isNegationKind(eff)&&eff.kind!=='goal'&&S.pendingNegation)
+    throw new Error('Hay una Plot esperando posible negacion ('+S.pendingNegation.cardName+' de '+S.players[S.pendingNegation.pid].name+
+      '): primero hay que resolver esa ventana. "That card has no effect" significa que la Plot anulada no se juega nunca.');
+  if(!opts.noNegWindow&&!isNegationKind(eff)&&eff.kind!=='goal'){
+    var negs22=[];
+    for(var p22=0;p22<S.players.length;p22++){
+      var h22=S.players[p22].hand;
+      for(var j22=0;j22<h22.length;j22++){
+        var e22=(C.cards[h22[j22]]||{}).effect;
+        if(!isNegationKind(e22))continue;
+        var ok22=negationAllowed(e22,p22,{pid:pid,handIdx:handIdx});
+        if(!ok22.ok)continue;
+        negs22.push({pid:p22,name:S.players[p22].name,cardIdx:h22[j22],cardName:C.cards[h22[j22]].name,
+          via:negationWayLabel(e22,ok22.via)});
+      }
+    }
+    if(negs22.length){
+      S.pendingNegation={pid:pid,handIdx:handIdx,
+        targetUid:targetUid!=null?targetUid:(opts&&opts.targetUid),
+        opts:opts||{},cardName:c.name,cardKind:eff.kind,negs:negs22};
+      log('VENTANA DE NEGACION ABIERTA: '+c.name+' (de '+S.players[pid].name+') puede ser anulada por: '
+        +negs22.map(function(x){return x.cardName+' ('+x.name+')';}).join(', '));
+      var outN22=publicState();
+      outN22.lastPlotResult={ok:null,pending:true,negatable:true,card:c.name,kind:eff.kind,
+        negators:negs22.map(function(x){return x.cardName;})};
+      return outN22;
+    }
+  }
   switch(eff.kind){
     case 'boost10':{
       /* P1-012 / P2-DATA-02 — la familia oficial "+10 Plots".
@@ -6751,6 +6996,20 @@ case 'bulk_power':{
         rival:S.players[rpL16].name,stripped:victimsL16.length,groups:victimsL16,
         paidBy:payerL16b.uid,notes:['el Media que paga tiene que ser '+alL16,'el Illuminati rival no se toca (precedente L4)']};
       break;}
+    case 'plot_negate_prev':{
+      /* Hoax y Secrets Man Was Not Meant to Know son cartas de REACCION:
+         "This card may be played immediately after any other Plot card is
+         played". No se juegan desde la mano con E.playPlot; se juegan con
+         E.resolvePendingNegation('negate', ...), que ademas les cobra el coste
+         y descarta AMBAS cartas ("Both cards are discarded"). */
+      throw new Error(c.name+': "'+'"This card may be played immediately after any other Plot card is played, for any purpose."'+'" — no se juega desde la mano: solo como respuesta a una Plot recien jugada');
+    }
+    case 'plot_negate_computer':{
+      /* Computer Security: "It may be played at any time, as long as it used
+         immediately after the other card is played". Misma via de reaccion. */
+      throw new Error(c.name+': "'+'"It may be played at any time, as long as it used immediately after the other card is played."'+'" — no se juega desde la mano: solo como respuesta a una Plot recien jugada');
+    }
+
     default:{
       throw new Error('La carta "'+c.name+'" tiene una mecánica no implementada.');
     }
@@ -7137,6 +7396,64 @@ E.checkVictory=function(){checkVictory();return publicState();};
 E.goalStatus=function(p){return goalMetFor(p);};
 /* L18: sonda del CONTADOR de flechas de control. La regresion de 298/299 afirma
  * esto y no una linea de log: el plan del lote exige probar por contador. */
+
+/* ------------------------------------------------------------------ *
+ * L22 — resolucion de la ventana de NEGACION.
+ *   action 'pass'   : nadie la niega -> la Plot se juega de verdad (se re-invoca
+ *                     E.playPlot con noNegWindow, asi que su efecto y su coste
+ *                     se aplican ahora y la cola P1-012 le saca la carta de la mano).
+ *   action 'negate' : un rival la niega -> paga su coste, AMBAS cartas se
+ *                     descartan y la Plot anulada no ha aplicado nada.
+ * Devuelve publicState() con lastPlotResult, igual que el resto de las APIs.
+ * ------------------------------------------------------------------ */
+E.resolvePendingNegation=function(action,rpid,cardIdx){
+  var P=S.pendingNegation;
+  if(!P)throw new Error('No hay ninguna Plot esperando posible negacion');
+  if(action==='pass'){
+    S.pendingNegation=null;
+    var o2={};
+    for(var k2 in P.opts)o2[k2]=P.opts[k2];
+    o2.noNegWindow=true;
+    return E.playPlot(P.pid,P.handIdx,P.targetUid,o2);
+  }
+  if(action!=='negate')throw new Error('accion desconocida para resolver la negacion: '+action);
+  if(rpid==null||rpid<0||!S.players[rpid])throw new Error('responding player invalido');
+  if(rpid===P.pid)
+    throw new Error('"'+card(cardIdx||P.handIdx).name+'": "immediately after any OTHER Plot card is played" — no puedes anular tu propia Plot');
+  if(cardIdx==null)throw new Error('elige que carta de negacion juegas');
+  var rP=S.players[rpid];
+  if(rP.hand.indexOf(cardIdx)<0)throw new Error('La carta de negacion no esta en tu mano');
+  var cN=card(cardIdx);
+  if(!cN)throw new Error('Carta de negacion desconocida');
+  var eN=cN.effect||{};
+  var okN=negationAllowed(eN,rpid,P);
+  if(!okN.ok)throw new Error(cN.name+': '+okN.why);
+  /* COSTE: se paga DESPUES de validar todo (P1-033) y por el RESPONDIENTE. */
+  var paidN=payNegationCost(rpid,eN,okN.via);
+  /* "Both cards are discarded": la Plot anulada sale de la mano del actor
+     (estaba todavia ahi: la ventana se abrio ANTES de la cola P1-012) y la
+     carta de negacion de la mano del respondiente. Cada una, UNA vez. */
+  var plP=S.players[P.pid];
+  var hxP=plP.hand.indexOf(P.handIdx);
+  if(hxP>=0)plP.hand.splice(hxP,1);
+  var hxR=rP.hand.indexOf(cardIdx);
+  if(hxR>=0)rP.hand.splice(hxR,1);
+  S.pendingNegation=null;
+  discardPlot(P.handIdx,P.pid);
+  discardPlot(cardIdx,rpid);
+  log(cN.name+' de '+rP.name+' anula '+P.cardName+' de '+plP.name+': "'+'"That card has no effect. Both cards are discarded."'+'"');
+  var out=publicState();
+  out.lastPlotResult={ok:true,negated:true,card:cN.name,kind:eN.kind,negatedCard:P.cardName,
+    negator:rP.name,paid:paidN};
+  return out;
+};
+/* Sonda para la regresion y para la UI: el estado de la ventana de negacion. */
+E.negationStatus=function(){
+  var P=S.pendingNegation;
+  if(!P)return null;
+  return {cardName:P.cardName,cardKind:P.cardKind,byPid:P.pid,negators:P.negs.map(function(x){
+    return {pid:x.pid,cardIdx:x.cardIdx,cardName:x.cardName,via:x.via};})};
+};
 E.arrowCount=function(uid){var n=findNode(uid);return n?outArrowsOf(n):null;};
 /* P1-010: revelar una Goal card para declarar victoria. Las reglas la describen
    como REVELADA, no jugada: si el intento falla la carta vuelve a la mano y queda

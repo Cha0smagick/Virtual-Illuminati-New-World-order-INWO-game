@@ -82,6 +82,13 @@ var CB = {
     E.playPlot(humanPid(), handIdx, null, { rivalPid: rivalPid, align: align });
     after('🗞 Scandal contra ' + E.getState().players[rivalPid].name + ' (' + align + ')');
   },
+  /* L22 — resolver la ventana de NEGACION. handIdx solo se usa con 'negate': es
+   * el indice de catalogo de la carta de negacion del jugador humano. Con 'pass' no
+   * hace falta, porque lo unico que hay que hacer es dejar que la Plot se juegue. */
+  onResolveNegation: function (action, handIdx) {
+    E.resolvePendingNegation(action, humanPid(), handIdx == null ? null : handIdx);
+    after(action === 'negate' ? 'Plot anulada: ambas cartas al descarte' : 'Plot jugada: nadie la niega');
+  },
   onPlayReorg: function (handIdx, moves) {
     E.playPlot(E.getState().currentPid, handIdx, null, { moves: moves });
     after('🔀 Reorganization: ' + moves.length + ' movimiento(s) de estructura');

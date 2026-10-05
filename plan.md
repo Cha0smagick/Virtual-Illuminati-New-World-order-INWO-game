@@ -1230,3 +1230,18 @@ Si un lote anterior construye la mecanica que necesitan, se desbloquean y se imp
   leer el OCR de la carta antes de disenar su mecanica.
 - **Fase 3** (fuera de este plan, ya declarada en §37/§38): UX, onboarding, verificacion en
   navegador real, y una IA que **juegue** las cartas de reaccion (hoy solo cierra las ventanas).
+
+## [x] L22 - VENTANA DE NEGACION DE UN PLOT INMEDIATAMENTE ANTERIOR      -> audit ## 73., P1-140..P1-145, 207->283/363/224
+
+**Cartas:** 283 Hoax, 363 Secrets Man Was Not Meant to Know (kind `plot_negate_prev`) y 224 Computer Security (kind `plot_negate_computer`).
+
+**Que aporta:** el mazo tenia tres cartas que se juegan "inmediatamente despues de que otro jugador juegue una Plot" y la anulan, y el motor NO tenia ningun registro del ultimo Plot jugado. L22 anade el subsistema `S.pendingNegation` completo: la ventana se abre ANTES del switch de efectos (para que "That card has no effect" sea verdad), el respondiente juega su carta con `E.resolvePendingNegation` y no por `E.playPlot`, y `pass` re-invoca `E.playPlot` con `noNegWindow`.
+
+- [x] L22.a AUDIT: medido que el subsistema no existia; texts verbatim de las 3 cartas en `research/scribd_inwo_cards_full.html`
+- [x] L22.b DATOS: `L22_FX`/`L22_FXN` (3 cartas, 2 kinds) + cadena `pfx` -> FASE 4 83 -> 80
+- [x] L22.c MOTOR: `S.pendingNegation`, 6 helpers, hook antes del switch, 2 `case` que rechazan jugar desde la mano, `publicState`, `E.resolvePendingNegation`, `E.negationStatus`
+- [x] L22.d UI: `KIND_ES` x2, 7 entradas de glosario, botones "NEGAR <Plot>" y "Dejar que se juegue", `CB.onResolveNegation`
+- [x] L22.e REGRESION: 48 asertos en 6 escenarios en `test_fase2_rules.js` + barrido 30/30
+- [x] L22.f CIERRE: audit `## 73.` + P1-140..P1-145 + `stripNegators22` en los 6 `E.startGame` + borrado de codigo muerto de L16 en ui.js
+
+**Bugs reales encontrados (no de fixture):** P1-144 el descarte obligatorio del mazo de Hoax no se cobraba (`topDiscard:1` existia en el dato y ningun camino lo pagaba). **Bugs de fixture/proceso:** P1-140 `$1` con replacement por funcion borro la cola de `pendingEvent`; P1-141 y P1-143 clasificar las 3 cartas provoco 9 regresiones rotas (medido: 0/20 sin la ventana, 2/20 con ella) y el aislamiento tenia que ir en los 6 `E.startGame()`, no solo en `fresh()`; P1-145 la asercion S6a metia la carta en la mano del rival en vez de la del actor; P1-142 codigo muerto (par de manejadores duplicado) que dejo L16 en `ui.js`.

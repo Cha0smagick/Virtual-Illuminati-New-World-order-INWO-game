@@ -16,11 +16,34 @@ function throws(fn, re, m) {
   try { fn(); ok(false, m + ' (no lanzo)'); }
   catch (e) { ok(re.test(e.message), m + ' -> "' + e.message + '"'); }
 }
+/* P1-141 (L22): el reparto es ALEATORIO y las 3 cartas de negacion de L22
+ * (Hoax, Secrets Man Was Not Meant to Know, Computer Security) estan ahora en el
+ * mazo. Si un rival tiene una con el coste satisfacible, CUALQUIER Plot jugada
+ * abre la ventana de negacion y E.playPlot retorna sin aplicar el efecto, asi
+ * que las regresiones de los lotes anteriores (que affirmation su efecto)
+ * fallarian segun el reparto. Se quitan del mazo y de TODAS las manos: la
+ * regresion de L22 las vuelve a meter explicitamente, igual que hand18 y
+ * toHandL14 hacen con las suyas. Es la regla 14 (fixture sin reparto aleatorio). */
+function isNegatorCard(ix) {
+  var e = ix != null && C.cards[ix] ? C.cards[ix].effect : null;
+  return !!(e && (e.kind === 'plot_negate_prev' || e.kind === 'plot_negate_computer'));
+}
+function stripNegators22() {
+  var r = E._raw(), k;
+  for (k = r.plotDeck.length - 1; k >= 0; k--) if (isNegatorCard(r.plotDeck[k])) r.plotDeck.splice(k, 1);
+  for (var q = 0; q < r.players.length; q++) {
+    var h = r.players[q].hand;
+    for (k = h.length - 1; k >= 0; k--) if (isNegatorCard(h[k])) h.splice(k, 1);
+  }
+  return true;
+}
 function fresh(illu0, illu1) {
   E.newGame([{ name: 'A', human: false }, { name: 'B', human: false }]);
   E.setIlluminati(0, illu0);
   E.setIlluminati(1, illu1);
-  return E.startGame();
+  var st = E.startGame();
+  stripNegators22();
+  return st;
 }
 function idxOfId(id) {
   for (var i = 0; i < C.cards.length; i++) if (C.cards[i].id === id) return i;
@@ -2873,6 +2896,7 @@ function readyToAttack(pid) {
       E.setIlluminati(1, 'servantsofcthulhu1');
       E.setIlluminati(2, 'gnomesofzurich1');
       E.startGame();
+  stripNegators22();
       if (!advanceTo(0, 3)) return null;
       plant(0, 'a1', VIOLENT.idx, 1);
       plant(1, 'd1', PEACEFUL.idx, 1);
@@ -5468,6 +5492,7 @@ function readyToAttack(pid) {
     E.setIlluminati(0,illu0||firstOf('ufos'));
     E.setIlluminati(1,illu1||firstOf('adepts'));
     E.startGame();
+  stripNegators22();
   }
   function toHumanTurnL8c(){
     for(var g=0;g<12;g++){
@@ -6036,6 +6061,7 @@ ok(!!L9c332 && !!L9c357 &&
   E.setIlluminati(0, 'bavarianilluminati1');
   E.setIlluminati(1, 'servantsofcthulhu1');
   E.startGame();
+  stripNegators22();
   for (var w = 0; w < 8; w++) {
     var st = E.getState();
     if (st.phase === 'main' && st.currentPid === 0) break;
@@ -6128,6 +6154,7 @@ ok(!!L9c332 && !!L9c357 &&
     E.setIlluminati(0, 'bavarianilluminati1');
     E.setIlluminati(1, 'servantsofcthulhu1');
     E.startGame();
+  stripNegators22();
   };
   var toHandL11 = function (pid, ix) {
     var S = rawL11(), d = S.plotDeck.indexOf(ix);
@@ -6969,6 +6996,7 @@ function freshL14() {
   E.setIlluminati(0, C14.illuA);
   E.setIlluminati(1, C14.illuB);
   E.startGame();
+  stripNegators22();
   deckOnlyL14(C14.seize); deckOnlyL14(C14.unlucky);
   E.resolvePendingTurnStart({ pass: true });
   return ownTurnL14();
@@ -8152,6 +8180,219 @@ ok(nwo21().blue&&nwo21().blue.name==='Energy Crisis',
   'S3 nwoInForce.blue pasa a ser la carta nueva');
 ok(!hasMod21('g21f','powerMods','World Hunger')&&hasMod21('g21g','powerMods','Energy Crisis'),
   'S3 el estado final es exactamente el de la NWO entrante');
+
+/* ==================================================================== *
+ * L22 — VENTANA DE NEGACION DE UN PLOT INMEDIATAMENTE ANTERIOR.
+ * (Hoax 283, Secrets Man Was Not Meant to Know 363, Computer Security 224)
+ * ==================================================================== */
+var C22 = {
+  hoax: idxOfId('hoax'),
+  secrets: idxOfId('secretsmanwasnotmeanttoknow'),
+  compsec: idxOfId('computersecurity'),
+  gift: idxOfId('dollarsfordecency'),
+  auditor: idxOfId('theauditorfromhell'),
+  straight: idxOfId('dentists'),
+  p4: idxOfId('bigmedia'),
+  p2: idxOfId('recordingindustry')
+};
+ok(C22.hoax != null && C22.secrets != null && C22.compsec != null && C22.gift != null
+  && C22.auditor != null && C22.straight != null, 'L22 las 6 cartas de fixture existen en el mazo');
+ok(C.cards[C22.gift].effect.kind === 'token_gift', 'L22 240 Dollars for Decency es token_gift (sin coste impreso)');
+ok(C.cards[C22.auditor].effect.payAttrAny.indexOf('computer') >= 0,
+  'L22 386 The Auditor From Hell "concierne a Computers" por payAttrAny');
+function neg22() { return E.negationStatus(); }
+function err22(fn) { return throwMsgL14(fn); }
+/* Mete la carta en la mano del jugador y la SACA del mazo (regla 13: un fixture no
+ * puede depender del reparto aleatorio, y la carta no debe poder aparecer sola). */
+function hand22(pid, ix) {
+  var r = E._raw(), k;
+  for (k = r.plotDeck.length - 1; k >= 0; k--) if (r.plotDeck[k] === ix) r.plotDeck.splice(k, 1);
+  for (k = r.plotDiscard.length - 1; k >= 0; k--) if (r.plotDiscard[k] === ix) r.plotDiscard.splice(k, 1);
+  for (var q = 0; q < r.players.length; q++) {
+    var hq = r.players[q].hand;
+    for (k = hq.length - 1; k >= 0; k--) if (hq[k] === ix) hq.splice(k, 1);
+  }
+  var h = r.players[pid].hand;
+  h.push(ix);
+  return ix;
+}
+function pd22() { return E._raw().plotDiscard.length; }
+function deck22() { return E._raw().plotDeck.length; }
+function inHand22(pid, ix) { return E._raw().players[pid].hand.indexOf(ix) >= 0; }
+/* El pagador de Hoax: "action(s) by group(s) with a total power of at least 6" */
+function payer22(pid, withTokens) {
+  plant(pid, 'pg22a', C22.p4, withTokens ? 1 : 0);
+  plant(pid, 'pg22b', C22.p2, withTokens ? 1 : 0);
+}
+/* El grupo cuyo cambio se usa como PRUEBA del efecto: Straight sin ficha, al que
+ * 240 Dollars for Decency pondria una. Si la Plot se anula, se queda en 0. */
+function target22() { plant(0, 'sg22', C22.straight, 0); return node16(0, 'sg22'); }
+function playGift22() {
+  var out = E.playPlot(0, C22.gift, null);
+  return out && out.lastPlotResult;
+}
+
+/* ---------- S1 (aceptacion): Hoax anula la Plot; el efecto NO se aplica ---------- */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand22(0, C22.gift);
+hand22(1, C22.hoax);
+payer22(1, true);
+var tg22 = target22();
+var pd0 = pd22(), dk0 = deck22();
+var lr22 = playGift22();
+ok(neg22() !== null, 'L22 S1 al jugar una Plot con Hoax en la mano del rival se ABRE la ventana');
+ok(neg22().cardName === C.cards[C22.gift].name, 'L22 S1 la ventana nombra la Plot pendiente');
+ok(neg22().negators.length === 1 && neg22().negators[0].cardName === C.cards[C22.hoax].name,
+  'L22 S1 el unico respondiente es Hoax del rival');
+ok(lr22 && lr22.pending === true && lr22.negatable === true,
+  'L22 S1 E.playPlot devuelve lastPlotResult con pending+negatable (no aplica el efecto)');
+ok(tg22.tokens === 0, 'L22 S1 el EFECTO de la Plot NO se aplica mientras la ventana esta abierta');
+ok(inHand22(0, C22.gift), 'L22 S1 la Plot anulada sigue en la mano (se descarta al resolver)');
+ok(inHand22(1, C22.hoax), 'L22 S1 la carta de negacion sigue en la mano del rival');
+ok(node16(1, 'pg22a').tokens === 1 && node16(1, 'pg22b').tokens === 1,
+  'L22 S1 el COSTE de la negacion aun NO se ha cobrado (atomicidad: se paga al resolver)');
+var out22 = E.resolvePendingNegation('negate', 1, C22.hoax);
+ok(neg22() === null, 'L22 S1 tras negar, la ventana queda CERRADA');
+ok(!inHand22(0, C22.gift) && !inHand22(1, C22.hoax),
+  'L22 S1 "Both cards are discarded": las dos cartas salen de sus manos');
+ok(tg22.tokens === 0, 'L22 S1 la Plot anulada no deja NINGUN efecto');
+ok(node16(1, 'pg22a').tokens === 0 && node16(1, 'pg22b').tokens === 0,
+  'L22 S1 el coste de Hoax lo pagan los grupos Media-combinado del RESPONDIENTE (4+2=6)');
+ok(deck22() === dk0 - 1, 'L22 S1 "You must also discard your OWN top undrawn Plot card": 1 Plot del mazo del respondiente al descarte');
+ok(pd22() >= pd0 + 3, 'L22 S1 el descarte recibe las 2 cartas + la Plot de la cima');
+ok(out22 && out22.lastPlotResult && out22.lastPlotResult.negated === true, 'L22 S1 el retorno declara negated:true');
+
+/* ---------- S2 (pass): nadie niega -> la Plot se juega de verdad ---------- */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand22(0, C22.gift);
+hand22(1, C22.hoax);
+payer22(1, true);
+var tg22b = target22();
+playGift22();
+ok(neg22() !== null, 'L22 S2 la ventana esta abierta');
+var out22b = E.resolvePendingNegation('pass');
+ok(neg22() === null, 'L22 S2 tras el pass la ventana se cierra');
+ok(tg22b.tokens === 1, 'L22 S2 el EFECTO de la Plot se aplica al resolver el pass');
+ok(!inHand22(0, C22.gift), 'L22 S2 la Plot sale de la mano al jugarse de verdad');
+ok(node16(1, 'pg22a').tokens === 1, 'L22 S2 el pass NO cobra el coste de Hoax');
+ok(!out22b.lastPlotResult || !out22b.lastPlotResult.negated, 'L22 S2 el retorno NO declara negacion');
+
+/* ---------- S3: Secrets Man por la via de TODAS las fichas del Illuminati ---------- */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand22(0, C22.gift);
+hand22(1, C22.secrets);
+E._raw().players[1].illumTokens = 3;
+var tg22c = target22();
+playGift22();
+ok(neg22() !== null && neg22().negators[0].cardName === C.cards[C22.secrets].name,
+  'L22 S3 Secrets Man ofrece la via de las fichas del Illuminati');
+E.resolvePendingNegation('negate', 1, C22.secrets);
+ok(E._raw().players[1].illumTokens === 0,
+  'L22 S3 "spend all Action tokens on your Illuminati": 3 fichas -> 0');
+ok(tg22c.tokens === 0, 'L22 S3 la Plot queda sin efecto');
+ok(!inHand22(1, C22.secrets) && !inHand22(0, C22.gift), 'L22 S3 ambas cartas al descarte');
+
+/* ---------- S4: Secrets Man por la via ALTERNATIVA (2 Plot de la cima) ---------- */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand22(0, C22.gift);
+hand22(1, C22.secrets);
+var r22 = E._raw();
+r22.players[1].illumTokens = 0;
+var dk22 = deck22(), pd22b = pd22();
+playGift22();
+ok(neg22() !== null, 'L22 S4 sin fichas en el Illuminati, la via de la cima sigue disponible');
+E.resolvePendingNegation('negate', 1, C22.secrets);
+ok(deck22() === dk22 - 2, 'L22 S4 "discard your top two undrawn Plot cards without looking at them"');
+ok(pd22() >= pd22b + 4, 'L22 S4 al descarte van las 2 de la cima + las 2 cartas jugadas');
+ok(E._raw().players[1].illumTokens === 0, 'L22 S4 la via de las fichas no se cobra (0 fichas)');
+
+/* ---------- S5: Computer Security solo anula Plot de Computers ---------- */
+/* (a) una Plot que NO concierne a Computers no ofrece la ventana */
+fresh(firstOf('adepts'), firstOf('network'));
+endTurnOfL15(0);
+hand22(0, C22.gift);
+hand22(1, C22.compsec);
+E._raw().players[1].illumTokens = 1;
+var tg22d = target22();
+playGift22();
+ok(neg22() === null, 'L22 S5a "concerns Computers or is used on a Computer group": 240 no se niega, asi que la ventana NO se abre');
+ok(tg22d.tokens === 1, 'L22 S5a la Plot normal se juega sin interferencias');
+ok(inHand22(1, C22.compsec), 'L22 S5a Computer Security no se gasta');
+/* (b) una Plot que SI concierne a Computers abre la ventana */
+fresh(firstOf('adepts'), firstOf('network'));
+endTurnOfL15(0);
+hand22(0, C22.auditor);
+hand22(1, C22.compsec);
+E._raw().players[1].illumTokens = 1;
+playGift22 === null; /* no se llama; el auditor abre su propia ventana de espionaje */
+var out22c = E.playPlot(0, C22.auditor, null);
+ok(neg22() !== null, 'L22 S5b una Plot de Computers abre la ventana de negacion');
+ok(neg22().negators.length === 1 && neg22().negators[0].cardName === C.cards[C22.compsec].name,
+  'L22 S5b Computer Security es la respondiente');
+ok(out22c.lastPlotResult.negatable === true, 'L22 S5b el retorno declara que la Plot se puede anular');
+
+/* ---------- S6: los negativos ---------- */
+/* (a) jugar una carta de negacion desde la mano se rechaza con el motivo impreso */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand22(0, C22.hoax); /* P1-145: la carta va en la mano de QUIEN la juega, no en la del rival */
+ok(err22(function () { E.playPlot(0, C22.hoax, null); }).indexOf('immediately after any other Plot card is played') >= 0,
+  'L22 S6a Hoax NO se juega desde la mano y el motivo impreso se cita');
+hand22(0, C22.compsec); /* P1-145: idem, la carta va en la mano de quien la juega */
+ok(err22(function () { E.playPlot(0, C22.compsec, null); }).indexOf('immediately after the other card is played') >= 0,
+  'L22 S6a Computer Security tampoco se juega desde la mano');
+/* (b) resolver sin ventana */
+ok(err22(function () { E.resolvePendingNegation('pass'); }).indexOf('No hay ninguna Plot esperando') >= 0,
+  'L22 S6b resolver sin ventana abierta da un error explicito');
+/* (c) coste insuficiente: Hoax exige Poder combinado 6 */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand22(0, C22.gift);
+hand22(1, C22.hoax);
+payer22(1, false);
+var tg22e = target22();
+playGift22();
+ok(neg22() === null, 'L22 S6c sin Poder combinado 6 no hay ventana: la ventana exige un coste YA satisfacible');
+ok(tg22e.tokens === 1, 'L22 S6c la Plot se juega normalmente');
+/* (d) uno no puede anular su propia Plot */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand22(0, C22.gift);
+hand22(0, C22.hoax);
+payer22(0, true);
+var tg22f = target22();
+playGift22();
+ok(neg22() === null, 'L22 S6d "any OTHER Plot card": el actor no puede anular la suya');
+/* (e) con la ventana abierta no se puede jugar una SEGUNDA Plot */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand22(0, C22.gift);
+hand22(1, C22.hoax);
+payer22(1, true);
+var tg22g = target22();
+playGift22();
+hand22(0, C22.auditor);
+ok(err22(function () { E.playPlot(0, C22.auditor, null); }).indexOf('Hay una Plot esperando posible negacion') >= 0,
+  'L22 S6e con una negacion pendiente no se puede jugar otra Plot (habria dos Plots sin resolver)');
+var n22f = neg22();
+ok(n22f !== null && n22f.cardName === C.cards[C22.gift].name, 'L22 S6e la ventana sigue apuntando a la PRIMERA Plot');
+ok(tg22g.tokens === 0, 'L22 S6e el efecto de la primera Plot sigue sin aplicarse');
+/* (f) no se puede negar con una carta que no es de negacion */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand22(0, C22.gift);
+hand22(1, C22.hoax);
+payer22(1, true);
+target22();
+playGift22();
+ok(err22(function () { E.resolvePendingNegation('negate', 1, C22.gift); }).length > 0,
+  'L22 S6f no se puede "negar" con una carta que no es de negacion');
+console.log('L22: regresion de la ventana de negacion ejecutada');
+
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });

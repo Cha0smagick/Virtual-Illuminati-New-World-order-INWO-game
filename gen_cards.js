@@ -2471,6 +2471,75 @@ const L16_FX = {
 const L16_FXN = {};
 for (const k in L16_FX) { L16_FXN[norm(k)] = L16_FX[k]; }
 
+/* ------------------------------------------------------------------ *
+ * L22 — NEGAR EL PLOT INMEDIATAMENTE ANTERIOR.
+ * ------------------------------------------------------------------
+ * DECLARACION DE INTERPRETACION (leer antes de tocar nada):
+ * Las tres cartas de esta familia se juegan INMEDIATAMENTE DESPUES de que
+ * otro jugador juegue una Plot card, y anulan esa Plot ("That card has no
+ * effect. Both cards are discarded"). El mazo NO tenia ningun registro del
+ * ultimo Plot jugado, asi que L22 introduce el subsistema de ventana
+ * S.pendingNegation (ver engine.js). El Plot se ANUNCIA pero su efecto y su
+ * coste NO se aplican hasta que la ventana se resuelve.
+ *
+ * DoD#4 exige un kind por efecto. Aqui hay DOS efectos y no tres cards:
+ *  - plot_negate_prev     : anula CUALQUIER Plot. La comparten Hoax y Secrets
+ *                          Man Was Not Meant to Know; lo que cambia es el
+ *                          COSTE (dos ramas distintas, ver costMode).
+ *  - plot_negate_computer : anula solo Plot que "concerns Computers or is used
+ *                          on a Computer group" (Computer Security).
+ *
+ * INTERPRETACION DECLARADA de "concerns Computers or is used on a Computer
+ * group": se implementa como (a) la Plot cuyo effect declara payAttr
+ * "computer", o (b) la Plot cuyo texto impreso menciona "computer"
+ * (/computer/i), o (c) la Plot cuyo objetivo era un grupo Computer. No hay
+ * forma de distinguir mas sin ambigüedad el reglamento, asi que se declaran
+ * las tres lecturas y se acepta cualquiera de ellas.
+ *
+ * TIMING: "may be played immediately after any other Plot card is played"
+ * (Hoax, Secrets Man) y "It may be played at any time, as long as it used
+ * immediately after the other card is played" (Computer Security). Ninguna
+ * exige turno propio: son cartas de REACCION y se juegan por
+ * E.resolveNegation(), nunca por E.playPlot(), asi que NO entran en la lista
+ * `instant` de E.playPlot.
+ *
+ * COSTES (verbatim):
+ *  - Hoax: "action(s) by group(s) with a total power of at least 6" — Poder
+ *    COMBINADO de grupos propios, SIN atributo exigido (cualquier grupo), y
+ *    ademas "You must also discard your own top undrawn Plot card" (costMode
+ *    power6 + topDiscard:1).
+ *  - Secrets Man: "you must either spend all Action tokens on your Illuminati
+ *    (minimum of 1!), or discard your top two undrawn Plot cards without
+ *    looking at them!" — dos costes alternativos (costMode
+ *    illumAllOrDiscard2, con altCost:"topDiscard"). El precedent de
+ *    illumTokenAll es case "mothersmarch" (engine.js:4772).
+ *  - Computer Security: "costs an action from the Network or any Computer
+ *    group" — The Network es un ILLUMINATI (effect.code === "network",
+ *    precedent engine.js:5713) y hay 16 grupos con atributo "computer" en el
+ *    mazo, luego las dos ramas son alcanzables.
+ *
+ * Lo que NO se implementa y se declara: "18 and a Half Minute Gap" pertenece
+ * a esta misma familia por su clausula temporal, pero su OCR esta truncado
+ * ("Instead, add it to your...") y no aparece en la fuente de texto completa;
+ * se declara como HUECO DE TEXTO (5to, junto a california, margaretthatcher,
+ * ollienorth y vaticancity) en lugar de inventar el final del texto.
+ * ------------------------------------------------------------------ */
+const L22_FX = {
+  'hoax': { kind:'plot_negate_prev',
+    costMode:"power6", payMinPower:6, combined:true,
+    topDiscard:1, discardsBoth:true, negateAnyPlot:true, reaction:true,
+    t:'This card may be played immediately after any other Plot card is played, for any purpose. That card has no effect. Both cards are discarded. Use of this card requires action(s) by group(s) with a total power of at least 6. You must also discard your own top undrawn Plot card. Requires Action and Discard' },
+  'secretsmanwasnotmeanttoknow': { kind:'plot_negate_prev',
+    costMode:"illumAllOrDiscard2", illumTokenAll:true, altCost:"topDiscard",
+    topDiscard:2, discardsBoth:true, negateAnyPlot:true, reaction:true,
+    t:'This card may be played immediately after any other Plot card is played, for any purpose. That card has no effect. Both cards are discarded. To use this card, you must either spend all Action tokens on your Illuminati (minimum of 1!), or discard your top two undrawn Plot cards without looking at them! Requires Discard or All Illuminati Actions' },
+  'computersecurity': { kind:'plot_negate_computer',
+    costMode:'groupOrIllum', payAttr:'computer', illumCode:'network',
+    discardsBoth:true, reaction:true,
+    t:'This card completely negates any Plot card that concerns Computers or is used on a Computer group. It may be played at any time, as long as it used immediately after the other card is played. Using this card costs an action from the Network or any Computer group. Requires Network or Computer Action' }
+};
+const L22_FXN = {};
+for (const k in L22_FX) { L22_FXN[norm(k)] = L22_FX[k]; }
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence'];
 
 
@@ -2760,7 +2829,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

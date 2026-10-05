@@ -8231,3 +8231,203 @@ Lo demas que escribio L21, sin id propio por ser la mecanica del lote:
   countered') declarada en sec. 71, con su conflicto de forma medido.
 - **Backlog de L18** (sec. 70): colocacion 'link' de 299 sin implementar, `E.arrowCount` sin
   uso en la UI, `S.l18extra` sin limpiar.
+
+## 73. L22 - VENTANA DE NEGACION DE UN PLOT INMEDIATAMENTE ANTERIOR
+
+### Hallazgo
+
+H1 - EL SUBSISTEMA NO EXISTIA. El mazo tiene tres cartas que se juegan
+"inmediatamente despues de que otro jugador juegue una Plot" y las anulan, pero el
+motor no tenia NINGUN registro del ultimo Plot jugado. Medido: `lastPlot` solo
+aparece como `out.lastPlotResult=`, que es el VALOR DE RETORNO de `E.playPlot`, no
+estado; `pendingPlot` -> 0 coincidencias; `negat` -> 15, todas de la forma
+`lastResult={ok:true,negated:true,...}`. Sin registro no hay forma de responder
+"inmediatamente despues de", luego L22 anade `S.pendingNegation` entero.
+
+H2 - LAS 3 CARTAS Y SOLO 2 EFECTOS. Hoax (283) y Secrets Man Was Not Meant to Know
+(363) tienen el MISMO efecto ("That card has no effect. Both cards are discarded") y
+distinto coste; Computer Security (224) solo anula Plot de Computers. DoD#4 pide un
+kind por efecto, asi que son 2 kinds y no 3 cartas: `plot_negate_prev` (2 cartas) y
+`plot_negate_computer` (1 carta).
+
+H3 - LA VENTANA SE ABRE ANTES DEL SWITCH DE EFECTOS. Es la unica forma de que "That
+card has no effect" sea verdad: si la ventana se abriera despues, el coste ya estaria
+pagado y el efecto ya habria ocurrido. Por eso la Plot se ANUNCIA pero ni su efecto
+ni su coste se aplican, y la carta SE QUEDA EN LA MANO (P1-126: una carta jugada sale
+de la mano exactamente UNA vez; aqui todavia no se ha jugado, luego la cola no debe
+tocarla). Al resolver con `pass` se re-invoca `E.playPlot` con `noNegWindow`, y ahi si
+se aplican efecto y coste.
+
+H4 - EL RESPONDIENTE JUEGA SU CARTA CON `E.resolvePendingNegation`, NO CON
+`E.playPlot`. Es la misma razon por la que las ventanas existentes se resuelven con su
+propia API (`E.resolvePendingEvent`, `E.resolvePendingRoll`): la Plot anulada sigue en
+la mano del actor y el re-ingreso por `playPlot` la borraria dos veces y volveria a
+abrir la ventana.
+
+H5 - CLASIFICAR LAS CARTAS ROMPIO 9 REGRESIONES EXISTENTES, Y NO ERA UN FLAKE
+PREEXISTENTE. Al dar kind de negacion a las 3 cartas, entraron en el mazo de Plot y a
+partir de ahi CUALQUIER Plot jugada abria la ventana si un rival tenia una con el
+coste satisfacible. Medido: con la ventana desactivada, 0/20 corridas de
+`test_fase2_rules.js` fallan; con ella activada, 2/20, con conjuntos de fallos
+DISTINTES cada vez (L14 N2, L11 habilitadora, L18 S2b/S3, L1, L2, L3b, L5b, L5c, L6,
+P1-013, P1-020). El arreglo correcto NO es relajar el motor sino aislar el fixture
+(regla 14): `stripNegators22()` quita las 3 cartas de las manos y del mazo tras cada
+`E.startGame()`.
+
+H6 - HAY 6 LLAMADAS A `E.startGame()`, NO UNA. P1-141 puso el aislamiento dentro de
+`fresh()` y solo cubria 1 de 6: los otros 5 bloques (uno con 3 jugadores, uno con
+jugador humano) repartian las negadoras igual. El flake seguia apareciendo 2/20
+hasta que el aislamiento se puso en los 6 sitios.
+
+H7 - "18 and a Half Minute Gap" es de esta misma familia y NO se implementa. Su OCR
+esta truncado ("Instead, add it to your...") y no aparece en
+`research/scribd_inwo_cards_full.html`. Se declara como 5to hueco de texto, junto a
+`california`, `margaretthatcher`, `ollienorth` y `vaticancity`, en vez de inventar el
+final del impreso.
+
+### Correcciones
+
+- **P1-140** BUG DEL PROPIO SCRIPT DE PARCHEO, no del motor. El paso que insertaba la
+  proyeccion de `publicState` uso `'$1'` dentro de una replacement pasada como
+  FUNCION a `s.replace()`. Con una funcion, `$1` NO se expande: se inserta literal y
+  ADEMAS el texto capturado desaparece, porque la funcion devuelve la replacement
+  entera en vez del original. Resultado: la cola `responders:...}:null,` de la ventana
+  de suceso se borro y `publicState` dejo de compilar. Corregido restaurando la linea
+  y con verificacion dura por regex. LECCION: nunca usar `$1` con una funcion de
+  replacement; prefijar el ancla o reescribir por indice de linea.
+- **P1-141** `fresh()` de `test_fase2_rules.js` llama ahora `stripNegators22()`, que
+  quita Hoax / Secrets Man / Computer Security de TODAS las manos y del mazo de Plot.
+  Motivo escrito en el propio fixture. La regresion de L22 las vuelve a meter con
+  `hand22()`, como ya hacian `hand18`, `toHandL14` y `hand19` con las suyas.
+- **P1-142** `game/js/ui.js` tenia el par de manejadores `else if (v === 'nwoOne')` /
+  `else if (v === 'scandal')` DUPLICADO dentro del mismo `.then()` del prompt de mano
+  (codigo muerto: el primer `if` ya captura el valor). Los dos textos difieren en una
+  palabra, lo que delata que se escribieron por separado. No era fallo funcional -
+  por eso ningun test lo cazo - pero hacia imposible anclar cualquier ancla ahi.
+  Borrado el segundo par. (Medido y corregido: las FUNCIONES no estaban duplicadas,
+  los recuentos >1 eran llamadas, no declaraciones.)
+- **P1-143** El aislamiento de P1-141 se extiendes a las 5 llamadas DIRECTAS a
+  `E.startGame()` que no pasan por `fresh()` (lineas 2898, 5493, 6061, 6153, 6994 del
+  test). Con los 6 sitios aislados el barrido pasa de 2/20 a 0/30.
+- **P1-144** BUG REAL DE MOTOR: el descarte obligatorio de Hoax no se cobraba. El
+  impreso dice "Use of this card requires action(s) by group(s) with a total power of
+  at least 6. You must ALSO discard your own top undrawn Plot card." Son dos
+  obligaciones y solo se implementaba la primera; el campo `topDiscard:1` existia en
+  el dato pero ningun camino lo pagaba. Arreglo: en `payNegationCost`, si
+  `eff.topDiscard && !eff.altCost`, se descartan esas Plot de la cima del RESPONDIENTE
+  con cualquier via. La distincion entre "descarte obligatorio" (Hoax) y "via de coste
+  alternativa" (Secrets Man, que trae `altCost:"topDiscard"`) sale del DATO, no del
+  nombre de la carta. La elegibilidad "en seco" de `negationCostWays` tambien exige
+  que el mazo alcance, con su motivo impreso.
+- **P1-145** BUG DE AFIRMACION PROPIA: S6a metia la carta de negacion en la mano del
+  RIVAL y luego intentaba jugarla como el ACTOR, asi que reventaba con "Carta no esta
+  en tu mano" antes de llegar al motivo impreso. Misma clase que P1-133 y P1-134.
+
+Lo demas que escribio L22 (sin id propio, es parte de la mecanica del lote):
+`S.pendingNegation` en el literal de `S`; los helpers `isNegationKind`,
+`plotIsComputerPlot`, `negationCostWays`, `payNegationCost`, `negationAllowed` y
+`negationWayLabel` antes de `isStructureRoot`; el veto "con una negacion pendiente no
+se puede jugar otra Plot" justo antes del hook; el hook de apertura antes de
+`switch(eff.kind)`; los 2 `case` que rechazan jugarlas desde la mano citando el
+impreso; `publicState.pendingNegation` proyectado CAMPO A CAMPO (los indices internos
+de carta del respondiente no salen al cliente); `E.resolvePendingNegation` y
+`E.negationStatus` antes de `E.arrowCount`; `KIND_ES` con los 2 kinds (obligatorio: el
+guard de `test_hand_peek.js` los exige); 7 entradas de glosario en `FIELD_ES`; los
+botones `negateEntry22` / `negPassEntry22` y el apagado del "Jugar Plot ahora" para las
+negadoras; el callback `CB.onResolveNegation` en `app.js`.
+
+INTERPRETACIONES DECLARADAS (no Measured, declaradas por falta de precision en el
+impreso):
+1. "any Plot card that concerns Computers or is used on a Computer group" (Computer
+   Security) se implementa con las TRES lecturas a la vez: la Plot cuyo efecto exige o
+   paga el atributo `computer`, la Plot cuyo texto impreso menciona "computer", y la
+   Plot cuyo objetivo declarado es un Computer group. El reglamento no precisa mas.
+2. El desempate del alcance es COLA A COLA: la ventana ofrece al respondiente la via
+   mas barata que tenga disponible (`negationCostWays(...).ways[0]`) y la UI muestra
+   cual es, de modo que la eleccion es siempre visible y no automatica.
+3. "without looking at them" (Secrets Man) se implementa empujando las Plot
+   directamente a `S.plotDiscard`, SIN `discardPlot`, porque `discardPlot` imprimiria
+   sus nombres y abriria una ventana de suceso que el impreso no pide.
+4. `discardPlot` de las DOS cartas anuladas si abre ventana de suceso (388 Stealing
+   the Plans puede contraatacar el descarte). Es el mismo efecto colateral ya
+   declarado en P1-131.
+5. Las cartas de negacion NO entran en la lista `instant` de `E.playPlot`: no se juegan
+   por ese camino.
+
+### Verificacion
+
+- `node --check` limpio en `gen_cards.js`, `game/js/engine.js`, `game/js/ui.js`,
+  `game/js/app.js` y `test_fase2_rules.js`.
+- `npm test` -> ALL TESTS PASSED (11): P0 REGRESSION, SMOKE, RESPOND, HAND PEEK
+  (723 lineas sobre 421 cartas), FASE 2 RULES, FASE 4 COVERAGE (168 clasificadas, 80
+  Plots/Resources sin mecanica, 3 ramas muertas declaradas, 10 cartas bloqueadas
+  congeladas, 4 huecos de texto) y CARD RESEARCH MANIFEST (356 pending).
+- Delta de "sin mecanica" en FASE 4: 83 -> 80, exactamente las 3 cartas de L22.
+  Clasificadas 165 -> 168. Los kinds `plot_negate_prev:2` y `plot_negate_computer:1`
+  aparecen en el reparto.
+- Barrido de `test_fase2_rules.js`: **30/30 PASSED** (y 24/24 y 8/8 en las corridas
+  anteriores a la regresion).
+- Regresion L22: 48 asertos en 6 escenarios. S1 aceptacion con Hoax (la ventana se
+  abre, el efecto NO se aplica, el coste aun NO se ha cobrado, y al negar las dos
+  cartas van al descarte, el grupo Straight se queda sin ficha, los dos grupos Media
+  pasan de 1 a 0 fichas y el mazo del respondiente pierde 1 Plot). S2 el `pass`
+  aplica el efecto y no cobra el coste de Hoax. S3 Secrets Man por la via de las
+  fichas del Illuminati (3 -> 0). S4 la misma carta por la via alternativa (2 Plot de
+  la cima sin mirarlas). S5 Computer Security: 240 Dollars for Decency NO abre
+  ventana y se juega normal, mientras 386 The Auditor From Hell SI la abre.
+  S6 los seis negativos (no se juegan desde la mano con el motivo impreso, resolver
+  sin ventana, coste insuficiente, no anular la propia Plot, no jugar una segunda
+  Plot con la ventana abierta, y no "negar" con una carta que no es de negacion).
+
+### Leccion
+
+1. Anadir cartas a un mazo cambia el COMPORTAMIENTO POR DEFECTO de todo el motor, no
+   solo de esas cartas. Clasificar 3 cartas de negacion hizo que cualquier jugada de
+   Plot abriera una ventana, y eso rompio 9 regresiones a la vez. El sintoma (conjuntos
+   de fallos distintos en cada corrida) parecia un flake de fixture; la prueba
+   definitiva fue desactivar SOLO la apertura de la ventana y comparar 20+20 corridas:
+   0/20 sin ella, 2/20 con ella. Ante un fallo que "sale y no sale", hay que aislar la
+   causa con un interruptor, no adivinar.
+2. Aislar un fixture no basta con tocar el helper de cabecera: hay que contar TODOS los
+   sitios que crean partida. `fresh()` cubria 1 de 6 `E.startGame()`.
+3. Un `case` que devuelve temprano es una decision de atomicidad, y obliga a decidir en
+   que momento la carta sale de la mano. Aqui: en la ventana NO sale (todavia no se ha
+   jugado); en el `pass` sale por la cola P1-012; en la negacion sale con un `splice`
+   propio. Tres caminos, una sola regla: una carta sale exactamente una vez.
+4. El texto impreso puede traer dos obligaciones donde el dato solo tiene un campo.
+   `topDiscard` significa "descarta N" en Secrets Man (via alternativa) y "tambien
+   descarta N" en Hoax (obligatorio). Distinguirlo por `altCost` en el dato, no por el
+   nombre de la carta, es lo que evita que el proximo lote vuelva a comerlo.
+5. Codigo muerto en un `else if` no lo caza ningun test porque el primer `if` ya lo
+   tapa: hay que buscar duplicados a proposito cuando se toca una zona, no esperar a que
+   fallen.
+6. `$1` con replacement por funcion es una trampa silenciosa: no lanza error de sintaxis
+   en el script, borra el texto capturado y rompe el fichero destino en el sitio
+   equivocado. El patron seguro es reescribir por indice de linea o devolver
+   `m + insercion` desde la funcion.
+
+### Backlog
+
+- **18 and a Half Minute Gap**: mismo impreso de negacion, texto truncado y ausente de
+  la fuente completa. Declarado como hueco; si aparece una fuente, entra como
+  `plot_negate_prev` con `costMode:"illumAllOrDiscard2"` y `topDiscard` distinto.
+- **"concerns Computers"** podria afinarse: hoy se aceptan 3 lecturas. El reglamento no
+  dice cual es la buena.
+- **Sin panel propio en el HUD**: la ventana de negacion solo se ve en el menu de la
+  carta de negacion (boton "NEGAR <Plot>") y en el de la Plot pendiente (boton
+  "Dejar que se juegue"). No hay un panel dedicado como el de las otras tres ventanas,
+  porque en la UI solo ve el jugador humano y las dos acciones posibles estan a mano en
+  sus menus.
+- `discardPlot` de las cartas anuladas abre ventana de suceso (P1-131), efecto
+  colateral conocido.
+- Los 80 "sin mecanica" que quedan son cola larga: 79 firmas distintas, ~58 mecanicas.
+  Bloques visibles: cancelacion/timing (Hat Trick, I Lied, And STAY Dead!, An Offer You
+  Cant Refuse, Power Grab, Annual Convention, Soulburner, Cover-Up, Faction Fight,
+  Senate Investigating Committee, Head in a Jar, Forgery, Payoff, Interference, Deep
+  Agent, March on Washington, Blitzkrieg), Resources que se linkean (~12), OCR manchado
+  (~10). Multi-lote.
+- Backlog heredado sin cerrar: ventana de reaccion de 253 Exposed!, colocacion "link"
+  de 299, `E.arrowCount` sin uso en la UI, `S.l18extra` sin limpiar, indicador de las
+  NWO en vigor en el HUD, veto "except during an Instant or Privileged Attack" de las
+  NWO, `become` de Political Correctness inalcanzable con este roster, y un flake
+  preexistente en `test_appflow.js` declarado y no reproducido.

@@ -1560,6 +1560,29 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
   var isUpheaval = c.type === 'plot' && c.effect && c.effect.kind === 'global_discard';
   var isNwoOne = c.type === 'plot' && c.effect && c.effect.kind === 'nwo_discard_one';
   var isScandal = c.type === 'plot' && c.effect && c.effect.kind === 'token_strip_aligned';
+  /* L22 — Hoax, Secrets Man Was Not Meant to Know y Computer Security son cartas
+   * de REACCION: "This card may be played immediately after any other Plot card is
+   * played". El motor RECHAZA jugarlas desde la mano con su motivo impreso, asi que
+   * el "Jugar Plot ahora" generico se apaga para ellas y aparece en su lugar un boton
+   * "NEGAR <Plot>", que solo existe mientras hay una ventana de negacion abierta. El
+   * boton de "dejar que se juegue" (pass) le toca al ACTOR de la Plot pendiente, que
+   * por definicion no puede anular su propia Plot. */
+  var NEG_UI22 = ['plot_negate_prev', 'plot_negate_computer'];
+  var negPend22 = (curState && curState.pendingNegation) ? curState.pendingNegation : null;
+  var isNegator22 = c.type === 'plot' && c.effect && NEG_UI22.indexOf(c.effect.kind) >= 0;
+  var negMine22 = null;
+  if (negPend22 && isNegator22 && negPend22.byPid !== curState.currentPid) {
+    for (var n22 = 0; n22 < negPend22.negators.length; n22++) {
+      var ng22 = negPend22.negators[n22];
+      if (ng22.pid === curState.currentPid && ng22.cardName === c.name) { negMine22 = ng22; break; }
+    }
+  }
+  var negateEntry22 = negMine22
+    ? { label: '🃏 NEGAR ' + esc(negPend22.cardName) + ' con esta carta (' + esc(negMine22.via) + ')', value: 'negate' }
+    : null;
+  var negPassEntry22 = (negPend22 && negPend22.byPid === curState.currentPid)
+    ? { label: '▶️ Dejar que ' + esc(negPend22.cardName) + ' se juegue (nadie la niega)', value: 'negPass' }
+    : null;
   var nwoOneEntry = isNwoOne
     ? { label: '🃏 Descartar UNA carta New World Order en juego (Media Poder combinado 4+)', value: 'nwoOne' }
     : null;
@@ -1591,7 +1614,9 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
     upheavalEntry,
     nwoOneEntry,
     scandalEntry,
-    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck && !isTurnStart && !isReorg && !isUpheaval && !isNwoOne && !isScandal) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
+    negateEntry22,
+    negPassEntry22,
+    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck && !isTurnStart && !isReorg && !isUpheaval && !isNwoOne && !isScandal && !isNegator22) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
     c.type === 'plot' ? { label: 'ℹ ¿Cuándo sirven los Plots?', value: 'info' } : null,
     c.type !== 'illuminati' ? { label: '🗑 Descartar', value: 'discard' } : null,
     { label: 'Cancelar', value: null }
@@ -1648,20 +1673,19 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
       clearSel();
       startNwoOne16(ix);
     }
+    else if (v === 'negate') {
+      /* L22: la carta de negacion se juega con E.resolvePendingNegation, NUNCA con
+         E.playPlot — la Plot anulada sigue en la mano del actor y el re-ingreso por
+         playPlot la borraria dos veces (P1-126) y volveria a abrir la ventana. */
+      clearSel(); CB.onResolveNegation('negate', ix);
+    }
+    else if (v === 'negPass') {
+      clearSel(); CB.onResolveNegation('pass');
+    }
     else if (v === 'scandal') {
       clearSel();
       sel = { mode: 'scandalRival', data: { handIdx: ix } };
       log('🗞 362 Scandal — PASO 1/2: clic en un grupo de un RIVAL (los grupos de la alineacion elegida perderan las fichas).');
-      render(curState);
-    }
-    else if (v === 'nwoOne') {
-      clearSel();
-      startNwoOne16(ix);
-    }
-    else if (v === 'scandal') {
-      clearSel();
-      sel = { mode: 'scandalRival', data: { handIdx: ix } };
-      log('🗞 362 Scandal — PASO 1/2: clic en un grupo de un RIVAL (sus grupos de la alineacion elegida perderan las fichas).');
       render(curState);
     }
     else if (v === 'reorg') {
@@ -1811,6 +1835,8 @@ var KIND_ES = {
   nwo_discard_all: 'Descartar TODAS las cartas New World Order',
   secret_expose: 'Exponer un grupo Secret',
   token_strip_aligned: 'Escandalo: quitar fichas por alineacion',
+  plot_negate_prev: 'Negar la Plot recien jugada (Hoax / Secrets Man)',
+  plot_negate_computer: 'Negar una Plot de Computers (Computer Security)',
   turn_start_block: 'Bloquear el inicio de turno', unverified: 'Mecanica sin mapear',
   ability_unverified: 'Habilidad sin mapear', goal: 'Meta'
 };
@@ -2063,7 +2089,14 @@ var FIELD_ES = [
   ['noDrawForAnyReason','eff','no puedes robar Plot ni Grupo <b>por ningun motivo</b>'],
   ['oncePerGamePerPlayer','modo','<b>una sola vez</b> por partida y por jugador'],
   ['returnTurnAfter','fin','al terminar tu turno vuelve al jugador interrumpido'],
-  ['unlessSomeoneWins','fin','salvo que alguien <b>ya haya ganado</b>']
+  ['unlessSomeoneWins','fin','salvo que alguien <b>ya haya ganado</b>'],
+  ['costMode','coste','COSTE de esta carta: <i>power6</i> = Poder COMBINADO de grupos con ficha; <i>illumAllOrDiscard2</i> = todas las fichas de tu Illuminati O descartar N Plot de la cima; <i>groupOrIllum</i> = accion de un grupo con el atributo indicado, o de tu Illuminati si es el indicado'],
+  ['discardsBoth','fin','los DOS Plots van al descarte, incluida la Plot anulada'],
+  ['reaction','modo','carta de REACCION: solo se juega inmediatamente despues de que un rival juegue una Plot'],
+  ['altCost','coste','<b>coste alternativo</b> printed, distinto del principal'],
+  ['topDiscard','coste','ademas descarta <b>%s</b> Plot de la cima de TU mazo'],
+  ['negateAnyPlot','eff','anula <b>cualquier</b> Plot'],
+  ['illumTokenAll','coste','gasta <b>TODAS</b> las fichas de accion de tu Illuminati (minimo 1)'],
 ];
 var FIELD_MAP = {};
 for (var _fi = 0; _fi < FIELD_ES.length; _fi++) FIELD_MAP[FIELD_ES[_fi][0]] = true;
