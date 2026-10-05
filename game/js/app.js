@@ -55,6 +55,37 @@ var CB = {
   onAutoTakeover: function (handIdx, parentUid) { E.autoTakeover(E.getState().currentPid, handIdx, parentUid); after('Takeover automático'); },
   onPlayResource: function (handIdx) { E.playResource(E.getState().currentPid, handIdx); after('Recurso jugado'); },
   onPlayPlot: function (handIdx, targetUid) { E.playPlot(E.getState().currentPid, handIdx, targetUid); after('Plot jugado'); },
+  /* L19 (P1-116) — 354 Reorganization. No cabe en onPlayPlot porque su `opts` es una
+     LISTA de movimientos de estructura `{uid, newParentUid}`, y el camino generico
+     llama sin `opts` (juego siempre el caso minimo: 0 movimientos). El motor valida
+     la lista ENTERA antes de aplicar el primero (applyStructureMoves), asi que si
+     un movimiento es ilegal no se gasta la accion Illuminati ni se toca la
+     estructura: el error sale de E.playPlot y lo recoge `after`. */
+  /* L20 (P1-121) — 408 Upheaval!. No cabe en onPlayPlot porque su `opts` es una
+     * lista de ELECCIONES, una por jugador ("Each player must choose one group"),
+     * no un objetivo unico. El motor valida la lista completa antes de retirar nada,
+     * asi que si una eleccion es ilegal no se descarta nada ni se gasta la accion. */
+  onPlayUpheaval: function (handIdx, choices) {
+    E.playPlot(humanPid(), handIdx, null, { choices: choices });
+    after('🌍 Upheaval!: cada jugador descarta un grupo (no cuentan como destruidos)');
+  },
+  /* L16 (P1-127) — 207 Blood, Toil, Tears and Sweat y 362 Scandal. No caben en
+   * onPlayPlot porque su `opts` no es un nodo: 207 elige una carta New World Order
+   * EN JUEGO (una Plot expuesta o linkada, que no es ningun nodo) y 362 elige RIVAL
+   * + UNA alineacion. El motor valida las dos cosas antes de retirar fichas o
+   *   descartar nada, asi que si la eleccion es ilegal no se gasta la accion Media. */
+  onPlayNwoOne: function (handIdx, nwoCardId) {
+    E.playPlot(humanPid(), handIdx, null, { nwoCardId: nwoCardId });
+    after('🃏 Blood, Toil, Tears and Sweat: una carta New World Order descartada');
+  },
+  onPlayScandal: function (handIdx, rivalPid, align) {
+    E.playPlot(humanPid(), handIdx, null, { rivalPid: rivalPid, align: align });
+    after('🗞 Scandal contra ' + E.getState().players[rivalPid].name + ' (' + align + ')');
+  },
+  onPlayReorg: function (handIdx, moves) {
+    E.playPlot(E.getState().currentPid, handIdx, null, { moves: moves });
+    after('🔀 Reorganization: ' + moves.length + ' movimiento(s) de estructura');
+  },
   /* P1-010: una carta Goal no se juega, se REVELA al declarar victoria. Si el
      objetivo no se cumple la carta vuelve a la mano expuesta, asi que el
      intento nunca se pierde: solo se gasta la exposicion. */

@@ -253,9 +253,59 @@ const ILLN = {}; for (const k in ILL) { ILLN[norm(k)] = ILL[k]; } ILLN['ufos'] =
  * branch and was typed subtype:null. Names below are the 7 Goal cards
  * that actually exist as PNGs, verified against window.INWO_IMAGE_FILES
  * (421 entries, 0 missing on disk).  `worldwariii` was a typo.
+ *
+ * L15 (2026-10) anade 5 nombres mas: las "Goal cards de combinacion"
+ * (294 Kill for Peace, 297 Let Them Eat Cake!, 343 Power to the People,
+ * 393 The Hand of Madness, 407 Up Against the Wall). Antes caian en el
+ * switch(off) default con subtype:null porque sus textos impresos son
+ * "GOAL <nombre> ..." y cards_parsed.json solo lista la ficha ("Goal: Up
+ * Against the Wall!", freq R, type Plot) sin el cuerpo. Su mecanica (la
+ * tabla de combinaciones) vive en L15_FX + el evaluador
+ * `goalComboObjective` de engine.js.
  * ------------------------------------------------------------------ */
 const GOALS = new Set(['criminaloverlords','fratricide','haileris',
-  'militaryindustrialcomplex','peaceinourtime','worldwarthree','alternategoals']);
+  'militaryindustrialcomplex','peaceinourtime','worldwarthree','alternategoals',
+  'killforpeace','letthemeatcake','powertothepeople','thehandofmadness','upagainstthewall']);
+
+/* L16 (2026-10) — IDENTIFICACION DE LAS NWO CARDS. MEDIDO: el mazo de 421
+ * cartas SI tiene las 15 NWO cards, pero el generador NO las tipaba: los PNG se
+ * llaman por su nombre plano ("A Thousand Points of Light") mientras que
+ * research/cards_parsed.json las nombra "NWO: A Thousand Points of Light (blue)".
+ * La regla de plotSub (gen_cards.js, `n.startsWith('newworldorder') || /(^| )nwo( |$)/`)
+ * solo mira el NOMBRE de la ficha, asi que nunca disparaba: las 15 caian como
+ * Plots normales. De ahi que la rama `case 'nwo'` de engine.js fuera una rama
+ * MUERTA declarada ("ramas muertas declaradas" en FASE 4) y que 207 Blood, Toil,
+ * Tears and Sweat y 379 Sweeping Reforms no tuvieran NWO que descartar.
+ * DECISION DE ALCANCE (minima, radio cero): se anade SOLO `nwoColor` al registro,
+ * NO se toca `subtype` ni `effect.kind` de ninguna carta. Motivo: 10 de las 15 ya
+ * estan clasificadas con una mecanica implementada (bulk_power, align_rule,
+ * token_wither) y una de ellas (Military-Industrial Complex) es una Goal card;
+ * cambiarles el kind las sacaria del camino que ya funcionan. La pregunta que
+ * hacen 207/379 es "¿esta carta en juego es una NWO?", y `nwoColor` la responde
+ * sin mover nada. Lo que SI queda declarado como NO implementado es la regla
+ * "one NWO per color max — replace old same-color" de `case 'nwo'`, que exige que
+ * el JUGADO de la NWO pase por esa rama: se anota en el Backlog de la seccion
+ * `## 71.` del audit doc. Es una laguna PREEXISTENTE, no introducida por L16.
+ * Las 2 que no estan en el mazo (Peace In Our Time, World War 3) se listan igual
+ * para que el conjunto sea el de la caja y no el de los PNG presentes.
+ * ------------------------------------------------------------------ */
+const NWO_COLORS = {
+  'athousandpointsoflight': 'blue',
+  'biggerbusiness': 'yellow',
+  'chickenineverypot': 'blue',
+  'dontforgettosmashthestate': 'yellow',
+  'energycrisis': 'blue',
+  'fearandloathing': 'blue',
+  'guncontrol': 'red',
+  'lawandorder': 'yellow',
+  'militaryindustrialcomplex': 'yellow',
+  'peaceinourtime': 'red',
+  'politicalcorrectness': 'red',
+  'solidarity': 'red',
+  'taxreform': 'red',
+  'worldhunger': 'blue',
+  'worldwar3': 'yellow'
+};
 
 /* ------------------------------------------------------------------ *
  * ALIGNMENTS vs ATTRIBUTES
@@ -2136,6 +2186,148 @@ const L14_FX = {
 const L14_FXN = {};
 for (const k in L14_FX) { L14_FXN[norm(k)] = L14_FX[k]; }
 
+/* ------------------------------------------------------------------ *
+ * L15 (2026-10) — LAS 5 "GOAL CARDS DE COMBINACION".
+ * 294 Kill for Peace · 297 Let Them Eat Cake! · 343 Power to the People ·
+ * 393 The Hand of Madness · 407 Up Against the Wall.
+ *
+ * DECLARACION DE INTERPRETACION (el texto impreso manda):
+ * Las 5 imprimen la MISMA estructura de 5 filas y solo cambian el par de
+ * alineaciones. Forma canonica (294, texto impreso literal):
+ *   "Destroy Violent groups, and control Peaceful groups, in any of the
+ *    following combinations: Destroy 2 Violent, control 6 Peaceful /
+ *    Destroy 3 Violent, control 5 Peaceful / Destroy 4 Violent, control 4
+ *    Peaceful / Destroy 5 Violent, control 3 Peaceful / Destroy 6 Violent,
+ *    control 1 Peaceful. This Goal cannot be combined with other Goals in any way."
+ * Es decir: destruidas + controladas == 8 SIEMPRE (2+6, 3+5, 4+4, 5+3, 6+1), y
+ * "in any of the following combinations" significa que basta UNA fila.
+ *
+ * POR QUE UN SOLO `kind:'goal'` Y NO CINCO (lectura explicita de DoD#4):
+ * DoD#4 exige que un `kind` signifique un efecto IDENTICO, nunca "casi". Aqui
+ * el efecto es identico: las 5 son "revelar una Goal card que pide una
+ * combinacion destructiva+constructiva de 8"; lo que cambia es el PARAMETRO
+ * (que par de alineaciones), y ese viaje en `effect.goalCombo`, no en el kind.
+ * Ademas el motor YA identifica las Goal cards por `effect.kind==='goal'`
+ * (isGoalCardIdx, engine.js:816) y `case 'goal'` prohibe jugarlas ("no se juega,
+ * se revela al declarar victoria"). Cambiar el kind de estas 5 las sacaria del
+ * camino de revelacion y las volveria Plot jugables: un bug de DOS sistemas.
+ * Por eso el kind se mantiene y la DISTINCION vive en effect.goalCombo, que
+ * el evaluador `goalComboObjective` de engine.js lee de forma DATA-DRIVEN
+ * (sin ramas por nombre, a diferencia de Criminal Overlords / Hail Eris! /
+ * Fratricide que si son 3 efectos distintos).
+ *
+ * TIMING: no se juega, se REVELA al declarar victoria (mismo camino que las
+ * otras 7 Goal cards: E.declareGoalVictory). No hay coste, no hay objetivo.
+ *
+ * LA CLAUSULA "cannot be combined with other Goals in any way":
+ * NO se evalua en el objetivo (es una restriccion de MAZO). Se implementa en
+ * goalHandLimitOf (engine.js): con una de estas 5 en mano, el limite de Goal
+ * cards sigue siendo 1 aunque el jugador tenga tambien `Alternate Goals` (la
+ * unica carta que autoriza 2: "You may possess two Goal cards"). El jugador
+ * puede tener las dos cartas en mano; el motor descarta el exceso al final del
+ * turno (enforceGoalHandLimit), que es el mecanismo P1-014 ya existente.
+ *
+ * TEXTO: `t:` es VERBATIM de research/scribd_inwo_cards_full.html (transcripcion
+ * humana completa del mazo). La salvedad de 407 Up Against the Wall se declara
+ * en el audit doc (seccion L15): esa carta NO aparece en ese HTML ni en ningun
+ * otro fuente de research/, asi que su `t:` esta reconstruido por simetria con
+ * las otras 4 y su texto OCR queda declarado como hueco.
+ * ------------------------------------------------------------------ */
+const L15_FX = {
+  'killforpeace': { kind:'goal', goalCombo:{destroy:'violent',control:'peaceful'},
+    t:'Kill for Peace Destroy Violent groups, and control Peaceful groups, in any of the following combinations: Destroy 2 Violent, control 6 Peaceful Destroy 3 Violent, control 5 Peaceful Destroy 4 Violent, control 4 Peaceful Destroy 5 Violent, control 3 Peaceful Destroy 6 Violent, control 1 Peaceful This Goal cannot be combined with other Goals in any way.' },
+  'letthemeatcake': { kind:'goal', goalCombo:{destroy:'liberal',control:'conservative'},
+    t:'Let Them Eat Cake! Destroy Liberal groups, and control Conservative groups, in any of the following combinations: Destroy 2 Liberal, control 6 Conservative Destroy 3 Liberal, control 5 Conservative Destroy 4 Liberal, control 4 Conservative Destroy 5 Liberal, control 3 Conservative Destroy 6 Liberal, control 1 Conservative This Goal cannot be combined with other Goals in any way.' },
+  'powertothepeople': { kind:'goal', goalCombo:{destroy:'conservative',control:'liberal'},
+    t:'Power to the People Destroy Conservative groups, and control Liberal groups, in any of the following combinations: Destroy 2 Conservative, control 6 Liberal Destroy 3 Conservative, control 5 Liberal Destroy 4 Conservative, control 4 Liberal Destroy 5 Conservative, control 3 Liberal Destroy 6 Conservative, control 1 Liberal This Goal cannot be combined with other Goals in any way.' },
+  'thehandofmadness': { kind:'goal', goalCombo:{destroy:'peaceful',control:'violent'},
+    t:'The Hand of Madness Destroy Peaceful groups, and control Violent groups, in any of the following combinations: Destroy 2 Peaceful, control 6 Violent Destroy 3 Peaceful, control 5 Violent Destroy 4 Peaceful, control 4 Violent Destroy 5 Peaceful, control 3 Violent Destroy 6 Peaceful, control 1 Violent This Goal cannot be combined with other Goals in any way.' },
+  'upagainstthewall': { kind:'goal', goalCombo:{destroy:'government',control:'violent'},
+    t:'Up Against the Wall Destroy Government groups, and control Violent groups, in any of the following combinations: Destroy 2 Government, control 6 Violent Destroy 3 Government, control 5 Violent Destroy 4 Government, control 4 Violent Destroy 5 Government, control 3 Violent Destroy 6 Government, control 1 Violent This Goal cannot be combined with other Goals in any way.' }
+};
+const L15_FXN = {};
+for (const k in L15_FX) { L15_FXN[norm(k)] = L15_FX[k]; }
+
+/* ------------------------------------------------------------------ *
+ * L19 (2026-10) — 354 Reorganization.
+ *
+ * IMPRESO VERBATIM (research/scribd_inwo_cards_full.html):
+ *   "Reorganization You may completely reorganize your entire Power Structure.
+ *    You may play this card at any time during your own turn. It requires an
+ *    action from your Illuminati. Requires Illuminati Action"
+ *
+ * TIMING — lectura deliberada: el impreso dice "at any time DURING YOUR OWN turn",
+ * no "at any time". Es la misma diferencia que L8a dibujo para 388/411 (deck_manip
+ * con `anyTime:true`) frente a 361 (deck_manip sin el): un "at any time" se juega
+ * FUERA de turno, un "during your own turn" no. Por eso 354 NO entra en la lista
+ * `instant` de la cabecera de E.playPlot y no lleva veto de `S.attack`: el gate
+ * `requireOwnMain` ya garantiza el turno propio y el main phase. Es exactamente el
+ * criterio que P1-017 documento para 239 Dictatorship ("Play this card during your
+ * turn"), otra carta del mismo tipo de timing.
+ *
+ * COSTE: "an action from your Illuminati" = `pl.illumTokens--`. No es un coste por
+ * atributo, asi que NO se toca ACTION_COST_KINDS (P1-055): el gate lo cobra el propio
+ * case, que es la via que ya usan `payIllum` y 268/234.
+ *
+ * EFECTO: "completely reorganize your entire Power Structure" = el jugador decide,
+ * grupo por grupo, cual es el nuevo maeastre. NO es un efecto automatico: por eso el
+ * case exige `opts.moves` con al menos un movimiento, y la UI ofrece un selector
+ * (DoD#6: si la carta necesita objetivo, el objetivo se ELIGE, nunca se elige solo).
+ * La validacion y el desmontaje los comparte con `E.organize` (Bermuda Triangle),
+ * que ya hacia exactamente esto pero gratis y solo para esa faccion: el cuerpo se
+ * extrajo a `applyStructureMoves()` para que no haya dos copias del mismo codigo
+ * que puedan divergir (el precedente es P1-014, que centralizo
+ * `enforceGoalHandLimit` por exactamente eso). El comportamiento de `E.organize` no
+ * cambia: mismo orden de validacion, mismos mensajes, mismos errores.
+ * ------------------------------------------------------------------ */
+const L19_FX = {
+  'reorganization': { kind:'structure_reorg',
+    ownTurnOnly:true, movesRequired:true, payIllum:true, freeMoving:true,
+    t:'Reorganization You may completely reorganize your entire Power Structure. You may play this card at any time during your own turn. It requires an action from your Illuminati. Requires Illuminati Action' }
+};
+const L19_FXN = {};
+for (const k in L19_FX) { L19_FXN[norm(k)] = L19_FX[k]; }
+
+/* ------------------------------------------------------------------ *
+ * L20 (2026-10) — 408 Upheaval!
+ *
+ * IMPRESO VERBATIM (research/scribd_inwo_cards_full.html):
+ *   "Upheaval! Worldwide riots continue for a third week, with no sign of abatement
+ *    Each player must choose one group from their Power Structure and discard it.
+ *    These do not count as destroyed for anyones victory conditions. This card may
+ *    be played at any time. It requires an action by your Illuminati.
+ *    Requires Illuminati Action"
+ *
+ * TIMING — "This card may be played at any time" es un "at any time" DE VERDAD, sin
+ * "during your own turn". Es la diferencia que L19 dejo escrita para 354 y que aqui
+ * se aplica al reves: 354 NO entra en la lista `instant` de la cabecera de
+ * E.playPlot, 408 SI. Por eso 408 se puede jugar en el turno del rival.
+ *
+ * COSTE: "an action by your Illuminati" = `pl.illumTokens--`. No es coste por
+ * atributo, luego NO se toca ACTION_COST_KINDS (P1-055).
+ *
+ * `anyTime:true` viaja en el dato para que la intencion sea legible desde el
+ * generador y para el glosario de la UI, aunque la puerta que decide es la lista
+ * `instant`. Es el mismo criterio que L8a uso para 361 (`anyTime:true`) frente a
+ * 388/411 (mismo kind, sin el).
+ *
+ * EFECTO — dos puntos que el motor implementa de forma explicita:
+ *   (1) "EACH player must CHOOSE one group": la eleccion es de CADA jugador, no solo
+ *       del que juega la carta. El case exige `opts.choices` con un uid por jugador.
+ *   (2) "These do not count as destroyed for ANYONE'S victory conditions": cada retiro
+ *       va por `destroyGroup(..., {noCountAsDestroyed:true})`, que apaga los tres
+ *       registros de destruccion (`destroyedByMe`, `destroyedIlluminati` y el robo de
+ *       Plot de Servants of Cthulhu). Ver P1-120.
+ * ------------------------------------------------------------------ */
+const L20_FX = {
+  'upheaval': { kind:'global_discard',
+    anyTime:true, payIllum:true, choosePerPlayer:true,
+    noDestroyCount:true, discardLeavesPuppetsToHand:true,
+    t:'Upheaval! Worldwide riots continue for a third week, with no sign of abatement Each player must choose one group from their Power Structure and discard it. These do not count as destroyed for anyones victory conditions. This card may be played at any time. It requires an action by your Illuminati. Requires Illuminati Action' }
+};
+const L20_FXN = {};
+for (const k in L20_FX) { L20_FXN[norm(k)] = L20_FX[k]; }
+
 
 /* P1-055 — kinds cuyo gate en engine.js COBRA un `requireActionFromAttr`
  * ("debes gastar la acción de un grupo tuyo con el atributo X"). Lista cerrada a
@@ -2150,6 +2342,135 @@ for (const k in L14_FX) { L14_FXN[norm(k)] = L14_FX[k]; }
  *   attack_boost          → engine.js ~4023
  *   force_discard_exposed → engine.js ~4311
  *   turn_start_block      → engine.js ~4387 (L8c) */
+/* ------------------------------------------------------------------ *
+ * L18 (2026-10) - FLECHAS DE CONTROL.
+ * 298 Lets Get Organized / 299 Let's Get REALLY Organized.
+ *
+ * DECLARACION DE INTERPRETACION (el texto impreso manda):
+ * 298: "Play this card during your turn, on any Group card that has fewer than
+ *      three outgoing control arrows. This is an action for that group or its
+ *      master. You must control the target. The target group gains an extra
+ *      control arrow, on either the end or the side of the card. Place this card
+ *      underneath it, with an arrow showing, to provide the new arrow.
+ *      Duplicates of this card may not be used on the same group."
+ * 299: "Play this card during your turn, on any Group card that has one or two
+ *      outgoing control arrows. ... The target group now has three outgoing
+ *      control arrows. Place this card underneath it to provide the new arrows,
+ *      or link this card to it to indicate that there are now three arrows."
+ *
+ * QUE ES UNA "FLECHA DE CONTROL SALIENTE" EN ESTE MOTOR: una flecha LIBRE, o
+ * sea una que el grupo todavia puede gastar en controlar a otro grupo. El motor
+ * ya tiene exactamente esa magnitud y la usa para todo lo demas (P1-023):
+ *   LIBRE = maxChildren(nodo) - nodo.children.length
+ * con maxChildren = 4 para la raiz del Illuminati y 3 para cualquier otro grupo.
+ * Es la UNICA magnitud por grupo que puede valer 0, 1, 2 o 3, y es la que el
+ * impreso puede describir: un grupo recien capturado tiene 3 libres; uno que ya
+ * controla 2 grupos tiene 1; uno que controla 3 no tiene ninguna.
+ *   298 "fewer than three outgoing control arrows"  -> LIBRE < 3  -> LIBRE + 1
+ *   299 "one or two outgoing control arrows"        -> LIBRE 1 o 2 -> LIBRE = 3
+ * Asi las dos cartas hablan del MISMO numero y la aceptacion del lote es
+ * literalmente comprobable: 0 -> 1 con 298; 1 o 2 -> 3 con 299; 3 no acepta
+ * ninguna (298: 3<3 falso; 299: 3 no esta en {1,2}).
+ *
+ * COMO SE IMPLEMENTA SIN ROMPER NADA: las flechas extra viven en
+ * S.l18extra[uid] (registro POR JUEGO, indexado por uid) y maxChildren las
+ * suma. Es el mismo molde que S.alignRetro (P1-011): un overlay que el motor
+ * consulta, no un campo nuevo en el nodo. Asi E.moveGroup / E.organize / los
+ * ataques no tienen que saber nada (mover un grupo conserva su uid) y colocar,
+ * mover y tomar control heredan las flechas gratis por usar maxChildren.
+ *
+ * POR QUE NO ES requireActionFromAttr: el coste impreso es "This is an action
+ * for that group or its master", o sea la ficha del PROPIO objetivo (o de su
+ * master, que es el Illuminati si el objetivo cuelga de la raiz). Eso no es "un
+ * grupo tuyo con el atributo X", asi que estas cartas NO declaran
+ * requireActionFromAttr y NO se anaden a ACTION_COST_KINDS (si lo declararan,
+ * el guard de gen_cards.js lo rechazaria por no tener gate).
+ *
+ * POR QUE UN SOLO kind CON DOS mode: las dos cartas hacen lo mismo (una accion
+ * de un grupo propio sobre un grupo propio que cambia sus flechas salientes y
+ * coloca la carta debajo) y solo se distinguen en la cifra de su condicion y en
+ * su efecto; mode es el parametro, igual que goalCombo en L15.
+ *
+ * TIMING: "during YOUR turn" NO es "at any time", asi que NO entran en la lista
+ * instant de E.playPlot. El unico requisito de tiempo es requireOwnMain.
+ *
+ * 299 Y EL DUPLICADO: solo 298 imprime "Duplicates of this card may not be used
+ * on the same group". El motor aplica el veto a las DOS porque 299 es
+ * idempotente (volver a ponerla no cambiaria el numero de flechas) y dejar una
+ * carta idempotente sin veto seria un agujero. Se declara como extension.
+ * ------------------------------------------------------------------ */
+const L18_FX = {
+  'letsgetorganized': { kind:'control_arrows', mode:'gain_one',
+    ownTurnOnly:true, targetGroup:true, mustControl:true,
+    actionOfTargetOrMaster:true, noDuplicates:true,
+    t:'Lets Get Organized Play this card during your turn, on any Group card that has fewer than three outgoing control arrows. This is an action for that group or its master. You must control the target. The target group gains an extra control arrow, on either the end or the side of the card. Place this card underneath it, with an arrow showing, to provide the new arrow. Duplicates of this card may not be used on the same group. Requires Action' },
+  'letsgetreallyorganized': { kind:'control_arrows', mode:'reach_three',
+    ownTurnOnly:true, targetGroup:true, mustControl:true,
+    actionOfTargetOrMaster:true, noDuplicates:true,
+    t:'Lets Get REALLY Organized Play this card during your turn, on any Group card that has one or two outgoing control arrows. This is an action for that group or its master. You must control the target. The target group now has three outgoing control arrows. Place this card underneath it to provide the new arrows, or link this card to it to indicate that there are now three arrows. Requires Action' }
+};
+const L18_FXN = {};
+for (const k in L18_FX) { L18_FXN[norm(k)] = L18_FX[k]; }
+
+/* ------------------------------------------------------------------ *
+ * L16 (2026-10) — CARTAS DE ACCION MULTIPLE. 4 cartas, 4 kinds DISTINTOS.
+ * 207 Blood, Toil, Tears and Sweat · 253 Exposed! · 362 Scandal ·
+ * 379 Sweeping Reforms.
+ *
+ * POR QUE 4 kinds Y NO UNO (lectura explicita de DoD#4): las 4 comparten la
+ * FAMILIA de coste ("accion de grupo(s) Media con un Poder minimo"), pero sus
+ * EFECTOS no tienen nada en comun: descartar UNA NWO, descartar TODAS, exponer un
+ * grupo Secret, o vaciar de fichas a los grupos de una alineacion. DoD#4 exige que
+ * un kind signifique un efecto IDENTICO, nunca "casi", asi que un kind unico
+ * seria una mentira del dataset. Precedente de varios kinds en una misma familia:
+ * L5a/L5b/L5c y L2/L3.
+ *
+ * EL COSTE: se reutiliza SIN COPIAR el bloque `else if(eff.payAttr)` de
+ * `case 'force_align'` (engine.js:4181-4207, L10), que ya es el molde oficial de
+ * "Poder COMBINADO de grupos tuyos con el atributo X" y ya dice CUANTO Poder
+ * falta cuando no se puede pagar. Las 4 declaran `payAttr:'media'` +
+ * `payMinPower`, y NO declaran `requireActionFromAttr`: el guard de
+ * gen_cards.js:2450 solo salta si se DECLARA ese alias, asi que las 4 quedan
+ * fuera de `ACTION_COST_KINDS` sin tocar la lista (mismo criterio que L18).
+ * 207 y 379 combinan el Poder de VARIOS grupos; 253 y 362 piden UN SOLO grupo
+ * con Poder >= N (`paySingle:true`, precedente engine.js:5777-5790, que ademas
+ * ya trae `eff.payAttr||'media'` como default).
+ *
+ * LAS NWO: `nwoColor` (arriba) es lo que permite preguntar si una carta en juego
+ * es una NWO. 207 y 379 la usan para sus dos filtros (`nwoColor` presente).
+ *
+ * TIMING: las 4 son "at any time" EXCEPTO 362, que dice literalmente "at any time
+ * except during an attack" -> 362 NO entra en la lista `instant` de la cabecera
+ * de `E.playPlot` y ademas veta `S.attack` (precedente literal en engine.js:4278 y
+ * 4310).
+ *
+ * TEXTO: `t:` es VERBATIM de research/scribd_inwo_cards_full.html.
+ * ------------------------------------------------------------------ */
+const L16_FX = {
+  'bloodtoiltearsandsweat': { kind:'nwo_discard_one',
+    payAttr:'media', payMinPower:4, combined:true,
+    anyTime:true, chooseNwo:true, payAnyPlayer:false,
+    t:"Blood, Toil, Tears and Sweat Discard any one New World Order card now in play. This requires the action(s) of Media groups with a combined Power of at least 4. This card may be played at any time. Requires Media Action" },
+  'sweepingreforms': { kind:'nwo_discard_all',
+    payAttr:'media', payMinPower:6, combined:true,
+    /* "These groups may belong to more than one player!" — el unico sitio del
+     * mazo donde el coste de una carta se paga con grupos de un RIVAL. */
+    anyTime:true, chooseNwo:false, payAnyPlayer:true,
+    t:"Sweeping Reforms Discard all New World Order cards now in play. This requires the action(s) of Media groups with a combined Power of at least 6. These groups may belong to more than one player! This card may be played at any time. Requires Media Action" },
+  'exposed': { kind:'secret_expose',
+    payAttr:'media', payMinPower:4, paySingle:true,
+    anyTime:true, chooseSecret:true, counterable:true, permanentAttrLoss:'secret',
+    t:"Exposed! Watch them scatter like cockroaches Play this card at any time. It requires the action of any Media group with a Power of 4 or more. One Secret group is now exposed. Unless this card is immediately countered, that group permanently loses its Secret status! Requires Media Action" },
+  'scandal': { kind:'token_strip_aligned',
+    payAttr:'media', payMinPower:2, paySingle:true,
+    /* "at any time except during an attack" */
+    anyTimeExceptAttack:true, chooseRival:true, chooseAlign:true,
+    alignMustMatchPayer:true, stripAllTokens:true, notInstant:true,
+    t:"Scandal You may play this card at any time except during an attack. It requires an action by a Media group which Power of 2 or more. Choose a rival, and remove all Action tokens from his Groups of any one alignment. The alignment must be shared by the Media group that uses the card. Requires Media Action" },
+};
+const L16_FXN = {};
+for (const k in L16_FX) { L16_FXN[norm(k)] = L16_FX[k]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence'];
 
 
@@ -2439,7 +2760,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias
@@ -2454,6 +2775,14 @@ for (const m of manifest) {
     rec.verifiedMechanic = true;
     if (pfx.t) rec.text = pfx.t;
   }
+  /* L16 (2026-10): identidad de NWO card, sin tocar subtype ni effect.kind. Se
+   * escribe DESPUES del bloque `if (pfx)` a proposito: ese bloque sobrescribe
+   * `rec.subtype = pfx.kind`, y el impreso de 207/379 es "New World Order card", no
+   * "Plot que se juega de una forma especial": lo que se necesita es poder
+   * PREGUNTAR por la carta en juego, no cambiar como se juega. Military-Industrial
+   * Complex aparece aqui con color pero conserva subtype='goal', porque su
+   * texto impreso es una Goal card (P1-010) y goalCardObjective la trata como tal. */
+  if (NWO_COLORS[key]) rec.nwoColor = NWO_COLORS[key];
   applySecondaryStats(rec);
   splitAlignments(rec);
   applySecondaryAttributes(rec);

@@ -7118,3 +7118,898 @@ consume para ROBARSE ese mismo turno. El timing de 364 es literalmente la ventan
    la verificacion en navegador real deje de depender de inyeccion de cartas.
 5. La IA (en `app.js`) no juega cartas de reaccion: hoy solo cierra las ventanas con `pass`.
 6. Revisar los bloques de test que siguen usando `fresh()` para escenario que necesitan ventana.
+
+## 67. L15 - GOAL CARDS DE COMBINACION: 294, 297, 343, 393 y 407 (P1-105 a P1-114)
+
+### Hallazgo
+
+Las cinco cartas del lote L15 de `plan.md` (294 Kill for Peace, 297 Let Them Eat Cake!,
+343 Power to the People, 393 The Hand of Madness, 407 Up Against the Wall) NO eran
+mecanicas nuevas: eran cartas Goal que el dataset ni siquiera tipaba. Sus textos
+impresos empiezan por "GOAL <nombre>", y `research/cards_parsed.json` solo conserva la
+ficha de catalogo de cada una (por ejemplo `"name": "Goal: Up Against the Wall!", "freq":
+"R", "type": "Plot"`), sin el cuerpo. Por eso las cinco caian en el `default` del
+`switch(off)` de `gen_cards.js` y salian con `subtype:null`, es decir como Plots sin
+mecanica. El `Set GOALS` de `gen_cards.js:257` solo tenia 7 nombres, los de las Goal cards
+que ya funcionaban.
+
+Lo importante del hallazgo: el subsistema de victoria por Goal card YA EXISTIA y estaba
+completo. `isGoalCardIdx` (`engine.js:816`) reconoce una Goal card por
+`effect.kind==='goal'`; `E.declareGoalVictory` (engine.js, ~6488) valida el objetivo con
+`goalCardObjective`, y si se cumple marca `S.phase='gameover'` + `S.winner`, y si no, la
+carta vuelve a la mano expuesta y queda en `goalCardsExposed`. O sea que L15 no anadio
+ninguna victoria: anadio el OBJETIVO de cinco cartas a un evaluador que ya existia. Eso
+redujo el trabajo a un evaluador data-driven, sin tocar `checkVictory`, sin tocar la UI de
+juego y sin tocar `E.declareGoalVictory`.
+
+Los cuatro objetivos que ya estaban implementados (Criminal Overlords, Hail Eris!,
+Fratricide) son ramas por NOMBRE de `goalCardObjective`, porque son tres efectos
+distintos. Las cinco de L15 no lo son: imprimen la MISMA tabla de cinco filas y solo
+cambia el par de alineaciones. Texto impreso literal de 294:
+
+"Destroy Violent groups, and control Peaceful groups, in any of the following
+combinations: Destroy 2 Violent, control 6 Peaceful / Destroy 3 Violent, control 5
+Peaceful / Destroy 4 Violent, control 4 Peaceful / Destroy 5 Violent, control 3 Peaceful /
+Destroy 6 Violent, control 1 Peaceful. This Goal cannot be combined with other Goals in
+any way."
+
+Es decir: destruidas + controladas == 8 siempre (2+6, 3+5, 4+4, 5+3, 6+1) y "in any of
+the following combinations" significa que basta UNA fila. Los pares son: 294 violent /
+peaceful, 297 liberal / conservative, 343 conservative / liberal, 393 peaceful /
+violent, 407 government / violent.
+
+La clausula "This Goal cannot be combined with other Goals in any way" NO es una
+condicion de victoria: es una restriccion de MAZO. Y el unico mecanismo del mazo que
+autoriza tener mas de una Goal card es la propia carta `Alternate Goals` ("You may
+possess two Goal cards"), que `goalHandLimitOf` (engine.js:823) traduce a un limite de 2
+en vez de 1. La clausula se implementa ahi y no en el evaluador.
+
+### Correcciones
+
+- **P1-105 - DATOS.** `Set GOALS` de `gen_cards.js:257` pasa de 7 a 12 nombres (los 5
+  nuevos al final), para que las cinco entren por la rama `subtype='goal'`. Nueva familia
+  `L15_FX` + `L15_FXN` justo despues de `L14_FXN`, y `|| L15_FXN[key]` anadido al final
+  de la cadena `pfx` de `gen_cards.js:2442`. Cada carta lleva `kind:'goal'` y un campo
+  NUEVO `goalCombo:{destroy,control}`. `t:` verbatim de
+  `research/scribd_inwo_cards_full.html`. FASE 4: 152 -> 157 clasificadas y 96 -> 91 sin
+  mecanica (exactamente 5).
+
+- **P1-106 - DATOS, BUG MEDIDO DE UN ID.** La primera generacion bajo solo 4 de 5
+  ("sin mecanica" 96 -> 92). La causa fue la clave del objeto: `Power to the People`
+  normaliza a `powertothepeople` (son TRES palabras: power + to + the + people), no a
+  `powerothepeople`. Con la clave mal escrita la carta salia del generador sin efecto
+  (`kind:'unverified'`, `subtype:null`) y NADIE se enteraba: el generador no avisa cuando
+  una familia no encuentra su carta, simplemente no la aplica. El gate que si lo caza es
+  el conteo de "sin mecanica" de FASE 4, que exige una caida EXACTA por lote; por eso el
+  contraste `7 -> 12` cartas Goal del test de P1-010 y el delta de FASE 4 son la red, no
+  un adorno. LECCION: en un generador por tablas, la clave de una familia es un dato
+  desconocido y hay que derivarla con la misma `norm()` que usa el consumidor, no a mano.
+
+- **P1-107 - MOTOR.** `GOAL_COMBO_ROWS=[[2,6],[3,5],[4,4],[5,3],[6,1]]` y tres funciones
+  nuevas antes de `goalCardObjective`:
+  - `destroyedAlignCount(pl,align)` recorre `pl.destroyedByMe` y lee la alineacion con
+    `retroAlignsOf(cardId)` (engine.js:412). Es la unica fuente posible: una carta
+    destruida no tiene nodo, y P1-011 fijo que `destroyedByMe` guarda SOLO el cardId.
+    Como `retroAlignsOf` ya aplica el overlay retroactivo de 357 Rewriting History, y
+    220 Clone / 227 Counter-Revolution / 287 Impostor / 309 des-cuentan el original
+    BORRANDOLO de `destroyedByMe`, este contador respeta esos cuatro printed effects sin
+    ningun caso especial. Deduplica por cardId.
+  - `controlledAlignCount(pl,align)` camina `pl.structure` con `countsForGoals(nd)` (la
+    unica puerta de "cuenta para una meta", engine.js:171) y `nodeAligns(nd,...)` (que
+    aplica los overlays VIVOS de L9). Son exactamente los dos filtros que ya usa la rama
+    de Criminal Overlords.
+  - `goalComboObjective(combo,pl,cname)` puntua cada fila con `>=` en las DOS columnas y
+    devuelve `met` + un `how` que imprime la tabla con un `*` en la fila cumplida.
+  - La rama data-driven se inserta la PRIMERA de `goalCardObjective`, antes de las
+    nombreadas, y su disparador es `c.effect.goalCombo`, no el nombre. Una sexta carta de
+    este tipo no requeriria tocar el motor.
+
+- **P1-108 - MOTOR.** `goalHandLimitOf` (engine.js:823) devuelve 1 en cuanto detecta una
+  carta con `effect.goalCombo` en mano, aunque haya `Alternate Goals`. Se aplico sobre la
+  REGMA (el limite) y no sobre el contenido de la mano: el jugador puede tener las dos
+  cartas y es el propio motor el que descarta el exceso al final del turno via
+  `enforceGoalHandLimit`, que ya resuelve el limite 1 ("cualquier sola carta Goal es
+  legal") sin decidir cual conviene. Asi no se introduce ningun caso especial nuevo de
+  descarte.
+
+- **P1-109 - UI, NO HAY CAMBIO DE UI.** Estas cinco cartas no se JUEGAN: se REVELAN al
+  declarar victoria, y ese camino (`E.declareGoalVictory` + su boton) ya existia y sirve
+  para cualquier carta con `effect.kind==='goal'`. No se anadio nada a `ui.js` ni a
+  `app.js`. Se declara explicitamente porque DoD#6 ("la UI puede ejecutar la carta")
+Normalmente se lee como "hay que anadir un boton", y aqui la lectura correcta es la
+  opuesta: la UI ya lo ejecutaba y lo que faltaba era el objetivo. La unica superficie
+  nueva es el texto del `how`, que aparece en el `S.winner.how` y en el log de victoria,
+  ambos ya renderizados.
+
+- **P1-110 - REGRESION, BUG DE FIXTURE.** El helper que mete la carta en la mano purga
+  antes las demas Goal cards con `Array.prototype.filter`, que devuelve un array NUEVO:
+  el `push` siguiente escribia la carta en la copia local y el motor no la veia. El
+  sintoma fue `Error: No tienes esa carta en la mano` mientras el aserto previo
+  (`hand.indexOf(...) >= 0`) pasaba, porque el aserto leia el array bueno. Se purga
+  EN EL SITIO (`length=0` + push de lo que se queda).
+
+- **P1-111 - REGRESION.** `E.declareGoalVictory(pid, handIdx)` NO toma la posicion en la
+  mano: toma el cardId (hace `C.cards[handIdx]` y `pl.hand.indexOf(handIdx)`). El nombre
+  del parametro invita al error y el motor responde "No tienes esa carta en la mano", que
+  es un mensaje que tambien aparece cuando la carta no esta en la mano de verdad.
+
+- **P1-112 - REGRESION, FLAKE MEDIDO.** El reparto inicial decide quien empieza con un 2d6
+  ("Tirada inicial: 3, 5 - empieza B"), asi que un `E.endTurn()` a secas puede cerrar el
+  turno de B y dejar la mano de A intacta. El aserto de la clausula "cannot be combined"
+  pasaba con la tirada buena y fallaba con la mala. Se anadio `endTurnOfL15(pid)`, que
+  avanza turnos HASTA que localiza el de `pid` sin cerrarlo. Es la misma clase de
+  dependencia del dado que P1-029 documento para los fixtures, aparecida en un sitio
+  nuevo: `E.endTurn` sin argumentos.
+
+- **P1-113 - REGRESION, FLAKE MEDIDO.** `E.endTurn` aplica el limite de 5 Plots ANTES del
+  limite de Goal cards, y descarta el exceso por el FINAL de la mano, que es
+  exactamente donde el fixture habia puesto las dos Goal cards. El aserto pasaba por
+  casualidad. El fixture ahora deja la mano de A con SOLO las dos Goal cards
+  (`length=0` + push), con el motivo escrito en el test: un fixture que depende del orden
+  de dos reglas distintas esta midiendo la regla equivocada.
+
+- **P1-114 - TEXTO, HUECO DECLARADO.** 407 Up Against the Wall NO aparece en
+  `research/scribd_inwo_cards_full.html` (0 ocurrencias, case-insensitive), ni en
+  `research/cards_parsed.json` (solo la ficha), ni en
+  `research/audit_reports/card_data_merge.json` (`sourceStatus:"secondary-not-found"`),
+  ni en `card_catalog.json` / `card_research_manifest.json`
+  (`researchStatus:"ocr-only-pending"`, con la instruccion canonica "Do not implement
+  automatically"). Su unico texto es el OCR parcial de `cardtexts_data.js`: "Up Against
+  the Wall / Destroy Government groups, and control Violent groups, in any of the
+  following combinations: / This Goal cannot be combined with other Goals". La tabla de
+  cinco filas de su `t:` esta RECONSTRUIDA POR SIMETRIA con las otras cuatro (misma
+  estructura, par government/violent). Se declara como hueco, igual que
+  `california`, `margaretthatcher`, `ollienorth` y `vaticancity`, y no como texto
+  verificado. El escenario S5 de la regresion es lo que hace la reconstruccion
+  COMPROBABLE: si la tabla fuera incorrecta, el motor no podria cumplirla con
+  government/violent.
+
+### Verificacion
+
+- `node --check` limpio en `gen_cards.js`, `game/js/engine.js` y `test_fase2_rules.js`.
+- `npm test` -> `ALL TESTS PASSED (11)`.
+- `node test_fase4_cards.js` -> `FASE 4 COVERAGE PASSED (157 cartas clasificadas, 91
+  Plots/Resources sin mecanica (techo 176), 3 ramas muertas declaradas, 10 cartas
+  bloqueadas congeladas, 4 huecos de texto declarados)`. La caida es 96 -> 91, exactamente
+  las 5 cartas del lote. `goal` pasa a 5 cartas clasificadas de kind `goal`.
+- `test_fase2_rules.js`: el conteo de P1-010 pasa de 7 a 12 cartas Goal (era 7 y ahora
+  son 7 + 5), con el porque escrito en el propio test: si las cinco llevaran otro `kind`,
+  la meta de los UFOs ("The UFOs can have up to 3 different Goal cards in play") dejaria
+  de contarlas.
+- 6 escenarios nuevos de L15, todos affirmando el efecto observable y no la aritmetica:
+  S1 la partida ACABA (`S.phase==='gameover'` + `S.winner.pids=[0]`) y la carta queda
+  expuesta; S2 la fila (6,1) cumple cuando las cuatro primeras no pueden, que es lo que
+  distingue "any of" de "la primera fila"; S3 el objetivo incompleto NO gana, la carta
+  vuelve a la mano, queda en `goalCardsExposed` y el log lo dice; S4 y S5 prueban que la
+  evaluacion es data-driven con los pares conservative/liberal y government/violent; S6
+  prueba la clausula "cannot be combined" CON un contraste (con Fratricide, que si es
+  combinable, el limite sigue siendo 2), porque sin contraste el aserto pasaria igual si
+  `goalHandLimitOf` devolviera siempre 1.
+- 30 ejecuciones consecutivas de `test_fase2_rules.js`: 30/30 PASSED. Los dos flakes que
+  aparecieron durante el desarrollo (P1-112 y P1-113) estan corregidos y verificados con
+  esa repeticion.
+
+### Leccion
+
+DoD#4 dice que un `kind` debe significar un efecto IDENTICO y que compartirlo entre cartas
+"casi iguales" es un defecto. Leerlo al pie de la letra habria obligado a cinco kinds
+nuevos, y eso habria roto el motor por partida doble: `isGoalCardIdx` reconoce una Goal
+card por `effect.kind==='goal'`, y `case 'goal'` prohibe jugarlas ("no se juega, se
+revela al declarar victoria"). Con otro kind, las cinco saldrian del camino de revelacion
+y volverian Plots jugables, y la meta de los UFOs dejaria de verlas. La regla que si
+funciona es la que ya aplica el resto del generador: el `kind` identifica la FAMILIA DE
+CARTA y la mecanica parametrizada viaja en un subcampo de `effect`. Se declara la
+tension de forma explicita en el codigo y aqui, en vez de resolverla en silencio.
+
+Segunda leccion, mas barata y mas cara de aprender: un generador por tablas no avisa
+cuando una familia no encuentra su carta. `L15_FXN['powertothepeople']` no existia y la
+carta salio sin efecto, sin error y sin warning. Lo unico que lo detecto fue el delta
+exacto del conteo de FASE 4. Por eso ese numero, no el "PASSED", es la evidencia.
+
+### Backlog
+
+- 407 Up Against the Wall: el `t:` es una reconstruccion por simetria. Si aparece una
+  fuente (foto legible de la carta, otra edicion del mazo, una rules source con las
+  Goal cards), hay que sustituirlo y volver a correr la regresion. El par
+  government/violent sale del OCR, que si es legible, asi que el riesgo esta
+  concentrado en la TABLA, no en el par.
+- Las tres Goal cards no implementadas por modificador permanente del juego en curso
+  (`Military-Industrial Complex`, `Peace in Our Time`, `World War Three`) mas
+  `Alternate Goals` como carta siguen declaradas `implemented:false` en
+  `goalCardObjective`, que es el comportamiento correcto: se declara la limitacion en vez
+  de fingir una victoria.
+- L17 (10 cartas bloqueadas) sigue sin trabajo: es una tabla de motivos declarados, no un
+  lote. Se confirms que `BLOCKED_CARDS` en `test_fase4_cards.js` sigue congelando las 10.
+
+## 68. L19 - REORGANIZACION DE LA ESTRUCTURA: 354 Reorganization (P1-115 a P1-119)
+
+### Hallazgo
+
+La carta 354 Reorganization imprime (texto verbatim de `research/scribd_inwo_cards_full.html`,
+268 chars):
+
+"Reorganization You may completely reorganize your entire Power Structure. You may play this
+card at any time during your own turn. It requires an action from your Illuminati. Requires
+Illuminati Action"
+
+El hallazgo de L19 es que el motor YA SABIA mover grupos de la estructura, y ya lo hacia de dos
+formas distintas:
+
+- `E.moveGroup(pid,uid,newParentUid,payWith)` (engine.js:3190): mueve UN grupo y cobra 1 accion
+  (Illuminati o del grupo).
+- `E.organize(pid,moves)` (engine.js:3242, P1-009): mueve una LISTA de grupos de forma gratuita,
+  para la faccion Bermuda Triangle, con validacion atomica (todos los movimientos se validan
+  antes de aplicar el primero).
+
+`E.organize` es literalmente el efecto de 354, con dos diferencias: no es gratis (cuesta una
+accion Illuminati) y no exige `organizeAtEndOfTurn`. O sea que L19 no construyo un motor de
+reorganizacion: expone el que ya habia, con su coste.
+
+La segunda mitad del lote (L19.d/e) es UI y regresion, y ahi esta el trabajo de verdad: "You may
+completely reorganize your entire Power Structure" no es un efecto automatico, es una DECISION
+del jugador sobre N grupos a la vez, y el camino de UI que existe (un boton, un clic en el
+objetivo) no puede expresar "N decisiones". Es el mismo problema que L8a resolvio para
+361/388/411 con su propio menu (`showDeckMenu`), y por eso el precedente es ese y no el
+`plotTarget` generico.
+
+### Correcciones
+
+- **P1-115 - MOTOR, EXTRACCION.** El cuerpo de `E.organize` se extrajo a
+  `applyStructureMoves(pid,moves,prefix)` (engine.js, antes de `E.organize`), con el mismo orden
+  de validacion, los mismos seis mensajes y el mismo `detach()+push()`. El unico parametro nuevo
+  es `prefix`, el nombre de la carta en el mensaje "indica al menos un movimiento": `E.organize`
+  no tiene carta (es un poder de faccion) y 354 si, asi que el mensaje tiene que nombrarla. El
+  motivo de extraer en vez de copiar es el precedente de P1-014, que centralizo
+  `enforceGoalHandLimit` porque dos copias del mismo codigo divergieron y el bug se coló. S6 de
+  la regresion existe precisamente para que esa extraccion no pueda romper el precedente P1-009
+  en silencio.
+
+- **P1-116 - MOTOR, `case 'structure_reorg'`.** Insertado antes del `default:` del
+  `switch(eff.kind)` de `E.playPlot` (engine.js:6133). Valida en este orden, TODO antes de
+  mutar:
+  (1) `requireOwnMain(pid)`; (2) `pl.illumTokens >= 1` con el motivo impreso ("It requires an
+  action from your Illuminati"); (3) `opts.moves` no vacio. Despues `applyStructureMoves`, y solo
+  entonce `pl.illumTokens--`. El orden importa: si se cobrara la accion antes de validar la lista,
+  un movimiento ilegal dejaria al jugador sin accion y con la estructura intacta.
+
+  TIMING, con la lectura declarada: el impreso dice "at any time DURING YOUR OWN turn", no "at
+  any time". Un "at any time" se juega FUERA de turno; un "during your own turn" no. Por eso 354
+  NO entra en la lista `instant` de la cabecera de `E.playPlot` y no lleva veto de `S.attack`: el
+  gate `requireOwnMain` ya garantiza turno propio y main phase. Es el criterio exacto que
+  P1-017 documento para 239 Dictatorship ("Play this card during your turn") y el que L8a uso
+  para separar 361 (`anyTime:true`) de 388/411. El dato `ownTurnOnly:true` viaja en el dataset
+  para que la intencion sea legible y comprobable desde el generador, aunque la puerta que decide
+  es la lista `instant`, no ese flag.
+
+  `ACTION_COST_KINDS` NO se toco: 354 no declara `requireActionFromAttr` (el impreso pide una
+  accion de tu ILLUMINATI, no la de un grupo con un atributo), luego el guard P1-055 no lo exige.
+  El coste lo cobra el propio case, que es la via que ya usan `payIllum`, 268 y 234.
+
+- **P1-117 - UI.** `game/js/ui.js`:
+  - `nodeHtml` (ui.js:525) reconoce los dos modos nuevos: `reorgFrom` marca como elegible
+    cualquier grupo tuyo que no sea la raiz, y `reorgTo` marca solo los destinos con flecha libre
+    y fuera del subarbol del grupo que se mueve. Los destinos invalidos salen `dim`.
+  - `reorgTargetOk(uid)` + `findUiNode(uid)`: la flecha libre se calcula como la calcula
+    `nodeHtml` (4 en la raiz, 3 en el resto, menos los hijos), que es la misma regla que
+    `isOpenArrow` usa en el motor. El calculo se DUPLICA a proposito en la UI: el motor no
+    proyecta el estado de flechas en `publicState`, asi que la UI no puede leerlo.
+  - `confirmReorg19(handIdx,moves)`: el jugador REVISA la lista antes de aplicarla y puede quitar
+    el ultimo movimiento, aplicar todo, o cancelar sin gastar la accion. DoD#6 ("si la carta
+    necesita objetivo, el objetivo se ELIGE") queda cubierto por los dos clics del flujo
+    `reorgFrom` -> `reorgTo`: primero el grupo que se mueve, despues su maeastre nuevo.
+  - Boton de entrada propio `{label:'🔀 REORGANIZAR mi Power Structure...', value:'reorg'}` y el
+    "Jugar Plot ahora" generico apagado para esta carta, igual que se hizo con
+    361/388/411 (`isDeck`). El motivo esta escrito en el codigo: el camino generico llama a
+    `onPlayPlot` SIN `opts`, y para 354 eso significa jugar siempre el caso minimo (0
+    movimientos), o sea una reorganizacion que no reorganiza.
+  - Etiqueta legible `structure_reorg: 'Reorganizacion de la estructura'` y tres entradas de
+    glosario (`ownTurnOnly`, `movesRequired`, `freeMoving`).
+  - `game/js/app.js`: callback `CB.onPlayReorg(handIdx,moves)` que pasa
+    `{moves:moves}` en `opts`. No se puede reutilizar `onPlayPlot` porque su `opts` es una lista de
+    movimientos, no un objetivo.
+
+- **P1-118 - REGRESION, FLAKE MEDIDO (PREEXISTENTE).** Corriendo 60 veces seguidas
+  `test_fase2_rules.js` aparecio, 1 de cada ~60, un fallo en L8c S4: `E.drawPlot(1)` revienta
+  con "Fuera de la fase principal". Causa: `freshL8c()` marca a P0 como `human:true`, asi que
+  `E.endTurn()` puede dejar ABIERTA la ventana de comienzo de turno (`phase='begin'`), y con la
+  ventana abierta `requireOwnMain` rechaza el robo. El aserto que caia es justamente el que
+  comprueba que el rival puede volver a robber Plot cards. Fix: cerrar la ventana y avanzar
+  hasta que sea el turno de B antes de robar. No es un fallo del motor: `E.endTurn` abre la
+  ventana para que el jugador humano pueda reaccionar, que es lo que P1-102 documento.
+
+- **P1-119 - REGRESION, FLAKE MEDIDO (PREEXISTENTE).** El mismo barrido lo encontro en L9 357:
+  `E.playPlot(0, 357)` revienta con "ya hay un suceso pendiente de resolucion" cuando un paso
+  anterior del bloque dejo un `pendingEvent`. Fix: `if (E.getState().pendingEvent)
+  E.resolvePendingEvent()` antes de jugar.
+
+  P1-117, P1-118 y P1-119 son la MISMA clase de fallo y conviene declararla como una: fixtures que
+  heredan el estado de una ventana de reaccion o de comienzo de turno, y si esa ventana esta
+  abierta depende del dado. No la introdujo L19, pero L19 la movio: al cambiar el numero de cartas
+  con efecto verificado, el consumo de `Math.random` del reparto cambia y los flakes latent saltan
+  en sitios nuevos. Es exactamente lo que la regla 13 de `plan.md` avisa ("crecer el juego cambia
+  los fixtures"). Con los tres corregidos, 60 de 60.
+
+### Verificacion
+
+- `node --check` limpio en `gen_cards.js`, `game/js/engine.js`, `game/js/ui.js`,
+  `game/js/app.js` y `test_fase2_rules.js`.
+- `npm test` -> `ALL TESTS PASSED (11)`.
+- `node test_fase4_cards.js` -> `FASE 4 COVERAGE PASSED (158 cartas clasificadas, 90
+  Plots/Resources sin mecanica (techo 176), ...)`. La caida es 91 -> 90, exactamente 1 carta.
+- 6 escenarios de L19 en `test_fase2_rules.js`, todos sobre el efecto observable:
+  S1 el grupo ELEGIDO cambia de maeastre, los NO elegidos se quedan, el Poder total y el numero de
+  grupos NO cambian, el coste es exactamente 1 accion Illuminati, la carta sale de la mano y el
+  log nombra la carta y cuantos movimientos se aplicaron. Ese es el criterio de aceptacion del
+  lote ("reorganizada sin cambiar el control ni el Poder total"), comprobado por comparacion
+  antes/despues y no por aritmetica.
+  S2 mide la diferencia "during your OWN turn" contra "at any time": en el turno del rival la
+  carta se rechaza con "No es tu turno" y sigue en la mano. El fixture LOCALIZA el turno del
+  rival con un bucle y aserta que lo localizo, porque una version anterior del escenario solo
+  miraba "ya es el turno del rival" y se saltaba entero con la mitad de las tiradas: verde con
+  cobertura parcial.
+  S3 sin movimientos elegidos la carta no se juega, y tampoco con `opts.moves` ausente.
+  S4 atomicidad: una lista cuyo primer movimiento es legal y el segundo es un ciclo se rechaza
+  ENTERA; se comprueba que el arbol quedo identico Y que la accion Illuminati sigue intacta. Sin
+  esa comprobacion el test pasaria aunque el motor desmontara sobre la marcha.
+  S5 un grupo no puede quedar bajo si mismo (el ciclo se detecta antes que la flecha).
+  S6 protege la extraccion: `E.organize` sigue moviendo grupos, sigue rechazando el ciclo con el
+  MISMO mensaje, y una faccion sin `organizeAtEndOfTurn` sigue sin poder reorganizar gratis.
+- 60 ejecuciones consecutivas de `test_fase2_rules.js`: 60/60 PASSED. Antes de P1-118 y P1-119
+  el mismo barrido daba 59/60 y 58/60.
+
+### Leccion
+
+Cuando el motor ya tiene la mecanica y lo que falta es el COSTE y el timing, la lectura correcta
+es "exponer lo que ya existe con sus condiciones", no "implementar la mecanica". Se comprobo en
+las cuatro lineas del case de L19: ninguna toca la estructura, todas tocan condiciones. Eso es
+barato de escribir y barato de verificar, pero obliga a leer bien el impreso, porque la unica
+decision de diseno del lote es si "at any time during your own turn" es un "at any time" o no. Se
+resolvio comparando con las dos cartas que ya distinctionsen esos casos (361 con `anyTime:true`
+frente a 388/411 sin el, y 239 Dictatorship), no por intuicion.
+
+Segunda leccion, sobre el estado que se hereda entre escenarios: una ventana de reaccion o de
+comienzo de turno abierta es estado REAL del juego, no un detalle del test. Tres fixtures
+distintos los heredaron del escenario anterior y fallaron segun el dado. Se arreglaron cerrando la
+ventana explicitamente, que es lo que haria un jugador, y no tweaking el aserto para que pasara.
+
+### Backlog
+
+- La UI de 354 es de dos clics por movimiento con una pantalla de confirmacion. Para estructuras
+  grandes es correcta pero tediosa; un "mover todo bajo el Illuminati" seria un atajo, y NO se
+  implementa porque el impreso no lo dice.
+- `E.organize` sigue exigiendo `organizeAtEndOfTurn` y siendo gratis: es el poder de Bermuda
+  Triangle ("You may reorganize your groups freely at the end of your turn") y no se toca.
+- `MAX_DEPTH = 10` (engine.js) limita la reorganizacion. El impreso de 354 no menciona limite de
+  profundidad, asi que el limite es una restriccion del motor heredada de P1-009, no del texto. Se
+  declara aqui como limitacion conocida: con estructuras de 10 niveles la 354 puede rechazar una
+  reorganizacion que el texto permitiria.
+
+## 69. L20 - DESCARTE GLOBAL: 408 Upheaval! (P1-120 a P1-123)
+
+### Hallazgo
+
+408 Upheaval! imprime (verbatim de `research/scribd_inwo_cards_full.html`):
+
+"Upheaval! Worldwide riots continue for a third week, with no sign of abatement Each player
+must choose one group from their Power Structure and discard it. These do not count as
+destroyed for anyones victory conditions. This card may be played at any time. It requires an
+action by your Illuminati. Requires Illuminati Action"
+
+La carta tiene tres reglas y las tres eran incumplibles por separado:
+
+1. "Each player must CHOOSE one group from THEIR Power Structure". No es "descarta un grupo
+   tuyo": es una eleccion por JUGADOR, y el jugador que juega la carta elige tambien por el
+   rival. El motor no tenia ninguna superficie para una lista de objetivos por jugador.
+2. "These do not count as destroyed for ANYONE'S victory conditions". El motor no tenia forma
+   de retirar un grupo de la mesa SIN que eso cuente como destruccion: `destroyGroup` es la
+   unica via y escribe siempre en `destroyedByMe`, siempre que puede escribir en
+   `destroyedIlluminati`, y siempre dispara el robo de Plot de Servants of Cthulhu.
+3. "This card may be played at any time". A diferencia de 354 (L19), aqui el "at any time" es
+   REAL: sin "during your own turn". 408 tiene que poder jugarse en el turno del rival.
+
+El hallazgo de fondo es que (2) no se podia resolver con una carta nueva: `destroyGroup` es una
+funcion con 12 llamadas y tres Effects que leen su contabilidad. Anyadir una quinta via de
+retirada habria sido copiar 40 lineas de la mecanica de desmontaje, que es exactamente la clase
+de duplicacion que P1-014 y P1-115 ya corrigieron dos veces en este mismo fichero.
+
+### Correcciones
+
+- **P1-120 - MOTOR, `destroyGroup` acepta `opts.noCountAsDestroyed`.** (engine.js:~3123) El
+  grupo sale de la mesa por la MISMA via que un destruido - `detach`, Resources linkeados al
+  descarte, Plots linkeados al mazo de Plot, titerees de vuelta a la mano, carta a
+  `S.groupDiscard` - pero SIN escribir en los tres sitios de contabilidad de destruccion:
+  `byPid.destroyedByMe` (la leen las metas de L15 `Destroy N <alineacion>`, el `destroy_reduce`
+  de Servants of Cthulhu y el overlay retroactivo de 357), `byPid.destroyedIlluminati` (meta
+  Fratricide) y el robo de Plot de `illuEff(byPid).drawPlotOnDestroy`. El log cambia a
+  "DESCARTADO (no cuenta como destruido)". Los tres caminos quedan con un unico `if(!noCount)`.
+
+  Decision de diseno: opcion y no funcion aparte. Retirar un grupo de la mesa sigue teniendo UN
+  solo sitio en el motor; una segunda copia divergiria en cuanto una carta nueva anadiera una
+  regla de retrait. Se declara en el codigo con el precedente P1-014 / P1-115.
+
+- **P1-121 - MOTOR, `case 'global_discard'`.** Insertado antes del `default:` del
+  `switch(eff.kind)`. Ademas, `||eff0.kind==='global_discard'` se anadio a la lista `instant`
+  de la cabecera de `E.playPlot`, que es la puerta que decide "se juega fuera de turno"
+  (engine.js:~3922). Los dos puntos que lo hacen correcto:
+  - Al ser `instant`, la carta NO pasa por `requireOwnMain`, asi que A la puede jugar en el turno
+    de B. `S.phase==='setup'` y `S.phase==='gameover'` siguen vetadas por el propio `instant`.
+  - NO se llama a `requireOwnMain` ni hay veto de `S.attack`: el impreso no dice "excepto
+    durante un ataque".
+
+  El caso valida en este orden, TODO antes de retirar nada:
+  (1) `pl.illumTokens >= 1` ("It requires an action by your Illuminati"); (2) `opts.choices` es
+  un array con exactamente `S.players.length` entradas; (3) por cada jugador: eleccion nula
+  solo si no tiene grupos, y si tiene grupos la eleccion tiene que ser un nodo de SU lista de
+  grupos y sin titerees ("one group from their Power Structure", no "uno y sus titerees").
+  Despues retira, con `destroyGroup(-1,uid,{noCountAsDestroyed:true})`, y solo entonces cobra
+  la accion.
+
+  `byPid = -1` a proposito: aqui NADIE destruye, la contabilidad esta apagada por
+  `noCountAsDestroyed`, y asi el log no atribuye la accion a ningun jugador. Ademas el case NO
+  llama a `checkElimination` ni a `checkVictory`: si el rival pierde su unico grupo por un
+  descarte que "no cuenta como destruido", eso no puede ser una eliminacion.
+
+- **P1-122 - MOTOR, `playerGroupsExIllum(pl)`.** El nodo raiz de `pl.structure` ES el
+  Illuminati y tiene `cardId` (el id de la carta de faccion, no `null`). Por eso
+  `subtreeList(pl.structure)` - que usa `walk`, y `walk` visita el propio nodo - devuelve el
+  Illuminati como si fuera un grupo. Con la primera version de L20, un jugador sin NINGUN
+  grupo propio contaba como "tiene 1 grupo" y la eleccion nula se rechazaba: el test lo cazó.
+  La funcion nueva recorre `structure.children`, o sea los grupos de verdad. El mensaje de
+  error lo dice explicitamente ("o es su Illuminati, que no se descarta") para que un jugador
+  que intente elegir el Illuminati entienda el motivo.
+
+- **P1-123 - UI.** `game/js/ui.js`: `nodeHtml` reconoce el modo `upheavalPick` (cualquier
+  grupo de cualquier jugador es clickeable, porque cada jugador elige UNO de los suyos);
+  helpers `ownerOfUiNode20`, `groupsOf20`, `upheavalPending20`, `startUpheaval20`,
+  `pickUpheaval20(d,uid)` y `confirmUpheaval20(ix,choices)`; boton de entrada propio
+  `upheavalEntry` y "Jugar Plot ahora" generico apagado para esta carta. El flujo va jugador por
+  jugador (`upheavalPending20` devuelve el siguiente jugador sin eleccion) y solo cuando todos
+  han elegido aparece la pantalla de confirmacion, que permite cancelar sin gastar la accion.
+  `game/js/app.js`: `CB.onPlayUpheaval(handIdx,choices)` -> `E.playPlot(humanPid(), handIdx,
+  null, {choices})`.
+  Etiqueta en `KIND_ES`: `global_discard: 'Descarte global'`. Sin ella `test_hand_peek.js`
+  falla con "effect.kind global_discard no tiene etiqueta en KIND_ES" - es el mismo guard que
+  cazó el `turn_control` de L14 (P1-098), y funciona.
+
+### Verificacion
+
+- `node --check` limpio en `gen_cards.js`, `game/js/engine.js`, `game/js/ui.js`,
+  `game/js/app.js` y `test_fase2_rules.js`.
+- `npm test` -> `ALL TESTS PASSED (11)`.
+- `node test_fase4_cards.js` -> `FASE 4 COVERAGE PASSED (159 cartas clasificadas, 89
+  Plots/Resources sin mecanica (techo 176), 3 ramas muertas declaradas, 10 cartas bloqueadas
+  congeladas, 4 huecos de texto declarados)`. La caida es 90 -> 89, exactamente 1 carta.
+- 6 escenarios de L20, y el criterio de aceptacion del lote se cumple literalmente: la ausencia
+  de los uids CONCRETOS en las estructuras y la ausencia de `destroyedBy`.
+  S1 ambos jugadores descartan el grupo ELEGIDO y conservan el otro (asercion por uid, no por
+  numero de grupos), los dos grupos van al descarte de Groups, `destroyedByMe` queda VACIO en
+  los dos jugadores, `destroyedIlluminati` tambien, el coste es 1 accion Illuminati, la partida
+  no termina y el log declara "no cuentan como destruidos" por jugador.
+  S2 "This card may be played at any time": A juega 408 en el TURNO DEL RIVAL y se aplica.
+  S3 la eleccion es por jugador: asignar a B un grupo de A se rechaza con su motivo, NO se
+  descarta nada (atomicidad) y la accion Illuminati NO se gasta.
+  S4 jugador sin grupos acepta eleccion nula; jugador CON grupos no puede dejar su eleccion
+  vacia. Las dos mitades hacen falta: con una sola, el case podria permitir nulos siempre o
+  prohibirlos siempre.
+  S5 el rival se queda SIN grupos pero no se registra su Illuminati como destruido, la partida
+  no termina y no queda marcado como eliminado. Es la segunda mitad de "do not count as
+  destroyed for anyones victory conditions".
+  S6 sin accion Illuminati la carta no se juega y no se descarta nada.
+- 30 ejecuciones consecutivas de `test_fase2_rules.js`: 30/30 PASSED. El barrido de 60 de L19
+  mas estos 30 Leave el archivo en un estado que se puede dar por estable.
+
+### Leccion
+
+La leccion util de este lote es que "no contar como destruido" NO es una carta nueva: es una
+CONDICION de una operacion que ya existe. `destroyGroup` tenia tres efectosAccounting
+secundarios escondidos detrás de su nombre - y dos de ellos (Fratricide y el robo de Plot de
+Cthulhu) no tienen nada que ver con la mecanica de retirar la carta. Si L20 se hubiera
+implementado como "una funcion que saca el grupo", esos dos efectos se habrían perdido en
+silencio y dos cartas ya cerradas habrian cambiado de comportamiento sin que ningun test
+fallara. Anadir una opcion que apaga los tres, con el nombre del motivo en el codigo, es lo que
+convierte una excepcion en algo que se puede leer.
+
+Segunda leccion, sobre el nodo raiz: `subtreeList(pl.structure)` incluye el Illuminati porque
+`walk` visita el nodo del que se llama. Es un detalle que no se ve leyendo el nombre de la
+funcion, y produce un fallo que PARECE de logica ("tiene 1 grupo" cuando no tiene ninguno). El
+test lo cazó en la primera pasada; el mensaje de error nuevo lo declara para el siguiente.
+
+Tercera, sobre el guard de `KIND_ES`: `test_hand_peek.js` comprueba que todo `effect.kind`
+clasificado tenga etiqueta en el mapa de la UI. Es el unico sitio que se cerro automaticamente
+sobre el forgot de L20, en 30 segundos, sin tener que recordarlo. Los guards de este repo
+funcionan: el problema es cuando no se ejecuta.
+
+### Backlog
+
+- 408 no llama a `checkElimination` al terminar. Si un jugador se queda sin grupos por un 408 y
+  la partida continua, su Illuminati queda huerfano en el arbol hasta el siguiente evento que
+  llame a `checkElimination`. Es coherente con "no cuentan como destruidos", pero conviene
+  revisar si algun camino del juego necesita reevaluar la eliminacion despues de un 408.
+- La UI pide un clic por jugador, con confirmacion. Con mas de dos jugadores seria un flujo
+  largo; el motor ya acepta N elecciones, asi que la limitacion es solo de la UI.
+- `playerGroupsExIllum` es un helper local del `switch`. Si mas cartas necesitan "los grupos de
+  un jugador sin el Illuminati", debe subir a funcion de primer nivel con su test, no seguir
+  anidado en un `case`.
+
+## 70. L18 - FLECHAS DE CONTROL (298 / 299)
+
+Fecha: 2026-10. Lote: L18. 2 cartas: 298 Lets Get Organized, 299 Lets Get REALLY
+Organized. Kind unico `control_arrows` con `mode` (`gain_one` / `reach_three`).
+
+### Hallazgo
+
+El audit del subsistema (L18.a) partio de una afirmacion del plan que resulto ser la causa
+raiz de una mala lectura, y el trabajo de L18 fue convertirla en la DECLARACION DE
+INTERPRETACION correcta. El plan pedia un "contador de flechas salientes por grupo" y
+habia 5 apariciones de la palabra `arrow` en engine.js que NO eran un contador: eran
+`maxChildren`, `isOpenArrow` y `openArrows`, es decir el limite de hijos de un nodo
+introducido por P1-023 para distinguir las 4 flechas del Illuminati de las 3 del resto.
+
+El printout de las 2 cartas es el siguiente (verbatim, transcribido del HTML de Scribd):
+
+  298 "Play this card during your turn, on any Group card that has fewer than three
+      outgoing control arrows. This is an action for that group or its master. You
+      must control the target. The target group gains an extra control arrow, on
+      either the end or the side of the card. Place this card underneath it, with an
+      arrow showing, to provide the new arrow. Duplicates of this card may not be
+      used on the same group. Requires Action"
+
+  299 "Play this card during your turn, on any Group card that has one or two outgoing
+      control arrows. This is an action for that group or its master. You must
+      control the target. The target group now has three outgoing control arrows.
+      Place this card underneath it to provide the new arrows, or link this card to it
+      to indicate that there are now three arrows. Requires Action"
+
+DECLARACION DE INTERPRETACION (la lectura que se implemento): "outgoing control arrows"
+es la magnitud que este motor YA tiene y que puede valer 0, 1, 2 o 3 para un grupo
+cualquiera:
+
+  LIBRE = maxChildren(nodo) - nodo.children.length
+
+o sea las flechas de control salientes que le QUEDAN al grupo. Es la misma magnitud que
+`isOpenArrow` ya consulta, y es la unica que el impreso puede describir con las dos
+condiciones que dan: un grupo recien capturado tiene 3 libres, uno con un titere tiene 2,
+con dos tiene 1 y con tres tiene 0. Las tres filas de las condiciones tienen sentido
+sobre ella y no sobre ninguna otra.
+
+  298 "fewer than three outgoing control arrows" -> LIBRE < 3; efecto "gains an extra
+      control arrow" -> LIBRE + 1.
+  299 "one or two outgoing control arrows" -> LIBRE es 1 o 2; efecto "now has three
+      outgoing control arrows" -> LIBRE = 3.
+
+Asi se cumple literalmente la aceptacion del plan: un grupo con 0 libres recibe 298 y pasa
+a 1; uno con 1 o 2 recibe 299 y pasa a 3; uno con 3 no acepta ninguna (298 falla porque
+`3<3` es falso, 299 falla porque 3 no esta en {1,2}). Y el rechazo se demuestra con el
+CONTADOR (`E.arrowCount`), no con una linea de log.
+
+El texto impreso contiene ademas una asimetría que convino declarar y no callar: la carta de
+298 "gains an extra control arrow" y su propia ficha "provide[s] the new arrow", o sea la
+carta CONSUME la flecha nueva; la de 299 es un MARCADOR ("or link this card to it to
+indicat[e] that there are now three arrows"), o sea no consume. De ahi que 298 tenga que
+sumar la flecha ANTES de colocarse (si no, `placeUnder` rechazaria con "Sin flecha de control
+libre" al grupo que tiene 0 libres, que es justo el caso que la carta quiere arreglar) y 299
+colocarse PRIMERO y ajustar despues. Con el orden equivocado el caso de uso principal de
+cada una de las dos cartas es imposible.
+
+### Correcciones
+
+- **P1-124** `case 'control_arrows':` leia el objetivo como `opts.targetUid`, pero el
+  objetivo de una Plot llega por el TERCER PARAMETRO POSICIONAL de
+  `E.playPlot(pid,handIdx,targetUid,opts)`. El camino generico de la UI es
+  `CB.onPlayPlot(handIdx,uid)`, que lo pasa ahi. Con el codigo como estaba, la carta era
+  INJUGABLE desde la interfaz y el test la ejecutaba por el camino alternativo. Corregido
+  a `targetUid!=null?targetUid:(opts&&opts.targetUid)`, que acepta los dos caminos.
+- **P1-125** la UI calculaba las flechas de cada nodo con la formula literal
+  `(depth===0?4:3)-kids.length`, copiada del printout original. Con las flechas extra de
+  298/299 el contador mentia: el motorAmpliaba el limite y la insignia seguia diciendo 3.
+  Anadido `extraOf(nd)` (lee `curState.extraArrows[nd.uid]`), `cap18` en el mismo sitio en
+  los dos lugares que lo usan (el que decide si el nodo es destino valido y el que pinta la
+  insignia). El registro se expone en `publicState` como `extraArrows:clone(S.l18extra)`.
+  No es el campo `det`, asi que no toca el invariante P1-005.
+- **P1-126** (bug real de motor, NO de L18) jugar una carta teniendo DOS COPIAS en mano se
+  llevaba las dos. `handIdx` es un indice de CATALOGO, asi que dos copias de la misma carta
+  son el mismo valor: el efecto (`placeUnder`) borraba una copia con `hand.indexOf` +
+  `splice`, y la cola P1-012 del final de `playPlot` - que tambien borra por identidad, a
+  proposito, por el comentario P1-059 - encontraba la segunda copia todavia presente y la
+  borraba tambien. El veto de duplicados de 298/299 era INALCANZABLE por esto, y el
+  impreso de esas dos cartas ("Duplicates of this card may not be used on the same group")
+  presupone justamente que hay duplicados en mano: el camino es alcanzable jugando. Arreglo
+  minimo: se cuenta cuantas copias hay antes del switch de efectos y la cola solo borra si
+  el conteo NO ha bajado (si el efecto ya se llevo una, `nowCount<handCount` y no hay que
+  compensar a mano un borrado que otro ya hizo). Las cartas que el efecto EXPONE en vez de
+  jugar (boost10 en modo `hold`, NWO) no cambian el conteo, asi que la cola sigue borrando,
+  que es justo lo que P1-012 quiere.
+
+- Decisions que NO son bugs pero que se declaran para el siguiente:
+  - `control_arrows` NO entra en `ACTION_COST_KINDS` ni declara `requireActionFromAttr`.
+    El coste impreso es "This is an action for that group or its master", o sea el propio
+    objetivo o su master, no "un grupo tuyo con el atributo X". Declarar
+    `requireActionFromAttr` habria sido el atajo y el guard de `gen_cards.js` lo habria
+    rechazado: la lista esta cerrada a proposito.
+  - Las 2 cartas comparten `kind` con `mode` distinto. DoD#4 pide que un kind signifique
+    un efecto IDENTICO, y aqui el efecto es identico (subir el limite de flechas de un
+    grupo propio); lo que cambia es el CUANTO, y eso viaja en el dato. Si en el futuro
+    apareciera una tercera carta que NO masukiese en este modelo, tendria que ser kind
+    propio.
+  - El veto de duplicados se extiende de 298 a 299 aunque solo 298 lo imprime. Es una
+    decision, no una lectura: si se aplica solo a 298, un jugador podria usar 299 sobre un
+    grupo que ya tiene un 299 debajo. La clausula se aplica a "esta familia de cartas" y se
+    declara aqui.
+  - `S.l18extra` esta en el estado de partida y NO en el nodo, con el mismo criterio que
+    `S.alignRetro` (P1-011): asi `E.moveGroup`, `E.organize` y los ataques no tienen que
+    saber nada, porque mover un grupo conserva su uid. La flecha es una propiedad del GRUPO,
+    no de la carta que la dio.
+
+### Verificacion
+
+- `node --check` limpio en `gen_cards.js`, `game/js/engine.js`, `game/js/ui.js` y
+  `test_fase2_rules.js`. Cero caracteres CJK o de reemplazo en los cuatro.
+- `npm test` -> ALL TESTS PASSED (11). `test_hand_peek.js` incluido, que es el guard que
+  exige etiqueta en `KIND_ES` para todo `effect.kind` clasificado (mismo guard que cazo
+  `turn_control` en L14 y `global_discard` en L20).
+- `node test_fase4_cards.js` -> FASE 4 COVERAGE PASSED, 161 clasificadas,
+  87 Plots/Resources sin mecanica. El delta 89 -> 87 es exactamente el numero de cartas
+  del lote; el reparto de kinds muestra `"control_arrows":2`.
+- Regresion en `test_fase2_rules.js`, 28 asertos, 6 escenarios:
+  - S1 punto de partida 3 titeres = 0 libres (`{used:3,cap:3,free:0,extra:0,base:3}`);
+    298 se juega, el grupo gana 1 flecha extra y su capacidad sube a 4, que es la ficha
+    ocupando la flecha nueva. La carta sale de la mano.
+  - S2 y S2b las DOS filas de 299: con 1 libre y con 2 libres, `free` acaba exactamente
+    en 3 (`{used:3,cap:6,free:3,extra:3}` y `{used:2,cap:5,free:3,extra:2}`). Si la
+    implementacion hubiera cogido solo una de las dos filas, uno de los dos caeria.
+  - S3 un grupo con 3 libres rechaza LAS DOS cartas con el motivo impreso citado, el
+    contador no se mueve, las cartas siguen en la mano y la ficha NO se gasta.
+  - S4 `"You must control the target"` sobre un grupo rival y `"No es tu turno"` cuando
+    juega el otro jugador.
+  - S5 el master paga cuando el objetivo no tiene ficha, y sin ficha en ninguno de los dos
+    se rechaza con "This is an action for that group or its master" sin colocar ni conceder
+    nada.
+  - S6 dos copias REALES de 298 en mano (no el mismo indice dos veces): la primera es
+    legal, la segunda se rechaza con el motivo de duplicados y NO concede una segunda
+    flecha. Este escenario es el que descubrio P1-126.
+- 30 ejecuciones consecutivas de `test_fase2_rules.js`: 30/30 PASSED.
+
+### Leccion
+
+El motor no tenia un contador de flechas: tenia un LIMITE de hijos. La tentacion era
+inventar el contador que el plan pedia y tocar los 4 consumidores de `isOpenArrow`. Fue al
+reves: el limite (`maxChildren`) es la suma de un dato derivado, y añadir ahi lo que hace
+que colocar, mover, atacar y tomar control hereden el cambio sin tocar un solo consumidor
+nuevo. El radio de un cambio no es "cuantas lineas escribo" sino "cuantos lugares tienen
+
+Segunda leccion, sobre el mismo lote: el plan propuso un criterio de aceptacion medible
+("0 flechas -> 1", "1 o 2 -> 3", "3 -> ninguna") y ese criterio resulto ser mas preciso que
+el propio enunciado de las cartas. Leer la aceptacion antes que la prosa fue lo que
+decidio que la magnitud del contador fuese LIBRE y no USADAS. Un criterio de aceptacion
+escrito en numeros no es burocracia: es la segunda especificacion, y suele discrepar de la
+primera.
+
+Tercera, sobre P1-126: `handIdx` es un indice de CATALOGO, no de mano. Por eso
+`indexOf`+`splice` parecen la operacion correcta y no lo son cuando hay copias. La cola
+P1-012 - que borro por identidad A PROPOSITO, con comentario que lo explica - era el
+mismo bug visto desde el otro lado: dos reglas correctas con el mismo supuesto equivocado
+juntas destruyen una copia de mas. Un solo arreglo (contar antes y despues) cierra los dos.
+
+### Backlog
+
+- El veto de duplicados mira `effect.kind==='control_arrows'` en los hijos del objetivo.
+  Con las 2 cartas en la misma familia, un 299 debajo bloquea un 298 y viceversa. Es la
+  decision declarada arriba; si se quisiera permitir uno de cada uno, el veto tendria que
+  mirar `mode` en vez de `kind`, y la aceptacion del plan seguia cumpliendose.
+- `E.arrowCount(uid)` solo se usa en la regresion. Si alguna vez la UI quiere mostrar el
+  reparto exacto de flechas (y no solo el numero de libres que ya muestra), la sonda da
+  los tres numeros que necesita sin abrir el estado crudo.
+- El texto de 299 ("Place this card underneath it to provide the new arrows, OR LINK this
+  card to it") ofrece dos colocaciones y solo esta implementada la de debajo. La de
+  linkear tiene su propio precedente en el motor (los linkedPlots) y no se ha
+  implementado; se declara aqui para que no se lea como olvido.
+- El registro `S.l18extra` crece por grupo tocado y no se limpia al destruirse un grupo.
+  Es inofensivo (la uid muere con el nodo), pero si algun dia se hace "reiniciar el juego
+  sin nueva partida" habria que vaciarlo junto a `alignRetro`.
+
+## 71. L16 - CARTAS DE ACCION MULTIPLE (nwo_discard_one / nwo_discard_all / secret_expose / token_strip_aligned)
+
+Cierre del ultimo lote de mecanicas pendientes del plan. Las 4 cartas: 207 Blood, Toil, Tears
+and Sweat - 379 Sweeping Reforms - 253 Exposed! - 362 Scandal. "Plots/Resources sin
+mecanica" 87 -> 83. FASE 4: 165 cartas clasificadas.
+
+### Hallazgo
+
+HALLAZGO 1 - LAS 15 NWO DEL MAZO NO ESTAN TIPADAS, Y ESO HACIA INJUGABLES A 207 Y A 379.
+plan.md y el catalogo dan por hecho que existen cartas NWO en juego, y el motor tiene
+`case 'nwo'` (engine.js:4631) con su regla "one per color max". MEDIDO: 0 de las 421 cartas
+tienen `effect.kind==='nwo'`, y FASE 4 declara esa rama muerta desde hace tiempo. La causa es
+de L16.b: `plotSub` decide por el NOMBRE de la ficha, y las NWO de esta caja traen el
+nombre PLANO ("Bigger Business"), sin el prefijo "NWO: " que si aparece en
+research/cards_parsed.json. Peor: 10 de las 15 ya estaban clasificadas con su OTRA
+mecanica (`bulk_power` x6, `align_rule`, `token_wither`) y dos son `goal` (una de ellas la
+Goal card Military-Industrial Complex). Volverlas a `kind:'nwo'` habria DESMONTADO trabajo ya
+hecho. Decision: NO se toca `subtype` ni `effect.kind`; se anade `rec.nwoColor` (15 pares
+nombre -> color, 14 presentes en disco) y las cartas de L16 lo usan para responder si una
+carta en juego es o no una New World Order. Esa es la DECLARACION DE INTERPRETACION que
+permite que 207 y 379 hagan su pregunta sin mover una sola mecanica existente.
+Donde viven: `pl.exposedPlots` como cardids sueltos y `pl.linkedPlots` como
+`{uid,cardId,linkedTo}`; el filtro por `effect.kind` es obligatorio porque `exposedPlots`
+tambien contiene Plots normales y cartas Goal.
+
+HALLAZGO 2 - LAS 4 CARTAS NO COMPARTEN EFECTO, ASI QUE SON 4 `kind`, NO UNO. plan.md las
+agrupaba como un lote con un coste `combined_power` comun. El coste es comun a 3 de 4, pero
+el EFECTO no: 362 quita fichas por alineacion, no descarta ninguna NWO ni expone nada. DoD#4
+exige que un `kind` signifique un efecto IDENTICO, nunca "casi", asi que se declara una
+sub-familia por carta dentro del lote. Lo que si es comun a las 4 -el coste de grupos Media-
+vive en los MISMOS campos (`payAttr` / `payMinPower` / `combined` / `paySingle`) y el motor lo
+lee igual en los 4 casos, que es donde reutiliza el codigo de verdad.
+
+HALLAZGO 3 - EL COSTE COMBINADO YA EXISTIA: NO HACE FALTA UN HELPER NUEVO. El molde es el
+bloque `else if(eff.payAttr)` de `case 'force_align'` (L10, engine.js:4181-4207): `walk` de
+la estructura, `noTokensFlag` antes de contar, `c.type!=='group'` para excluir la raiz del
+Illuminati, descuento por `curPower` y un mensaje de error que dice CUANTO Poder falta. 207
+(>=4) y 379 (>=6) lo reutilizan cambiando dos cosas: el `walk` recorre las estructuras de
+TODOS los jugadores cuando `eff.payAnyPlayer` (que es lo que imprime 379, "These groups may
+belong to more than one player!", el unico sitio del mazo donde el coste se paga con grupos
+de un rival), y el filtro por grupo es "UN solo grupo con Poder >= N" (`paySingle`, precedente
+engine.js:5777-5790) en vez del acumulado. Ninguno de los 4 declara `requireActionFromAttr`,
+asi que `ACTION_COST_KINDS` no se toca: el guard de gen_cards.js:2450 solo salta cuando un
+kind DECLARA ese campo. Mismo criterio que L18.
+
+HALLAZGO 4 - "UNLESS THIS CARD IS IMMEDIATELY COUNTERED" DE 253 SE DECLARA, NO SE
+IMPLEMENTA. Es la unica clausula del lote que queda sin implementar, y la razon es medible:
+`openEventWindow` (engine.js:2912) exige registrar un `kind` nuevo en `eventReactionAllowed` Y
+en `closePendingEvent`, y el unico counter posible del mazo (`res_nullify`, de L6) escribe
+`data.claimed` con la FORMA de un cardId (`pM.data.claimed=pM.data.cardIdx`), que no encaja
+con "expone un grupo"; ademas habria que decidir si el counter se consume. Precedente del
+proyecto: 3 ramas muertas declaradas, 10 cartas congeladas, 4 huecos de texto declarados. Todo
+lo RESTO de 253 se implementa entero: coste de un Media con Poder >= 4, elegir grupo Secret,
+y perdida permanente del atributo.
+
+HALLAZGO 5 - 253 NECESITABA UN ESPEJO DE ATRIBUTO, Y `hasAttr` TENIA UN FALLBACK QUE LO
+ANULABA. No existia `attrsRemoved`: lo unico era `attrsAdded` (engine.js:4219-4220, escrito
+con el `if(!ndL10.attrsAdded)ndL10.attrsAdded=[]` de P1-068). Anadir el campo NO basta,
+porque `hasAttr` (engine.js:3357) cae a la lista IMPRESA de la carta cuando el atributo no
+esta en el nodo: un grupo al que se le quita `secret` seguiria "teniendo" `secret` para
+todos los consumidores. Por eso el espejo se filtra DENTRO de `nodeAttrs` (asi lo heredan
+sus 3 consumidores: engine.js:1119, 3360, 3400) Y `hasAttr` devuelve `false` de forma
+temprana ANTES del fallback impreso, con la regla "la suma gana a la resta" que ya usa el
+filtro `rt.removed` de `nodeAligns`. No choca con el invariante P1-005, que veta campos
+nuevos en `det`, no en los nodos de la estructura. El estado es del GRUPO y no de la carta,
+que es lo que dice el impreso ("that GROUP permanently loses its Secret status").
+
+HALLAZGO 6 - EL ORDEN DE LAS VALIDACIONES DE 362, Y POR QUE. El impreso dice "Choose a rival,
+and remove all Action tokens from his Groups of any one alignment. The alignment must be
+shared by the Media group that uses the card." Se valida en el orden impreso: rival ->
+alineacion presente -> coste (un Media con Poder >= 2) -> la alineacion debe ser compartida
+por el grupo que paga -> mutacion. El coste va ANTES de la restriccion de alineacion porque
+es lo que decide QUIEN paga, y sin saber quien paga no se puede comprobar la restriccion. El
+pago ocurre SIEMPRE al final (P1-033): si la alineacion no es compartida, no se ha gastado
+ninguna ficha. Y `if(S.attack)` se comprueba primero de todo, porque el impreso es "at any
+time EXCEPT during an attack".
+
+### Correcciones
+
+- **P1-127** - espejo de atributo para 253. `node.attrsRemoved` (nuevo, se lee con
+  `Array.isArray` y se crea con `if(!nd.attrsRemoved)nd.attrsRemoved=[]`, mismo motivo que
+  P1-068 con `attrsAdded`) + filtro en `nodeAttrs` + `return false` temprano en `hasAttr`
+  antes del fallback a `attrList(c)`. Sin el `return false` la carta no tendria efecto
+  ninguno: seguiria imprimiendo `secret`.
+- **P1-128** - el objetivo de 253 llegaba por `opts.targetUid` y el camino GENERICO de la UI
+  (`CB.onPlayPlot` -> `E.playPlot(pid,handIdx,targetUid)`) lo pasa como 3er parametro
+  POSICIONAL y sin `opts`. Sin este arreglo 253 era INJUGABLE desde la UI. Es el mismo
+  problema que P1-124 (L18) y el mismo arreglo: `targetUid!=null?targetUid:(opts&&opts.targetUid)`.
+- **P1-129** - las dos ramas de descarte de NWO filtraban por `effect.kind==='nwo'`, que no
+  existe en este mazo (0 cartas), asi que la lista de candidatas salia siempre vacia y 207
+  y 379 eran INJUGABLES. Filtro sustituido por `c.nwoColor`, el campo que L16.b anadio para
+  eso. Se declara que `case 'nwo'` NO se toca: su rama muerta es preexistente y ajena a L16.
+- **P1-130** - bug REAL de motor que hacia INJUGABLE a 379. El impreso permite pagar con
+  grupos de un rival, pero el pago era `spendGroupToken(pid, g.uid)` con el pid del ACTOR, y
+  `spendGroupToken` valida `findOwnerPid(uid)===pid` y lanza "El grupo no te pertenece":
+  crash medido en cuanto un rival aportaba Poder. Arreglo minimo: `pickedL16` lleva el pid
+  DUENO de cada grupo pagador y el pago usa ese dueno. Cada grupo paga SU ficha.
+- **P1-131** - `discardPlot(ix,byPid)` NO escribe en `pl.discards`: empuja a `S.plotDiscard`,
+  que es GLOBAL de la mesa, y ademas abre una ventana de suceso `plotDiscarded`
+  (engine.js:2964-2971). `pl.discards` se inicializa en el estado pero NADIE lo escribe nunca
+  (su unica referencia es `discards:pl.discards.slice()` en publicState). Afirmar sobre
+  `pl.discards` daba un falso negativo. Efecto colateral DECLARADO: descartar una NWO abre
+  ventana de suceso, asi que 388 Stealing the Plans puede contraatacar.
+- **P1-132** - `lastResult` se publica como `out.lastPlotResult` en el RETORNO de
+  `E.playPlot` (engine.js:~6695), no como `S.lastResult`. Leer `E._raw().lastResult` daba
+  `undefined` en los 4 casos.
+- **P1-133** - 253 y 362 comparten `fresh()` entre el caso POSITIVO y sus NEGATIVOS: el
+  positivo se lleva la carta de la mano y los negativos reventaban con "Carta no esta en tu
+  mano" ANTES de llegar a la regla que querian comprobar. Se reinyecta la carta antes de cada
+  negativo.
+- **P1-134** - 362 NO es "at any time" (es "at any time except during an attack"), asi que
+  exige SU turno, y `fresh()` deja el turno inicial ALEATORIO: el motor respondia "No es tu
+  turno". Se avanza el turno hasta el del actor sin cerrarlo (`endTurnOfL15(0)`).
+
+Cableado de UI (L16.d, sin id propio porque no fue un fallo preexistente):
+`nwo_discard_all` entra en `NO_TARGET_KINDS` porque no tiene objetivo unico; 207 lleva boton
+propio con un menu `prompt` que lista las NWOs en juego y NO gasta si se cancela; 253 usa el
+`plotTarget` generico (su objetivo es un nodo); 362 necesita dos pasos (clic en un grupo de
+un rival, luego menu de alineaciones) con el modo propio `scandalRival`, precedente L19/L20.
+Las 4 etiquetas en `KIND_ES` son obligatorias: `test_hand_peek.js` falla si un `effect.kind`
+clasificado no la tiene (mismo guard que cazo `turn_control` en L14 = P1-098 y
+`global_discard` en L20 = P1-123). Dos callbacks nuevos en app.js, `onPlayNwoOne` y
+`onPlayScandal`, porque `onPlayPlot` no puede transportar `opts`.
+
+### Verificacion
+
+- `node --check` limpio en `engine.js`, `ui.js`, `app.js`, `test_fase2_rules.js` y
+  `gen_cards.js`. Cero caracteres CJK o de reemplazo en los cinco.
+- `npm test` -> ALL TESTS PASSED (11): P0 REGRESSION, SMOKE, RESPOND, HAND PEEK (704 lineas
+  sobre 421 cartas), FASE 2 RULES, FASE 4 COVERAGE, CARD RESEARCH MANIFEST.
+- `node test_fase4_cards.js` -> FASE 4 COVERAGE PASSED (165 clasificadas, 83 Plots/Resources
+  sin mecanica con techo 176, 3 ramas muertas declaradas, 10 cartas bloqueadas congeladas, 4
+  huecos de texto declarados). Reparto de kinds: `nwo_discard_one:1`, `nwo_discard_all:1`,
+  `secret_expose:1`, `token_strip_aligned:1`.
+- `node test_fase2_rules.js` -> FASE 2 RULES PASSED, con 44 asertos nuevos de L16 repartidos
+  en >=2 escenarios por carta. Barrido 30/30 PASSED (regla: crecer el juego cambia los
+  fixtures, asi que un regresion nueva no se fia hasta 30 corridas seguidas).
+- Lo que afirman los escenarios, con el EFECTO OBSERVABLE y no aritmetica: 207 descarta la
+  NWO ELEGIDA (su cardid desaparece de `exposedPlots` del dueno y de `plotDiscard`) y NO
+  descarta la otra, con 4 negativos (sin NWOs, id que no es NWO, Poder insuficiente, Poder
+  insuficiente de RIVAL); 379 descarta LAS DOS NWOs en juego, una expuesta y otra linkada
+  (ambas identidades ausentes a la vez), mas el negativo de Poder 4 de los 6; 253 quita
+  `secret` del nodo (`attrsRemoved` contiene `secret`) y `hasAttr` deja de reportarlo, con
+  negativos por objetivo no-Secret y por falta de Media con Poder 4; 362 pone a 0 las fichas
+  de los grupos Liberal del RIVAL, deja intacto un grupo de otra alineacion, y con el veto de
+  `S.attack` y el de la alineacion no compartida se comprueba que NINGUN pagador perdio su
+  ficha (atomicidad).
+- El mensaje de Poder insuficiente dice el que FALTA, no solo que falta: "los grupos media
+  con ficha tuyos solo aportan Poder 2 de los 4 combinados que exige la carta" y "Sweeping
+  Reforms: los grupos media con ficha de cualquier jugador solo aportan Poder 4 de los 6".
+- FLAKE PREEXISTENTE observado en `test_appflow.js` ("No se puede terminar el turno con un
+  ataque sin resolver"): fallo una vez y no se reprodujo; no hay nada de L16 en esa ruta,
+  porque los callbacks nuevos solo se invocan desde los botones de 207 y 362. Se declara en
+  vez de taparlo.
+
+### Leccion
+
+Primera, el mismo tipo de error que L16.b y L15 juntos, pero mas caro: una PREMISA del plan
+("hay cartas NWO en juego") resulto falsa en el dato, y la primera implementacion la dio por
+cierta porque el filtro que uso devolvia una lista vacia y eso se parece a "todavia no hay
+NWOs en juego". Un filtro que nunca encuentra nada y un juego sin candidatos producen el
+mismo sintoma. La asercion que habria abortado antes es la de DoD#3, el delta EXACTO de
+"sin mecanica", y tambien un `kind` clasificado con una rama en el motor que nunca se puede
+alcanzar.
+
+Segunda, `findOwnerPid` dentro de `spendGroupToken` es una invariante global: cualquier
+coste que el impreso permita pagar con grupos de un RIVAL tiene que pagar ficha por ficha
+con el dueno de cada grupo, no con el pid del actor. El unico sitio del mazo donde eso pasa
+es 379, y por eso el defecto solo aparecia en 1 de las 4 cartas y en 1 de los escenarios.
+
+Tercera, "at any time except during an attack" NO es "at any time". La diferencia se nota
+en la UI (362 no entra en la lista `instant` de la cabecera de `E.playPlot`) y en la
+validacion (`if(S.attack)` primero), y se manifesto como un fallo de fixture: el motor
+respondia "No es tu turno" y el diagnostico apuntaba al turno inicial aleatorio de `fresh()`.
+
+Cuarta, el fallback de `hasAttr` a la lista impresa de la carta es una trampa de este
+motor: cualquier estado que se quiera quitar de un NODO tiene que ganarse el `return false`
+temprano, porque mientras la carta siga IMPRIMIENDO el atributo el motor lo seguira
+reportando. `attrsAdded` no sufria ese problema porque solo anadia; en cuanto existe una
+operacion que quita, hay que tratar las dos capas.
+
+Quinta, `pl.discards` es un campo muerto del estado: se inicializa y se publica, pero
+nadie lo escribe. Cualquier regresion que quiera afirmar "esta carta se descarto" tiene que
+mirar `S.plotDiscard`, que es el registro global real. Y `discardPlot` ademas abre una
+ventana de suceso, o sea que descartar no es una operacion silenciosa: puede ser
+contraatacada por 388 Stealing the Plans.
+
+### Backlog
+
+- La ventana de reaccion de 253 ("Unless this card is immediately countered") sigue sin
+  implementar. Cuando se haga hay que: un `kind` nuevo en `EVENT_KINDS`, una rama en
+  `eventReactionAllowed` que acepte `res_nullify`, una rama en `closePendingEvent` que aplique
+  el `attrsRemoved` si nadie reclamo, y una decision sobre si el counter se consume. El
+  conflicto de FORMA esta medido: `data.claimed` se usa como cardId.
+- `case 'nwo'` (engine.js:4631) sigue siendo una rama muerta y su regla "one NWO per color
+  max, replace old same-color" no esta implementada. Ahora que existe `nwoColor` el hueco es
+  visible y cerrable, pero es trabajo de otro lote: no es de L16.
+- Los 15 `nwoColor` cubren los nombres de la CAJA; 2 de ellos (Peace In Our Time, World War
+  3) no estan en este mazo de 421 cartas, donde la Goal card se llama "World War Three".
+- `discardPlot` abriendo ventana de suceso para cada NWO descartada significa que 207 puede
+  acabar rpidiendose con Stealing the Plans en juego. Es impresa por la regla general de
+  Stealing the Plans, asi que no se cambia; queda anotado por si alguno de los dos necesita
+  alguna vez una excepcion declarada.
+- El `note` de `lastResult` de 253 declara la laguna del counter en texto visible para el
+  jugador, no solo en el audit doc. Es el mismo criterio que usan las 3 ramas muertas
+  declaradas y las 10 cartas congeladas.

@@ -71,7 +71,7 @@ var GLOSS = {
   personality:'PERSONALITY (Personalidad): un individuo concreto. Único objetivo válido de Asesinatos.',
   place:'PLACE (Lugar): una localización. Único objetivo válido de Desastres.',
   token:'ACTION TOKEN (●): ficha de acción por grupo/turno para atacar, mover o defender. Illuminati recibe 1★ (UFOs 2).',
-  arrows:'FLECHAS DE CONTROL: entrante = quién te controla; salientes = cuántos títeres controlas (Illuminati 4, resto 3).',
+  arrows:'FLECHAS DE CONTROL: entrante = quién te controla; salientes = cuántos títeres controlas (Illuminati 4, resto 3; 298 Lets Get Organized y 299 Lets Get REALLY Organized pueden subir ese limite).',
   neutral:'ÁREA NEUTRAL: si fallas controlar una carta de la mano rival, va aquí; cualquiera puede intentar controlarla.',
   takeover:'TAKEOVER AUTOMÁTICO: 1/turno colocas GRATIS un grupo/recurso de tu mano, sin dados.',
   privileged:'PRIVILEGIADO: solo atacante y defensor actúan; nadie ayuda ni se opone. Bavarian lo usa 1/turno.',
@@ -504,10 +504,24 @@ function panelHtml(st, pid) {
   return h;
 }
 
+/* L18 (298 / 299) — flechas de control EXTRA otorgadas por esas dos cartas.
+ * El motor las guarda en S.l18extra (registro por juego indexado por uid,
+ * precedente P1-011 de S.alignRetro) y las suma dentro de maxChildren, asi que
+ * isOpenArrow, placeUnder, los ataques y E.moveGroup ya las respetan. La UI
+ * tiene que sumarlas TAMBIEN o mostraria "0 flechas libres" en un grupo que
+ * todavia tiene una: el jugador leeria que no puede colocar nada debajo. */
+function extraOf(nd) {
+  var reg = (curState && curState.extraArrows) || null;
+  if (!reg || !nd) return 0;
+  var v = reg[nd.uid];
+  return (typeof v === 'number' && v > 0) ? v : 0;
+}
+
 function nodeHtml(nd, st, pid, depth) {
   var isRoot = /-root$/.test('' + nd.uid);
   var kids = nd.children || [];
-  var open = kids.length < (depth === 0 ? 4 : 3); /* Illuminati 4 flechas, resto 3 */
+  var cap18 = (depth === 0 ? 4 : 3) + extraOf(nd); /* L18: + flechas extra de 298/299 */
+  var open = kids.length < cap18; /* Illuminati 4 flechas, resto 3 */
   var mode = sel.mode || '';
   var own = pid === curState.currentPid;
   var hostMode = (mode === 'takeoverHost' || mode === 'moveTo');
@@ -523,12 +537,21 @@ function nodeHtml(nd, st, pid, depth) {
   else if (mode === 'plotTarget') { if (open) cls += ' pick'; else cls += ' dim'; }
   else if (mode === 'aid' || mode === 'oppose') { if (own && nd.tokens > 0) { cls += ' pickS'; } else cls += ' dim'; }
   else if (mode === 'attacker' || mode === 'pickMover') { if (own && nd.tokens > 0 && !isRoot) { cls += ' pickA'; } else cls += ' dim'; }
+  /* L19 — 354 Reorganization, paso 1: CUALQUIER grupo tuyo (la raiz/Illuminati no es
+     un grupo que se pueda mover de maeastre). Paso 2: solo los destinos con flecha
+     libre, y el `dim` se encarga de marcar como no-droppable el resto. */
+  else if (mode === 'reorgFrom') { if (own && !isRoot) { cls += ' pickA'; } else cls += ' dim'; }
+  else if (mode === 'reorgTo') { if (own && open && reorgTargetOk(uid)) { cls += ' pick'; } else cls += ' dim'; }
+  /* L20 — 408 Upheaval!: cualquier grupo de CUALQUIER jugador es un objetivo valido,
+     * porque cada jugador elige UNO de los suyos. El `dim` lo pone el flujo. */
+  else if (mode === 'upheavalPick') { cls += ' pickT'; }
+  else if (mode === 'scandalRival') { cls += ' pickT'; }
   var badges = '';
   if (nd.paralyzed) badges += '<i class="b par">PAR</i>';
   if (nd.zapped) badges += '<i class="b zap">ZAP</i>';
   if (nd.devastated) badges += '<i class="b dev">DEV</i>';
   var tok = (nd.tokens != null && nd.tokens > 0) ? '<span class="tok g">●' + nd.tokens + '</span>' : '';
-  var arrows = Math.max(0, (depth === 0 ? 4 : 3) - kids.length);
+  var arrows = Math.max(0, cap18 - kids.length); /* L18: capacidad con las flechas extra */
   var isAtt = mode === 'target' && sel.data.attackerUid === nd.uid;
   var h = '<div class="node' + cls + (isAtt ? ' selatt' : '') + '" role="button" tabindex="0" aria-label="Carta: ' + esc(c.name) + '" data-uid="' + esc(nd.uid) + '">' +
     imgTag(c, 'thumb') + '<span class="nname">' + esc(c.name) + '</span>' +
@@ -1025,7 +1048,11 @@ function isOwnNode(uid) {
  * tablero, es la VENTANA de comienzo de turno — el jugador al que se le roba el
  * turno. Por eso su boton vive en el panel de esa ventana (el bloque TS de mas
  * abajo) y no en el selector de objetivo, y por eso NO debe pasar por plotTarget. */
-var NO_TARGET_KINDS = ['token_gift', 'attack_boost', 'deck_manip', 'turn_start_block', 'turn_control'];
+var NO_TARGET_KINDS = ['token_gift', 'attack_boost', 'deck_manip', 'turn_start_block', 'turn_control',
+  /* L16 — 379 Sweeping Reforms descarta TODAS las cartas New World Order que haya en
+   * juego: no hay un objetivo unico que elegir. 207 (nwo_discard_one) SI elige una
+   * concreta y por eso NO entra aqui (lleva boton propio). */
+  'nwo_discard_all'];
 /* L8a — MENU DE MANIPULACION DE MAZO (361 Savings & Loan Scam, 388 The Big Sellout,
  * 411 Voodoo Economics).
  *
@@ -1122,6 +1149,222 @@ function startDeckFlow(ix, EFF) {
     : '🗑 ' + cardOf(ix).name + ': elige hasta 10 cartas entre tu mano y la cima de tu mazo de Groups, y reparte los tokens extra.');
   render(curState);
 }
+/* L20 — 408 Upheaval!. "Each player must choose one group from their Power
+ * Structure and discard it": el que juega la carta elige POR CADA jugador, y cada
+ * eleccion es de un grupo de ESE jugador. El flujo va jugador por jugador y solo
+ * cuando todos han elegido aparece la confirmacion. Un jugador sin grupos se salta
+ * con eleccion nula, que es lo que el motor acepta para el. */
+function ownerOfUiNode20(uid) {
+  for (var i = 0; i < curState.players.length; i++) {
+    var hit = false;
+    (function rec(n) { if (hit) return; if (n.uid === uid) hit = true; (n.children || []).forEach(rec); })(curState.players[i].structure);
+    if (hit) return i;
+  }
+  return -1;
+}
+function groupsOf20(pid) {
+/* ================= L16 — CARTAS DE ACCION MULTIPLE =================
+ * 207 Blood, Toil, Tears and Sweat · 379 Sweeping Reforms · 253 Exposed! ·
+ * 362 Scandal. Texto impreso en L16_FX (gen_cards.js) y motor en los
+ * `case nwo_discard_one|nwo_discard_all|secret_expose|token_strip_aligned`
+ * de engine.js. Aqui solo el cableado: que el objetivo se ELIJA. */
+/* Las cartas New World Order EN JUEGO, en la MISMA forma que las lee el motor:
+ * exposedPlots son cardids sueltos y linkedPlots son {uid,cardId,linkedTo}.
+ * Se recorren TODOS los jugadores porque 207 y 379 preguntan por las NWOs que
+ * haya en juego, no solo por las tuyas. El filtro por effect.kind==='nwo' es
+ * obligatorio: exposedPlots tambien contiene Plots normales y cartas Goal. */
+function nwoInPlay16() {
+  var out = [];
+  if (!curState || !curState.players) return out;
+  for (var i = 0; i < curState.players.length; i++) {
+    var pl = curState.players[i];
+    (pl.exposedPlots || []).forEach(function (ix) {
+      var c = cardOf(ix);
+      if (c && c.effect && c.effect.kind === 'nwo') out.push({ pid: i, ix: ix, where: 'exposta', name: c.name });
+    });
+    (pl.linkedPlots || []).forEach(function (lp) {
+      if (!lp) return;
+      var c2 = cardOf(lp.cardId);
+      if (c2 && c2.effect && c2.effect.kind === 'nwo') out.push({ pid: i, ix: lp.cardId, where: 'linkada', name: c2.name });
+    });
+  }
+  return out;
+}
+/* 207 — el jugador ELIGE cual de las NWOs en juego se descarta. Se ofrece un menu
+ * con `prompt` en vez de un modo de nodo: el objetivo no es un nodo de la
+ * estructura sino una Plot en juego, y no hay ningun nodo que represente una Plot
+ * expuesta. Cancelar NO gasta ninguna accion (el motor cobra al final). */
+function startNwoOne16(ix) {
+  var list = nwoInPlay16();
+  if (!list.length) { log('⚠ 207 Blood, Toil, Tears and Sweat: no hay ninguna carta New World Order ahora en juego.'); render(curState); return; }
+  var opts = list.map(function (x) {
+    return { label: '🃏 ' + esc(x.name) + ' — de ' + curState.players[x.pid].name + ' (' + x.where + ')', value: String(x.ix) };
+  });
+  opts.push({ label: 'Cancelar (no se gasta la accion)', value: null });
+  prompt('<b>🃏 207 Blood, Toil, Tears and Sweat</b><small class="pm">"Discard any one New World Order card now in play" — el coste es la accion de grupos Media con Poder COMBINADO 4+</small>', opts).then(function (v) {
+    if (v === null) { log('↩ 207 cancelada: no se gasto ninguna accion.'); render(curState); return; }
+    try { CB.onPlayNwoOne(ix, parseInt(v, 10)); } catch (e) { log('⚠ ' + e.message); }
+  });
+}
+/* 362 Scandal, paso 2: elegir la alineacion. El impreso exige "The alignment
+ * must be shared by the Media group that uses the card", asi que aqui se ofrecen
+ * solo las alineaciones que AL MENOS uno de los Media del jugador (los que podrian
+ * pagar) comparte. El motor vuelve a comprobarlo: la lista es ayuda, no la ley. */
+var SCANDAL_ALIGNS16 = ['conservative', 'corporate', 'criminal', 'fanatic', 'government',
+  'liberal', 'peaceful', 'straight', 'violent', 'weird'];
+function scandalAligns16() {
+  var pid = curState.currentPid, root = curState.players[pid] && curState.players[pid].structure;
+  var set = {};
+  if (!root) return SCANDAL_ALIGNS16.slice();
+  (function rec(n) {
+    if (n.cardId != null) {
+      var c = cardOf(n.cardId);
+      if (c && c.type === 'group' && n.tokens > 0 && (c.attributes || []).indexOf('media') >= 0) {
+        (c.alignments || []).forEach(function (a) { set[a] = 1; });
+      }
+    }
+    (n.children || []).forEach(rec);
+  })(root);
+  var out = SCANDAL_ALIGNS16.filter(function (a) { return set[a]; });
+  return out.length ? out : SCANDAL_ALIGNS16.slice();
+}
+function confirmScandal16(handIdx, rivalPid, align) {
+  clearSel();
+  prompt('<b>🗞 362 Scandal</b><small class="pm">le quita TODAS las fichas de accion a los grupos de <b>' + esc(align) + '</b> de ' + esc(curState.players[rivalPid].name) + '</small>', [
+    { label: '✔ Quitarles las fichas', value: 'apply' },
+    { label: 'Cancelar (no se gasta la accion)', value: null }
+  ]).then(function (v) {
+    if (v !== 'apply') { log('↩ Scandal cancelada: no se gasto ninguna accion.'); render(curState); return; }
+    try { CB.onPlayScandal(handIdx, rivalPid, align); } catch (e) { log('⚠ ' + e.message); }
+  });
+}
+function pickScandalRival16(d, uid) {
+  var pid = curState.currentPid;
+  var nd = findUiNode(uid);
+  if (!nd) { log('⚠ Ese grupo ya no esta en juego.'); render(curState); return; }
+  if (/-root$/.test('' + uid)) { log('⚠ Scandal: elige un grupo de un RIVAL, no su Illuminati.'); render(curState); return; }
+  var owner = ownerOfUiNode20(uid);
+  if (owner === null || owner === undefined || owner === pid) {
+    log('⚠ Scandal: "Choose a rival" — ese grupo no es de ningun rival tuyo.'); render(curState); return;
+  }
+  var aligns = scandalAligns16();
+  var opts = aligns.map(function (a) { return { label: esc(a), value: a }; });
+  opts.push({ label: 'Cancelar (no se gasta la accion)', value: null });
+  prompt('<b>🗞 362 Scandal — ' + esc(curState.players[owner].name) + '</b><small class="pm">"remove all Action tokens from his Groups of any one alignment"</small>', opts).then(function (v) {
+    if (v === null) { log('↩ Scandal cancelada: no se gasto ninguna accion.'); render(curState); return; }
+    confirmScandal16(d.handIdx, owner, String(v).toLowerCase());
+  });
+}
+
+  var out = [];
+  (function rec(n) { (n.children || []).forEach(function (ch) { if (ch.cardId != null) out.push(ch.uid); rec(ch); }); })(curState.players[pid].structure);
+  return out;
+}
+function upheavalPending20(choices) {
+  for (var i = 0; i < curState.players.length; i++) {
+    if (groupsOf20(i).length && !choices.some(function (x) { return x.pid === i; })) return i;
+  }
+  return -1;
+}
+function startUpheaval20(ix) {
+  var ch = [];
+  var next = upheavalPending20(ch);
+  if (next < 0) { confirmUpheaval20(ix, ch); return; }
+  sel = { mode: 'upheavalPick', data: { handIdx: ix, choices: ch, forPid: next } };
+  log('🌍 Upheaval! — ' + curState.players[next].name + ': clic en UNO de SUS grupos para que lo descarte.');
+  render(curState);
+}
+function pickUpheaval20(d, uid) {
+  var forPid = d.forPid;
+  var mine = groupsOf20(forPid);
+  if (mine.indexOf(uid) < 0) {
+    log('⚠ Upheaval!: ese grupo no es de ' + curState.players[forPid].name + '. Cada jugador elige UNO de SUS grupos.');
+    render(curState);
+    return;
+  }
+  var ch = d.choices.filter(function (x) { return x.pid !== forPid; });
+  ch.push({ pid: forPid, uid: uid });
+  var next = upheavalPending20(ch);
+  if (next < 0) { confirmUpheaval20(d.handIdx, ch); return; }
+  sel = { mode: 'upheavalPick', data: { handIdx: d.handIdx, choices: ch, forPid: next } };
+  log('🌍 Upheaval! — ' + curState.players[next].name + ': clic en UNO de SUS grupos.');
+  render(curState);
+}
+function confirmUpheaval20(ix, choices) {
+  clearSel();
+  var filas = choices.map(function (x) {
+    return curState.players[x.pid].name + ': ' + (findUiNode(x.uid) ? cardOf(findUiNode(x.uid).cardId).name : x.uid);
+  });
+  prompt('<b>🌍 408 Upheaval!</b><small class="pm">estos grupos NO cuentan como destruidos</small>', [
+    { label: '✔ Que descarten todos (' + choices.length + ')', value: 'apply' },
+    { label: 'Cancelar (no se gasta la accion)', value: null }
+  ]).then(function (v) {
+    if (v !== 'apply') { log('↩ Upheaval! cancelada: no se gasto ninguna accion.'); render(curState); return; }
+    var arr = [];
+    for (var i = 0; i < curState.players.length; i++) {
+      var f = choices.filter(function (x) { return x.pid === i; })[0];
+      arr.push(f ? f.uid : null);
+    }
+    log('🌍 Descartan: ' + filas.join(' · '));
+    try { CB.onPlayUpheaval(ix, arr); } catch (e) { log('⚠ ' + e.message); }
+  });
+}
+/* L19 — 354 Reorganization: un nodo es destino valido si es tuyo, tiene flecha
+ * libre y NO esta dentro del subarbol del grupo que se esta moviendo (mover un
+ * grupo dentro de si mismo dejaria un ciclo). `sel.data.from` lo fija el paso 1.
+ * La flecha libre se calcula como la calcula nodeHtml: 4 en la raiz, 3 en el
+ * resto, menos los hijos que ya tiene. */
+function reorgTargetOk(uid) {
+  var pid = curState.currentPid, root = curState.players[pid] && curState.players[pid].structure;
+  if (!root) return false;
+  if (sel.data && sel.data.from && uid === sel.data.from) return false;
+  var ok19 = false, depth19 = 0;
+  (function rec(n, d) {
+    if (n.uid === uid) { ok19 = n.children.length < (d === 0 ? 4 : 3); depth19 = d; return; }
+    (n.children || []).forEach(function (ch) { rec(ch, d + 1); });
+  })(root, 0);
+  if (!ok19) return false;
+  var from = sel.data && sel.data.from;
+  if (from) {
+    var inside = false;
+    (function rec2(n) { if (n.uid === uid) inside = true; (n.children || []).forEach(rec2); })(findUiNode(from) || {});
+    if (inside) return false;
+  }
+  return true;
+}
+function findUiNode(uid) {
+  var found = null;
+  (function rec(n) { if (found) return; if (n.uid === uid) { found = n; return; } (n.children || []).forEach(rec); })(curState.players[curState.currentPid].structure);
+  return found;
+}
+/* L19 — el jugador REVISA la lista antes de aplicarla: quitar el ultimo, aplicar
+ * todo, o cancelar sin gastar la accion Illuminati. El objetivo se ELIGE, nunca
+ * se elige solo (DoD#6). */
+function confirmReorg19(handIdx, moves) {
+  clearSel();
+  var filas = moves.map(function (mv) {
+    var a = findUiNode(mv.uid), b = findUiNode(mv.newParentUid);
+    return (a ? cardOf(a.cardId).name : mv.uid) + ' → ' + (b ? cardOf(b.cardId).name : mv.newParentUid);
+  });
+  prompt('<b>🔀 354 Reorganization</b><small class="pm">' + moves.length + ' movimiento(s) — mismo control, mismo Poder total</small>', [
+    { label: '✔ Aplicar reorganizacion (' + moves.length + ' movimiento/s)', value: 'apply' },
+    { label: '↩ Quitar el ultimo movimiento', value: 'pop' },
+    { label: 'Cancelar (no se gasta la accion)', value: null }
+  ]).then(function (v) {
+    if (v === 'apply') {
+      log('🔀 Aplicando: ' + filas.join(' · '));
+      try { CB.onPlayReorg(handIdx, moves); } catch (e) { log('⚠ ' + e.message); }
+    } else if (v === 'pop') {
+      moves.pop();
+      if (moves.length) confirmReorg19(handIdx, moves);
+      else { log('↩ Lista vacia: no se ha reorganization nada.'); sel = { mode: 'reorgFrom', data: { handIdx: handIdx, moves: [] } }; render(curState); }
+    } else {
+      log('↩ 354 Reorganization cancelada: no se gasto ninguna accion.');
+      render(curState);
+    }
+  });
+  log('🔀 Movimiento anadido: ' + filas[filas.length - 1] + '. Revisa la lista.');
+}
 function plotNeedsTarget(c) {
   return NO_TARGET_KINDS.indexOf((c.effect || {}).kind) < 0;
 }
@@ -1135,6 +1378,25 @@ function route(uid) {
     else if (m === 'target') { clearSel(); CB.onDeclareAttack(d.type, d.attackerUid, { uid: uid }); }
     else if (m === 'moveTo') { clearSel(); CB.onMoveGroup(d.uid, uid); }
     else if (m === 'plotTarget') { clearSel(); CB.onPlayPlot(d.handIdx, uid); }
+    /* L19 — 354 Reorganization. Dos clics por movimiento: primero el grupo que se
+       mueve, despues su maeastre nuevo. Se acumulan en d.moves y se aplican
+       TODOS de golpe, porque el motor valida la lista entera antes de tocar nada
+       (applyStructureMoves): si uno falla, no queda la estructura a medio desmontar. */
+    else if (m === 'upheavalPick') { pickUpheaval20(d, uid); }
+    else if (m === 'scandalRival') { pickScandalRival16(d, uid); }
+    else if (m === 'reorgFrom') {
+      if (!isOwnNode(uid)) { log('⚠ Solo puedes reorganizar TUS grupos.'); render(curState); return; }
+      sel = { mode: 'reorgTo', data: { handIdx: d.handIdx, moves: d.moves, from: uid } };
+      log('🔀 PASO 2/2 — clic en el NUEVO maeastre de ese grupo. Destinos sin flecha libre salen atenuados.');
+      render(curState);
+    }
+    else if (m === 'reorgTo') {
+      if (!isOwnNode(uid)) { log('⚠ El destino tiene que estar en tu estructura.'); render(curState); return; }
+      if (!reorgTargetOk(uid)) { log('⚠ No puedes mover un grupo dentro de si mismo, ni a un sitio sin flecha libre.'); render(curState); return; }
+      var mv19 = d.moves.filter(function (x) { return x.uid !== d.from; });
+      mv19.push({ uid: d.from, newParentUid: uid });
+      confirmReorg19(d.handIdx, mv19);
+    }
     else if (m === 'aid') { clearSel(); CB.onSupport({ uid: uid, oppose: false }); }
     else if (m === 'oppose') { clearSel(); CB.onSupport({ uid: uid, oppose: true }); }
     /* L8a — 388 y 411 dan "one extra Action token on one of your own Groups": el
@@ -1287,6 +1549,29 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
    * S.pendingTurnStart) y el objetivo no se elige a mano (es el jugador cuyo
    * turno va a empezar). */
   var isTurnStart = c.type === 'plot' && c.effect && c.effect.kind === 'turn_start_block';
+  /* L19 — 354 Reorganization pide una LISTA de movimientos de estructura, no un
+     objetivo unico: el camino generico `plotTarget` llama a onPlayPlot SIN `opts`,
+     y para esta carta eso significa jugar siempre el caso minimo (0 movimientos),
+     o sea una reorganizacion que no reorganiza. Por eso lleva boton propio, igual
+     que lo hicieron 361/388/411 con su showDeckMenu (L8a). */
+  var isReorg = c.type === 'plot' && c.effect && c.effect.kind === 'structure_reorg';
+  /* L20 — 408 pide una eleccion POR JUGADOR, no un objetivo. El camino generico
+   * plotTarget haria que un solo clic, y por lo tanto un solo jugador, descartara. */
+  var isUpheaval = c.type === 'plot' && c.effect && c.effect.kind === 'global_discard';
+  var isNwoOne = c.type === 'plot' && c.effect && c.effect.kind === 'nwo_discard_one';
+  var isScandal = c.type === 'plot' && c.effect && c.effect.kind === 'token_strip_aligned';
+  var nwoOneEntry = isNwoOne
+    ? { label: '🃏 Descartar UNA carta New World Order en juego (Media Poder combinado 4+)', value: 'nwoOne' }
+    : null;
+  var scandalEntry = isScandal
+    ? { label: '🗞 Escandalo: rival + alineacion (Media Poder 2+)', value: 'scandal' }
+    : null;
+  var upheavalEntry = isUpheaval
+    ? { label: '🌍 Upheaval!: CADA jugador descarta un grupo (gasto 1 accion Illuminati)', value: 'upheaval' }
+    : null;
+  var reorgEntry = isReorg
+    ? { label: '🔀 REORGANIZAR mi Power Structure (gasto 1 accion de mi Illuminati)', value: 'reorg' }
+    : null;
   var deckEntry = isDeck
     ? (c.effect.mode === 'draw'
       ? { label: '🃏 Gastar la acción de un grupo y ROBAR 3 Plot cards de mi mazo', value: 'deckDraw' }
@@ -1302,7 +1587,11 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
     isEventCard && !canReactEvent ? { label: '❓ ¿Cuándo sirve esta carta?', value: 'infoEvent' } : null,
     isCancelCard && !canCancel ? { label: 'ℹ ¿Cuándo sirve esta carta?', value: 'infoCancel' } : null,
     deckEntry,
-    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck && !isTurnStart) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
+    reorgEntry,
+    upheavalEntry,
+    nwoOneEntry,
+    scandalEntry,
+    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck && !isTurnStart && !isReorg && !isUpheaval && !isNwoOne && !isScandal) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
     c.type === 'plot' ? { label: 'ℹ ¿Cuándo sirven los Plots?', value: 'info' } : null,
     c.type !== 'illuminati' ? { label: '🗑 Descartar', value: 'discard' } : null,
     { label: 'Cancelar', value: null }
@@ -1350,6 +1639,36 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
         log('\uD83C\uDFAF PASO 2/2 \u2014 clic en el grupo OBJETIVO de este Plot.');
         render(curState);
       }
+    }
+    else if (v === 'upheaval') {
+      clearSel();
+      startUpheaval20(ix);
+    }
+    else if (v === 'nwoOne') {
+      clearSel();
+      startNwoOne16(ix);
+    }
+    else if (v === 'scandal') {
+      clearSel();
+      sel = { mode: 'scandalRival', data: { handIdx: ix } };
+      log('🗞 362 Scandal — PASO 1/2: clic en un grupo de un RIVAL (los grupos de la alineacion elegida perderan las fichas).');
+      render(curState);
+    }
+    else if (v === 'nwoOne') {
+      clearSel();
+      startNwoOne16(ix);
+    }
+    else if (v === 'scandal') {
+      clearSel();
+      sel = { mode: 'scandalRival', data: { handIdx: ix } };
+      log('🗞 362 Scandal — PASO 1/2: clic en un grupo de un RIVAL (sus grupos de la alineacion elegida perderan las fichas).');
+      render(curState);
+    }
+    else if (v === 'reorg') {
+      clearSel();
+      sel = { mode: 'reorgFrom', data: { handIdx: ix, moves: [] } };
+      log('🔀 354 Reorganization — PASO 1/2: clic en el grupo TUYO que quieres cambiar de maeastre. (0 movimientos = no se reorganiza nada, asi que hace falta al menos uno.)');
+      render(curState);
     }
     else if (v === 'deckDraw') {
       clearSel();
@@ -1485,6 +1804,13 @@ var KIND_ES = {
   token_gift: 'Regalar action tokens', token_strip: 'Quitar action tokens',
   token_wither: 'Action tokens marchitos', tripled_once: 'Triplicar una vez',
   turn_control: 'Manipulacion de turno',
+  structure_reorg: 'Reorganizacion de la estructura',
+  global_discard: 'Descarte global',
+  control_arrows: 'Flechas de control',
+  nwo_discard_one: 'Descartar UNA carta New World Order',
+  nwo_discard_all: 'Descartar TODAS las cartas New World Order',
+  secret_expose: 'Exponer un grupo Secret',
+  token_strip_aligned: 'Escandalo: quitar fichas por alineacion',
   turn_start_block: 'Bloquear el inicio de turno', unverified: 'Mecanica sin mapear',
   ability_unverified: 'Habilidad sin mapear', goal: 'Meta'
 };
@@ -1685,6 +2011,9 @@ var FIELD_ES = [
   ['privilegedPerTurn', 'modo', 'Ataque Privilegiado <b>%s</b> vez por turno'],
   ['keepOnFailedControl', 'modo', 'permanece en juego aunque falle el Control'],
   ['organizeAtEndOfTurn', 'modo', 'reorganizas al final de cada turno'],
+  ['ownTurnOnly', 'modo', 'solo se juega en TU turno (no "at any time")'],
+  ['movesRequired', 'modo', 'tienes que elegir al menos un grupo al que cambiar de maeastre'],
+  ['freeMoving', 'modo', 'mover grupos NO cuesta 1 accion (es el efecto de la carta)'],
   ['immuneToAligns', 'modo', 'inmune a estos Alineamientos: <b>%s</b>'],
   ['plotHandLimit', 'modo', 'limita tu mano a <b>%s</b> Plot(s)'],
   ['tokensNotSameAttack', 'modo', 'los tokens no cuentan para el mismo ataque'],

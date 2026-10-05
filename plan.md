@@ -1102,7 +1102,8 @@ d) y no en
   mismo turno; y el alcance de "unless someone won" depende de `victoryStatus`, que se evalua al
   final del turno.
 - [x] L14.f.5 COMMIT + PUSH.  <!-- HECHO: seccion `## 66.` en `docs/audit/INWO_SURGICAL_AUDIT.md` (**ASCII sin tildes**, 0 acentos, 1 sola seccion, con guarda de idempotencia), **P1-093..P1-104** documentados uno a uno, y este lote cerrado en `plan.md`. -->
-## [ ] L15 - COMBOS DE GOAL
+## [x] L15 - COMBOS DE GOAL
+CERRADO 2026-10 (audit `## 67.`, P1-105..P1-114, 5 cartas: 294/297/343/393/407).
 
 - **Cartas (5)**: 294 Kill for Peace · 297 Let Them Eat Cake! · 343 Power to the People ·
   393 The Hand of Madness · 407 Up Against the Wall.
@@ -1110,7 +1111,8 @@ d) y no en
   criterio de "grupo controlado al final".
 - **Aceptacion**: la combinacion impresa se cumple y la partida termina por meta, no por Rules.
 
-## [ ] L16 - CARTAS DE ACCION MULTIPLE
+## [x] L16 - CARTAS DE ACCION MULTIPLE
+CERRADO 2026-10 (audit `## 71.`, P1-127..P1-134, 4 cartas: 207/379/253/362).
 
 - **Cartas (4)**: 207 Blood, Toil, Tears and Sweat (descarta un NWO en juego) ·
   379 Sweeping Reforms (descarta **todos** los NWO en juego) · 253 Exposed! · 362 Scandal.
@@ -1123,7 +1125,8 @@ d) y no en
 
 ## L17 - Cartas que quedan BLOQUEADAS con motivo declarado
 
-## [ ] L18 - FLECHAS DE CONTROL
+## [x] L18 - FLECHAS DE CONTROL
+CERRADO 2026-10 (audit `## 70.`, P1-124..P1-126, 2 cartas: 298/299).
 
 - **Cartas (2)**: 298 Lets Get Organized · 299 Let's Get REALLY Organized.
 - **Mecanica**: `control_arrows`.
@@ -1144,7 +1147,8 @@ d) y no en
 - [ ] L18.b DATOS: familia `control_arrows` en `gen_cards.js`.
 - [ ] L18.c MOTOR + UI + REGRESION (al menos 2 escenarios).
 
-## [ ] L19 - REORGANIZACION DE LA ESTRUCTURA
+## [x] L19 - REORGANIZACION DE LA ESTRUCTURA
+CERRADO 2026-10 (audit `## 68.`, P1-115..P1-119, 1 carta: 354).
 
 - **Cartas (1)**: 354 Reorganization.
 - **Mecanica**: `structure_reorg`.
@@ -1157,7 +1161,8 @@ d) y no en
 - [ ] L19.a AUDIT de como se mueve hoy un grupo y que invariantes hay que conservar.
 - [ ] L19.b DATOS + L19.c MOTOR + L19.d UI + L19.e REGRESION + L19.f CIERRE.
 
-## [ ] L20 - DESCARTE GLOBAL
+## [x] L20 - DESCARTE GLOBAL
+CERRADO 2026-10 (audit `## 69.`, P1-120..P1-123, 1 carta: 408).
 
 - **Cartas (1)**: 408 Upheaval!.
 - **Mecanica**: `global_discard`.

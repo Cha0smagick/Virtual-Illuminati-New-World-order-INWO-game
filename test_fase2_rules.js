@@ -76,7 +76,17 @@ function readyToAttack(pid) {
 /* ---------- P1-010: meta UFOs = cartas Goal (no grupos secretos) ---------- */
 (function () {
   var GOALS = C.cards.filter(function (c) { return c.type === 'plot' && c.effect && c.effect.kind === 'goal'; });
-  ok(GOALS.length === 7, 'el mazo contiene las 7 cartas Goal oficiales -> ' + GOALS.length);
+  /* L15 (2026-10): el mazo ya NO tiene 7 Goal cards sino 12 = las 7 de siempre
+   * (Criminal Overlords, Fratricide, Hail Eris!, Military-Industrial Complex,
+   * Peace in Our Time, World War Three, Alternate Goals) + las 5 "Goal cards de
+   * combinacion" que implementa L15 (294 Kill for Peace, 297 Let Them Eat Cake!,
+   * 343 Power to the People, 393 The Hand of Madness, 407 Up Against the Wall).
+   * El conteo sube de 7 a 12 porque las 5 comparten `effect.kind==='goal'`, que es
+   * lo que isGoalCardIdx (engine.js:816) usa para reconocer una Goal card; si
+   * hubieran tenido otro kind, la meta de los UFOs dejaria de contarlas.
+   * P1-010 sigue intacto: lo que se comprueba es que la meta de los UFOs cuenta
+   * cartas Goal, y ahora hay mas cartas que contar, no menos. */
+  ok(GOALS.length === 12, 'el mazo contiene las 12 cartas Goal oficiales (7 + 5 de L15) -> ' + GOALS.length);
   var byName = {};
   GOALS.forEach(function (c) { byName[c.name] = c.idx; });
   ok(byName['Fratricide'] != null && byName['Hail Eris!'] != null && byName['Criminal Overlords'] != null,
@@ -4571,6 +4581,17 @@ function readyToAttack(pid) {
   ok(!!ATK && !!PAY, 'L6 210 hay grupo para el takeover y grupo para pagar -> ' + ATK.idx + ' / ' + PAY.idx);
   put(0, ATK); put(1, BC);
   plant(1, 'p1', PAY.idx, 1);
+  /* P1-117 (FLAKE MEDIDO, 1 de cada ~60 corridas): readyToAttack(0) avanza hasta
+     8 turnos con E.endTurn(), y un suceso de un turno anterior puede quedar
+     ABIERTO. Con una ventana de suceso ya pendiente, openEventWindow() de
+     E.autoTakeover no abre la suya, el takeover se resuelve sin ventana y la
+     linea siguiente (E.playPlot de 210) revienta con "no hay ningun takeover
+     automatico que anular". El sintoma era un FAIL en la linea de arriba y un
+     crash 3 lineas despues, ambos de la misma causa. No es un fallo del motor:
+     autoTakeover o lanza o abre ventana, y aqui no lanzo porque sus condiciones
+     eran legales. Se cierra cualquier suceso pendiente ANTES de empezar, que es
+     lo que haria un jugador. */
+  settleEvent();
   E.autoTakeover(0, ATK.idx, rootOf(0).uid);
   var ev1 = E.getState().pendingEvent;
   ok(ev1 && ev1.kind === 'autoTakeover', 'L6 210 el takeover automatico abre la ventana de suceso');
@@ -5603,6 +5624,19 @@ function readyToAttack(pid) {
     ok(saidL8c(/puede volver a robar Plot cards/),
       'L8c S4 el log declara la caducidad');
     E.endTurn();
+    /* P1-118 (FLAKE MEDIDO): freshL8c() marca a P0 como humano, asi que E.endTurn
+     * puede dejar ABIERTA la ventana de comienzo de turno (phase='begin'). Con la
+     * ventana abierta, E.drawPlot(1) revienta con "Fuera de la fase principal",
+     * y el aserto de L8c S4 mide justamente si el rival puede volver a robar Plot
+     * cards. Se cierra la ventana y se avanza hasta que sea el turno de B, que es
+     * lo que haria un jugador. Misma clase que P1-117: el fixture depende de en que
+     * fase deja E.endTurn la partida, y esa fase depende de la tirada. */
+    for (var g18 = 0; g18 < 6; g18++) {
+      var s18 = E.getState();
+      if (s18.pendingTurnStart) { E.resolvePendingTurnStart({ pass: true }); continue; }
+      if (s18.phase === 'main' && s18.currentPid === 1) break;
+      E.endTurn();
+    }
     E.drawPlot(1);
     ok(rawL8c().players[1].flags.plotDrawn===true,
       'L8c S4 en su siguiente turno el rival vuelve a robar Plot cards');
@@ -5877,6 +5911,12 @@ ok(!!L9c332 && !!L9c357 &&
   raw2L9.players[0].illumTokens = 1;
   var h2L9 = raw2L9.players[0].hand.indexOf(L9c357.idx);
   if (h2L9 < 0) raw2L9.players[0].hand.push(L9c357.idx);
+  /* P1-119 (FLAKE MEDIDO): si un paso anterior de este bloque dejo un suceso
+   * PENDIENTE, E.playPlot de 357 revienta con "ya hay un suceso pendiente de
+   * resolucion" y el escenario entero se cae. Se cierra antes, igual que en
+   * P1-117. La clase de fallo es siempre la misma: fixtures que heredan el estado
+   * de una ventana que el propio dado decide. */
+  if (E.getState().pendingEvent) E.resolvePendingEvent();
   var out2L9 = E.playPlot(0, L9c357.idx, null, {});
   ok(!!E.getState().pendingEvent,
      'L9 357 abre su ventana de reescritura cuando hay un grupo destruido');
@@ -7029,6 +7069,961 @@ E.endTurn();
 E.resolvePendingTurnStart({ pass: true });
 ok(ownTurnL14(), 'L14 N4 vuelve a ser el turno del actor tras el turno especial');
 ok(!throwMsgL14(function () { E.drawPlot(0); }), 'L14 N4 en su turno normal el actor vuelve a poder robar Plot');
+/* ==================================================================== *
+ * L15 (2026-10) — GOAL CARDS DE COMBINACION (kind:'goal' + effect.goalCombo)
+ * 294 Kill for Peace · 297 Let Them Eat Cake! · 343 Power to the People ·
+ * 393 The Hand of Madness · 407 Up Against the Wall
+ *
+ * IMPRESO (294, literal): "Destroy Violent groups, and control Peaceful groups,
+ * in any of the following combinations: Destroy 2 Violent, control 6 Peaceful /
+ * ... / Destroy 6 Violent, control 1 Peaceful. This Goal cannot be combined with
+ * other Goals in any way."
+ *
+ * Lo que se afirma aqui NO es aritmetica: es que la REVELACION de la carta acaba
+ * la partida por Goal (S.phase='gameover' + S.winner), que es exactamente lo que
+ * P1-010 exige de una Goal card; y que cuando el objetivo NO se cumple la carta
+ * vuelve a la mano EXPUESTA en vez de ganar (el comportamiento ya existente de
+ * E.declareGoalVictory, que L15 no toca pero del que depende).
+ * ==================================================================== */
+var C15 = {
+  kill: idxOfId('killforpeace'),
+  cake: idxOfId('letthemeatcake'),
+  people: idxOfId('powertothepeople'),
+  hand: idxOfId('thehandofmadness'),
+  wall: idxOfId('upagainstthewall'),
+  alt: idxOfId('alternategoals'),
+  fratr: idxOfId('fratricide'),
+  /* violent SOLO (alignments==['violent']), p1 */
+  violent: ['ninjas', 'voudonistas', 'urbangangs', 'robotseamonsters', 'saturdaymorningcartoons', 'comicbooks'],
+  /* CON peaceful y NINGUNA de las 2 alineaciones del par (violent,peaceful),
+   * para que la columna "Destroy" no se contamine. MEDIDO: en este mazo NO existe
+   * NINGUN grupo con peaceful como unica alineacion (0 de 421 cartas), asi que
+   * el fixture usa grupos multi-alineacion, que siguen siendo grupos Peaceful a
+   * efectos del impreso ("control Peaceful groups"). Lo que no puede pasar es que
+   * sean tambien Violent, y ninguno lo es: comprobado sobre el catalogo. */
+  peaceful: ['boysprouts', 'churchofelvis', 'antiwaractivists', 'goldfishfanciers', 'moonies', 'telephonepsychics'],
+  conservative: ['templars', 'princecharles', 'fraternalorders'],
+  liberal: ['antinuclearactivists', 'hillaryclinton', 'hollywood', 'blackactivists', 'gordoremora', 'secularhumanists'],
+  government: ['nsa', 'nasa', 'brazil', 'england']
+};
+ok(C15.kill != null && C15.cake != null && C15.people != null && C15.hand != null && C15.wall != null,
+  'L15 las 5 Goal cards de combinacion estan en el catalogo con efecto propio');
+/* Las 5 deben traer el par de alineaciones CORRECTO (no una copia de la primera):
+ * si dos compartieran goalCombo, S3/S4/S5 caerian. */
+ok(C.cards[C15.kill].effect.goalCombo.destroy === 'violent' && C.cards[C15.kill].effect.goalCombo.control === 'peaceful'
+  && C.cards[C15.cake].effect.goalCombo.destroy === 'liberal' && C.cards[C15.cake].effect.goalCombo.control === 'conservative'
+  && C.cards[C15.people].effect.goalCombo.destroy === 'conservative' && C.cards[C15.people].effect.goalCombo.control === 'liberal'
+  && C.cards[C15.hand].effect.goalCombo.destroy === 'peaceful' && C.cards[C15.hand].effect.goalCombo.control === 'violent'
+  && C.cards[C15.wall].effect.goalCombo.destroy === 'government' && C.cards[C15.wall].effect.goalCombo.control === 'violent',
+  'L15 cada una declara su propio par (destroy/control) segun el impreso');
+/* Y las 5 deben ser cartas Goal de VERDAD (kind 'goal' + subtype 'goal'), que es
+ * lo que las mete en el camino de revelacion y en la meta de los UFOs. */
+ok(C.cards.filter(function (x) { return x.effect && x.effect.kind === 'goal'; }).length === 12,
+  'L15 el mazo tiene 12 cartas Goal (7 + 5 de L15) y las 5 son kind goal');
+ok(C15.alt != null && C15.fratr != null, 'L15 el fixture tiene Alternate Goals y Fratricide para la clausula de combinacion');
+
+/* Pone la carta en la mano de `pid` por identidad de catalogo Y purga de esa mano
+ * TODAS las demas cartas Goal. Sin esa purga el reparto aleatorio puede dejar
+ * 2 Goal cards en la mano y el limite de mano (goalHandLimitOf, P1-010) las
+ * podria recortar en medio del escenario, moviendo el indice que el test usa. */
+function toHandL15(pid, cardId) {
+  var r15 = E._raw(), h15, k15;
+  for (k15 = r15.plotDeck.length - 1; k15 >= 0; k15--) if (r15.plotDeck[k15] === cardId) r15.plotDeck.splice(k15, 1);
+  for (k15 = r15.groupDeck.length - 1; k15 >= 0; k15--) if (r15.groupDeck[k15] === cardId) r15.groupDeck.splice(k15, 1);
+  h15 = r15.players[pid].hand;
+  for (k15 = h15.length - 1; k15 >= 0; k15--) if (h15[k15] === cardId) h15.splice(k15, 1);
+  /* Se purga EN EL SITIO (length=0 + push de lo que se queda) y no con filter():
+   * filter() devuelve un array NUEVO, y hacer push ahi habria escrito la carta en
+   * una copia local: el test creeria tenerla en la mano y el motor no la veria
+   * (declareGoalVictory responde "No tienes esa carta en la mano"). */
+  var keep15 = [];
+  for (k15 = 0; k15 < h15.length; k15++) {
+    var ef15 = C.cards[h15[k15]].effect;
+    if (!(ef15 && ef15.kind === 'goal')) keep15.push(h15[k15]);
+  }
+  h15.length = 0;
+  for (k15 = 0; k15 < keep15.length; k15++) h15.push(keep15[k15]);
+  h15.push(cardId);
+  return h15.indexOf(cardId);
+}
+/* Registra `n` destrucciones de la alineacion `al` en destroyedByMe de `pid`.
+ * Es la MISMA forma que usa el motor (engine.js:2975 y :3039 empujan el cardId
+ * crudo); L15 lee ese array a traves de retroAlignsOf porque una carta destruida
+ * no tiene nodo. */
+function destroyedL15(pid, ids) {
+  var d15 = E._raw().players[pid].destroyedByMe;
+  for (var i15 = 0; i15 < ids.length; i15++) d15.push(idxOfId(ids[i15]));
+  return d15.length;
+}
+/* Termina EL TURNO DE `pid`, no el que toque. Motivo (flake medido): el reparto
+ * inicial decide quien empieza con un 2d6 ("Tirada inicial: 3, 5 - empieza B"), asi
+ * que E.endTurn() a secas puede cerrar el turno de B y dejar la mano de A intacta:
+ * la asercion pasaba o fallaba segun la tirada. advanceTurnUntilL15 hace que el
+ * aserto dependa de la REGLA y no del dado. fresh() usa human:false en los dos
+ * jugadores, asi que E.endTurn no abre ventana de comienzo de turno (L14, P1-102). */
+function endTurnOfL15(pid) {
+  for (var k = 0; k < 10; k++) {
+    var sL = E.getState();
+    if (sL.gameover) return false;
+    if (sL.currentPid === pid) return true;   // NO lo cierra: solo lo localiza
+    E.endTurn();                                 // cierra los turnos ajenos
+  }
+  return false;
+}
+function goalsInHandL15(pid) {
+  return E._raw().players[pid].hand.filter(function (cx) { return C.cards[cx].effect && C.cards[cx].effect.kind === 'goal'; });
+}
+
+/* ---------- ESCENARIO 1 (aceptacion): la fila (2,6) cumple y la partida acaba por Goal ---------- */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+toHandL15(0, C15.kill);
+for (var i = 0; i < 6; i++) plant(0, 'gP' + i, idxOfId(C15.peaceful[i]), 0);
+destroyedL15(0, [C15.violent[0], C15.violent[1]]);
+/* E.declareGoalVictory(pid, handIdx) toma el CARDID (indice en C.cards), no la
+ * posicion en la mano: el motor hace C.cards[handIdx] y pl.hand.indexOf(handIdx).
+ * Por eso se pasa C15.kill y no el indice de la mano. */
+ok(E._raw().players[0].hand.indexOf(C15.kill) >= 0, 'L15 S1 294 Kill for Peace esta en la mano de A al revelar');
+E.declareGoalVictory(0, C15.kill);
+var stS1 = E._raw();
+ok(stS1.phase === 'gameover' && stS1.winner && stS1.winner.pids.length === 1 && stS1.winner.pids[0] === 0,
+  'L15 S1 6 Peaceful controladas + 2 Violent destruidas = COMBINA -> la partida acaba por GOAL (no por las 12 reglas)');
+ok(/Kill for Peace/.test(String(stS1.winner && stS1.winner.how)) && /COMBINACION CUMPLIDA/.test(String(stS1.winner && stS1.winner.how)),
+  'L15 S1 el motivo de la victoria cita la carta y la combinacion cumplida -> ' + String(stS1.winner && stS1.winner.how));
+ok(stS1.players[0].exposedPlots.indexOf(C15.kill) >= 0, 'L15 S1 la Goal revelada queda EXPUESTA (no se descarta)');
+
+/* ---------- ESCENARIO 2: "in any of the following combinations" -> la fila (6,1) tambien vale ---------- */
+/* Solo la ultima fila puede cumplirse: hacen falta 6 destruidas y 1 controlada. Las
+ * cuatro primeras piden 6/5/4/3 controladas, que aqui no hay. Si el motor evaluara
+ * "la primera fila" en vez de "alguna fila", este escenario no ganaria. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+toHandL15(0, C15.kill);
+plant(0, 'gOnly1', idxOfId(C15.peaceful[0]), 0);
+destroyedL15(0, C15.violent.slice(0, 6));
+E.declareGoalVictory(0, C15.kill);
+var stS2 = E._raw();
+ok(stS2.phase === 'gameover' && stS2.winner && stS2.winner.pids[0] === 0,
+  'L15 S2 6 Violent destruidas + 1 Peaceful controlada cumple la fila (6,1) -> "any of" no es "la primera fila"');
+ok(/Destroy 6 violent, control 1 peaceful/i.test(String(stS2.winner && stS2.winner.how)),
+  'L15 S2 el motivo anuncia la fila (6,1) -> ' + String(stS2.winner && stS2.winner.how));
+
+/* ---------- ESCENARIO 3: objetivo NO cumplido -> la carta vuelve a la mano expuesta ---------- */
+/* 2 destruidas + 3 controladas = 5 de 8: ninguna fila (2,6)/(3,5)/(4,4)/(5,3)/(6,1)
+ * se cumple. La fila (5,3) queda a 3 destruidas y la (2,6) a 3 controladas: el
+ * motor tiene que quedarse corto en LAS DOS columnas, no solo en una. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+toHandL15(0, C15.kill);
+for (var j = 0; j < 3; j++) plant(0, 'gN' + j, idxOfId(C15.peaceful[j]), 0);
+destroyedL15(0, [C15.violent[0], C15.violent[1]]);
+E.declareGoalVictory(0, C15.kill);
+var stS3 = E._raw();
+ok(stS3.phase !== 'gameover' && !stS3.winner,
+  'L15 S3 2 destruidas + 3 controladas = 5 de 8: NO hay victoria por Goal');
+ok(stS3.players[0].hand.indexOf(C15.kill) >= 0, 'L15 S3 la Goal NO cumplida vuelve a la mano');
+ok(stS3.players[0].goalCardsExposed.indexOf('killforpeace') >= 0,
+  'L15 S3 la Goal fallida queda registrada como revelada (goalCardsExposed)');
+/* S.log guarda OBJETOS {t,p,msg}, no strings: el predicado tiene que mirar .msg.
+   Y se usa .some sobre TODO el log (nunca log[length-1], regla 14). */
+ok(stS3.log.some(function (l) { return /Kill for Peace/.test(l.msg) && /NO se cumple/.test(l.msg); }),
+  'L15 S3 el log dice que el objetivo NO se cumple -> ' + JSON.stringify(stS3.log.slice(-3)));
+
+/* ---------- ESCENARIO 4: la evaluacion es DATA-DRIVEN (no hay ramas por nombre) ---------- */
+/* 343 Power to the People: "Destroy Conservative groups, and control Liberal
+ * groups". Mismo mecanismo, otro par. Si el motor leyera el par de la carta
+ * equivocada, contaria Violent y Peaceful y no ganaria. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+toHandL15(0, C15.people);
+for (var m = 0; m < 6; m++) plant(0, 'gL' + m, idxOfId(C15.liberal[m]), 0);
+destroyedL15(0, [C15.conservative[0], C15.conservative[1]]);
+E.declareGoalVictory(0, C15.people);
+var stS4 = E._raw();
+ok(stS4.phase === 'gameover' && stS4.winner && stS4.winner.pids[0] === 0,
+  'L15 S4 343 Power to the People con 2 Conservative destruidas + 6 Liberal controladas gana');
+ok(/2 conservative destruidos, 6 liberal controlados/.test(String(stS4.winner && stS4.winner.how)),
+  'L15 S4 el motivo declara el par Conservative/Liberal de 343 -> ' + String(stS4.winner && stS4.winner.how));
+
+/* ---------- ESCENARIO 5: 407 Up Against the Wall (Government/Violent) ---------- */
+/* 407 es la carta cuyo texto impreso NO aparece en ninguna fuente de research/
+ * (ver seccion L15 del audit doc): su tabla esta reconstruida por simetria. Este
+ * escenario es el que convierte esa reconstruccion en algo COMPROBABLE: si la
+ * tabla fuera incorrecta, el motor no la podria cumprir con Government/Violent. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+toHandL15(0, C15.wall);
+for (var n = 0; n < 6; n++) plant(0, 'gV' + n, idxOfId(C15.violent[n]), 0);
+destroyedL15(0, [C15.government[0], C15.government[1]]);
+E.declareGoalVictory(0, C15.wall);
+var stS5 = E._raw();
+ok(stS5.phase === 'gameover' && stS5.winner && stS5.winner.pids[0] === 0,
+  'L15 S5 407 Up Against the Wall con 2 Government destruidas + 6 Violent controladas gana');
+ok(/2 government destruidos, 6 violent controlados/.test(String(stS5.winner && stS5.winner.how)),
+  'L15 S5 el motivo declara el par Government/Violent de 407 -> ' + String(stS5.winner && stS5.winner.how));
+
+/* ---------- ESCENARIO 6: "This Goal cannot be combined with other Goals in any way" ---------- */
+/* La clausula NO es del objetivo: es de MAZO. Alternate Goals ("You may possess two
+ * Goal cards") es la unica carta que autoriza 2, asi que con una Goal card de
+ * combinacion en mano el limite sigue siendo 1 y el motor descarta el exceso al
+ * final del turno (enforceGoalHandLimit). Observable: quedan 1, no 2. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+/* La mano de A se deja CON SOLO las 2 Goal cards. Motivo (medido): E.endTurn
+ * aplica antes el limite de 5 Plots y descarta el EXCESO, y como las 2 Goal
+ * cards se ponen al final de la mano ese descarte se las comería a ellas, no a
+ * las Goal cards. Un fixture que depende del orden de dos reglas distintas
+ * mide la regla equivocada. La regla que se prueba aqui es solo la de Goal
+ * cards, asi que la mano se reduce a lo que esa regla mira. */
+var h15a = E._raw().players[0].hand;
+h15a.length = 0;
+h15a.push(C15.alt);
+h15a.push(C15.kill);
+ok(goalsInHandL15(0).length === 2, 'L15 S6 A tiene Alternate Goals + 294 en mano antes de resolver el limite');
+ok(endTurnOfL15(0), 'L15 S6 se cierra el turno de A (no el que toque por el reparto inicial)');
+E.endTurn();
+ok(goalsInHandL15(0).length === 1,
+  'L15 S6 "cannot be combined with other Goals in any way": con 294 en mano el limite sigue siendo 1 -> ' +
+  goalsInHandL15(0).length + ' Goal card(s) en mano');
+
+/* CONTRASTE: la misma prueba con una Goal card que SI se combina. Sin el contraste,
+ * este test pasaria igual si goalHandLimitOf devolviera siempre 1. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+var h15b = E._raw().players[0].hand;
+h15b.length = 0;
+h15b.push(C15.alt);
+h15b.push(C15.fratr);
+ok(goalsInHandL15(0).length === 2, 'L15 S6 contraste: Alternate Goals + Fratricide en mano');
+ok(endTurnOfL15(0), 'L15 S6 contraste: se cierra el turno de A');
+E.endTurn();
+ok(goalsInHandL15(0).length === 2,
+  'L15 S6 contraste: con Fratricide (Goal combinable) el limite SI es 2 y no se descarta nada -> ' +
+  goalsInHandL15(0).length + ' Goal card(s) en mano');
+
+
+/* ==================================================================== *
+ * L19 (2026-10) — 354 Reorganization (kind 'structure_reorg')
+ * IMPRESO VERBATIM: "Reorganization You may completely reorganize your entire
+ * Power Structure. You may play this card at any time during your own turn. It
+ * requires an action from your Illuminati. Requires Illuminati Action"
+ *
+ * Lo que se afirma NO es "la estructura cambio" (eso lo guarantees el motor por
+ * construccion) sino las TRES cosas que el impreso exige y que se pueden romper:
+ * (a) el coste es 1 accion de tu Illuminati y SOLO en tu turno; (b) el jugador
+ * ELIGE los movimientos (nunca se eligen solos); (c) la reorganizacion no cambia
+ * ni el CONTROL ni el PODER TOTAL de nadie — eso es lo que hace legitima la
+ * jugada. Y el caso negativo: una lista con un movimiento ilegal no debe dejar la
+ * estructura a medio desmontar ni gastar la accion.
+ * ==================================================================== */
+var C19 = { reorg: idxOfId('reorganization') };
+ok(C19.reorg != null && C.cards[C19.reorg].effect.kind === 'structure_reorg'
+  && C.cards[C19.reorg].effect.ownTurnOnly === true,
+  'L19 354 Reorganization esta en el catalogo con kind structure_reorg y timing de turno propio');
+/* Flecha libre por defecto: Illuminati 4, resto 3 (el mismo calculo que hace
+ * nodeHtml en ui.js y que isOpenArrow usa en el motor). */
+function plantRoot19(pid, uid, cardId) {
+  var r = E._raw(), root = r.players[pid].structure;
+  var nd = { uid: uid, cardId: cardId, children: [], tokens: 0 };
+  root.children.push(nd);
+  return nd;
+}
+/* Devuelve [uid -> uid del maeastre] para todos los grupos de `pid`. */
+function parentMap19(pid) {
+  var m = {}, root = E._raw().players[pid].structure;
+  (function rec(n, parent) {
+    (n.children || []).forEach(function (ch) {
+      if (ch.cardId != null) m[ch.uid] = parent;
+      rec(ch, ch.cardId != null ? ch.uid : parent);
+    });
+  })(root, null);
+  return m;
+}
+function countGroups19(pid) {
+  var n = 0;
+  (function rec(nd) { (nd.children || []).forEach(function (ch) { if (ch.cardId != null) n++; rec(ch); }); })(E._raw().players[pid].structure);
+  return n;
+}
+/* Suma de Poder de los grupos de `pid`, leida de las CARTAS (no de la
+ * estructura): es lo que tiene que quedar invariante. */
+function totalPower19(pid) {
+  var t = 0;
+  (function rec(nd) { (nd.children || []).forEach(function (ch) { if (ch.cardId != null) t += (E.card(ch.cardId).power || 0); rec(ch); }); })(E._raw().players[pid].structure);
+  return t;
+}
+function hand19(pid, cardId) {
+  var r = E._raw(), h = r.players[pid].hand;
+  for (var i = h.length - 1; i >= 0; i--) if (h[i] === cardId) h.splice(i, 1);
+  h.push(cardId);
+  return cardId;
+}
+function playReorg19(pid, moves) {
+  return E.playPlot(pid, C19.reorg, null, { moves: moves });
+}
+
+/* ---------- ESCENARIO 1 (aceptacion): dos grupos intercambian maeastre ---------- */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);                       /* asegura turno propio sin depender del dado */
+/* Illuminati -> Raiz(a) -> Raiz(b) -> Hoja(a), Hoja(b) */
+plantRoot19(0, 'ra', idxOfId('ninjas'));            /* p1 */
+plantRoot19(0, 'rb', idxOfId('voudonistas'));       /* p1 */
+plantRoot19(0, 'ha', idxOfId('robotseamonsters'));  /* p1 */
+plantRoot19(0, 'hb', idxOfId('saturdaymorningcartoons'));
+/* El arbol real no tiene parentUid: 'ha' se cuelga de 'rb' a mano, igual que hace
+ * placeUnder() en el motor. */
+/* El nodo se saca en una variable ANTES de quitarlo del arbol: findNode() busca
+ * DENTRO del arbol, asi que un segundo findNode despues del splice devuelve null
+ * y el null es lo que acaba colgado como titere. */
+(function rehang() {
+  var root = E._raw().players[0].structure;
+  var ndHa = findNode(root, 'ha');
+  var ia = root.children.indexOf(ndHa);
+  if (ia >= 0) root.children.splice(ia, 1);
+  findNode(root, 'rb').children.push(ndHa);
+})();
+hand19(0, C19.reorg);
+var pre19 = { pow: totalPower19(0), groups: countGroups19(0), map: parentMap19(0) };
+ok(pre19.map.ha === 'rb' && pre19.map.hb === null, 'L19 S1 el fixture parte de ha bajo rb y hb suelto en la raiz');
+var tok19 = E._raw().players[0].illumTokens;
+ok(tok19 >= 1, 'L19 S1 A tiene al menos 1 accion Illuminati antes de jugar 354 -> ' + tok19);
+playReorg19(0, [{ uid: 'hb', newParentUid: 'ra' }]);
+var st19 = E._raw();
+var post19 = { pow: totalPower19(0), groups: countGroups19(0), map: parentMap19(0) };
+ok(post19.map.hb === 'ra', 'L19 S1 el grupo ELEGIDO cambia de maeastre: hb ahora cuelga de ra -> ' + JSON.stringify(post19.map));
+ok(post19.map.ha === 'rb', 'L19 S1 los grupos NO elegidos se quedan donde estaban');
+ok(post19.pow === pre19.pow && post19.groups === pre19.groups,
+  'L19 S1 la reorganizacion NO cambia el Poder total ni el numero de grupos -> P ' + pre19.pow + '->' + post19.pow +
+  ', grupos ' + pre19.groups + '->' + post19.groups);
+ok(st19.players[0].illumTokens === tok19 - 1, 'L19 S1 el coste es exactamente 1 accion Illuminati -> ' + tok19 + '->' + st19.players[0].illumTokens);
+ok(st19.players[0].hand.indexOf(C19.reorg) < 0, 'L19 S1 la 354 sale de la mano tras jugarse');
+ok(st19.log.some(function (l) { return /juega Reorganization/.test(l.msg) && /1 movimiento/.test(l.msg); }),
+  'L19 S1 el log nombra la carta y cuantos movimientos se aplicaron -> ' + JSON.stringify(st19.log.slice(-2).map(function (x) { return x.msg; })));
+
+/* ---------- ESCENARIO 2: NO es "at any time", es "during your own turn" ---------- */
+/* El impreso dice "at any time DURING YOUR OWN turn". Este escenario mide esa
+ * diferencia: en el turno del RIVAL la carta no se puede jugar. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+/* El bucle avanza SIEMPRE hasta localizar el turno del rival (pid 1). Con un
+ * `if (rivalTurn19)` que solo mirase "ya es el turno del rival", el escenario se
+ * saltaba entero cuando la tirada inicial daba el primer turno a A: verde con
+ * la mitad de la cobertura sin que nadie lo notase. Ahora el turno del rival se
+ * LOCALIZA siempre y el aserto de que se localizo es explicito. */
+var rivalTurn19 = false;
+for (var t19 = 0; t19 < 8; t19++) {
+  var s19 = E.getState();
+  if (s19.gameover) break;
+  if (s19.currentPid === 1) { rivalTurn19 = true; break; }
+  E.endTurn();
+}
+ok(rivalTurn19, 'L19 S2 el fixture localiza el TURNO DEL RIVAL (pid 1) sin depender de la tirada inicial');
+if (rivalTurn19) {
+  /* Intenta JUGAR A (pid 0) mientras el turno es de B (pid 1). Antes se pasaba
+   * pid 1, que SI era el turno propio y por eso se colaba hasta el error de
+   * "Grupo inexistente": el aserto media el mensaje equivocado. */
+  hand19(0, C19.reorg);
+  var e19 = throwMsgL14(function () { playReorg19(0, [{ uid: 'x', newParentUid: 'y' }]); });
+  ok(!!e19 && /No es tu turno/.test(e19), 'L19 S2 "during your OWN turn": en el turno del rival 354 se rechaza -> ' + (e19 || '(SE JUGO: BUG)'));
+  ok(E._raw().players[0].hand.indexOf(C19.reorg) >= 0, 'L19 S2 tras el rechazo la 354 sigue en la mano de A');
+}
+
+/* ---------- ESCENARIO 3: el movimiento se ELIGE; sin movimientos no hay jugada ---------- */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+plantRoot19(0, 'ra', idxOfId('ninjas'));
+plantRoot19(0, 'rb', idxOfId('voudonistas'));
+hand19(0, C19.reorg);
+var e19b = throwMsgL14(function () { playReorg19(0, []); });
+ok(!!e19b && /al menos un grupo/.test(e19b), 'L19 S3 sin movimientos elegidos la carta NO se juega -> ' + (e19b || '(SE JUGO: BUG)'));
+var e19c = throwMsgL14(function () { playReorg19(0); });
+ok(!!e19c && /al menos un grupo/.test(e19c), 'L19 S3 sin lista de movimientos tampoco se juega (opts.moves undefined)');
+ok(E._raw().players[0].hand.indexOf(C19.reorg) >= 0, 'L19 S3 tras el rechazo la 354 sigue en la mano');
+
+/* ---------- ESCENARIO 4: lista ilegal = NADA se mueve y NO se gasta la accion ---------- */
+/* Atomicidad: applyStructureMoves valida TODOS los movimientos antes de aplicar el
+ * primero. El primer movimiento de la lista es legal; el segundo es un ciclo. Si el
+ * motor desmontara sobre la marcha, 'g1' se habria movido ya y la accion Illuminati
+ * habria desaparecido. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+plantRoot19(0, 'ra', idxOfId('ninjas'));
+plantRoot19(0, 'rb', idxOfId('voudonistas'));
+plantRoot19(0, 'g1', idxOfId('urbangangs'));
+plantRoot19(0, 'g2', idxOfId('comicbooks'));
+/* g2 queda colgando de g1, para poder proponer el ciclo g1 -> g2. */
+(function rehang2() {
+  var root = E._raw().players[0].structure;
+  var ndG2 = findNode(root, 'g2');
+  var i2 = root.children.indexOf(ndG2);
+  if (i2 >= 0) root.children.splice(i2, 1);
+  findNode(root, 'g1').children.push(ndG2);
+})();
+hand19(0, C19.reorg);
+var tok19b = E._raw().players[0].illumTokens;
+var mapBefore19 = parentMap19(0);
+var e19d = throwMsgL14(function () {
+  playReorg19(0, [{ uid: 'rb', newParentUid: 'ra' }, { uid: 'g1', newParentUid: 'g2' }]);
+});
+ok(!!e19d && /dentro de sí mismo/i.test(e19d), 'L19 S4 la lista con un ciclo se rechaza entera -> ' + (e19d || '(SE JUGO: BUG)'));
+var mapAfter19 = parentMap19(0);
+ok(JSON.stringify(mapAfter19) === JSON.stringify(mapBefore19),
+  'L19 S4 NINGUN movimiento se aplico (el legal tampoco): estructura intacta -> ' + JSON.stringify(mapAfter19));
+ok(E._raw().players[0].illumTokens === tok19b, 'L19 S4 la accion Illuminati NO se gasto -> ' + tok19b + '->' + E._raw().players[0].illumTokens);
+ok(E._raw().players[0].hand.indexOf(C19.reorg) >= 0, 'L19 S4 tras el rechazo la 354 sigue en la mano');
+
+/* ---------- ESCENARIO 5: destino con flecha llena = rejeccion clara ---------- */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+plantRoot19(0, 'ra', idxOfId('ninjas'));
+plantRoot19(0, 'rb', idxOfId('voudonistas'));
+for (var q19 = 0; q19 < 3; q19++) plantRoot19(0, 'fill' + q19, idxOfId('urbangangs'));
+hand19(0, C19.reorg);
+var e19e = throwMsgL14(function () { playReorg19(0, [{ uid: 'ra', newParentUid: 'ra' }]); });
+ok(!!e19e && /dentro de sí mismo/i.test(e19e), 'L19 S5 mover un grupo bajo si mismo se rechaza por ciclo, no por flecha -> ' + (e19e || '(SE JUGO: BUG)'));
+
+/* ---------- ESCENARIO 6: E.organize (Bermuda) sigue funcionando igual ---------- */
+/* L19 extrajo el cuerpo de E.organize a applyStructureMoves(). Este escenario
+ * protege esa refactorizacion: si el cuerpo se hubiera roto al moverlo, el
+ * precedente P1-009 caeria aqui. */
+fresh(firstOf('bermuda'), firstOf('cthulhu'));
+endTurnOfL15(0);              /* E.organize exige turno propio (requireOwnMain) */
+plantRoot19(0, 'bx1', idxOfId('ninjas'));
+plantRoot19(0, 'bx2', idxOfId('voudonistas'));
+var okOrganize19 = !throwMsgL14(function () { E.organize(0, [{ uid: 'bx2', newParentUid: 'bx1' }]); });
+ok(okOrganize19 && parentMap19(0).bx2 === 'bx1', 'L19 S6 E.organize (Bermuda Triangle) sigue moviendo grupos tras la extraccion');
+var e19f = throwMsgL14(function () { E.organize(0, [{ uid: 'bx2', newParentUid: 'bx2' }]); });
+ok(!!e19f && /dentro de sí mismo/i.test(e19f), 'L19 S6 E.organize sigue rechazando el ciclo con el MISMO mensaje');
+var e19g = throwMsgL14(function () { E.organize(0, [{ uid: 'bx2', newParentUid: 'bx2' }]); });
+ok(!!e19g && /dentro de sí mismo/i.test(e19g),
+  'L19 S6 el mensaje de ciclo de E.organize es IDENTICO al de antes de la extraccion');
+/* Y una faccion que NO puede reorganizar gratis sigue sin poder. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);              /* E.organize exige turno propio (requireOwnMain) */
+plantRoot19(0, 'nx1', idxOfId('ninjas'));
+plantRoot19(0, 'nx2', idxOfId('voudonistas'));
+var e19h = throwMsgL14(function () { E.organize(0, [{ uid: 'nx2', newParentUid: 'nx1' }]); });
+ok(!!e19h && /no puede reorganizar/i.test(e19h), 'L19 S6 solo Bermuda reorganiza gratis (P1-009 intacto) -> ' + (e19h || '(SE JUGO: BUG)'));
+
+/* ==================================================================== *
+ * L20 (2026-10) — 408 Upheaval! (kind 'global_discard')
+ * IMPRESO VERBATIM: "Each player must choose one group from their Power Structure
+ * and discard it. These do not count as destroyed for anyones victory conditions.
+ * This card may be played at any time. It requires an action by your Illuminati."
+ *
+ * Lo que se afirma es el EFECTO, no la aritmetica: los grupos CONCRETOS
+ * desaparecen de las estructuras (por uid, no por numero de grupos) y NO aparece
+ * nada en la contabilidad de destruccion. El criterio de aceptacion del lote es
+ * exactamente "probado por la AUSENCIA de cada uid concreto" y "no se escribe
+ * destroyedBy", asi que los dos asertos SON el test.
+ * ==================================================================== */
+var C20 = { upheaval: idxOfId('upheaval') };
+ok(C20.upheaval != null && C.cards[C20.upheaval].effect.kind === 'global_discard'
+  && C.cards[C20.upheaval].effect.anyTime === true,
+  'L20 408 Upheaval! esta en el catalogo con kind global_discard y anyTime');
+function plant20(pid, uid, cardId) {
+  var root = E._raw().players[pid].structure;
+  root.children.push({ uid: uid, cardId: cardId, children: [], tokens: 0 });
+  return findNode(root, uid);
+}
+function uidsIn20(pid) {
+  var out = [];
+  (function rec(n) { (n.children || []).forEach(function (ch) { if (ch.cardId != null) out.push(ch.uid); rec(ch); }); })(E._raw().players[pid].structure);
+  return out;
+}
+function raw20() { return E._raw(); }
+function playUpheaval20(pid, choices) { return E.playPlot(pid, C20.upheaval, null, { choices: choices }); }
+
+/* ---------- ESCENARIO 1 (aceptacion): los DOS jugadores descartan uno ---------- */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+hand19(0, C20.upheaval);   /* la 408 tiene que estar EN LA MANO */
+endTurnOfL15(0);
+E._raw().players[0].illumTokens = 1;
+plant20(0, 'a1', idxOfId('ninjas'));
+plant20(0, 'a2', idxOfId('voudonistas'));
+plant20(1, 'b1', idxOfId('templars'));
+plant20(1, 'b2', idxOfId('princecharles'));
+var tk20 = E._raw().players[0].illumTokens;
+playUpheaval20(0, ['a1', 'b1']);
+var r20 = raw20();
+ok(uidsIn20(0).indexOf('a1') < 0 && uidsIn20(0).indexOf('a2') >= 0,
+  'L20 S1 A descarta el grupo ELEGIDO (a1) y conserva el otro (a2) -> ' + JSON.stringify(uidsIn20(0)));
+ok(uidsIn20(1).indexOf('b1') < 0 && uidsIn20(1).indexOf('b2') >= 0,
+  'L20 S1 el RIVAL tambien descarta el suyo (b1) y conserva el otro (b2) -> ' + JSON.stringify(uidsIn20(1)));
+ok(r20.groupDiscard.indexOf(idxOfId('ninjas')) >= 0 && r20.groupDiscard.indexOf(idxOfId('templars')) >= 0,
+  'L20 S1 los dos grupos descartados estan en el descarte de Groups');
+/* ESTA es la clausula que da nombre al lote. */
+ok(r20.players[0].destroyedByMe.length === 0 && r20.players[1].destroyedByMe.length === 0,
+  'L20 S1 "do not count as destroyed": NO se escribe destroyedByMe de NADIE -> '
+  + r20.players[0].destroyedByMe.length + '/' + r20.players[1].destroyedByMe.length);
+ok(r20.players[0].destroyedIlluminati.length === 0 && r20.players[1].destroyedIlluminati.length === 0,
+  'L20 S1 tampoco se escribe destroyedIlluminati (meta Fratricide intacta)');
+ok(r20.players[0].illumTokens === tk20 - 1, 'L20 S1 el coste es 1 accion Illuminati -> ' + tk20 + '->' + r20.players[0].illumTokens);
+ok(r20.phase !== 'gameover', 'L20 S1 la partida NO termina: descartar no es ganar -> phase=' + r20.phase);
+ok(r20.log.some(function (l) { return /408 Upheaval!/.test(l.msg) && /no cuentan como destruidos/.test(l.msg); }),
+  'L20 S1 el log lo declara por jugador');
+ok(r20.players[0].hand.indexOf(C20.upheaval) < 0, 'L20 S1 la 408 sale de la mano');
+
+/* ---------- ESCENARIO 2: "at any time" DE VERDAD -> se juega en el turno del rival ---------- */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+hand19(0, C20.upheaval);   /* la 408 tiene que estar EN LA MANO */
+var itIsB20 = false;
+for (var t20 = 0; t20 < 8; t20++) {
+  var s20 = E.getState();
+  if (s20.gameover) break;
+  if (s20.currentPid === 1) { itIsB20 = true; break; }
+  E.endTurn();
+}
+ok(itIsB20, 'L20 S2 el fixture localiza el turno del rival (pid 1)');
+if (itIsB20) {
+  E._raw().players[0].illumTokens = 1;
+  plant20(0, 'a1', idxOfId('ninjas'));
+  plant20(1, 'b1', idxOfId('templars'));
+  var e20 = throwMsgL14(function () { playUpheaval20(0, ['a1', 'b1']); });
+  ok(!e20 && uidsIn20(0).indexOf('a1') < 0 && uidsIn20(1).indexOf('b1') < 0,
+    'L20 S2 "This card may be played at any time": A juega 408 en el TURNO DEL RIVAL -> ' + (e20 || 'OK'));
+}
+
+/* ---------- ESCENARIO 3: la eleccion es de CADA jugador y de SUS grupos ---------- */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+hand19(0, C20.upheaval);   /* la 408 tiene que estar EN LA MANO */
+endTurnOfL15(0);
+E._raw().players[0].illumTokens = 1;
+plant20(0, 'a1', idxOfId('ninjas'));
+plant20(0, 'a2', idxOfId('voudonistas'));
+plant20(1, 'b1', idxOfId('templars'));
+var tk20b = E._raw().players[0].illumTokens;
+var e20b = throwMsgL14(function () { playUpheaval20(0, ['a1', 'a2']); });
+ok(!!e20b && /no es suyo/.test(e20b), 'L20 S3 un grupo que no es del jugador al que se asigna se rechaza -> ' + (e20b || '(SE JUGO: BUG)'));
+ok(uidsIn20(0).indexOf('a1') >= 0 && uidsIn20(1).indexOf('b1') >= 0,
+  'L20 S3 tras el rechazo NO se descarto nada (atomicidad) -> ' + JSON.stringify(uidsIn20(0)) + ' / ' + JSON.stringify(uidsIn20(1)));
+ok(E._raw().players[0].illumTokens === tk20b, 'L20 S3 y la accion Illuminati NO se gasto -> ' + E._raw().players[0].illumTokens);
+
+/* ---------- ESCENARIO 4: jugador SIN grupos = eleccion nula; con grupos = obligatoria ---------- */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+hand19(0, C20.upheaval);   /* la 408 tiene que estar EN LA MANO */
+endTurnOfL15(0);
+E._raw().players[0].illumTokens = 1;
+plant20(0, 'a1', idxOfId('ninjas'));
+/* B no tiene ningun grupo: su eleccion debe poder ser null. */
+var e20c = throwMsgL14(function () { playUpheaval20(0, ['a1', null]); });
+ok(!e20c && uidsIn20(0).indexOf('a1') < 0,
+  'L20 S4 un jugador SIN grupos acepta eleccion nula -> ' + (e20c || 'OK'));
+/* Y al reves: si tiene grupos, null se rechaza. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+hand19(0, C20.upheaval);   /* la 408 tiene que estar EN LA MANO */
+endTurnOfL15(0);
+E._raw().players[0].illumTokens = 1;
+plant20(0, 'a1', idxOfId('ninjas'));
+plant20(1, 'b1', idxOfId('templars'));
+var e20d = throwMsgL14(function () { playUpheaval20(0, ['a1', null]); });
+ok(!!e20d && /Each player must choose one group/.test(e20d),
+  'L20 S4 un jugador CON grupos no puede dejar su eleccion vacia -> ' + (e20d || '(SE JUGO: BUG)'));
+ok(uidsIn20(1).indexOf('b1') >= 0, 'L20 S4 tras el rechazo el rival conserva su grupo');
+
+/* ---------- ESCENARIO 5: perder el ULTIMO grupo por 408 no es eliminacion ---------- */
+/* Es la segunda mitad de "do not count as destroyed for anyones victory
+ * conditions": si el rival pierde su unico grupo, eso no puede contar como
+ * destruido, asi que tampoco puede ser una eliminacion. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+hand19(0, C20.upheaval);   /* la 408 tiene que estar EN LA MANO */
+endTurnOfL15(0);
+E._raw().players[0].illumTokens = 1;
+plant20(0, 'a1', idxOfId('ninjas'));
+plant20(1, 'b1', idxOfId('templars'));
+playUpheaval20(0, ['a1', 'b1']);
+var r20b = raw20();
+ok(uidsIn20(1).length === 0, 'L20 S5 B se queda sin grupos -> ' + JSON.stringify(uidsIn20(1)));
+ok(r20b.players[1].destroyedIlluminati.length === 0,
+  'L20 S5 y NO se registra su Illuminati como destruido (Fratricide no lo cuenta)');
+ok(r20b.phase !== 'gameover' && !r20b.winner,
+  'L20 S5 la partida NO termina por eliminacion de B tras un descarte que no cuenta como destruccion');
+ok(r20b.players[1].eliminated !== true,
+  'L20 S5 B no queda marcado como eliminado (el case no llama a checkElimination)');
+
+/* ---------- ESCENARIO 6: sin accion Illuminati no se juega ---------- */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+hand19(0, C20.upheaval);   /* la 408 tiene que estar EN LA MANO */
+endTurnOfL15(0);
+E._raw().players[0].illumTokens = 0;
+plant20(0, 'a1', idxOfId('ninjas'));
+plant20(1, 'b1', idxOfId('templars'));
+var e20e = throwMsgL14(function () { playUpheaval20(0, ['a1', 'b1']); });
+ok(!!e20e && /accion de tu Illuminati/.test(e20e), 'L20 S6 sin accion Illuminati la 408 no se juega -> ' + (e20e || '(SE JUGO: BUG)'));
+ok(uidsIn20(0).indexOf('a1') >= 0 && uidsIn20(1).indexOf('b1') >= 0, 'L20 S6 no se descarto nada');
+
+/* ==================================================================== *
+ * L18 (2026-10) — FLECHAS DE CONTROL (kind:'control_arrows')
+ * 298 Lets Get Organized · 299 Let's Get REALLY Organized
+ *
+ * IMPRESO (298): "Play this card during your turn, on any Group card that has
+ * fewer than three outgoing control arrows. This is an action for that group or
+ * its master. You must control the target. The target group gains an extra
+ * control arrow, on either the end or the side of the card. Place this card
+ * underneath it, with an arrow showing, to provide the new arrow. Duplicates of
+ * this card may not be used on the same group. Requires Action"
+ *
+ * Lo que se afirma es SIEMPRE el CONTADOR (E.arrowCount(uid) -> used/cap/free/
+ * extra), nunca el log: la aceptacion de plan.md esta escrita en flechas.
+ * ==================================================================== */
+var C18 = { one: idxOfId('letsgetorganized'), three: idxOfId('letsgetreallyorganized') };
+ok(C18.one != null && C18.three != null, 'L18 las 2 cartas de flechas de control estan en el catalogo');
+ok(C.cards[C18.one].effect.kind === 'control_arrows' && C.cards[C18.one].effect.mode === 'gain_one'
+  && C.cards[C18.three].effect.mode === 'reach_three',
+  'L18 298 declara mode gain_one y 299 mode reach_three (un solo kind, dos efectos de flecha)');
+
+/* Grupo con N titeres ya colocados. kids son grupos REALES del mazo: maxChildren
+ * de un grupo es 3 (P1-023), asi que un grupo con 3 titeres tiene 0 flechas
+ * libres, con 2 tiene 1 y con 1 tiene 2 — los tres valores que el impreso
+ * puede describir. depth 1 = hijo directo de la raiz, o sea un grupo normal. */
+function make18(pid, uid, cardId, tokens, kidIds) {
+  var n = plant(pid, uid, cardId, tokens == null ? 0 : tokens);
+  for (var i = 0; i < (kidIds || []).length; i++)
+    n.children.push({ uid: uid + 'c' + i, cardId: idxOfId(kidIds[i]), children: [], tokens: 0 });
+  return n;
+}
+/* La carta en la mano por identidad de catalogo (se saca del mazo y se purga la
+ * mano): el reparto es aleatorio y sin purgar la flakes de P1-078. */
+function hand18(pid, cardId) {
+  var r = E._raw(), k;
+  for (k = r.plotDeck.length - 1; k >= 0; k--) if (r.plotDeck[k] === cardId) r.plotDeck.splice(k, 1);
+  for (k = r.groupDeck.length - 1; k >= 0; k--) if (r.groupDeck[k] === cardId) r.groupDeck.splice(k, 1);
+  var h = r.players[pid].hand;
+  for (k = h.length - 1; k >= 0; k--) if (h[k] === cardId) h.splice(k, 1);
+  h.push(cardId);
+  return cardId;
+}
+function err18(fn) { return throwMsgL14(fn); }
+function arrows18(uid) { return E.arrowCount(uid); }
+var KID18 = ['ninjas', 'voudonistas', 'urbangangs'];
+
+/* ---------- ESCENARIO 1 (aceptacion 298): 0 flechas libres -> gana 1 ---------- */
+/* 3 titeres = 0 flechas libres, que es el unico estado donde 298 es legal
+ * ("fewer than three outgoing control arrows"). El grupo objetivo tiene 1 ficha
+ * de accion, asi que el coste "This is an action for that group or its master"
+ * lo paga el propio objetivo. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand18(0, C18.one);
+make18(0, 'g18a', idxOfId('templars'), 1, KID18.slice(0, 3));
+ok(arrows18('g18a').free === 0 && arrows18('g18a').cap === 3 && arrows18('g18a').extra === 0,
+  'L18 S1 punto de partida: 3 titeres = 0 flechas libres -> ' + JSON.stringify(arrows18('g18a')));
+var eS1 = err18(function () { E.playPlot(0, C18.one, 'g18a'); });
+ok(!eS1, 'L18 S1 298 se juega sobre el grupo con 0 flechas libres -> ' + (eS1 || 'OK'));
+var aS1 = arrows18('g18a');
+ok(aS1.extra === 1, 'L18 S1 el grupo GANA 1 flecha de control extra (0 -> 1) -> extra=' + aS1.extra);
+ok(aS1.cap === 4 && aS1.used === 4,
+  'L18 S1 la capacidad sube a 4 y la carta ocupa la flecha nueva ("con an arrow showing, to provide the new arrow") -> ' + JSON.stringify(aS1));
+ok(E._raw().players[0].hand.indexOf(C18.one) < 0, 'L18 S1 298 sale de la mano tras colocarse debajo del grupo');
+
+/* ---------- ESCENARIO 2 (aceptacion 299): 1 o 2 flechas libres -> queda con 3 ---------- */
+/* 2 titeres = 1 flecha libre. 299 exige 1 o 2 y su efecto es "now has three
+ * outgoing control arrows": LIBRE tiene que quedar en 3 exactas. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand18(0, C18.three);
+make18(0, 'g18b', idxOfId('templars'), 1, KID18.slice(0, 2));
+ok(arrows18('g18b').free === 1, 'L18 S2 punto de partida: 2 titeres = 1 flecha libre');
+var eS2 = err18(function () { E.playPlot(0, C18.three, 'g18b'); });
+ok(!eS2, 'L18 S2 299 se juega sobre el grupo con 1 flecha libre -> ' + (eS2 || 'OK'));
+var aS2 = arrows18('g18b');
+ok(aS2.free === 3, 'L18 S2 "The target group NOW HAS THREE outgoing control arrows" -> free=' + aS2.free + ' ' + JSON.stringify(aS2));
+
+/* La OTRA fila de la misma regla: 1 titere = 2 flechas libres. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand18(0, C18.three);
+make18(0, 'g18c', idxOfId('templars'), 1, KID18.slice(0, 1));
+ok(arrows18('g18c').free === 2, 'L18 S2b punto de partida: 1 titere = 2 flechas libres');
+ok(!err18(function () { E.playPlot(0, C18.three, 'g18c'); }), 'L18 S2b 299 tambien acepta 2 flechas libres');
+ok(arrows18('g18c').free === 3, 'L18 S2b tras 299 el grupo tiene 3 flechas libres -> ' + JSON.stringify(arrows18('g18c')));
+
+/* ---------- ESCENARIO 3 (negativo): 3 flechas libres no aceptan NINGUNA ---------- */
+/* Sin titeres = 3 flechas libres. 298 exige "<3" y 299 exige "1 o 2": con 3
+ * las dos se rechazan. SeHrueba el CONTADOR tambien despues del rechazo. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand18(0, C18.one);
+hand18(0, C18.three);
+make18(0, 'g18d', idxOfId('templars'), 1, []);
+ok(arrows18('g18d').free === 3, 'L18 S3 punto de partida: 0 titeres = 3 flechas libres');
+var e3a = err18(function () { E.playPlot(0, C18.one, 'g18d'); });
+ok(/fewer than three outgoing control arrows/.test(e3a), 'L18 S3 298 rechaza con 3 flechas libres y cita el impreso -> "' + e3a + '"');
+var e3b = err18(function () { E.playPlot(0, C18.three, 'g18d'); });
+ok(/one or two outgoing control arrows/.test(e3b), 'L18 S3 299 rechaza con 3 flechas libres y cita el impreso -> "' + e3b + '"');
+ok(arrows18('g18d').free === 3 && arrows18('g18d').extra === 0,
+  'L18 S3 tras los 2 rechazos el contador NO se ha movido (nada se cobra, nada se coloca) -> ' + JSON.stringify(arrows18('g18d')));
+ok(E._raw().players[0].hand.indexOf(C18.one) >= 0 && E._raw().players[0].hand.indexOf(C18.three) >= 0,
+  'L18 S3 las 2 cartas siguen en la mano tras los rechazos (validacion antes de mutar)');
+ok(findNode(E._raw().players[0].structure, 'g18d').tokens === 1,
+  'L18 S3 la ficha de accion NO se gasto en el rechazo');
+
+/* ---------- ESCENARIO 4: "during your turn" + "You must control the target" ---------- */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand18(0, C18.one);
+make18(0, 'g18e', idxOfId('templars'), 1, KID18.slice(0, 3));
+make18(1, 'g18r', idxOfId('hollywood'), 1, KID18.slice(0, 3));
+var e4a = err18(function () { E.playPlot(0, C18.one, 'g18r'); });
+ok(/must control the target/i.test(e4a), 'L18 S4 "You must control the target": grupo rival rechazado -> "' + e4a + '"');
+var e4b = err18(function () { E.playPlot(1, C18.one, 'g18e'); });
+ok(/No es tu turno|comienzo de tu turno/i.test(e4b), 'L18 S4 "Play this card DURING YOUR turn": P1 jugando sobre el grupo de P0 -> "' + e4b + '"');
+
+/* ---------- ESCENARIO 5: el coste lo puede pagar el MASTER (no solo el objetivo) ---------- */
+/* "This is an action for that group or its master." El objetivo esta a depth 2
+ * (bajo otro grupo de P0) y NO tiene ficha; el master si. Si el motor solo
+ * mirara el objetivo, este escenario fallaria. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand18(0, C18.one);
+var mast = make18(0, 'm18', idxOfId('hollywood'), 1, []);
+var tgt = { uid: 't18', cardId: idxOfId('templars'), children: [{ uid: 't18c0', cardId: idxOfId('ninjas'), children: [], tokens: 0 },
+           { uid: 't18c1', cardId: idxOfId('voudonistas'), children: [], tokens: 0 },
+           { uid: 't18c2', cardId: idxOfId('urbangangs'), children: [], tokens: 0 }], tokens: 0 };
+mast.children.push(tgt);
+ok(arrows18('t18').free === 0 && tgt.tokens === 0, 'L18 S5 el objetivo tiene 0 flechas libres y 0 fichas');
+var e5a = err18(function () { E.playPlot(0, C18.one, 't18'); });
+ok(!e5a, 'L18 S5 298 se juega pagando con la ficha del MASTER (el objetivo no tiene ninguna) -> ' + (e5a || 'OK'));
+ok(arrows18('t18').extra === 1 && findNode(E._raw().players[0].structure, 'm18').tokens === 0,
+  'L18 S5 la ficha gastada es la del master (m18: 1 -> 0) y el objetivo gana la flecha -> ' + JSON.stringify(arrows18('t18')));
+
+/* Y el negativo: ni el objetivo ni su master tienen ficha. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand18(0, C18.one);
+var mast0 = make18(0, 'm18z', idxOfId('hollywood'), 0, []);
+var tgt0 = { uid: 't18z', cardId: idxOfId('templars'), children: KID18.map(function (id18, i18) { return { uid: 'z' + i18, cardId: idxOfId(id18), children: [], tokens: 0 }; }), tokens: 0 };
+mast0.children.push(tgt0);
+var e5b = err18(function () { E.playPlot(0, C18.one, 't18z'); });
+ok(/action for that group or its master/i.test(e5b), 'L18 S5 sin ficha ni en el objetivo ni en el master se rechaza con el motivo impreso -> "' + e5b + '"');
+ok(arrows18('t18z').extra === 0 && tgt0.children.length === 3,
+  'L18 S5 el rechazo no coloca la carta ni concede flechas -> ' + JSON.stringify(arrows18('t18z')));
+
+/* ---------- ESCENARIO 6: "Duplicates of this card may not be used on the same group" ---------- */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+endTurnOfL15(0);
+hand18(0, C18.one);
+/* 2a COPIA a mano, sin pasar por hand18(): hand18() purga las copias previas de la
+ * carta (regla de P1-078 contra las flakes del reparto aleatorio) y por eso dos
+ * llamadas suyas dejan 1 sola carta: el duplicado se perderia en el fixture y
+ * el veto que se prueba aqui nunca se llegaria a ejecutar. */
+E._raw().players[0].hand.push(C18.one);
+ok(E._raw().players[0].hand.filter(function (x18) { return x18 === C18.one; }).length === 2,
+  'L18 S6 A tiene 2 copias de 298 en mano (duplicado real, no el mismo indice dos veces)');
+make18(0, 'g18f', idxOfId('templars'), 1, KID18.slice(0, 3));
+ok(!err18(function () { E.playPlot(0, C18.one, 'g18f'); }), 'L18 S6 el primer 298 sobre el grupo es legal');
+var e6 = err18(function () { E.playPlot(0, C18.one, 'g18f'); });
+ok(/Duplicates of this card may not be used on the same group/.test(e6),
+  'L18 S6 el segundo 298 en el MISMO grupo se rechaza con el motivo impreso -> "' + e6 + '"');
+ok(arrows18('g18f').extra === 1,
+  'L18 S6 el duplicado rechazado no concedio una SEGUNDA flecha -> extra=' + arrows18('g18f').extra);
+
+/* ==================================================================== *
+ * L16.e (2026-10) — CARTAS DE ACCION MULTIPLE (4 kinds, 4 casos distintos).
+ * Se afirma el EFECTO OBSERVABLE: identificadores concretos ausentes de
+ * exposedPlots/linkedPlots, attrsRemoved del nodo, tokens a 0, y la lista
+ * lastResult. Nunca solo aritmetica ni contar cartas en mano.
+ * ==================================================================== */
+var C16 = {
+  nwoOne: idxOfId('bloodtoiltearsandsweat'),
+  reforms: idxOfId('sweepingreforms'),
+  exposed: idxOfId('exposed'),
+  scandal: idxOfId('scandal'),
+  /* NWOs reales del mazo (tienen nwoColor; ver P1-129) */
+  nwoY: idxOfId('biggerbusiness'),
+  nwoB: idxOfId('athousandpointsoflight'),
+  nwoB2: idxOfId('energycrisis'),
+  /* grupos Media con Poder verificado */
+  media4: idxOfId('bigmedia'),          /* P4  liberal+straight */
+  media3: idxOfId('hollywood'),         /* P3  liberal */
+  media2: idxOfId('recordingindustry'), /* P2  corporate */
+  mediaW: idxOfId('tabloids'),          /* P2  weird */
+  secret: idxOfId('vampires'),          /* P2  secret */
+  otherPlot: idxOfId('surveillance')
+};
+ok(C16.nwoOne != null && C16.reforms != null && C16.exposed != null && C16.scandal != null,
+  'L16 las 4 cartas de accion multiple estan en el catalogo con efecto propio');
+/* Y con el kind que les toca. Un kind compartido daria el mismo efecto, y aqui
+ * los cuatro son distintos: descartar 1 NWO, descartarlas todas, perder el
+ * Secret, o quitar fichas por alineacion (DoD#4). */
+ok(C.cards[C16.nwoOne].effect.kind === 'nwo_discard_one',
+  'L16 207 es kind nwo_discard_one');
+ok(C.cards[C16.reforms].effect.kind === 'nwo_discard_all' && C.cards[C16.reforms].effect.payAnyPlayer === true,
+  'L16 379 es kind nwo_discard_all y su coste puede usar grupos de CUALQUIER jugador');
+ok(C.cards[C16.exposed].effect.kind === 'secret_expose' && C.cards[C16.scandal].effect.kind === 'token_strip_aligned',
+  'L16 253 y 362 tienen kind propio');
+/* --- helpers de fixture --- */
+function err16(fn) { try { fn(); } catch (e16) { return String((e16 && e16.message) || e16); } return ''; }
+function raw16() { return E._raw(); }
+function node16(pid, uid) { return findNode(raw16().players[pid].structure, uid); }
+function nwoExpose16(pid, ix) { var pl = raw16().players[pid]; if (pl.exposedPlots.indexOf(ix) < 0) pl.exposedPlots.push(ix); return ix; }
+function nwoLink16(pid, ix) { var pl = raw16().players[pid]; pl.linkedPlots = pl.linkedPlots || []; pl.linkedPlots.push({ uid: 'lp' + ix, cardId: ix, linkedTo: null }); return ix; }
+/* Quita TODAS las NWOs en juego de TODOS los jugadores. El reparto es aleatorio
+ * y sin esta purga puede venir una NWO en la mano o expuesta, que es exactamente
+ * lo que estos escenarios affirms (P1-078 / regla 13). */
+function stripNwo16() {
+  var r = raw16();
+  for (var q = 0; q < r.players.length; q++) {
+    var pl = r.players[q];
+    for (var e = pl.exposedPlots.length - 1; e >= 0; e--) {
+      if (C.cards[pl.exposedPlots[e]] && C.cards[pl.exposedPlots[e]].nwoColor) pl.exposedPlots.splice(e, 1);
+    }
+    if (pl.linkedPlots) for (var l = pl.linkedPlots.length - 1; l >= 0; l--) {
+      if (C.cards[pl.linkedPlots[l].cardId] && C.cards[pl.linkedPlots[l].cardId].nwoColor) pl.linkedPlots.splice(l, 1);
+    }
+  }
+}
+function linkedHas16(pid, ix) {
+  var lp = raw16().players[pid].linkedPlots || [];
+  for (var i = 0; i < lp.length; i++) if (lp[i].cardId === ix) return true;
+  return false;
+}
+function play16(pid, ix, targetUid, opts) {
+  var out16 = E.playPlot(pid, ix, targetUid, opts || {});
+  /* P1-132: `lastResult` se publica como `out.lastPlotResult` en el RETORNO de
+     E.playPlot (engine.js ~6695), no como S.lastResult. Sin esto el helper
+     devolvia undefined y las aserciones sobre `paid`/`discarded` no affirmaban
+     nada: verde con el motor roto. */
+  return (out16 && out16.lastPlotResult) || E._raw().lastResult;
+}
+
+/* ==================== 207 Blood, Toil, Tears and Sweat ==================== */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+hand19(0, C16.nwoOne);
+stripNwo16();
+plant(0, 'm207', C16.media4, 1);
+nwoExpose16(0, C16.nwoY);
+var r207 = play16(0, C16.nwoOne, null, { nwoCardId: C16.nwoY });
+ok(raw16().players[0].exposedPlots.indexOf(C16.nwoY) < 0,
+  'L16 207 la NWO elegida sale de exposedPlots (prueba por ausencia del id concreto)');
+ok(raw16().plotDiscard.indexOf(C16.nwoY) >= 0, 'L16 207 la NWO descartada queda en el registro de descartes');
+ok(node16(0, 'm207').tokens === 0, 'L16 207 el Poder COMBINADO se paga: Big Media (P4) gasta su ficha -> tokens=' + node16(0, 'm207').tokens);
+ok(!!(r207 && r207.nwo && r207.paid && r207.paid.power === 4 && r207.discarded.length === 1 && r207.discarded[0] === 'Bigger Business'),
+  'L16 207 el resultado declara 1 NWO descartada pagada con Poder 4 combinado -> ' + JSON.stringify(r207 && r207.paid) + ' / ' + JSON.stringify(r207 && r207.discarded));
+
+/* 207 sin ninguna NWO en juego: el motivo impreso y la ficha NO se gasta (P1-033). */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+hand19(0, C16.nwoOne);
+stripNwo16();
+plant(0, 'm207b', C16.media4, 1);
+var e207a = err16(function () { play16(0, C16.nwoOne, null, { nwoCardId: C16.nwoY }); });
+ok(/no hay ninguna carta New World Order/.test(e207a), 'L16 207 sin NWOs en juego lo dice claro -> "' + e207a + '"');
+ok(node16(0, 'm207b').tokens === 1, 'L16 207 si la carta se rechaza NO se ha pagado nada (ficha intacta)');
+
+/* 207 con un id que no es una NWO: la lista de las que SI hay, para elegir bien. */
+nwoExpose16(0, C16.nwoB);
+nwoExpose16(0, C16.otherPlot);
+var e207b = err16(function () { play16(0, C16.nwoOne, null, { nwoCardId: C16.otherPlot }); });
+ok(/elige una de las/.test(e207b) && /A Thousand Points of Light/.test(e207b),
+  'L16 207 un id que no es NWO se rechaza nombrando las NWO que si hay en juego -> "' + e207b + '"');
+ok(node16(0, 'm207b').tokens === 1 && raw16().players[0].exposedPlots.indexOf(C16.nwoB) >= 0,
+  'L16 207 el rechazo es atomico: la NWO sigue expuesta y la ficha intacta');
+
+/* 207 con Poder Media insuficiente: el mensaje dice CUANTO falta. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+hand19(0, C16.nwoOne);
+stripNwo16();
+plant(0, 'm207c', C16.media2, 1);
+nwoExpose16(0, C16.nwoY);
+var e207c = err16(function () { play16(0, C16.nwoOne, null, { nwoCardId: C16.nwoY }); });
+ok(/solo aportan Poder 2 de los 4/.test(e207c), 'L16 207 Poder Media insuficiente dice el que falta -> "' + e207c + '"');
+ok(node16(0, 'm207c').tokens === 1 && raw16().players[0].exposedPlots.indexOf(C16.nwoY) >= 0,
+  'L16 207 con Poder insuficiente no se descarta la NWO ni se paga');
+
+/* ==================== 379 Sweeping Reforms ==================== */
+/* ACEPTACION DE plan.md: con DOS NWOs en juego (una EXPUESTA y otra LINKADA,
+ * y de jugadores distintos) las descarta LAS DOS, probando por la ausencia de
+ * sus ids concretos. El Poder combinado sale de los dos jugadores, que es lo
+ * unico que imprime 379 ("These groups may belong to more than one player!"). */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+hand19(0, C16.reforms);
+stripNwo16();
+plant(0, 'm379a', C16.media4, 1);
+plant(1, 'm379b', C16.media3, 1);
+nwoExpose16(0, C16.nwoY);
+nwoLink16(1, C16.nwoB2);
+var r379 = play16(0, C16.reforms, null, {});
+ok(raw16().players[0].exposedPlots.indexOf(C16.nwoY) < 0, 'L16 379 la NWO EXPUESTA sale de exposedPlots');
+ok(!linkedHas16(1, C16.nwoB2), 'L16 379 la NWO LINKADA sale de linkedPlots (id concreto ausente)');
+ok(raw16().plotDiscard.indexOf(C16.nwoY) >= 0 && raw16().plotDiscard.indexOf(C16.nwoB2) >= 0,
+  'L16 379 cada NWO va al descarte de SU dueno (la de A y la de B)');
+ok(!!(r379 && r379.all && r379.discarded.length === 2 && r379.paid.groups.length === 2),
+  'L16 379 el resultado declara 2 descartadas pagadas con 2 grupos -> ' + JSON.stringify(r379 && r379.discarded) + ' / ' + JSON.stringify(r379 && r379.paid && r379.paid.groups));
+ok(node16(0, 'm379a').tokens === 0 && node16(1, 'm379b').tokens === 0,
+  'L16 379 pagan las fichas de los DOS jugadores (Poder 4 + 3 = 7 >= 6)');
+
+/* 379 con menos de 6 combinados: el mensaje dice que puede usar grupos de cualquiera. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+hand19(0, C16.reforms);
+stripNwo16();
+plant(0, 'm379c', C16.media4, 1);
+nwoExpose16(0, C16.nwoY);
+var e379 = err16(function () { play16(0, C16.reforms, null, {}); });
+ok(/Poder 4 de los 6/.test(e379) && /cualquier jugador/.test(e379), 'L16 379 Poder insuficiente lo dice -> "' + e379 + '"');
+ok(node16(0, 'm379c').tokens === 1 && raw16().players[0].exposedPlots.indexOf(C16.nwoY) >= 0,
+  'L16 379 con Poder insuficiente no se descarta ninguna NWO ni se paga');
+
+/* ==================== 253 Exposed! ==================== */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+hand19(0, C16.exposed);
+plant(0, 'm253', C16.media4, 1);
+plant(1, 's253', C16.secret, 1);
+var r253 = play16(0, C16.exposed, 's253', {});
+ok(Array.isArray(node16(1, 's253').attrsRemoved) && node16(1, 's253').attrsRemoved.indexOf('secret') >= 0,
+  'L16 253 el grupo Secret pierde el atributo secret -> attrsRemoved=' + JSON.stringify(node16(1, 's253').attrsRemoved));
+ok(node16(0, 'm253').tokens === 0, 'L16 253 paga la accion de UN Media con Poder >= 4 (Big Media P4) -> tokens=' + node16(0, 'm253').tokens);
+ok(!!(r253 && r253.exposed && r253.attr === 'secret' && r253.targetUid === 's253'),
+  'L16 253 el resultado declara que se expo el objetivo pedido -> ' + JSON.stringify(r253 && { t: r253.targetUid, a: r253.attr }));
+
+/* 253 sobre un grupo que NO es Secret: motivo impreso, nada cambia. */
+hand19(0, C16.exposed); /* el caso positivo de arriba se llevo la carta */
+plant(0, 'noSecret253', C16.media2, 1);
+var e253a = err16(function () { play16(0, C16.exposed, 'noSecret253', {}); });
+ok(/One Secret group/.test(e253a), 'L16 253 rechaza un objetivo sin Secret citando el impreso -> "' + e253a + '"');
+ok(!Array.isArray(node16(0, 'noSecret253').attrsRemoved) && node16(0, 'noSecret253').tokens === 1,
+  'L16 253 el rechazo es atomico: el objetivo intacto y la ficha del pagador intacta');
+
+/* 253 sin Media con Poder >= 4 (solo una de P2): el motivo impreso del coste. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+hand19(0, C16.exposed);
+plant(0, 'm253b', C16.mediaW, 1);
+plant(1, 's253b', C16.secret, 1);
+var e253b = err16(function () { play16(0, C16.exposed, 's253b', {}); });
+ok(/It requires the action of any Media group with a Power of 4 or more/.test(e253b),
+  'L16 253 sin Media con Poder 4 lo dice -> "' + e253b + '"');
+ok(!Array.isArray(node16(1, 's253b').attrsRemoved) && node16(0, 'm253b').tokens === 1,
+  'L16 253 sin coste NO se pierde el Secret y no se paga');
+
+/* ==================== 362 Scandal ==================== */
+/* Big Media es liberal+straight: el pagador COMPARTE esas alineaciones, que es
+ * la restriccion impresa. El rival tiene Hollywood (liberal) y Tabloids (weird):
+ * solo el liberal debe quedarse sin ficha. */
+fresh(firstOf('adepts'), firstOf('cthulhu'));
+hand19(0, C16.scandal);
+ok(endTurnOfL15(0), 'L16 362 NO es "at any time": el actor necesita SU turno');
+plant(0, 'm362', C16.media4, 1);
+plant(1, 'lib362', C16.media3, 3);
+plant(1, 'weird362', C16.mediaW, 2);
+var r362 = play16(0, C16.scandal, null, { rivalPid: 1, align: 'liberal' });
+ok(node16(1, 'lib362').tokens === 0, 'L16 362 los grupos del RIVAL de esa alineacion pierden TODAS sus fichas -> tokens=' + node16(1, 'lib362').tokens);
+ok(node16(1, 'weird362').tokens === 2, 'L16 362 NO toca los grupos del rival de OTRAS alineaciones -> tokens=' + node16(1, 'weird362').tokens);
+ok(node16(0, 'm362').tokens === 0, 'L16 362 paga la accion del Media que usa la carta');
+ok(!!(r362 && r362.strip && r362.align === 'liberal' && r362.stripped === 1),
+  'L16 362 el resultado declara 1 grupo limpiado de la alineacion liberal -> ' + JSON.stringify(r362 && { a: r362.align, n: r362.stripped }));
+
+/* 362 con una alineacion que el pagador NO tiene: la restriccion impresa. */
+plant(1, 'vio362', idxOfId('ninjas'), 2);
+/* El caso positivo de arriba YA GASTO la ficha de Big Media. Sin un segundo Media con
+ * ficha el motor rechazaria por el COSTE (que va primero, correctamente) y este
+ * negativo no probaria la restriccion de alineaciones que dice comprobar. */
+plant(0, 'm362b', C16.media4, 1);
+hand19(0, C16.scandal); /* idem */
+var e362a = err16(function () { play16(0, C16.scandal, null, { rivalPid: 1, align: 'violent' }); });
+ok(/The alignment must be shared by the Media group that uses the card/.test(e362a),
+  'L16 362 una alineacion no compartida por el Media pagador se rechaza -> "' + e362a + '"');
+ok(node16(1, 'vio362').tokens === 2 && node16(1, 'lib362').tokens === 0 && node16(0, 'm362b').tokens === 1,
+  'L16 362 el rechazo es atomico: los ninjas siguen con sus 2 fichas, Hollywood con las suyas ya limpiadas, y el pagador NUEVO sin gastar');
+
+/* 362 sin rival elegido, y 362 sin alineacion: los dos motives dechoice. */
+hand19(0, C16.scandal); /* idem */
+var e362b = err16(function () { play16(0, C16.scandal, null, {}); });
+ok(/Choose a rival/.test(e362b), 'L16 362 sin rival elegido lo dice -> "' + e362b + '"');
+hand19(0, C16.scandal); /* la carta se gasto en el caso positivo de arriba */
+var e362c = err16(function () { play16(0, C16.scandal, null, { rivalPid: 1 }); });
+ok(/remove all Action tokens from his Groups of any one alignment/.test(e362c),
+  'L16 362 sin alineacion elegida lo dice -> "' + e362c + '"');
+
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });
