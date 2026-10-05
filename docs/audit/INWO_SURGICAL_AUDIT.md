@@ -8431,3 +8431,199 @@ impreso):
   NWO en vigor en el HUD, veto "except during an Instant or Privileged Attack" de las
   NWO, `become` de Political Correctness inalcanzable con este roster, y un flake
   preexistente en `test_appflow.js` declarado y no reproducido.
+
+## 74. L23 - BONO DE ATAQUE CON UN RESOURCE (resources que aportan +N a un ataque ya declarado)
+
+### Hallazgo
+
+**H1. La familia existia en el mazo y no en el motor.** De los 26 Resources
+pendientes, 7 tienen la misma forma de efecto: "usar la ACCION de este
+recurso para dar +N a un ataque que ya esta declarado". El motor solo tenia el
+precedente de las PLOTS `attack_boost` (L5a, engine.js:5331-5455), que empujan
+`A.boosts`; ningun Resource podia hacerlo porque `E.playResource` no tenia
+ningun `case` que aceptara el efecto y no existia ninguna funcion de consumo
+de esa accion.
+
+**H2. Precedente argumental para UN solo kind.** El comentario de cabecera de
+`case 'attack_boost'` (engine.js:5332-5352) ya lo dice: "Las TRES cartas de
+esta familia empujan el MISMO dato (`A.boosts`, que `computeStrength` suma en
+`det.boosts`) y las tres son '+N a un ataque YA declarado', asi que comparten un
+unico kind. Solo cambian los CALIFICADORES, que son datos." Las 3 cartas de
+este lote empujan exactamente el mismo dato; lo que cambia es el calificador
+(valor por tipo de ataque, atributos del objetivo, atacante cualquiera), luego
+un kind con `mode` mas calificadores de dato es el mismo criterio, no un
+atalajo.
+
+**H3. El TIMING es parte del contrato, no un detalle.** `computeStrength(true)`
+corre en engine.js:3363 (es donde se resuelve la tirada) y lee
+`A.boosts` (engine.js:2988). Por tanto el bonus tiene que empujarse con el
+ataque ABIERTO y ANTES de la tirada: un recurso que se usara despues ya no
+tendria efecto. El mensaje de error del guard cita el impreso y explica el
+momento correcto.
+
+**H4. Colocar un Resource NO ejecuta su efecto.** Precedente doble: L13
+(`entry.action={kind:'disaster_defence',mode:'boost_attack'}`) y el
+`draw_hook` de `E.playResource` (engine.js:2509). `E.playResource` solo valida
+el modo y registra la capacidad en la ENTRADA; el efecto se aplica cuando se
+consume la accion, que es cuando lo imprime la carta.
+
+**H5. Solo 3 de las 7 son implementables enteras.** Las otras 4 tienen 2 o 3
+clausulas, o valores negativos, o dependen de "cancelar una accion" (que
+exige un subsistema de cancelacion distinto de `A.boosts`):
+`rogueboomer` (control Nation + destroy Place una vez y se descarta),
+`lochnessmonster` (3 clausulas), `weathersatellite` (valores condicionales y
+negativos, 2 fichas), `bigfoot` (cancelar la accion de un Media + +3 a
+controlar Green). Se declaran en Backlog con su motivo; no se eternity-ban
+inventar el resto.
+
+**H6. El OCR de estas cartas esta manchado.** En `cards.js`, `mercenaries`
+tiene `text` = "This small, elite corps specializes in covert wet Can act once
+per tur, giving +4...". Los `t:` de este lote salen verbatim de
+`research/scribd_inwo_cards_full.html`, que es la unica fuente con el texto
+completo.
+
+### Correcciones
+
+- **P1-146** - Nuevo `E.useAttackBonus=function(pid,opts)` (engine.js:~2121,
+  justo antes de `E.useDisasterBoost`), calcado de ese mismo precedente.
+  Valida TODO antes de mutar y en este orden: (1) `requireOwnMain(pid)`;
+  (2) el Resource existe y es tuyo (`findResourceEntry`); (3) la entrada tiene
+  `action.kind==='res_attack_bonus'`, si no `su accion todavia no esta
+  implementada`; (4) `oncePerTurn` y ya ha actuado este turno -> cita "Can act
+  once per turn"; (5) **el ataque tiene que estar declarado y sin resolver** ->
+  cita el impreso y explica que se usa con el ataque abierto ANTES de la
+  tirada; (6) `atkType` vs `A.type`, y `anyAttacker`; (7) `targetAttrsAny`
+  sobre `findNode(A.targetUid)`; (8) el valor (`boostValue` o
+  `boostByAtkType[A.type]`), con throw si no encaja en ningun valor. Solo
+  entonces muta: marca `usedThisTurn` (si `oncePerTurn`), empuja
+  `A.boosts.push({name,v})` y escribe el `log`. Si algo se rechaza, no se ha
+  pagado nada.
+- **`case 'res_attack_bonus'` en el `switch(resFx)` de `E.playResource`**
+  (engine.js:~2497, antes del `default:`): solo valida que el `mode` este en
+  la lista cerrada `['atk_type_bonus','any_destroy','target_attrs']`, con el
+  mismo criterio y el mismo mensaje que los `case` de L13.
+- **Registro de la capacidad DESPUES del push** en la entrada del Resource
+  (engine.js:~2544): `entry.action={kind:'res_attack_bonus',mode:c.effect.mode}`
+  + `log` que dice como se usa, igual que L13 y que `draw_hook`.
+- **Datos** (`gen_cards.js`): `L23_FX`/`L23_FXN` antes de `ACTION_COST_KINDS`, y
+  `|| L23_FXN[key]` en la cadena `pfx`. Las 3 cartas comparten el kind
+  `res_attack_bonus` y difieren en `mode` mas los calificadores:
+  `mercenaries` (`mode:'atk_type_bonus'`, `boostByAtkType:{destroy:4,control:1}`,
+  `oncePerTurn:true`), `spearoflonginus` (`mode:'any_destroy'`, `boostValue:1`,
+  `anyAttacker:true`, `unlimited:true`, `countsMagic:true`),
+  `thelibraryatalexandria` (`mode:'target_attrs'`, `atkType:'control'`,
+  `boostValue:5`, `targetAttrsAny:['science','magic','computer']`,
+  `unlimited:true`). Los 3 con `needsOpenAttack:true` y `t:` verbatim.
+- **UI** (`ui.js`): `chipAct(r)` devuelve `'attackbonus'` para los 3 modos (el
+  boton lo dibuja `chipMini`, que ya es generico desde L13); `KIND_ES`
+  `res_attack_bonus: 'Bono de ataque con un Resource'`; 6 entradas en
+  `FIELD_ES` (`oncePerTurn`, `boostByAtkType`, `targetAttrsAny`, `anyAttacker`,
+  `countsMagic`, `needsOpenAttack`); ruta
+  `else if (act==='attackbonus'){ var abUid=btn.getAttribute('data-uid');
+  if(!abUid)return; CB.onUseAttackBonus(abUid); }`.
+- **`game/js/app.js`**: `onUseAttackBonus(resourceUid)` con el mismo patron que
+  `onUseDisasterBoost` (`try`/`catch` con `log('! ' + e.message)`).
+- **P1-147** - FLAKE REAL preexistente cerrado en `test_respond.js` (lo
+  destapo `npm test`, NO era de este lote). Medido: 1/40 fallos en aislamiento,
+  con la traza `Error: No se puede terminar un turno fuera de la fase principal`
+  en `E.endTurn` (engine.js:7268) desde la linea 86. Causa raiz:
+  `seedBothSides()` puede dejar `phase==='begin'` (linea 72-82, return en la 76),
+  y `phase==='begin'` es exactamente lo que el motor deja en engine.js:7362 al
+  abrir la VENTANA DE COMIENZO DE TURNO (`S.pendingTurnStart`), que se cierra
+  con `E.resolvePendingTurnStart({})`. Las TRES llamadas de `E.endTurn()` sin
+  guard (linea 86, el ciclo 147-149 y la 150) lanzaban. Arreglo con 3 parches:
+  (a) guard `&& E.getState().phase==='main'` en la linea 86; (b) helper
+  `cederTurno()` que sella ventanas y devuelve `false` si no se puede ceder;
+  (c) helper `sellarVentanas()` que resuelve en este ORDEN `pendingTurnStart`
+  -> `pendingRoll` -> `pendingEvent` -> `pendingAttack` (hasta 8 vueltas) y
+  devuelve la fase. Resultado medido: **0/100 fallos** (antes 1/40..4/80) y
+  `npm test` 5/5.
+
+### Verificacion
+
+- `node --check` limpio en `engine.js`, `ui.js`, `app.js`, `gen_cards.js`,
+  `test_fase2_rules.js` y `test_respond.js`. CJK/FFFD = 0 en todos.
+- `node gen_cards.js` -> "written 421".
+- `node test_fase4_cards.js` -> **FASE 4 COVERAGE PASSED (171 cartas
+  clasificadas, 77 Plots/Resources sin mecanica, 3 ramas muertas declaradas, 10
+  cartas bloqueadas, 4 huecos de texto)**. Delta **exacto -3** (80 -> 77) y el
+  reparto de kinds ya incluye `"res_attack_bonus":3`.
+- `node test_fase2_rules.js` -> **FASE 2 RULES PASSED**, **43 asertos** de L23
+  en 8 escenarios, todos afirmados sobre ESTADO OBSERVABLE y no sobre el log:
+  (S1) `E.playResource` no ejecuta nada y solo registra
+  `entry.action.kind==='res_attack_bonus'`; (S2) sin ataque declarado ->
+  throw del timing y `usedThisTurn!==true` (atomicidad); (S3) Mercenaries da
+  `v===4` en un ataque a destruir y `v===1` en uno a controlar, y
+  `E.previewStrength().boosts===4`; (S4) Mercenaries dos veces -> throw "Can act
+  once per turn" sin duplicar el bonus, y Spear dos veces NO lanza e mete otro
+  +1; (S5) Library +5 contra `moonbase` (science+computer) y throw contra un
+  grupo sin ninguno de los 3 atributos; (S6) Library en un ataque a destruir ->
+  throw y sin residuo en `A.boosts`; (S7) `anyAttacker` y `unlimited` son DATO;
+  (S8) los tres valores salen del dato.
+- **Barrido 30/30 PASSED** de `test_fase2_rules.js`.
+- `npm test` -> **ALL TESTS PASSED (11 suites)**, 5/5 corridas consecutivas, y
+  `test_respond.js` a 0/100.
+
+### Leccion
+
+1. **El timing de un efecto puede ser el dato mas importante del lote.** La
+   primera pregunta de H3 ("se lee `A.boosts` antes o despues de la
+   tirada?") decidio el diseno entero. Sin esa medicion se habria escrito una
+   funcion que empuja un bonus que ya no cuenta para nada.
+2. **"Colocar" y "usar" son dos momentos distintos, y el impreso los
+   separa.** El texto de estas 3 cartas empieza por "can act" / "using his
+   action": el recurso se coloca y su capacidad queda enganchada a la ENTRADA,
+   y el efecto ocurre al consumir la accion. El precedente ya existia (L13,
+   `draw_hook`), asi que no hizo falta inventar nada.
+3. **Un kind con `mode` es legitimo cuando lo que cambia son CALIFICADORES.**
+   La prueba es si las cartas empujan el MISMO dato de estado. Si lo fueran,
+   `mode` seria una mentira y habria que partir en varios `kind`.
+4. **Crecer el juego destapa flakes de OTROS suites.** `test_respond.js` fallaba
+   1/40 por la ventana de comienzo de turno y NO tiene nada que ver con bonus
+   de ataque. Regla: cuando una suite que no tocaste falle, medir la tasa
+   antes de culpar al lote, y arreglar la ARRAIZ (la ventana abierta) en vez de
+   silenciar el sintoma.
+5. **Antes de afirmar "este grupo no cumple el filtro", comprobar el dato.**
+   `ninjas` tiene atributo `magic`: mi fixture negativo era valido para el
+   motor y el aserto era el que estaba mal. Con 421 cartas hay que medir los
+   atributos, no suponerlos.
+6. **Los textos de `cards.js` no son fuente impresa cuando hay OCR.** Este lote
+   reescribio 3 `t:` desde el HTML; el OCR estaba truncado.
+
+### Backlog
+
+1. **Lagunas DECLARADAS de las 3 cartas implementadas** (no son bugs, son
+   clausulas del impreso que no tienen soporte en este motor):
+   - `"or to any Disaster"` (Spear, y tambien Loch Ness, Weather Satellite y
+     Rogue Boomer): los Disasters son ataques instantaneos que NO pasan por
+     `computeStrength` (comentario engine.js:3823), luego no existe
+     `A.boosts` al que empujar. Habria que meterlos en el mismo camino de
+     `announcePlotInstantAttack` que ya usa el +2 del Earthquake Projector.
+   - `"Any attack aided by the Spear is considered Magic, and magical defenses
+     may help against it"`: el motor no tiene un flag de "el ataque cuenta como
+     magico" que se pueda activar desde un Resource.
+   - `anyAttacker:true` de la Spear es DATO y el guard lo respeta, pero
+     `requireOwnMain(pid)` obliga a que sea TU turno: en la practica el
+     atacante eres tu, luego "(by any player)" queda por encima de lo que el
+     motor permite. Declarado, no oculto.
+2. **Las 4 cartas descartadas del lote** y por que: `rogueboomer` (2 clausulas
+   + "must then be discarded"), `lochnessmonster` (3 clausulas), `weathersatellite`
+   (valores condicionales y NEGATIVOS, que `A.boosts` no modela, + 2 fichas), y
+   `bigfoot` ("cancel any action taken by any Media group", que necesita un
+   subsistema de cancelacion de acciones yaReverse). `res_attack_bonus` es
+   EXTENSIBLE a ellas: basta implementar la clausula secundaria y anadir su
+   `mode`.
+3. **Los otros 24 Resources pendientes** no forman familia con esta: cada uno
+   tiene una mecanica distinta (link permanente a un grupo, Poder del
+   Illuminati, re-tirada, entrada al ataque tras la tirada, etc.). Ver el
+   inventario en la seccion de backlog de `## 71.`.
+4. **"Cancelar una accion ya tomada"** (Bigfoot, Loch Ness Monster) es un
+   subsistema NUEVO y reusable: habria que modelar las acciones de la ronda en
+   `S` para poder deshacerlas. No existe.
+5. **Valores negativos de un ataque** (Weather Satellite "decrease by 4") no
+   son representables hoy con `A.boosts` porque ese array se SUMA entero
+   (engine.js:2993 `+det.boosts`). Habria que decidir si un negativo es una
+   bonificacion a la Resistencia o un veto de la tirada.
+6. Flake preexistente de `test_appflow.js` ("No se puede terminar el turno con
+   un ataque sin resolver"), declarado desde `## 71.` y no reproducido.
+

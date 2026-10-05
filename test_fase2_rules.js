@@ -8393,6 +8393,163 @@ ok(err22(function () { E.resolvePendingNegation('negate', 1, C22.gift); }).lengt
   'L22 S6f no se puede "negar" con una carta que no es de negacion');
 console.log('L22: regresion de la ventana de negacion ejecutada');
 
+/* ---------- L23 - RESOURCE QUE DA UN BONO A UN ATAQUE YA DECLARADO: 197 Mercenaries,
+ * 353 Spear of Longinus, 365 The Library at Alexandria (kind res_attack_bonus).
+ * Todo se afirma sobre ESTADO observable: la accion registrada en la entrada del
+ * Resource, el array A.boosts del ataque abierto, y los motivos impresos de los
+ * rechazos. Nunca se cuenta cartas en mano ni se mira el ultimo log. */
+var C23 = {
+  merc: idxOfId('mercenaries'),
+  spear: idxOfId('spearoflonginus'),
+  lib: idxOfId('thelibraryatalexandria'),
+  lawy: idxOfId('lawyers'),
+  moon: idxOfId('moonbase'),
+  none: idxOfId('billclinton')
+};
+ok(C23.merc >= 0 && C23.spear >= 0 && C23.lib >= 0 && C23.lawy >= 0 && C23.moon >= 0 && C23.none >= 0,
+  'L23 las tres cartas del lote y los fixtures estan en el mazo -> ' + JSON.stringify(C23));
+ok(C.cards[C23.merc].effect.kind === 'res_attack_bonus' &&
+   C.cards[C23.spear].effect.kind === 'res_attack_bonus' &&
+   C.cards[C23.lib].effect.kind === 'res_attack_bonus',
+  'L23 las TRES comparten un SOLO kind (efecto identico: +N a un ataque ya declarado, los calificadores son datos)');
+
+function boot23() {
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  var m = readyToAttack(0);
+  ok(m === 0, 'L23 el jugador 0 tiene el turno principal');
+  return m;
+}
+function res23(pid, ix) {
+  E._raw().players[pid].illumTokens = 1;
+  var out = E.playResource(pid, ix);
+  var found = null;
+  E._raw().players[pid].resources.forEach(function (r) { if (r.cardId === ix) found = r; });
+  return { out: out, entry: found };
+}
+function atk23(pid, type, attUid, tgtUid) {
+  E.declareAttack(pid, type, { attackerUid: attUid, uid: tgtUid });
+  var A = E._raw().attack;
+  ok(!!A && A.resolved !== true, 'L23 el ataque a ' + type + ' quedo declarado y SIN resolver -> ' + (A ? 'ok' : 'AUSENTE'));
+  return A;
+}
+function boostIn23(name) {
+  var A = E._raw().attack;
+  if (!A) return null;
+  for (var i = 0; i < A.boosts.length; i++) if (A.boosts[i].name === name) return A.boosts[i].v;
+  return null;
+}
+function rootOf23(pid) { return E._raw().players[pid].structure.uid; }
+
+/* ---------- S1: jugar el Resource NO ejecuta nada, solo REGISTRA su accion ---------- */
+boot23();
+var r1a = res23(0, C23.merc);
+ok(!!(r1a.entry && r1a.entry.action && r1a.entry.action.kind === 'res_attack_bonus'),
+  'L23 S1 Mercenaries queda en juego con su ACCION registrada, sin aplicarla -> ' + JSON.stringify(r1a.entry ? (r1a.entry.action || null) : null));
+ok(!!(r1a.entry && r1a.entry.action && r1a.entry.action.mode === 'atk_type_bonus'),
+  'L23 S1 el modo de Mercenaries es atk_type_bonus -> ' + JSON.stringify(r1a.entry ? (r1a.entry.action || null) : null));
+ok(boostIn23(C.cards[C23.merc].name) === null,
+  'L23 S1 jugar el Resource NO empuja ningun bonus todavia (no hay ataque abierto)');
+boot23();
+var r1b = res23(0, C23.spear);
+ok(!!(r1b.entry && r1b.entry.action && r1b.entry.action.mode === 'any_destroy'),
+  'L23 S1 el modo de Spear of Longinus es any_destroy -> ' + JSON.stringify(r1b.entry ? (r1b.entry.action || null) : null));
+boot23();
+var r1c = res23(0, C23.lib);
+ok(!!(r1c.entry && r1c.entry.action && r1c.entry.action.mode === 'target_attrs'),
+  'L23 S1 el modo de The Library at Alexandria es target_attrs -> ' + JSON.stringify(r1c.entry ? (r1c.entry.action || null) : null));
+
+/* ---------- S2: el timing es parte del impreso: la accion se usa con el ataque ABIERTO ---------- */
+boot23();
+var r2 = res23(0, C23.merc);
+var noAtk23 = throwMsgL12(function () { E.useAttackBonus(0, { resourceUid: r2.entry.uid }); });
+ok(!!noAtk23 && /ataque ya declarado/.test(noAtk23),
+  'L23 S2 sin ataque declarado la accion NO se puede usar y se cita el impreso -> ' + (noAtk23 || 'NO RECHAZO'));
+ok(r2.entry.usedThisTurn !== true,
+  'L23 S2 el rechazo NO marca el Resource como usado (atomicidad: nada se gasta si la carta se rechaza)');
+
+/* ---------- S3: Mercenaries da +4 a DESTRUIR y +1 a CONTROLAR (valor dual por tipo de ataque) ---------- */
+boot23();
+plant(1, 'v23', C23.lawy, 0);
+var r3 = res23(0, C23.merc);
+atk23(0, 'destroy', rootOf23(0), 'v23');
+E.useAttackBonus(0, { resourceUid: r3.entry.uid });
+ok(boostIn23(C.cards[C23.merc].name) === 4,
+  'L23 S3 Mercenaries en un ataque a DESTRUIR mete +4 en A.boosts -> ' + boostIn23(C.cards[C23.merc].name));
+var res3 = E.previewStrength();
+ok(res3.boosts === 4, 'L23 S3 el bonus es visible en el calculo de Fuerza del ataque -> det.boosts=' + res3.boosts);
+
+boot23();
+plant(1, 'v23', C23.lawy, 0);
+var r3b = res23(0, C23.merc);
+atk23(0, 'control', rootOf23(0), 'v23');
+E.useAttackBonus(0, { resourceUid: r3b.entry.uid });
+ok(boostIn23(C.cards[C23.merc].name) === 1,
+  'L23 S3 Mercenaries en un ataque a CONTROLAR mete +1 (el valor depende del tipo de ataque) -> ' + boostIn23(C.cards[C23.merc].name));
+
+/* ---------- S4: "Can act once per turn" es de MERCENARIES; Spear y Library no tienen limite ---------- */
+boot23();
+plant(1, 'v23', C23.lawy, 0);
+var r4 = res23(0, C23.merc);
+atk23(0, 'destroy', rootOf23(0), 'v23');
+E.useAttackBonus(0, { resourceUid: r4.entry.uid });
+var twice23 = throwMsgL12(function () { E.useAttackBonus(0, { resourceUid: r4.entry.uid }); });
+ok(!!twice23 && /once per turn/.test(twice23),
+  'L23 S4 Mercenaries "Can act once per turn": la segunda activacion se rechaza con el motivo impreso -> ' + (twice23 || 'NO RECHAZO'));
+ok(boostIn23(C.cards[C23.merc].name) === 4,
+  'L23 S4 el rechazo NO duplica el bonus -> ' + boostIn23(C.cards[C23.merc].name));
+
+boot23();
+plant(1, 'v23', C23.lawy, 0);
+var r4b = res23(0, C23.spear);
+atk23(0, 'destroy', rootOf23(0), 'v23');
+E.useAttackBonus(0, { resourceUid: r4b.entry.uid });
+var twiceB23 = throwMsgL12(function () { E.useAttackBonus(0, { resourceUid: r4b.entry.uid }); });
+ok(!twiceB23, 'L23 S4 Spear of Longinus "can be used as often as you wish": la segunda activacion NO se rechaza -> ' + (twiceB23 || 'OK'));
+ok(boostIn23(C.cards[C23.spear].name) === 1,
+  'L23 S4 el segundo uso de la Spear mete otro +1 (queda 2 en total) -> ' + boostIn23(C.cards[C23.spear].name));
+
+/* ---------- S5: The Library at Alexandria exige un objetivo Science, Magic o Computer ---------- */
+boot23();
+plant(1, 'v23', C23.moon, 0);
+var r5 = res23(0, C23.lib);
+atk23(0, 'control', rootOf23(0), 'v23');
+E.useAttackBonus(0, { resourceUid: r5.entry.uid });
+ok(boostIn23(C.cards[C23.lib].name) === 5,
+  'L23 S5 contra un grupo Science/Computer la Library mete +5 -> ' + boostIn23(C.cards[C23.lib].name));
+
+boot23();
+plant(1, 'v23', C23.none, 0);
+var r5b = res23(0, C23.lib);
+atk23(0, 'control', rootOf23(0), 'v23');
+var noAttrs23 = throwMsgL12(function () { E.useAttackBonus(0, { resourceUid: r5b.entry.uid }); });
+ok(!!noAttrs23 && /science, magic, computer/.test(noAttrs23),
+  'L23 S5 contra un grupo que NO es Science/Magic/Computer se rechaza citando el impreso -> ' + (noAttrs23 || 'NO RECHAZO'));
+
+/* ---------- S6: la Library es "+5 on any attempt to CONTROL"; en un ataque a destruir no aplica ---------- */
+boot23();
+plant(1, 'v23', C23.moon, 0);
+var r6 = res23(0, C23.lib);
+atk23(0, 'destroy', rootOf23(0), 'v23');
+var wrongType23 = throwMsgL12(function () { E.useAttackBonus(0, { resourceUid: r6.entry.uid }); });
+ok(!!wrongType23 && /ataque a control/.test(wrongType23),
+  'L23 S6 la Library rechaza un ataque a DESTRUIR y dice que es para controlar -> ' + (wrongType23 || 'NO RECHAZO'));
+ok(boostIn23(C.cards[C23.lib].name) === null,
+  'L23 S6 el rechazo no deja residuo en A.boosts');
+
+/* ---------- S7: "by any player" de la Spear es DATO (el motor exige TU turno, luego el atacante eres tu) ---------- */
+ok(C.cards[C23.spear].effect.anyAttacker === true,
+  'L23 S7 la Spear declara anyAttacker:true ("by any player") como dato, no como logica');
+ok(C.cards[C23.merc].effect.oncePerTurn === true && C.cards[C23.lib].effect.unlimited === true,
+  'L23 S7 el limite "once per turn" es de MERCENARIES; las otras dos declaran unlimited (dato, no texto)');
+
+/* ---------- S8: los valores vienen del DATO, no estan escritos a mano en el motor ---------- */
+ok(C.cards[C23.merc].effect.boostByAtkType.destroy === 4 && C.cards[C23.merc].effect.boostByAtkType.control === 1,
+  'L23 S8 Mercenaries lleva su tabla de valores impresa en el dato -> ' + JSON.stringify(C.cards[C23.merc].effect.boostByAtkType));
+ok(C.cards[C23.spear].effect.boostValue === 1 && C.cards[C23.spear].effect.atkType === 'destroy',
+  'L23 S8 Spear of Longinus lleva +1 a cualquier ataque a destruir -> ' + JSON.stringify(C.cards[C23.spear].effect));
+ok(JSON.stringify(C.cards[C23.lib].effect.targetAttrsAny) === JSON.stringify(['science', 'magic', 'computer']),
+  'L23 S8 The Library at Alexandria lleva impresos sus tres atributos -> ' + JSON.stringify(C.cards[C23.lib].effect.targetAttrsAny));
+
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });

@@ -2540,6 +2540,42 @@ const L22_FX = {
 };
 const L22_FXN = {};
 for (const k in L22_FX) { L22_FXN[norm(k)] = L22_FX[k]; }
+/* L23 - RECURSO QUE DA UN BONO A UN ATAQUE YA DECLARADO.
+ *
+ * DECLARACION DE INTERPRETACION. Estas TRES cartas son Resources y las tres hacen
+ * EXACTAMENTE lo mismo: usan su ACCION mientras un ataque ya esta declarado y
+ * empujan un "+N" a ese ataque. Es el mismo criterio argumental que L5a (tres Plots
+ * que empujan A.boosts comparten un unico kind porque solo cambian los CALIFICADORES,
+ * que son datos), asi que aqui hay UN SOLO kind res_attack_bonus y los tres
+ * calificadores viajan en el dato.
+ *
+ * LO QUE NO SE IMPLEMENTA, y por que (todo declarado en el audit):
+ *  - "or to any Disaster" (Spear of Longinus). Un Disaster es un ataque instantaneo
+ *    que NO pasa por computeStrength, luego no hay A.boosts que empujar: haria
+ *    falta tocar el motor de Disasters, que es otro lote.
+ *  - "Any attack aided by the Spear is considered Magic" (Spear of Longinus).
+ *  - Las clausulas "cancel the action of ..." (Bigfoot, Loch Ness) y los valores
+ *    negativos del Weather Satellite son de otro lote, no de esta familia.
+ *
+ * El printed de cada una es el de research/scribd_inwo_cards_full.html, VERBATIM.
+ * El OCR de cards.js de estas tres esta manchado y truncado, asi que NO se copia. */
+const L23_FX = {
+  'mercenaries': { kind:'res_attack_bonus', mode:'atk_type_bonus',
+    oncePerTurn:true, boostByAtkType:{destroy:4,control:1},
+    needsOpenAttack:true,
+    t:'This small, elite corps specializes in covert wet work and things that go BOOM Can act once per turn, giving +4 to any Attempt to Destroy, or +1 to any Attempt to Control. ACTION' },
+  'spearoflonginus': { kind:'res_attack_bonus', mode:'any_destroy',
+    unlimited:true, anyAttacker:true, boostValue:1, atkType:'destroy',
+    countsMagic:true, needsOpenAttack:true,
+    t:'This artifact, both sacred and cursed, can be used as often as you wish! It can give +1 to any Attack to Destroy (by any player), or to any Disaster. Any attack aided by the Spear is considered Magic, and magical defenses may help against it. Unique Magic Artifact' },
+  'thelibraryatalexandria': { kind:'res_attack_bonus', mode:'target_attrs',
+    unlimited:true, atkType:'control', boostValue:5,
+    targetAttrsAny:['science','magic','computer'],
+    needsOpenAttack:true,
+    t:'Sure, they burned down the building, but the books were already checked out. Its the greatest storehouse of knowledge ever known, and its been guarded and enlarged, in deepest secrecy, for more than a thousand years. Give a +5 on any attempt to control any Science, Magic or Computer group. Unique' }
+};
+const L23_FXN = {};
+for (const k in L23_FX) { L23_FXN[norm(k)] = L23_FX[k]; }
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence'];
 
 
@@ -2829,7 +2865,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

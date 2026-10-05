@@ -577,6 +577,9 @@ function chipAct(r) {
   if (md === 'suicide_squad') return 'resuse';
   if (md === 'gadget_action') return 'gadgetuse';
   if (md === 'boost_attack') return 'disasterboost';
+  /* L23 - las 3 cartas que dan un bono a un ataque ya declarado: el boton es el
+   * mismo generico de L13 (chipMini lo dibuja si chipAct devuelve algo). */
+  if (md === 'atk_type_bonus' || md === 'any_destroy' || md === 'target_attrs') return 'attackbonus';
   return null;
 }
 function chipCard(r) { return cardOf(r.cardId); }
@@ -1821,6 +1824,7 @@ var KIND_ES = {
   peek_block: 'Mirar y bloquear', peek_expose: 'Mirar y exponer', peek_rob: 'Mirar y robar',
   peek_steal: 'Mirar y robar la carta', power_increase: 'Aumentar Poder',
   resource_effect: 'Manipulacion de Resources',
+  res_attack_bonus: 'Bono de ataque con un Resource',
   privileged_attack: 'Ataque Privilegiado', res_nullify: 'Anular Recurso',
   resistance_increase: 'Aumentar Resistencia', resource_destroy: 'Destruir Recurso',
   second_bullet: 'Segunda bala', stealing_the_plans: 'Robar los planos',
@@ -2097,6 +2101,12 @@ var FIELD_ES = [
   ['topDiscard','coste','ademas descarta <b>%s</b> Plot de la cima de TU mazo'],
   ['negateAnyPlot','eff','anula <b>cualquier</b> Plot'],
   ['illumTokenAll','coste','gasta <b>TODAS</b> las fichas de accion de tu Illuminati (minimo 1)'],
+  ['oncePerTurn','modo','su ACCION se puede usar <b>una vez por turno</b>'],
+  ['boostByAtkType','eff','el bonus depende del tipo de ataque: <b>%s</b>'],
+  ['targetAttrsAny','eff','el objetivo del ataque debe ser de alguno de estos atributos: <b>%s</b>'],
+  ['anyAttacker','eff','el bonus alcanza a los ataques de <b>cualquier</b> jugador'],
+  ['countsMagic','eff','los ataques que aidan se consideran <b>Magic</b>'],
+  ['needsOpenAttack','modo','su ACCION se usa con el ataque <b>abierto</b>, antes de la tirada'],
 ];
 var FIELD_MAP = {};
 for (var _fi = 0; _fi < FIELD_ES.length; _fi++) FIELD_MAP[FIELD_ES[_fi][0]] = true;
@@ -2425,6 +2435,7 @@ function bindEvents() {
      * y el alcance global, asi que aqui no hay ventana: el boton ejecuta la accion y
      * el +2 se aplica al proximo Disaster o ataque a destruir que se anuncie. */
     else if (act === 'disasterboost') { var dbUid = btn.getAttribute('data-uid'); if (!dbUid) return; CB.onUseDisasterBoost(dbUid); }
+    else if (act === 'attackbonus') { var abUid = btn.getAttribute('data-uid'); if (!abUid) return; CB.onUseAttackBonus(abUid); }
     else if (act === 'gadgetuse') { var guUid = btn.getAttribute('data-uid'); if (!guUid) return; CB.onUseGadgetAction(guUid); }
     else if (act === 'resdestroypick') { sel = { mode: 'resDestroy', data: { resUid: btn.getAttribute('data-uid') } }; log('🎯 Paso 2/2 — elige el Resource objetivo y luego TIRA EL DADO.'); render(curState); }
     else if (act === 'resdestroycancel') { clearSel(); render(curState); }

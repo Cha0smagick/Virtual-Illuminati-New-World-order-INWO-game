@@ -271,6 +271,16 @@ var CB = {
     try { E.useDisasterBoost(E.getState().currentPid, { resourceUid: resourceUid }); after('Earthquake Projector se activa: +2 al Poder del proximo ataque'); }
     catch (e) { log('! ' + e.message); }
   },
+  /* L23 / P1-146 - Mercenaries, Spear of Longinus, The Library at Alexandria. El
+   * impreso de las tres es "usa su ACCION para dar un bonus al Poder de un
+   * ataque ya declarado", asi que el objetivo NO lo elige el motor (es el
+   * ataque abierto) y por eso solo hace falta el boton, igual que
+   * onUseDisasterBoost. El catch es el mismo patron: un rechazo por regla del
+   * motor llega al registro y no solo a la consola (P1-076). */
+  onUseAttackBonus: function (resourceUid) {
+    try { E.useAttackBonus(E.getState().currentPid, { resourceUid: resourceUid }); after('El Resource aporta su bonus al ataque'); }
+    catch (e) { log('! ' + e.message); }
+  },
   onMoveGroup: function (uid, newParentUid) { E.moveGroup(E.getState().currentPid, uid, newParentUid); after('Grupo movido'); },
   onEndTurn: function () { endTurnFlow(); }
 };

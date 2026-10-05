@@ -1245,3 +1245,18 @@ Si un lote anterior construye la mecanica que necesitan, se desbloquean y se imp
 - [x] L22.f CIERRE: audit `## 73.` + P1-140..P1-145 + `stripNegators22` en los 6 `E.startGame` + borrado de codigo muerto de L16 en ui.js
 
 **Bugs reales encontrados (no de fixture):** P1-144 el descarte obligatorio del mazo de Hoax no se cobraba (`topDiscard:1` existia en el dato y ningun camino lo pagaba). **Bugs de fixture/proceso:** P1-140 `$1` con replacement por funcion borro la cola de `pendingEvent`; P1-141 y P1-143 clasificar las 3 cartas provoco 9 regresiones rotas (medido: 0/20 sin la ventana, 2/20 con ella) y el aislamiento tenia que ir en los 6 `E.startGame()`, no solo en `fresh()`; P1-145 la asercion S6a metia la carta en la mano del rival en vez de la del actor; P1-142 codigo muerto (par de manejadores duplicado) que dejo L16 en `ui.js`.
+
+## [x] L23 - BONO DE ATAQUE CON UN RESOURCE                        -> audit ## 74., P1-146..P1-147, 283->677/429/296
+
+**Cartas:** 677 Mercenaries, 429 Spear of Longinus y 296 The Library at Alexandria, las tres con un SOLO kind `res_attack_bonus` (el mismo dato `A.boosts` que empuja el `case 'attack_boost'` de L5a; lo unico que cambia son los CALIFICADORES, que son datos).
+
+**Que aporta:** 7 de los 26 Resources pendientes usan su ACCION para dar +N a un ataque ya declarado, pero el motor solo tenia ese camino para las PLOTS. L23 anade el `case 'res_attack_bonus'` en `E.playResource` (que NO ejecuta nada: solo registra `entry.action` en la entrada, igual que L13 y que `draw_hook`) y `E.useAttackBonus(pid,{resourceUid})`, que valida todo antes de mutar y empuja a `A.boosts` con el ataque abierto y ANTES de la tirada (`computeStrength(true)` corre en engine.js:3363, luego el timing es parte del contrato).
+
+- [x] L23.a AUDIT: medido el precedente `attack_boost` (L5a) y `useDisasterBoost` (L13); los 26 texts verbatim de `research/scribd_inwo_cards_full.html` (el OCR de `cards.js` esta manchado)
+- [x] L23.b DATOS: `L23_FX`/`L23_FXN` (3 cartas, 1 kind, `mode` + calificadores) + cadena `pfx` -> FASE 4 80 -> 77 (delta exacto -3)
+- [x] L23.c MOTOR: `case 'res_attack_bonus'` en el `switch(resFx)` de `E.playResource`, registro de `entry.action` tras el push, y `E.useAttackBonus` (P1-146) con 8 validaciones en el orden correcto y pago al final
+- [x] L23.d UI + APP: `chipAct` devuelve `attackbonus` para los 3 modos, `KIND_ES` + 6 entradas en `FIELD_ES`, ruta de `data-uid`, y `CB.onUseAttackBonus` en app.js
+- [x] L23.e REGRESION: 43 asertos en 8 escenarios en `test_fase2_rules.js` + barrido 30/30; y P1-147, flake REAL preexistente de `test_respond.js` cerrado a 0/100
+- [x] L23.f CIERRE: audit `## 74.` en ASCII (P1-146..P1-147) + este bloque
+
+**Lagunas DECLARADAS** (no son bugs, son clausulas del impreso sin soporte): `"or to any Disaster"` (los Disasters no pasan por `computeStrength`, luego no hay `A.boosts`), `"considered Magic"` de la Spear, los valores NEGATIVOS del Weather Satellite (`A.boosts` se suma entero), `"cancel the action"` de Bigfoot/Loch Ness, la re-tirada de Angel's Feather, el "must then be discarded" de Rogue Boomer, y que `anyAttacker:true` de la Spear es dato pero `requireOwnMain` obliga a que sea TU turno. Las 4 cartas del mismo patron que quedaron FUERA y por que: `rogueboomer` (2 clausulas), `lochnessmonster` (3), `weathersatellite` (condicionales y negativos), `bigfoot` (cancelar acciones).

@@ -80,10 +80,40 @@ function seedBothSides() {
     if (onTurn(pid)) E.endTurn();
   }
 }
+/* P1-147: sellarVentanas() cierra cualquier ventana abierta (tirada pendiente,
+ * suceso pendiente, ataque pendiente). El montaje deja ventanas abiertas de
+ * forma ALEATORIA (un takeover puede abrir un ataque automatico y otro no, segun
+ * el reparto), y E.declareAttack() exige fase principal: sin este sello el test
+ * fallaba con "declareAttack lanzó -> Fuera de la fase principal" en ~3/80
+ * corridas. Es el mismo contrato que usan los helpers sealWindows() de
+ * test_fase2_rules.js. */
+function sellarVentanas() {
+  var n = 0;
+  while (n++ < 8) {
+    var s = E.getState();
+    /* phase 'begin' == ventana de COMIENZO DE TURNO abierta (engine.js:7362 deja
+     * S.phase='begin' y espera a E.resolvePendingTurnStart). Es la que bloqueaba el
+     * montaje: sin sellarla, cederTurno() se negaba a ceder y el turno se quedaba
+     * en el rival, luego E.declareAttack(0,...) lanzaba "Fuera de la fase principal". */
+    if (s.pendingTurnStart) { E.resolvePendingTurnStart({}); continue; }
+    if (s.pendingRoll) { E.resolvePendingRoll(); continue; }
+    if (s.pendingEvent) { E.resolvePendingEvent(); continue; }
+    if (s.pendingAttack) { E.resolvePendingAttack(); continue; }
+    break;
+  }
+  return E.getState().phase;
+}
 seedBothSides();
+sellarVentanas();
 
-/* Vuelve al turno del humano para que sus grupos recuperen el token. */
-if (!onTurn(0) && !E.getState().gameover) E.endTurn();
+/* Vuelve al turno del humano para que sus grupos recuperen el token.
+ * P1-147: el guard de fase NO es cosmetico. seedBothSides() puede salir con
+ * `phase !== 'main'` (devuelve en su linea 76) cuando un takeover o un ataque
+ * dejan una ventana abierta; entonces E.endTurn() lanza "No se puede terminar
+ * un turno fuera de la fase principal". Era un FLAKE de 1/40 corridas: el
+ * reparto aleatorio decide si el ultimo turno planting deja ventana abierta.
+ * Con el guard, la linea solo cede el turno cuando CEDERLO es legal. */
+if (!onTurn(0) && !E.getState().gameover && E.getState().phase === 'main') E.endTurn();
 if (onTurn(0) && !hasToken(0)) placeGroup(0);
 
 /* --- Inyección determinista de piezasported ------------------
@@ -136,12 +166,24 @@ var weakNode = plantAtDepth(1, 3, weakCard);
 if (strongNode) console.log('inyectado atacante: ' + C.cards[strongNode.cardId].name + ' (poder ' + (C.cards[strongNode.cardId].power || 0) + ')');
 if (weakNode) console.log('inyectado objetivo: ' + C.cards[weakNode.cardId].name + ' (resistencia ' + (C.cards[weakNode.cardId].resistance == null ? 99 : C.cards[weakNode.cardId].resistance) + ')');
 
-/* Ciclo completo de turnos: repone el Action token del atacante. */
+/* Ciclo completo de turnos: repone el Action token del atacante.
+ * P1-147: cedeTurno() solo llama a E.endTurn() cuando CEDERLO es legal
+ * (fase principal y partida viva). Sin el, las tres llamadas de este bloque
+ * lanzaban "No se puede terminar un turno fuera de la fase principal" cuando
+ * el reparto aleatorio dejaba una ventana abierta: flake medido de 4/60. */
+function cederTurno() {
+  sellarVentanas();
+  var s = E.getState();
+  if (s.gameover || s.phase !== 'main') return false;
+  E.endTurn();
+  return true;
+}
 var guard = 0;
 while (strongNode && !(strongNode.tokens >= 1) && !E.getState().gameover && guard++ < 6) {
-  E.endTurn(); E.endTurn();
+  if (!cederTurno()) break;
+  if (!cederTurno()) break;
 }
-if (E.getState().currentPid !== 0 && !E.getState().gameover) E.endTurn();
+if (E.getState().currentPid !== 0 && !E.getState().gameover) cederTurno();
 
 var st = E.getState();
 var attackers = nodesOf(0).filter(function (n) { return (n.tokens || 0) >= 1; });
@@ -163,6 +205,9 @@ var t = targets.reduce(function (x, y) { return rs(y) < rs(x) ? y : x; });
 console.log('mejor combinación: atacante=' + C.cards[a.cardId].name + ' (poder ' + pw(a) + ')' +
   ' vs objetivo=' + C.cards[t.cardId].name + ' (resistencia ' + rs(t) + ')');
 
+/* P1-147: antes de declarar el ataque hay que devolver la partida a la fase
+ * principal: el ciclo de turnos anterior puede haber dejado una ventana. */
+sellarVentanas();
 try {
   E.declareAttack(0, 'control', { attackerUid: a.uid, uid: t.uid });
 } catch (e) {

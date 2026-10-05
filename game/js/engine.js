@@ -2118,6 +2118,54 @@ E.alignsOfNode=function(uid){
  * rival concreto. Lo que se guarda es un flag usedThisTurn en la ENTRADA (no en el
  * jugador), y announcePlotInstantAttack suma el +2 al Poder del ataque de cualquiera
  * que se anuncie mientras siga activo. */
+/* L23 / P1-146 - uso de la ACCION de un Resource que da un bono a un ataque ya
+ * declarado. Precedente EXACTO: E.useDisasterBoost (L13 Earthquake Projector), con
+ * dos anadidos medidos: (a) el objetivo del ataque es un NODO y se califica con
+ * hasAttr, igual que hace el case attack_boost de L5a; (b) hay que empujar a
+ * A.boosts ANTES de que corra computeStrength(true) (engine.js:3363), o sea con el
+ * ataque ABIERTO y sin resolver, que es exactamente lo que valida el guard.
+ * Todo se valida ANTES de mutar (P1-033): si la carta no encaja, no se gasta la
+ * accion ni se toca el ataque. */
+E.useAttackBonus=function(pid,opts){
+  opts=opts||{};
+  requireOwnMain(pid);
+  var R=findResourceEntry(opts.resourceUid);
+  if(!R)throw new Error('Ese Resource no esta en juego');
+  if(R.pid!==pid)throw new Error('Ese Resource no es tuyo');
+  var rc=card(R.entry.cardId), rEff=(rc.effect||{}), act=R.entry.action;
+  if(!act||act.kind!=='res_attack_bonus')
+    throw new Error(rc.name+': su accion todavia no esta implementada');
+  if(rEff.oncePerTurn&&R.entry.usedThisTurn)
+    throw new Error(rc.name+': "Can act once per turn" y ya ha actuado este turno');
+  var A=S.attack;
+  if(!A||A.resolved)
+    throw new Error(rc.name+': "its action can be used" necesita un ataque ya declarado: usa su ACCION con el ataque abierto, ANTES de la tirada');
+  var aType23=String(A.type||'').toLowerCase();
+  if(rEff.atkType&&aType23!==rEff.atkType)
+    throw new Error(rc.name+': solo se usa en un ataque a '+rEff.atkType+' (este ataque es a "'+String(A.type)+'")');
+  if(rEff.anyAttacker===false&&A.attackerUid&&findOwnerPid(A.attackerUid)!==pid)
+    throw new Error(rc.name+': solo puede ayudar a un ataque tuyo');
+  var tgtN23=A.targetUid?findNode(A.targetUid):null;
+  var tgtC23=tgtN23?card(tgtN23.cardId):null;
+  if(Array.isArray(rEff.targetAttrsAny)&&rEff.targetAttrsAny.length){
+    var ok23=false;
+    for(var q23=0;q23<rEff.targetAttrsAny.length;q23++)
+      if(tgtC23&&hasAttr(tgtC23,rEff.targetAttrsAny[q23],tgtN23))ok23=true;
+    if(!ok23)
+      throw new Error(rc.name+': "any attempt to control any '+rEff.targetAttrsAny.join(', ')+' group" — el objetivo del ataque no tiene ninguno de esos atributos');
+  }
+  var v23=rEff.boostValue;
+  if(rEff.boostByAtkType){
+    v23=(typeof rEff.boostByAtkType[aType23]==='number')?rEff.boostByAtkType[aType23]:null;
+    if(v23==null)throw new Error(rc.name+': su bonus no encaja en un ataque a "'+String(A.type)+'"');
+  }
+  if(typeof v23!=='number'||!v23)
+    throw new Error(rc.name+': el ataque no encaja en ningun valor de bonus');
+  if(rEff.oncePerTurn)R.entry.usedThisTurn=true;
+  A.boosts.push({name:rc.name,v:v23});
+  log(rc.name+' se usa: '+v23+' al Poder de este ataque a '+aType23);
+  return publicState();
+};
 E.useDisasterBoost=function(pid,opts){
   opts=opts||{};
   requireOwnMain(pid);
@@ -2500,6 +2548,17 @@ E.playResource=function(pid,handIdx,linkedToUid){
         throw new Error(c.name+': un Resource no puede llevar el modo '+String(c.effect.mode)+' (esa mecanica es de una Plot card)');
       break;
     }
+    case 'res_attack_bonus':{
+      /* L23 - las 3 cartas de esta familia (Mercenaries, Spear of Longinus, The
+       * Library at Alexandria). Colocar el Resource NO ejecuta nada: su capacidad
+       * se activa cuando el jugador USA su ACCION mientras un ataque ya esta
+       * declarado, asi que aqui solo se VALIDA el modo (misma leccion que L13
+       * Earthquake Projector y que el draw_hook de L12/L13). */
+      var md23=String(c.effect.mode||'');
+      if(md23!=='atk_type_bonus'&&md23!=='any_destroy'&&md23!=='target_attrs')
+        throw new Error(c.name+': un Resource no puede llevar el modo '+md23+' (esa mecanica es de una Plot card)');
+      break;
+    }
     default: throw new Error('El Resource "' + c.name + '" tiene una mecanica (' + resFx + ') que E.playResource todavia no ejecuta');
   }
   pl.illumTokens--;pl.usedResourceThisTurn=true;
@@ -2529,6 +2588,13 @@ E.playResource=function(pid,handIdx,linkedToUid){
   if (resFx==='disaster_defence' && c.effect.mode==='boost_attack'){
     entry.action={kind:'disaster_defence',mode:'boost_attack'};
     log(c.name+' queda enlazada: usa su ACCION (una vez por turno) para +'+(c.effect.boostValue||0)+' al Poder de cualquier ataque a destruir o Disaster');
+  }
+  /* L23 - registro de la capacidad, DESPUES del push (misma leccion que L13 y que
+   * el draw_hook de L12/L13: hay que poder dejar la referencia en la MISMA
+   * entrada). Colocarlo no ejecuta nada; su ACCION la consume E.useAttackBonus. */
+  if (resFx==='res_attack_bonus'){
+    entry.action={kind:'res_attack_bonus',mode:c.effect.mode};
+    log(c.name+' queda enlazada: usa su ACCION para dar un bonus al Poder de un ataque ya declarado');
   }
   log(pl.name+' juega el recurso '+c.name);
   if(resFx==='draw_hook')log(c.name+' queda enlazado: cambiara los proximos robos de '+pl.name);
