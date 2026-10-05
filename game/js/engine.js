@@ -453,7 +453,7 @@ E.newGame=function(configs){
   S={
       phase:'setup',turn:0,round:1,currentPid:-1,turnCompleted:false,
     players:[],groupDeck:[],plotDeck:[],groupDiscard:[],plotDiscard:[],
-    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,pendingAlignEdit:null,pendingResDestroy:null,alignRetro:{},alignRule:null,log:[],uidCounter:100,winner:null,
+    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,pendingAlignEdit:null,pendingResDestroy:null,returnTurnTo:null,alignRetro:{},alignRule:null,log:[],uidCounter:100,winner:null,
     config:{goalCount:(configs.goalCount||12)},
     lastRoll:null
   };
@@ -756,6 +756,8 @@ function publicState(){
     log:S.log.slice(-400),
     pendingResDestroy:S.pendingResDestroy?{byPid:S.pendingResDestroy.byPid,
       byName:S.players[S.pendingResDestroy.byPid]?S.players[S.pendingResDestroy.byPid].name:'?'}:null,
+     returnTurnTo:S.returnTurnTo==null?null:S.returnTurnTo,
+     seizeUsed:S.players.map(function(p14){return!!(p14.flags&&p14.flags.seizeTimeUsed);}),
     victoryStatus:victoryStatus()
   };
 }
@@ -1202,6 +1204,9 @@ E.beginTurn=function(pid,isFirst){
     var rsL13=S.players[qL13].resources||[];
     for(var rL13=0;rL13<rsL13.length;rL13++)rsL13[rL13].usedThisTurn=false;
   }
+  /* L14 — 364: el bloqueo de robo era SOLO del turno especial, asi que caduca aqui (es
+   * lo que el propio `case` quiere: el turno especial termina con el turno). */
+  pl.flags.noDrawTurn=false;
   pl.usedExtraDrawThisTurn=false;
   /* clear stale immunities granted against this player last turn */
   for(var q=0;q<S.players.length;q++){
@@ -1235,7 +1240,10 @@ E.beginTurn=function(pid,isFirst){
   /* L8c — 405: el autoDraw de The Network TAMBIEN respeta el bloqueo. La ventana se
    * abre ANTES de beginTurn, asi que la bandera ya esta puesta cuando llega aqui:
    * un bloqueo a mitad de turno no cubriria este camino (P1-048). */
-  if(autoDraw&&!plotDrawBlocked(pid)){
+  /* L14 - 364: el autoDraw de The Network tambien lo respeta. Va en la misma condicion
+   * que el bloqueo de 405 porque los dos son "no puede robar en este turno", y el robo
+   * automatico del comienzo de turno es un robo mas. */
+  if(autoDraw&&!plotDrawBlocked(pid)&&!pl.flags.noDrawTurn){
     var lim=plotHandLimitOf(pid);
     var got=0;
     for(var d=0;d<autoDraw;d++){
@@ -1265,6 +1273,11 @@ E.drawPlot=function(pid){
    * his current turn ends". Va delante del chequeo de plotDrawn: bloquear no es lo
    * mismo que haber robado, y el mensaje debe decirlo. */
   if(plotDrawBlocked(pid))throw new Error('Unlucky 13: no puedes robar Plot cards este turno');
+  /* L14 — 364: "you may not draw Plot or Group cards for any reason". El flag lo pone
+   * el propio `case 'turn_control'` DESPUES de `E.beginTurn` (que resetea los flags por
+   * turno), asi que aqui ya esta puesto. Va antes del chequeo de plotDrawn: "no puedes
+   * robar" y "ya robaste" son cosas distintas y el mensaje debe decirlo. */
+  if(pl.flags.noDrawTurn)throw new Error('Seize the Time!: no puedes robar Plot cards durante el turno especial');
   if(pl.flags.plotDrawn)throw new Error('Ya robaste tu carta de Plot este turno');
   if(S.pendingDraw)throw new Error('Primero resuelve la eleccion de robo pendiente');
   /* L8b: 233/367. El robo se APLAZA (las cartas ya estan en S.pendingDraw.pool) y el
@@ -1287,6 +1300,9 @@ E.drawPlot=function(pid){
 E.drawGroup=function(pid){
   requireOwnMain(pid);
   var pl=S.players[pid];
+  /* L14 — 364: mismo bloqueo para el robo de Grupo ("Plot or Group cards"). 405
+   * (Unlucky 13) solo imprimia "no Plot cards", asi que este camino no lo tenia. */
+  if(pl.flags.noDrawTurn)throw new Error('Seize the Time!: no puedes robar Group cards durante el turno especial');
   if(pl.flags.groupDrawn)throw new Error('Ya robaste tu carta de Grupo este turno');
   if(S.pendingDraw)throw new Error('Primero resuelve la eleccion de robo pendiente');
   /* L8b: 367 imprime "a Plot or Group card". */
@@ -5928,6 +5944,72 @@ case 'bulk_power':{
       }
       throw new Error(c.name+': modo de disaster_defence desconocido ('+String(modeD)+')');
     }
+    case 'turn_control':{
+      /* L14 — 364 Seize the Time! (unica carta de este lote).
+       * IMPRESO: "Play this card at the beginning of any other player's turn. It
+       * becomes your turn instead. After your turn is over, the turn passes back to
+       * the player whose turn you interrupted (unless someone won). During your special
+       * turn, all your groups get Action tokens, but you may not draw Plot or Group
+       * cards for any reason. No player may use this card more than once in a game!"
+       *
+       * PRECEDENTE EXACTO: `case 'turn_start_block'` (405 Unlucky 13, L8c) comparte
+       * las tres primeras lineas: el TIMING es la ventana `S.pendingTurnStart`, que
+       * abre `E.endTurn` entre turnos, y el objetivo es el jugador cuyo turno iba a
+       * empezar. La diferencia es que 405 CONSUME la ventana para BLOQUEAR el robo y
+       * arranca el turno del rival; 364 la consume para ROBARSE el turno.
+       *
+       * POR QUE NO ES `instant`: la lista `instant` de `E.playPlot` (L3740) hace que
+       * un kind instantaneo se salte `requireOwnMain`. El impreso de 364 NO dice "at
+       * any time": dice "at the beginning of any other player's turn". Declararlo
+       * instant haria que el motor exigiera turno propio y la carta seria literalmente
+       * INJUGABLE (el mismo genero de fallo que P1-054).
+       *
+       * EL COSTE ES GRATIS: el impreso no pide ninguna accion ("No player may use this
+       * card more than once in a game" es la unica restriccion). Por eso esta carta NO
+       * declara `requireActionFromAttr` y no toca el gate P1-055.
+       *
+       * REGLA DEL CASO (la de 405): se valida TODO antes de tocar nada. */
+      var plTC=S.players[pid];
+      var WTC=S.pendingTurnStart;
+      if(!WTC)
+        throw new Error(c.name+': solo es jugable al comienzo del turno de un rival (no hay ventana de reaccion abierta)');
+      if(WTC.forPid===pid)
+        throw new Error(c.name+': no puedes robarte tu propio turno');
+      if(eff.oncePerGamePerPlayer&&plTC.flags&&plTC.flags.seizeTimeUsed)
+        throw new Error(c.name+': "No player may use this card more than once in a game" — '+plTC.name+' ya la ha usado');
+      if(eff.returnTurnAfter&&S.returnTurnTo!=null)
+        throw new Error(c.name+': ya hay un turno especial pendiente de devolver');
+      if(eff.allGroupsGetTokens&&!subtreeList(plTC.structure).length)
+        throw new Error(c.name+': no tienes grupos en tu Power Structure a los que dar ficha de accion');
+      /* --- EFECTO, en este orden y por estos motivos --- */
+      var backTC=WTC.forPid;
+      /* 1) Guardar a quien hay que devolverle el turno ANTES de limpiar la ventana:
+       * `E.beginTurn` y el tail de `playPlot` (que descarta la carta jugada) corren
+       * despues, y la ventana es el unico sitio donde vive el jugador interrumpido. */
+      if(eff.returnTurnAfter)S.returnTurnTo=backTC;
+      S.pendingTurnStart=null;
+      /* 2) Robarse el turno. `beginTurn` resetea los flags por turno y reparte ficha
+       * de accion a los grupos que no tengan: es exactamente el arranque normal. */
+      S.phase='begin';
+      E.beginTurn(pid);
+      /* 3) "all your groups get Action tokens": el impreso dice TODOS, no "los que no
+       * tengan ficha", asi que se ponen a 1 DESPUES de beginTurn (que solo repone a
+       * los que faltan). El flag noDrawTurn va DESPUES tambien: beginTurn lo resetea,
+       * asi que ponerlo antes seria codigo muerto. */
+      if(eff.allGroupsGetTokens){
+        walk(plTC.structure,function(ndTC){
+          if(ndTC.cardId==null)return;
+          ndTC.tokens=1;
+        });
+      }
+      if(eff.noDrawForAnyReason)plTC.flags.noDrawTurn=true;
+      if(eff.oncePerGamePerPlayer)plTC.flags.seizeTimeUsed=true;
+      log(c.name+': el turno pasa a '+plTC.name+' (le habia interrumpido el de '+S.players[backTC].name+')');
+      lastResult={ok:true,negated:true,card:c.name,kind:'turn_control',mode:eff.mode,
+        specialTurn:true,returnTo:backTC,allTokens:!!eff.allGroupsGetTokens,
+        noDraw:!!eff.noDrawForAnyReason,notes:['El turno de '+S.players[backTC].name+' vuelve cuando este termine']};
+      break;
+    }
     default:{
       throw new Error('La carta "'+c.name+'" tiene una mecánica no implementada.');
     }
@@ -6142,6 +6224,23 @@ E.endTurn=function(){
   checkElimination();
   checkVictory();
   if(S.phase==='gameover')return publicState();
+  /* L14 — 364: "After your turn is over, the turn passes back to the player whose turn
+   * you interrupted (unless someone won)". Este bloque corre CUANDO el actor del turno
+   * especial termina. Va DESPUES de checkVictory(), asi que "unless someone won" sale
+   * gratis: si la partida termino, la linea de gameover ya ha vuelto con publicState().
+   * El jugador interrumpido NO pasa por este endTurn (el que lo ejecuto fue el actor
+   * del turno especial), asi que su contador NO se incrementa otra vez: su turno ya se
+   * contabilizo cuando lo termino, antes de que se lo robaran. Y NO se abre ventana de
+   * reaccion para el jugador siguiente, porque el turno no le toca todavia. */
+  if(S.returnTurnTo!=null){
+    var backToTC=S.returnTurnTo;
+    S.returnTurnTo=null;
+    if(!S.players[backToTC])return publicState();
+    log('Seize the Time! ha pasado: vuelve el turno de '+S.players[backToTC].name);
+    S.phase='begin';
+    E.beginTurn(backToTC);
+    return publicState();
+  }
   var next=(pid+1)%S.players.length;
   /* L8c — 405 Unlucky 13: "Play this card on a rival at the very beginning of his
    * turn." La ventana se abre AQUI, entre endTurn y beginTurn: es el unico punto
