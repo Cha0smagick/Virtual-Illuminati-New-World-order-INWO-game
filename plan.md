@@ -863,18 +863,209 @@ d) y no en
 - [x] L13.f.3 Marcar `## [x] L13` y sus sub-pasos con el **resultado real** y las desviaciones. <!-- HECHO. `## 65.` en el audit (ASCII sin tildes, con guarda de idempotencia). La **verificacion en navegador real** se hizo pero **NO certifica el flujo de las 5 cartas**: el estado vive en el closure de `app.js`, `window.App` solo expone `start` y las llamadas internas de ui.js a `render()` no pasan por `window.UI.render`, asi que no se puede inyectar una carta en la mano; en su lugar hay 5 **aserciones estaticas del cableado** en `test_hand_peek.js` y el limite queda declarado en el audit. -->
 - [x] L13.f.4 COMMIT + PUSH. <!-- HECHO. `## 65.` en el audit (ASCII sin tildes, con guarda de idempotencia). La **verificacion en navegador real** se hizo pero **NO certifica el flujo de las 5 cartas**: el estado vive en el closure de `app.js`, `window.App` solo expone `start` y las llamadas internas de ui.js a `render()` no pasan por `window.UI.render`, asi que no se puede inyectar una carta en la mano; en su lugar hay 5 **aserciones estaticas del cableado** en `test_hand_peek.js` y el limite queda declarado en el audit. -->
 
-## [ ] L14 - MANIPULACION DE TURNO
+## [ ] L14 - MANIPULACION DE TURNO (solo 364 Seize the Time!)
 
-- **Cartas (5)**: 364 Seize the Time! (roba el turno de otro) · 405 Unlucky 13 (ENTREGADA
-  entera en L8c/§54, no queda nada de bloqueo de turno pendiente aqui) ·
-  408 Upheaval! · 354 Reorganization · 298 / 299 Let's Get Organized (flechas de control).
+- **Cartas (1)**: 364 Seize the Time!.
 - **Mecanica**: `turn_control`.
-- **Interpretaciones declaradas**: 364 "becomes your turn instead" se implementa como
-  `S.currentPid = rival` + avanzar su contador de turno, que es el unico sentido literal posible;
-  se declara.
-- **Aceptacion**: en un turno del jugador B, 364 de A deja `currentPid === A` y B conserva sus
-  fichas ya gastadas (afirmado en los tokens, no en el log).
+- **Nota de alcance - DIVISION de L14 (P1-093)**: este bloque mezclaba antes 3 familias de
+  mecanica distintas, contra la regla 6 del plan (un lote = una familia; no mezclar ni partir
+  una familia). Se divide en cuatro lotes, decididos con el usuario:
+  **L14 = solo 364** (turn_control puro) · **L18 = 298 / 299** (flechas de control: necesita
+  un subsistema NUEVO, ver L14.a.3) · **L19 = 354** (reorganizar el arbol entero) ·
+  **L20 = 408** (cada jugador descarta un grupo).
+- **Interpretacion declarada**: "It becomes your turn instead" se implementa arrancando el
+  turno del actor y **guardando** a quien hay que devolverle el turno al terminarlo, que es el
+  unico sentido literal posible; se declara.
+- **Aceptacion**: con la ventana `S.pendingTurnStart` abierta (el turno de B va a empezar), 364
+  de A deja `currentPid === A` y **B conserva las fichas que ya habia gastado** (afirmado en los
+  **tokens** de sus grupos, no en el log). Al terminar el turno especial el turno vuelve a B y
+  B juega **una sola vez**, no dos.
 
+### [x] L14.a - AUDIT (P1-093)
+
+- [x] L14.a.1 Las 5 cartas del bloque original, con su texto impreso verbatim medido con `vm`
+  sobre `game/js/cards.js`: **364** `seizethetime` (385 chars de `textFull`) · **408**
+  `upheaval` (323) · **354** `reorganization` (201) · **298** `letsgetorganized` (442) · **299**
+  `letsgetreallyorganized` (396). Las 5 estan `mechanicsStatus='unverified'`,
+  `implemented=false`, `verifiedMechanic=undefined`, `power=null`, `resistance=null`,
+  `attributes=[]`, `alignments=[]`, con `effect={kind:'unverified',
+  reason:'plot-text-pending-mapping'}`, y **todas son `type='plot'`**.
+- [x] L14.a.2 **405 Unlucky 13 YA ESTA ENTREGADA** en L8c/§54 (`kind='turn_start_block'`,
+  `requireActionFromAttr='magic'`, `mechanicsStatus='implemented-pending-engine'`), con
+  `textFull` undefined (hueco de OCR ya declarado). **No es parte del trabajo de L14.**
+- [x] L14.a.3 **HALLAZGO DURO que motiva el lote L18 aparte**: `arrow` aparece 5 veces en
+  `engine.js` y en **NINGUN** campo del dataset
+  (`Object.keys(cards[0]).filter(k=>/arrow/i.test(k))` vacio), y solo **4 de las 421 cartas**
+  mencionan "arrow" en su texto. **No existe contador de flechas de control por grupo** =>
+  298/299 no son un ajuste de un mechanic existente, son un subsistema NUEVO. Regla 6 cumplida:
+  no se mezclan con 364.
+- [x] L14.a.4 **Precedente EXACTO de 364**: `case 'turn_start_block'` (405, engine.js
+  L5161-5193). Su comentario (L5162-5167) declara el criterio: *"El timing ES la ventana: solo
+  es jugable cuando `S.pendingTurnStart` esta abierto (lo abre `E.endTurn`, entre turnos), y el
+  objetivo es el jugador cuyo turno va a empezar. REGLA DEL CASO: se valida TODO antes de tocar
+  nada; `beginTurn` dentro del case es seguro porque nada toca la mano del actor y el tail de
+  `playPlot` corre despues."* El cuerpo valida `W2=S.pendingTurnStart`, rechaza
+  `W2.forPid===pid`, cobra con `actionCostAttr(eff)` + `firstUsableAid(...hasAttr...)` +
+  `spendGroupToken`, y termina con `S.pendingTurnStart=null; S.phase='begin';
+  E.beginTurn(W2.forPid);`.
+- [x] L14.a.5 **`E.beginTurn(pid,isFirst)` L1173**: pone `S.phase='begin'; S.currentPid=pid;
+  S.turn++; S.turnCompleted=false;`, llama a `expireTurnFlags()` (L1186) y resetea
+  `flags.autoTakeover`, `flags.autoTakeoverBlocked` (L6 / 359 Sabotage), `flags.plotDrawn`,
+  `flags.groupDrawn`, `flags.privilegedUsed` (P1-026), `usedResourceThisTurn`,
+  `usedExtraDrawThisTurn`, y (L13) `entry.usedThisTurn` de los Resources de **TODOS** los
+  jugadores.
+- [x] L14.a.6 **`E.endTurn()` L6098** es quien **ABRE** `S.pendingTurnStart`. Valida fase,
+  `turnCompleted`, ataque sin resolver, y veta `S.pendingDraw` / `S.pendingAlignEdit` /
+  `S.pendingResDestroy` antes de nada => es el sitio donde hay que encolar "el turno que le
+  tocaba a B despues del turno especial de A".
+- [x] L14.a.7 **`case 'timewarp'` NO es manipulacion de turno**: es P1-024, una de las cartas de
+  RODADERO (`case 'timewarp': case 'mistakenidentity': case 'mothersmarch':` comparten
+  cuerpo, L4417-4419); la carta es **403 Time Warp** y exige `S.pendingRoll` con
+  `rollReactionAllowed`. No se reutiliza como precedente de 364.
+- [x] L14.a.8 **364 NO va en la lista `instant` de `playPlot` (L3740)**: el impreso dice "at the
+  beginning of any other players turn", **no** "at any time" => se exige
+  `S.pendingTurnStart` abierto, igual que 405. Si fuera `instant`, `E.playPlot` aplicaria
+  `requireOwnMain(pid)` y la carta seria **INJUGABLE**: se juega en el turno del rival, no en
+  el propio.
+- [x] L14.a.9 **El impreso de 364 NO pide ninguna accion** => accion gratis, sin
+  `requireActionFromAttr` (a diferencia de 405). Los tres efectos a implementar salen del
+  impreso: (a) "all your groups get Action tokens"; (b) "you may not draw Plot or Group cards
+  for any reason"; (c) "No player may use this card more than once in a game" => flag **por
+  jugador**, no en la carta.
+- [x] L14.a.10 **Hallazgo de implementacion para (b)**: `pl.flags.plotDrawn` y
+  `pl.flags.groupDrawn` ya existen, pero `E.beginTurn` los **resetea al empezar** => no sirven
+  para bloquear el robo de un turno entero; hace falta un flag aparte (p. ej.
+  `pl.flags.noDrawTurn`) que el robo compruebe y que se limpie al empezar el turno siguiente.
+  Motivo medido, no supuesto: `E.beginTurn` L1187-1194 pone todos esos flags a `false` cada
+  vez que arranca un turno.
+- [x] L14.a.11 Atributos canonicos REALES del dataset (**13**, no los 11 que contaba L12): bank,
+  church, coastal, communist, computer, green, huge, magic, media, nation, science, secret,
+  space.
+- [x] L14.a.12 Recuentos del motor utiles para L19: `reorganize` 1 · `moveGroup` 3 ·
+  `E.moveGroup` 1 · `detach(` 9 · `parentUid` 8.
+- [x] L14.a.13 **Proximo ID libre para este lote: P1-094** (P1-093 es este audit).
+- [x] L14.a.14 **Correccion a la aceptacion original**: "B conserva sus fichas gastadas" no
+  basta, porque si `E.endTurn` reencola el turno de B con `E.beginTurn(B)` sin cuidado,
+  `S.turn` habria avanzado DOS veces para el mismo ciclo. El aserto tiene que comprobar que B
+  juega su turno **exactamente una vez**, no solo que lo recupera.
+
+### [ ] L14.b - DATOS: familia `turn_control` en `gen_cards.js`
+
+- [ ] L14.b.1 Bloque `L14_FX` + `L14_FXN` justo despues del `for (const k in L13_FX)`, con UNA
+  sola carta (364) y `kind='turn_control'` UNICO (medido: ningun kind vivo lo usa).
+- [ ] L14.b.2 Campos derivados del impreso, sin inventar: `instant:false` (no es "at any
+  time") · `freeAction:true` · `windowTurnStart:true` (exige `S.pendingTurnStart`) ·
+  `interruptTarget:true` · `allGroupsGetTokens:true` · `noDrawForAnyReason:true` ·
+  `oncePerGamePerPlayer:true` · `returnTurnAfter:true` · `unlessSomeoneWins:true`.
+- [ ] L14.b.3 `t:` = el `textFull` de 364 **verbatim** (385 chars).
+- [ ] L14.b.4 Anadir `|| L14_FXN[key]` a la cadena `pfx` de `gen_cards.js` (localizarla con
+  `indexOf(...)>=0`, NO con `/^/`).
+- [ ] L14.b.5 `turn_control` NO lleva `requireActionFromAttr`, asi que **NO** se toca
+  `ACTION_COST_KINDS` ni el espejo `ACTION_COST_KINDS_EXPECTED` de `test_fase2_rules.js`
+  (guard P1-055).
+- [ ] L14.b.6 No anadir `subtype` ni `attributes` de Resources (mismo limite que L12); el
+  generador pone `rec.subtype = pfx.kind` por su cuenta.
+- [ ] L14.b.7 Regenerar con `npm run build:cards` (= `node gen_cards.js`) y comprobar que
+  **FASE 4 da 151 -> 152 clasificadas y 97 -> 96 sin mecanica (exactamente 1)**, con
+  `"turn_control":1` en el recuento de kinds. El rojo que queda son los `case` del motor.
+- [ ] L14.b.8 Anadir `turn_control` a `KIND_ES` y sus claves a `FIELD_ES` en `game/js/ui.js`, y
+  subir `?v=50` -> `?v=51` en las 13 referencias de `game/index.html`.
+- [ ] L14.b.9 `node --check` de `gen_cards.js` y `ui.js`; mojibake 0; COMMIT + PUSH.
+
+### [ ] L14.c - MOTOR: `case 'turn_control'` en `engine.js`
+
+- [ ] L14.c.1 `case 'turn_control':{` **real** (nunca `else if`: el gate de FASE 4 busca el
+  patron `case '<kind>':` sobre todo el motor), insertado justo antes del `default:` del
+  `switch(eff.kind)` de `E.playPlot`.
+- [ ] L14.c.2 Timing: `var W=S.pendingTurnStart; if(!W)throw new Error(c.name+': solo es
+  jugable al comienzo del turno de un rival (no hay ventana de reaccion abierta)');` y
+  `if(W.forPid===pid)throw new Error(c.name+': no puedes robarte tu propio turno');`
+  (mismo texto base que 405, ver L14.a.4).
+- [ ] L14.c.3 **Una sola vez por partida y por jugador**: `pl.flags.seizeTimeUsed` (flag en el
+  JUGADOR, porque el impreso dice "No player may use this card more than once in a game"); si
+  esta a `true`, `throw` con el motivo oficial.
+- [ ] L14.c.4 **Se valida TODO antes de tocar nada** (regla del precedente 405): ventana,
+  objetivo, unicidad, y que el jugador al que se devuelve el turno existe.
+- [ ] L14.c.5 Efecto del turno especial, en este orden: `S.returnTurnTo = W.forPid;`
+  `S.pendingTurnStart=null; S.phase='begin'; E.beginTurn(pid);` y LUEGO, sobre el arbol del
+  actor, `walk(S.players[pid].structure, function(n){ n.tokens=1; })` para "all your groups get
+  Action tokens" (patron `expireTurnFlags`, que ya hace `walk` sobre el arbol de cada jugador).
+  OJO: `E.beginTurn` resetea flags por turno, asi que `noDrawTurn` se pone **DESPUES** del
+  `E.beginTurn`.
+- [ ] L14.c.6 `pl.flags.noDrawTurn=true` para "you may not draw Plot or Group cards for any
+  reason": el robo de Plot y el de Grupo comprueban ese flag y `throw` con el motivo oficial;
+  se limpia en `E.beginTurn` del turno siguiente.
+- [ ] L14.c.7 `E.endTurn`: si `S.returnTurnTo!=null`, en lugar de pasar el turno al siguiente,
+  arrancar **ese** turno (`S.returnTurnTo=null; S.phase='begin';
+  E.beginTurn(S.returnTurnTo);`) y NO hacer que el jugador interrumpido cuente un turno nuevo mas
+  de una vez. El "unless someone won" se respeta sin codigo nuevo: si alguien gano, `checkOver`
+  no llega a encolar nada.
+- [ ] L14.c.8 `E.endTurn` tambien veta `S.returnTurnTo!=null` si el jugador que debe recuperar el
+  turno ya no existe (nunca deberia pasar, pero el veto evita un turno con `pid` invalido).
+- [ ] L14.c.9 `throw new Error(c.name + ': ...')` con motivo oficial en cada rechazo (DoD 5) y
+  `lastResult={ok:true,negated:true,card,kind:'turn_control',specialTurn:true,returnTo,
+  allTokens:true,noDraw:true}` como canal de resultado observable.
+- [ ] L14.c.10 Proyeccion en `publicState()`: `returnTurnTo` y `seizeTimeUsed` para que la UI
+  pueda avisar de que el turno es especial. Se proyecta **una sola linea** antes de
+  `victoryStatus:victoryStatus()` (insertar junto a `pendingAlignEdit` parte el comentario de
+  L726-729 y rompe el fichero).
+- [ ] L14.c.11 `node --check game/js/engine.js`; CRLF preservado; `npm test` con FASE 4
+  **152/96/3/10/4/356**; COMMIT + PUSH.
+
+### [ ] L14.d - UI
+
+- [ ] L14.d.1 Medir como se pinta hoy `st.pendingTurnStart` en `ui.js` (si se pinta) y decidir si
+  `turn_control` se exime de `plotNeedsTarget`. Ojo: `plotNeedsTarget` es una lista de
+  EXENCIONES y si el kind no esta devuelve `true`; pero 364 **no tiene objetivo de carta**, su
+  objetivo es la ventana del turno, asi que el camino correcto NO es `plotTarget` sino la
+  ventana. No se decide sin medir.
+- [ ] L14.d.2 El camino real de uso: la ventana `S.pendingTurnStart` la abre `E.endTurn`, es
+  decir que la UI tiene que ofrecer "jugar 364" **durante** esa ventana.
+- [ ] L14.d.3 `app.js`: `onSeizeTime` con try/catch (mismo patron que `onUseGadgetAction` /
+  `onUseResDestroy`) para que un rechazo llegue al registro y no solo a la consola (P1-076).
+- [ ] L14.d.4 `?v=51` -> `?v=52`; `node --check` de `app.js` y `ui.js`.
+- [ ] L14.d.5 **Verificar en navegador real** (leccion de P1-075: un test de Node no prueba
+  jugabilidad). Con el limite ya medido de L13.f: el estado del motor vive en el closure de
+  `app.js` y `window.App` solo expone `start`, asi que hay que **declarar** el limite si no se
+  puede llegar a la ventana; NO fabricar un estado sintetico para que renderice.
+- [ ] L14.d.6 Aserciones estaticas del cableado en `test_hand_peek.js` (el metodo que L13.f uso
+  al declarar su limite). COMMIT + PUSH.
+
+### [ ] L14.e - REGRESION en `test_fase2_rules.js`
+
+- [ ] L14.e.1 >= 2 escenarios, con el criterio de aceptacion de L14.a.14 afirmado de verdad.
+- [ ] L14.e.2 **Escenario 1 (el de la aceptacion)**: planta un grupo de B con tokens 1 y gastas su
+  ficha para que su "fichas gastadas" sean observables; en la ventana `S.pendingTurnStart` juega
+  364 de A; afirma `currentPid===A`, que `S.turn` avanza **exactamente una vez**, que el grupo de
+  B conserva `tokens===0` (afirmado en el nodo, no en el log), y que todos los grupos de A
+  tienen `tokens>=1`.
+- [ ] L14.e.3 **Escenario 2 (el retorno)**: termina el turno especial con `E.endTurn()` y afirma
+  `currentPid===B` y que B juega su turno **una sola vez**.
+- [ ] L14.e.4 **Negativos**: 364 sin ventana `S.pendingTurnStart` da `throw` con el motivo
+  oficial · 364 en la ventana del **propio** turno da `throw` · 364 dos veces por el mismo
+  jugador da `throw` con el motivo de "once in a game" · el robo con `noDrawTurn` da `throw`.
+- [ ] L14.e.5 Determinismo (leccion de P1-078): `toHandL12` purga antes de insertar; asertos por
+  uid, por tokens o por delta, nunca por numero absoluto de cartas.
+- [ ] L14.e.6 Asertos de log con `.some(function(x){ return /…/.test(x.msg||String(x)); })`;
+  **nunca `log[length-1]`** (regla 14).
+- [ ] L14.e.7 **30+ corridas consecutivas** (regla 13); `npm test` completo; FASE 4 con
+  **152/96/3/10/4/356**. COMMIT + PUSH.
+
+### [ ] L14.f - CIERRE
+
+- [ ] L14.f.1 Seccion `## 66.` en `docs/audit/INWO_SURGICAL_AUDIT.md` en **ASCII sin tildes**,
+  con las subsecciones `### Hallazgo` / `### Correcciones` / `### Verificacion` /
+  `### Limites declarados` / `### Lecciones` / `### Backlog`, escrita con script Node temporal +
+  `fs.appendFileSync` cuya guarda **aborte si `## 66.` ya existe**, y borrar el temporal.
+- [ ] L14.f.2 IDs **P1-094..P1-097**: uno por correccion (turn_control, once-per-game,
+  noDrawTurn, retorno del turno).
+- [ ] L14.f.3 Marcar `## [x] L14` con el resultado real y las desviaciones, y los sub-pasos
+  `### [x] L14.a` .. `### [x] L14.f` con nota `<!-- ... -->` en cada checkbox.
+- [ ] L14.f.4 Backlog declarado: el "all your groups get Action tokens" se aplica al ARBOL del
+  actor en el momento de robar el turno, no a los grupos que se coloquen despues dentro de ese
+  mismo turno; y el alcance de "unless someone won" depende de `victoryStatus`, que se evalua al
+  final del turno.
+- [ ] L14.f.5 COMMIT + PUSH.
 ## [ ] L15 - COMBOS DE GOAL
 
 - **Cartas (5)**: 294 Kill for Peace · 297 Let Them Eat Cake! · 343 Power to the People ·
@@ -895,6 +1086,56 @@ d) y no en
 ---
 
 ## L17 - Cartas que quedan BLOQUEADAS con motivo declarado
+
+## [ ] L18 - FLECHAS DE CONTROL
+
+- **Cartas (2)**: 298 Lets Get Organized · 299 Let's Get REALLY Organized.
+- **Mecanica**: `control_arrows`.
+- **Por que es un lote aparte (P1-093)**: **no existe contador de flechas de control por grupo**.
+  `arrow` aparece 5 veces en `engine.js` y en NINGUN campo del dataset; solo 4 de las 421
+  cartas mencionan "arrow". 298/299 no son un ajuste de un mechanic existente, son un
+  subsistema NUEVO, asi que por la regla 6 no se pueden meter en L14 con 364.
+- **Impreso de 298**: jugala en tu turno sobre cualquier Group con **menos de tres** flechas de
+  control salientes; es una accion de ese grupo o su master; debes controlar el objetivo; gana
+  una flecha extra; los duplicados no se pueden usar en el mismo grupo.
+- **Impreso de 299**: lo mismo pero sobre un Group con **una o dos** flechas salientes; al final
+  tiene **tres**; la carta se coloca debajo o se enlaza.
+- **Aceptacion**: un grupo con 0 flechas puede recibir 298 y pasa a 1; con 1 o 2 puede recibir 299
+  y pasa a 3; un grupo con 3 ya no admite ninguna de las dos (afirmado por el contador, no por
+  el log).
+- [ ] L18.a AUDIT del subsistema de flechas (que representa una flecha en el modelo actual, si
+  hay alguna, y como se cuenta "outgoing").
+- [ ] L18.b DATOS: familia `control_arrows` en `gen_cards.js`.
+- [ ] L18.c MOTOR + UI + REGRESION (al menos 2 escenarios).
+
+## [ ] L19 - REORGANIZACION DE LA ESTRUCTURA
+
+- **Cartas (1)**: 354 Reorganization.
+- **Mecanica**: `structure_reorg`.
+- **Impreso**: "You may completely reorganize your entire Power Structure. You may play this
+  card at any time during your own turn. It requires an action from your Illuminati."
+- **Precedentes en el motor**: `E.moveGroup` 1 · `moveGroup` 3 · `detach(` 9 · `parentUid` 8
+  (medidos en L14.a.12) => la recolocacion se puede construir con lo que ya mueve grupos.
+- **Aceptacion**: con la estructura montada, 354 la deja reorganizada sin cambiar quien controla
+  nada y sin perder ni ganar Poder total (afirmado comparando Poder antes y despues).
+- [ ] L19.a AUDIT de como se mueve hoy un grupo y que invariantes hay que conservar.
+- [ ] L19.b DATOS + L19.c MOTOR + L19.d UI + L19.e REGRESION + L19.f CIERRE.
+
+## [ ] L20 - DESCARTE GLOBAL
+
+- **Cartas (1)**: 408 Upheaval!.
+- **Mecanica**: `global_discard`.
+- **Impreso**: cada jugador debe elegir un grupo de su Power Structure y descartarlo; esos NO
+  cuentan como destruidos para las condiciones de victoria de nadie; se puede jugar a cualquier
+  momento; requiere una accion de tu Illuminati.
+- **Aceptacion**: con los dos jugadores con al menos un grupo, 408 de A obliga a los dos a
+  descartar uno cada uno (afirmado por la AUSENCIA del uid concreto de cada uno), y ningun
+  `destroyedBy` se escribe.
+- [ ] L20.a AUDIT de como se descarta un grupo hoy y de la diferencia entre descartar y destruir
+  para las metas (`countsForGoals` / `destroyGroup`).
+- [ ] L20.b DATOS + L20.c MOTOR (incluido "no cuentan como destruidos") + L20.d UI (el jugador
+  elige, no se autoelige) + L20.e REGRESION + L20.f CIERRE.
+
 
 No son un fallo pendiente: son cartas cuyo texto impreso exige una mecanica que el motor no
 tiene, y el gate de FASE 4 las congela con `BLOCKED_CARDS` para que no se declaren jugables.
