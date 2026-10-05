@@ -6957,3 +6957,164 @@ errores JS (el unico 404 es el `favicon.ico` del servidor temporal).
 - Exponer el estado del motor en el navegador (un `window.__INWO_STATE` de solo
   lectura) permitiria verificar en navegador real cualquier carta sin inventar un
   estado sintetico.
+
+## 66. L14 - MANIPULACION DE TURNO: 364 Seize the Time! (P1-093 a P1-104)
+
+### Hallazgo
+
+El lote L14 de `plan.md` mezclaba TRES familias de mecanica distintas: robar el turno (364),
+contar flechas de control (298/299) y reorganizar la estructura (354), mas el descarte global
+de 408. Contra la regla 6 del propio plan (un lote = una familia) se decidio partirlo en cuatro:
+L14 = solo 364, L18 = 298/299, L19 = 354, L20 = 408 (P1-093).
+
+El HALLAZGO DURO que justifico L18 aparte: `arrow` aparece 5 veces en `engine.js` y en NINGUN campo
+del dataset, y solo 4 de las 421 cartas mencionan "arrow" en su texto. No existe contador de flechas
+salientes por grupo, asi que 298/299 no son un ajuste de una mecanica existente: son un subsistema
+nuevo.
+
+La carta 364 Seize the Time!, texto impreso verbatim (385 chars):
+"Play this card at the beginning of any other players turn. It becomes your turn instead. After your
+turn is over, the turn passes back to the player whose turn you interrupted (unless someone won).
+During your special turn, all your groups get Action tokens, but you may not draw Plot or Group cards
+for any reason. No player may use this card more than once in a game!"
+
+De ahi salen cuatro efectos: (a) el turno pasa al actor; (b) TODOS sus grupos reciben ficha de accion;
+(c) no puede robar Plot ni Group por ningun motivo; (d) al terminar, el turno vuelve al interrumpido;
+y una restriccion: una sola vez por partida POR JUGADOR (no por carta).
+
+El precedente exacto del motor es `case 'turn_start_block'` (405 Unlucky 13, entregado en L8c): 405
+CONSUME la ventana de comienzo de turno para BLOQUEAR el robo y arrancar el turno del rival; 364 la
+consume para ROBARSE ese mismo turno. El timing de 364 es literalmente la ventana que abre
+`E.endTurn` entre turnos.
+
+### Correcciones
+
+- **P1-094 - DATOS.** Familia `L14_FX` con UNA carta y `kind:'turn_control'` UNICO en
+  `gen_cards.js`; el texto se injerto desde `textFull` del dataset, no se reescribio a mano.
+  No se toco `ACTION_COST_KINDS`: 364 no declara `requireActionFromAttr` (el impreso no pide accion),
+  luego el guard P1-055 no lo exige. FASE 4: 151 -> 152 clasificadas y 97 -> 96 sin mecanica
+  (exactamente 1).
+
+- **P1-095/096/097 - MOTOR** (`engine.js`, +99 lineas):
+  - `case 'turn_control'` real antes del `default:` del `switch(eff.kind)` de `E.playPlot`. Nunca
+    `else if`: el gate de FASE 4 busca `case '<kind>':` en todo el fichero.
+  - Se valida TODO antes de tocar nada: ventana abierta, `forPid !== pid`, una vez por partida, y
+    que no haya ya un turno especial pendiente de devolver.
+  - El efecto, en orden: `S.returnTurnTo = W.forPid` (guardar ANTES de limpiar la ventana);
+    `S.pendingTurnStart = null`; `S.phase='begin'`; `E.beginTurn(pid)`. El `walk` que da ficha a
+    todos los grupos va DESPUES de `beginTurn`, que solo repone a los que faltan.
+  - `pl.flags.noDrawTurn` como flag NUEVO (P1-096): `plotDrawn`/`groupDrawn` los resetea `beginTurn`,
+    asi que no sirven. Se comprueba en `E.drawPlot`, en `E.drawGroup` y en el autoDraw de The Network
+    de `beginTurn`, que es un robo DENTRO del beginTurn y se saltaria los dos primeros.
+  - `pl.flags.seizeTimeUsed` (P1-097): el "once in a game" va en el JUGADOR, no en la carta.
+  - `E.endTurn` arranca `S.returnTurnTo` DESPUES del check de gameover, para que el "unless someone
+    won" salga gratis del `checkVictory` que ya existe.
+
+- **P1-098 - P0 de alcance.** El bucle `tsHolder` de `E.endTurn` solo buscaba `unlucky13`, asi que
+  con 364 en mano la ventana NUNCA se abria y la carta era INJUGABLE (su timing ES la ventana).
+  Mismo genero que P1-075 y P1-085: una ruta que el jugador no puede alcanzar.
+
+- **P1-101 - P0 REAL, encontrado por la regresion.** `turn_control` NO estaba en la lista `instant`
+  de `E.playPlot`. Durante la ventana, `E.endTurn` ya movio `S.currentPid` al rival que va a empezar,
+  asi que el gate aplicaba `requireOwnMain(pid)` y lanzaba "No es tu turno": 364 era INJUGABLE.
+  El razonamiento del comentario de L14.c estaba INVERTIDO (decia que no debia declararse `instant`
+  porque `requireOwnMain` la haria injugable: es al reves, `requireOwnMain` es lo que la hacia
+  injugable). Fix: `||eff0.kind==='turn_control'` en la lista, justo antes del `turn_start_block` con
+  el que comparte timing, y corregidos los dos comentarios que afirmaban lo contrario. Ahora se
+  documenta que `instant` aqui significa "esta carta NO requiere turno propio", no "at any time":
+  el timing real lo valida el `case` (ventana abierta + `forPid !== pid`).
+
+- **P1-099, P1-100, P1-102, P1-103, P1-104 - REGRESION Y FIXTURES.** La regresion de L14 (P1-100,
+  31 asertos) destapo cuatro fallos mas, todos de fixture salvo P1-101:
+  - P1-102: el bucle `tsHolder` hace `if(!tsp.human||tsq===next)continue;` (la ventana existe PARA
+    que el humano pueda reaccionar) y el helper `fresh()` del test crea a los DOS jugadores con
+    `human:false`, asi que la ventana nunca se abria y 18 de 22 asertos fallaban por eso y no por el
+    motor. `freshL14()` usa ahora `E.newGame([{name:'A',human:true},{name:'B',human:false}])`, igual
+    que `freshL8c`. El motor NO tiene IA (`maybeRunAI` vive en `app.js`), luego marcar a P0 humano no
+    introduce ningun actor nuevo.
+  - P1-103: N3 y N4 no abrian ventana ni tenian la 364 en la mano antes del `endTurn`, asi que sus
+    negativos no probaban nada.
+  - P1-104: la 364 tambien abre la ventana, luego los purges del bloque L8c tienen que echar las dos
+    cartas al mazo.
+
+- **P1-078 (3 apariciones mas) - FLAKYS DE FIXTURE.** El mismo defecto aparecio cuatro veces en
+  esta sesion: `toHandL11` empujaba sin purgar; el bloque de metas (P1-001, el mas antiguo) media 5
+  cartas de meta en vez de 3 porque el reparto aleatorio ya habia dejado dos; `deckOnlyL8c` tenia dos
+  retornos tempranos y no garantizaba que una carta quedara solo en el mazo. Todos corregidos.
+
+### Verificacion
+
+- `npm test` -> `ALL TESTS PASSED (11)`.
+- `node test_fase4_cards.js` -> `FASE 4 COVERAGE PASSED (152 cartas clasificadas, 96 Plots/Resources
+  sin mecanica (techo 176), 3 ramas muertas declaradas, 10 cartas bloqueadas congeladas, 4 huecos de
+  texto declarados)` con `"turn_control":1`.
+- `test_fase2_rules.js`: **32 corridas consecutivas sin fallos ni crashes** (regla 13). 31 asertos
+  de L14 verdes.
+- `test_hand_peek.js`: 6 aserciones estaticas nuevas del cableado de UI de `turn_control`.
+- Lo que afirma la regresion, con numeros y no con aritmetica:
+  - S1 (aceptacion): la ventana se monta con `E.endTurn()` (el unico sitio donde el motor la abre);
+    tras robar, `currentPid === 0`; `S.turn` avanza EXACTAMENTE una vez; el grupo del INTERRUMPIDO
+    conserva su ficha gastada (`tokens 0`), que es lo que el impreso protege; todos los grupos con
+    carta del actor tienen ficha; `noDrawTurn` activo; `seizeTimeUsed` en el jugador; y el registro
+    dice "Seize the Time!: el turno pasa a <actor> (le habia interrumpido el de <interrumpido>)".
+  - S2 (retorno): al terminar el turno especial el turno vuelve al interrumpido, `returnTurnTo` queda
+    a `null`, se arranca UNA sola vez y el interrumpido juega EXACTAMENTE un turno, no dos. Esta
+    aceptacion se CORRIGIO respecto al plan original, que solo pedia "recupera el turno" y dejaba
+    pasar que lo jugara dos veces.
+  - N1 sin ventana -> "solo es jugable al comienzo del turno de un rival (no hay ventana de reaccion
+    abierta)"; N2 ventana del propio turno -> "no puedes robarte tu propio turno"; N3 segunda vez por
+    el mismo jugador -> mensaje con el texto impreso "No player may use this card more than once in a
+    game"; N4 robo de Plot y de Group -> "no puedes robar Plot cards en el turno que has robado" /
+    "no puedes robar Group cards", y en su turno normal vuelve a poder.
+
+### Limites declarados
+
+1. **"all your groups get Action tokens"** se aplica al arbol del actor en el momento de robar el
+   turno, NO a los grupos que se coloquen despues dentro de ese mismo turno especial. Es lo unico
+   verificable sin un subsistema de "fichas pendientes por colocar", asi que se declara.
+2. **"unless someone won"** no es codigo nuevo: sale gratis de que el `E.endTurn` arranca el turno
+   devuelto DESPUES del `checkVictory()` que ya existe. Si alguien gano en el turno especial, la
+   partida ya esta en `gameover` y el retorno no ocurre.
+3. **Verificacion en navegador real NO certificada.** El estado del motor vive en el closure de
+   `app.js`, `window.App` solo expone `start`, y las llamadas internas de `ui.js` a `render()` van a
+   la funcion local del IIFE, no a `window.UI.render` (medido: parchear `window.UI.render` NO captura
+   el estado). No hay forma de inyectar una carta en la mano desde fuera, y fabricar un estado
+   sintetico seria fabricar la prueba. En su lugar hay 6 aserciones estaticas del cableado exacto.
+   El camino compartido si se toco, pero queda cubierto por asertos estaticos, no por medicion.
+
+### Lecciones
+
+1. **Un comentario puede razonar el defecto que lo causa.** El comentario de L14.c afirmaba, con
+   argumentos, que 364 NO debia ser `instant`. Era exactamente al reves, y el comentario)-> el
+   defecto. Cuando un arreglo se apoya en una afirmacion sobre el motor, esa afirmacion tiene que
+   estar verificada con el codigo delante, no deducida.
+2. **La lista `instant` de `E.playPlot` no significa "at any time": significa "no requiere turno
+   propio".** Son dos cosas distintas y confundirlas produce cartas injugables o cartas jugables en
+   el momento equivocado. El timing real lo valida siempre el `case`.
+3. **Una ventana de reaccion pertenece al HUMANO que puede reaccionar.** Un fixture con los dos
+   jugadores en `human:false` no abre ventanas, y 18 asertos pueden fallar por eso sin que el motor
+   tenga nada malo. Antes de culpar al motor, comprobar si el fixture puede siquiera llegar a la
+   situacion que el aserto afirma.
+4. **"Una sola vez por partida" es un flag del JUGADOR, no de la carta.** La misma carta puede estar
+   en la mano de dos jugadores, o en la mano del mismo dos veces.
+5. **Un flag que `beginTurn` resetea no puede servir para un efecto del turno actual.** `plotDrawn` y
+   `groupDrawn` se limpian al empezar el turno, luego "no robes este turno" necesita su propio flag, y
+   hay que acordarse del robo DENTRO del propio `beginTurn` (el autoDraw de The Network), que se
+   saltaria los dos chequeos normales.
+6. **El reparto inicial es aleatorio y los mazos son COMPARTIDOS.** Ninguna fixture puede (a)
+   empujar una carta a una mano sin purgar antes las copias que el reparto ya dejo, ni (b) afirmar que
+   una carta no esta en ninguna mano sin barrer manos, `exposedPlots`, `linkedPlots` y el mazo de los
+   dos jugadores. Y cuando una carta nueva pasa a abrir una ventana, TODOS los purges de todos los
+   bloques tienen que echarla tambien al mazo.
+
+### Backlog
+
+1. L18 (298/299): el subsistema de flechas de control no existe. Hay que decidir si se cuenta por
+   grupo, por tipo de carta o por posicion en la estructura, antes de escribir nada.
+2. L19 (354 Reorganization): reorganizar el arbol entero sin cambiar quien controla nada.
+3. L20 (408 Upheaval!): cada jugador descarta un grupo y NO cuentan como destruidos para ninguna
+   victoria (`destroyedBy` no se escribe).
+4. Exponer el estado del motor en el navegador con un `window.__INWO_STATE` de solo lectura, para que
+   la verificacion en navegador real deje de depender de inyeccion de cartas.
+5. La IA (en `app.js`) no juega cartas de reaccion: hoy solo cierra las ventanas con `pass`.
+6. Revisar los bloques de test que siguen usando `fresh()` para escenario que necesitan ventana.

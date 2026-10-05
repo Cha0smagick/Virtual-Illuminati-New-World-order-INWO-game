@@ -863,7 +863,43 @@ d) y no en
 - [x] L13.f.3 Marcar `## [x] L13` y sus sub-pasos con el **resultado real** y las desviaciones. <!-- HECHO. `## 65.` en el audit (ASCII sin tildes, con guarda de idempotencia). La **verificacion en navegador real** se hizo pero **NO certifica el flujo de las 5 cartas**: el estado vive en el closure de `app.js`, `window.App` solo expone `start` y las llamadas internas de ui.js a `render()` no pasan por `window.UI.render`, asi que no se puede inyectar una carta en la mano; en su lugar hay 5 **aserciones estaticas del cableado** en `test_hand_peek.js` y el limite queda declarado en el audit. -->
 - [x] L13.f.4 COMMIT + PUSH. <!-- HECHO. `## 65.` en el audit (ASCII sin tildes, con guarda de idempotencia). La **verificacion en navegador real** se hizo pero **NO certifica el flujo de las 5 cartas**: el estado vive en el closure de `app.js`, `window.App` solo expone `start` y las llamadas internas de ui.js a `render()` no pasan por `window.UI.render`, asi que no se puede inyectar una carta en la mano; en su lugar hay 5 **aserciones estaticas del cableado** en `test_hand_peek.js` y el limite queda declarado en el audit. -->
 
-## [ ] L14 - MANIPULACION DE TURNO (solo 364 Seize the Time!)
+## [x] L14 - MANIPULACION DE TURNO (solo 364 Seize the Time!)
+<!-- L14 CERRADA. El bloque original de "MANIPULACION DE TURNO" mezclaba 3 familias de
+     mecanica distintas contra la regla 6 del plan, asi que P1-093 lo dividio en 4:
+     L14 = solo 364 (turn_control), L18 = 298/299 (flechas de control), L19 = 354
+     (reorganizacion de la estructura), L20 = 408 (descarte global). Aqui solo se
+     entrega 364; los otros tres lotes siguen abiertos con su propio sub-plan.
+     Reglas permanentes tocadas por este lote:
+       - `turn_control` TIENE que estar en la lista `instant` de `E.playPlot`. El
+         comentario de L14.c razonaba lo contrario y ERA el defecto (P1-101): durante
+         la ventana de comienzo de turno `E.endTurn` ya movio `S.currentPid` al rival,
+         asi que `requireOwnMain` lanzaba "No es tu turno" y la carta era INJUGABLE.
+         Aqui `instant` significa "esta carta NO requiere turno propio", NO "at any
+         time": el timing real lo valida el `case` (ventana abierta + `forPid !== pid`).
+       - "No player may use this card more than once in a game" va en el JUGADOR
+         (`pl.flags.seizeTimeUsed`), no en la carta.
+       - "you may not draw Plot or Group cards for any reason" necesita un flag NUEVO
+         (`pl.flags.noDrawTurn`) porque `plotDrawn`/`groupDrawn` los resetea
+         `E.beginTurn`; y se comprueba tambien en el autoDraw de The Network, que es
+         un robo DENTRO de `beginTurn` y se saltaria los otros dos.
+       - "all your groups get Action tokens" con `walk` DESPUES de `E.beginTurn`
+         (que reparte fichas por su cuenta).
+       - El turno interrumpido se devuelve en `E.endTurn` DESPUES del check de
+         gameover, para que el "unless someone won" del impreso salga gratis.
+     Alcance y desviaciones declaradas:
+       - FASE 4: 151/97 -> 152/96 (clasificadas / sin mecanica), exactamente 1 carta.
+       - La aceptacion del lote se CORRIGIO en L14.a: no basta con que el turno vuelva,
+         hay que afirmar que el interrumpido lo juega UNA sola vez, no dos.
+       - La verificacion en navegador real NO se certifica: el estado vive en el
+         closure de `app.js` y `window.App` solo expone `start` (motivo medido en
+         L13.f). En su lugar hay 6 aserciones estaticas del cableado.
+     Commits: `d25dd90` (L14.a plan) · `1074cc9` (L14.b datos) · `7c0e93d` (L14.c
+     motor) · `1068d4c` (L14.d UI + 3 flakys de fixture) · `35f73fb` (L14.e
+     regresiones, P1-101..P1-104) · este (L14.f cierre).
+     Evidencia completa: seccion 66 de `docs/audit/INWO_SURGICAL_AUDIT.md`.
+     Hallazgos: P1-093 (division en 4 lotes), P1-094 (datos), P1-095/096/097 (motor),
+     P1-098 (la ventana no se abria sin `seizethetime` en el bucle `tsHolder`),
+     P1-099/100/102/103/104 (fixtures: reparto aleatorio, `human:false`, purges). -->
 
 - **Cartas (1)**: 364 Seize the Time!.
 - **Mecanica**: `turn_control`.
@@ -949,123 +985,123 @@ d) y no en
   `S.turn` habria avanzado DOS veces para el mismo ciclo. El aserto tiene que comprobar que B
   juega su turno **exactamente una vez**, no solo que lo recupera.
 
-### [ ] L14.b - DATOS: familia `turn_control` en `gen_cards.js`
+### [x] L14.b - DATOS: familia `turn_control` en `gen_cards.js`  <!-- cerrado: ver los checkboxes de L14.b -->
 
-- [ ] L14.b.1 Bloque `L14_FX` + `L14_FXN` justo despues del `for (const k in L13_FX)`, con UNA
+- [x] L14.b.1 Bloque `L14_FX` + `L14_FXN` justo despues del `for (const k in L13_FX)`, con UNA  <!-- HECHO en `1074cc9`: `L14_FX` con UNA carta, `kind` UNICO; `t:` inyectado desde `textFull` (no reescrito a mano); NO se toco `ACTION_COST_KINDS` (364 no pide accion => guard P1-055 no lo exige); FASE 4 de 151/97 a **152/96, exactamente 1**; `turn_control` en `KIND_ES` + 7 claves en `FIELD_ES`; `?v=50`->`?v=51`. -->
   sola carta (364) y `kind='turn_control'` UNICO (medido: ningun kind vivo lo usa).
-- [ ] L14.b.2 Campos derivados del impreso, sin inventar: `instant:false` (no es "at any
+- [x] L14.b.2 Campos derivados del impreso, sin inventar: `instant:false` (no es "at any  <!-- HECHO en `1074cc9`: `L14_FX` con UNA carta, `kind` UNICO; `t:` inyectado desde `textFull` (no reescrito a mano); NO se toco `ACTION_COST_KINDS` (364 no pide accion => guard P1-055 no lo exige); FASE 4 de 151/97 a **152/96, exactamente 1**; `turn_control` en `KIND_ES` + 7 claves en `FIELD_ES`; `?v=50`->`?v=51`. -->
   time") · `freeAction:true` · `windowTurnStart:true` (exige `S.pendingTurnStart`) ·
   `interruptTarget:true` · `allGroupsGetTokens:true` · `noDrawForAnyReason:true` ·
   `oncePerGamePerPlayer:true` · `returnTurnAfter:true` · `unlessSomeoneWins:true`.
-- [ ] L14.b.3 `t:` = el `textFull` de 364 **verbatim** (385 chars).
-- [ ] L14.b.4 Anadir `|| L14_FXN[key]` a la cadena `pfx` de `gen_cards.js` (localizarla con
+- [x] L14.b.3 `t:` = el `textFull` de 364 **verbatim** (385 chars).  <!-- HECHO en `1074cc9`: `L14_FX` con UNA carta, `kind` UNICO; `t:` inyectado desde `textFull` (no reescrito a mano); NO se toco `ACTION_COST_KINDS` (364 no pide accion => guard P1-055 no lo exige); FASE 4 de 151/97 a **152/96, exactamente 1**; `turn_control` en `KIND_ES` + 7 claves en `FIELD_ES`; `?v=50`->`?v=51`. -->
+- [x] L14.b.4 Anadir `|| L14_FXN[key]` a la cadena `pfx` de `gen_cards.js` (localizarla con  <!-- HECHO en `1074cc9`: `L14_FX` con UNA carta, `kind` UNICO; `t:` inyectado desde `textFull` (no reescrito a mano); NO se toco `ACTION_COST_KINDS` (364 no pide accion => guard P1-055 no lo exige); FASE 4 de 151/97 a **152/96, exactamente 1**; `turn_control` en `KIND_ES` + 7 claves en `FIELD_ES`; `?v=50`->`?v=51`. -->
   `indexOf(...)>=0`, NO con `/^/`).
-- [ ] L14.b.5 `turn_control` NO lleva `requireActionFromAttr`, asi que **NO** se toca
+- [x] L14.b.5 `turn_control` NO lleva `requireActionFromAttr`, asi que **NO** se toca  <!-- HECHO en `1074cc9`: `L14_FX` con UNA carta, `kind` UNICO; `t:` inyectado desde `textFull` (no reescrito a mano); NO se toco `ACTION_COST_KINDS` (364 no pide accion => guard P1-055 no lo exige); FASE 4 de 151/97 a **152/96, exactamente 1**; `turn_control` en `KIND_ES` + 7 claves en `FIELD_ES`; `?v=50`->`?v=51`. -->
   `ACTION_COST_KINDS` ni el espejo `ACTION_COST_KINDS_EXPECTED` de `test_fase2_rules.js`
   (guard P1-055).
-- [ ] L14.b.6 No anadir `subtype` ni `attributes` de Resources (mismo limite que L12); el
+- [x] L14.b.6 No anadir `subtype` ni `attributes` de Resources (mismo limite que L12); el  <!-- HECHO en `1074cc9`: `L14_FX` con UNA carta, `kind` UNICO; `t:` inyectado desde `textFull` (no reescrito a mano); NO se toco `ACTION_COST_KINDS` (364 no pide accion => guard P1-055 no lo exige); FASE 4 de 151/97 a **152/96, exactamente 1**; `turn_control` en `KIND_ES` + 7 claves en `FIELD_ES`; `?v=50`->`?v=51`. -->
   generador pone `rec.subtype = pfx.kind` por su cuenta.
-- [ ] L14.b.7 Regenerar con `npm run build:cards` (= `node gen_cards.js`) y comprobar que
+- [x] L14.b.7 Regenerar con `npm run build:cards` (= `node gen_cards.js`) y comprobar que  <!-- HECHO en `1074cc9`: `L14_FX` con UNA carta, `kind` UNICO; `t:` inyectado desde `textFull` (no reescrito a mano); NO se toco `ACTION_COST_KINDS` (364 no pide accion => guard P1-055 no lo exige); FASE 4 de 151/97 a **152/96, exactamente 1**; `turn_control` en `KIND_ES` + 7 claves en `FIELD_ES`; `?v=50`->`?v=51`. -->
   **FASE 4 da 151 -> 152 clasificadas y 97 -> 96 sin mecanica (exactamente 1)**, con
   `"turn_control":1` en el recuento de kinds. El rojo que queda son los `case` del motor.
-- [ ] L14.b.8 Anadir `turn_control` a `KIND_ES` y sus claves a `FIELD_ES` en `game/js/ui.js`, y
+- [x] L14.b.8 Anadir `turn_control` a `KIND_ES` y sus claves a `FIELD_ES` en `game/js/ui.js`, y  <!-- HECHO en `1074cc9`: `L14_FX` con UNA carta, `kind` UNICO; `t:` inyectado desde `textFull` (no reescrito a mano); NO se toco `ACTION_COST_KINDS` (364 no pide accion => guard P1-055 no lo exige); FASE 4 de 151/97 a **152/96, exactamente 1**; `turn_control` en `KIND_ES` + 7 claves en `FIELD_ES`; `?v=50`->`?v=51`. -->
   subir `?v=50` -> `?v=51` en las 13 referencias de `game/index.html`.
-- [ ] L14.b.9 `node --check` de `gen_cards.js` y `ui.js`; mojibake 0; COMMIT + PUSH.
+- [x] L14.b.9 `node --check` de `gen_cards.js` y `ui.js`; mojibake 0; COMMIT + PUSH.  <!-- HECHO en `1074cc9`: `L14_FX` con UNA carta, `kind` UNICO; `t:` inyectado desde `textFull` (no reescrito a mano); NO se toco `ACTION_COST_KINDS` (364 no pide accion => guard P1-055 no lo exige); FASE 4 de 151/97 a **152/96, exactamente 1**; `turn_control` en `KIND_ES` + 7 claves en `FIELD_ES`; `?v=50`->`?v=51`. -->
 
-### [ ] L14.c - MOTOR: `case 'turn_control'` en `engine.js`
+### [x] L14.c - MOTOR: `case 'turn_control'` en `engine.js`  <!-- cerrado: ver los checkboxes de L14.c -->
 
-- [ ] L14.c.1 `case 'turn_control':{` **real** (nunca `else if`: el gate de FASE 4 busca el
+- [x] L14.c.1 `case 'turn_control':{` **real** (nunca `else if`: el gate de FASE 4 busca el  <!-- HECHO en `7c0e93d`, y **corregido en `35f73fb` (P1-101)**: `turn_control` SI tiene que estar en la lista `instant` de `E.playPlot` porque durante la ventana `currentPid` ya es el del rival y `requireOwnMain` lanzaba "No es tu turno" (ver el comentario del `case`, ya reescrito). -->
   patron `case '<kind>':` sobre todo el motor), insertado justo antes del `default:` del
   `switch(eff.kind)` de `E.playPlot`.
-- [ ] L14.c.2 Timing: `var W=S.pendingTurnStart; if(!W)throw new Error(c.name+': solo es
+- [x] L14.c.2 Timing: `var W=S.pendingTurnStart; if(!W)throw new Error(c.name+': solo es  <!-- HECHO en `7c0e93d`, y **corregido en `35f73fb` (P1-101)**: `turn_control` SI tiene que estar en la lista `instant` de `E.playPlot` porque durante la ventana `currentPid` ya es el del rival y `requireOwnMain` lanzaba "No es tu turno" (ver el comentario del `case`, ya reescrito). -->
   jugable al comienzo del turno de un rival (no hay ventana de reaccion abierta)');` y
   `if(W.forPid===pid)throw new Error(c.name+': no puedes robarte tu propio turno');`
   (mismo texto base que 405, ver L14.a.4).
-- [ ] L14.c.3 **Una sola vez por partida y por jugador**: `pl.flags.seizeTimeUsed` (flag en el
+- [x] L14.c.3 **Una sola vez por partida y por jugador**: `pl.flags.seizeTimeUsed` (flag en el  <!-- HECHO en `7c0e93d`, y **corregido en `35f73fb` (P1-101)**: `turn_control` SI tiene que estar en la lista `instant` de `E.playPlot` porque durante la ventana `currentPid` ya es el del rival y `requireOwnMain` lanzaba "No es tu turno" (ver el comentario del `case`, ya reescrito). -->
   JUGADOR, porque el impreso dice "No player may use this card more than once in a game"); si
   esta a `true`, `throw` con el motivo oficial.
-- [ ] L14.c.4 **Se valida TODO antes de tocar nada** (regla del precedente 405): ventana,
+- [x] L14.c.4 **Se valida TODO antes de tocar nada** (regla del precedente 405): ventana,  <!-- HECHO en `7c0e93d`, y **corregido en `35f73fb` (P1-101)**: `turn_control` SI tiene que estar en la lista `instant` de `E.playPlot` porque durante la ventana `currentPid` ya es el del rival y `requireOwnMain` lanzaba "No es tu turno" (ver el comentario del `case`, ya reescrito). -->
   objetivo, unicidad, y que el jugador al que se devuelve el turno existe.
-- [ ] L14.c.5 Efecto del turno especial, en este orden: `S.returnTurnTo = W.forPid;`
+- [x] L14.c.5 Efecto del turno especial, en este orden: `S.returnTurnTo = W.forPid;`  <!-- HECHO en `7c0e93d`, y **corregido en `35f73fb` (P1-101)**: `turn_control` SI tiene que estar en la lista `instant` de `E.playPlot` porque durante la ventana `currentPid` ya es el del rival y `requireOwnMain` lanzaba "No es tu turno" (ver el comentario del `case`, ya reescrito). -->
   `S.pendingTurnStart=null; S.phase='begin'; E.beginTurn(pid);` y LUEGO, sobre el arbol del
   actor, `walk(S.players[pid].structure, function(n){ n.tokens=1; })` para "all your groups get
   Action tokens" (patron `expireTurnFlags`, que ya hace `walk` sobre el arbol de cada jugador).
   OJO: `E.beginTurn` resetea flags por turno, asi que `noDrawTurn` se pone **DESPUES** del
   `E.beginTurn`.
-- [ ] L14.c.6 `pl.flags.noDrawTurn=true` para "you may not draw Plot or Group cards for any
+- [x] L14.c.6 `pl.flags.noDrawTurn=true` para "you may not draw Plot or Group cards for any  <!-- HECHO en `7c0e93d`, y **corregido en `35f73fb` (P1-101)**: `turn_control` SI tiene que estar en la lista `instant` de `E.playPlot` porque durante la ventana `currentPid` ya es el del rival y `requireOwnMain` lanzaba "No es tu turno" (ver el comentario del `case`, ya reescrito). -->
   reason": el robo de Plot y el de Grupo comprueban ese flag y `throw` con el motivo oficial;
   se limpia en `E.beginTurn` del turno siguiente.
-- [ ] L14.c.7 `E.endTurn`: si `S.returnTurnTo!=null`, en lugar de pasar el turno al siguiente,
+- [x] L14.c.7 `E.endTurn`: si `S.returnTurnTo!=null`, en lugar de pasar el turno al siguiente,  <!-- HECHO en `7c0e93d`, y **corregido en `35f73fb` (P1-101)**: `turn_control` SI tiene que estar en la lista `instant` de `E.playPlot` porque durante la ventana `currentPid` ya es el del rival y `requireOwnMain` lanzaba "No es tu turno" (ver el comentario del `case`, ya reescrito). -->
   arrancar **ese** turno (`S.returnTurnTo=null; S.phase='begin';
   E.beginTurn(S.returnTurnTo);`) y NO hacer que el jugador interrumpido cuente un turno nuevo mas
   de una vez. El "unless someone won" se respeta sin codigo nuevo: si alguien gano, `checkOver`
   no llega a encolar nada.
-- [ ] L14.c.8 `E.endTurn` tambien veta `S.returnTurnTo!=null` si el jugador que debe recuperar el
+- [x] L14.c.8 `E.endTurn` tambien veta `S.returnTurnTo!=null` si el jugador que debe recuperar el  <!-- HECHO en `7c0e93d`, y **corregido en `35f73fb` (P1-101)**: `turn_control` SI tiene que estar en la lista `instant` de `E.playPlot` porque durante la ventana `currentPid` ya es el del rival y `requireOwnMain` lanzaba "No es tu turno" (ver el comentario del `case`, ya reescrito). -->
   turno ya no existe (nunca deberia pasar, pero el veto evita un turno con `pid` invalido).
-- [ ] L14.c.9 `throw new Error(c.name + ': ...')` con motivo oficial en cada rechazo (DoD 5) y
+- [x] L14.c.9 `throw new Error(c.name + ': ...')` con motivo oficial en cada rechazo (DoD 5) y  <!-- HECHO en `7c0e93d`, y **corregido en `35f73fb` (P1-101)**: `turn_control` SI tiene que estar en la lista `instant` de `E.playPlot` porque durante la ventana `currentPid` ya es el del rival y `requireOwnMain` lanzaba "No es tu turno" (ver el comentario del `case`, ya reescrito). -->
   `lastResult={ok:true,negated:true,card,kind:'turn_control',specialTurn:true,returnTo,
   allTokens:true,noDraw:true}` como canal de resultado observable.
-- [ ] L14.c.10 Proyeccion en `publicState()`: `returnTurnTo` y `seizeTimeUsed` para que la UI
+- [x] L14.c.10 Proyeccion en `publicState()`: `returnTurnTo` y `seizeTimeUsed` para que la UI  <!-- HECHO en `7c0e93d`, y **corregido en `35f73fb` (P1-101)**: `turn_control` SI tiene que estar en la lista `instant` de `E.playPlot` porque durante la ventana `currentPid` ya es el del rival y `requireOwnMain` lanzaba "No es tu turno" (ver el comentario del `case`, ya reescrito). -->
   pueda avisar de que el turno es especial. Se proyecta **una sola linea** antes de
   `victoryStatus:victoryStatus()` (insertar junto a `pendingAlignEdit` parte el comentario de
   L726-729 y rompe el fichero).
-- [ ] L14.c.11 `node --check game/js/engine.js`; CRLF preservado; `npm test` con FASE 4
+- [x] L14.c.11 `node --check game/js/engine.js`; CRLF preservado; `npm test` con FASE 4  <!-- HECHO en `7c0e93d`, y **corregido en `35f73fb` (P1-101)**: `turn_control` SI tiene que estar en la lista `instant` de `E.playPlot` porque durante la ventana `currentPid` ya es el del rival y `requireOwnMain` lanzaba "No es tu turno" (ver el comentario del `case`, ya reescrito). -->
   **152/96/3/10/4/356**; COMMIT + PUSH.
 
-### [ ] L14.d - UI
+### [x] L14.d - UI  <!-- cerrado: ver los checkboxes de L14.d -->
 
-- [ ] L14.d.1 Medir como se pinta hoy `st.pendingTurnStart` en `ui.js` (si se pinta) y decidir si
+- [x] L14.d.1 Medir como se pinta hoy `st.pendingTurnStart` en `ui.js` (si se pinta) y decidir si  <!-- HECHO en `1068d4c` (**P1-098**): el bucle `tsHolder` de `E.endTurn` reconoce `seizethetime` (sin eso la ventana no se abria nunca y la carta era INJUGABLE); `NO_TARGET_KINDS` gana `turn_control` por el mismo motivo que `turn_start_block`; `onTurnStartPlay(handIdx, cardId)` con `catch` (P1-076); `?v=52`->`?v=53`; **navegador real NO certificado** (limite ya medido: el estado vive en el closure de `app.js`) => 6 aserciones estaticas en `test_hand_peek.js`. -->
   `turn_control` se exime de `plotNeedsTarget`. Ojo: `plotNeedsTarget` es una lista de
   EXENCIONES y si el kind no esta devuelve `true`; pero 364 **no tiene objetivo de carta**, su
   objetivo es la ventana del turno, asi que el camino correcto NO es `plotTarget` sino la
   ventana. No se decide sin medir.
-- [ ] L14.d.2 El camino real de uso: la ventana `S.pendingTurnStart` la abre `E.endTurn`, es
+- [x] L14.d.2 El camino real de uso: la ventana `S.pendingTurnStart` la abre `E.endTurn`, es  <!-- HECHO en `1068d4c` (**P1-098**): el bucle `tsHolder` de `E.endTurn` reconoce `seizethetime` (sin eso la ventana no se abria nunca y la carta era INJUGABLE); `NO_TARGET_KINDS` gana `turn_control` por el mismo motivo que `turn_start_block`; `onTurnStartPlay(handIdx, cardId)` con `catch` (P1-076); `?v=52`->`?v=53`; **navegador real NO certificado** (limite ya medido: el estado vive en el closure de `app.js`) => 6 aserciones estaticas en `test_hand_peek.js`. -->
   decir que la UI tiene que ofrecer "jugar 364" **durante** esa ventana.
-- [ ] L14.d.3 `app.js`: `onSeizeTime` con try/catch (mismo patron que `onUseGadgetAction` /
+- [x] L14.d.3 `app.js`: `onSeizeTime` con try/catch (mismo patron que `onUseGadgetAction` /  <!-- HECHO en `1068d4c` (**P1-098**): el bucle `tsHolder` de `E.endTurn` reconoce `seizethetime` (sin eso la ventana no se abria nunca y la carta era INJUGABLE); `NO_TARGET_KINDS` gana `turn_control` por el mismo motivo que `turn_start_block`; `onTurnStartPlay(handIdx, cardId)` con `catch` (P1-076); `?v=52`->`?v=53`; **navegador real NO certificado** (limite ya medido: el estado vive en el closure de `app.js`) => 6 aserciones estaticas en `test_hand_peek.js`. -->
   `onUseResDestroy`) para que un rechazo llegue al registro y no solo a la consola (P1-076).
-- [ ] L14.d.4 `?v=51` -> `?v=52`; `node --check` de `app.js` y `ui.js`.
-- [ ] L14.d.5 **Verificar en navegador real** (leccion de P1-075: un test de Node no prueba
+- [x] L14.d.4 `?v=51` -> `?v=52`; `node --check` de `app.js` y `ui.js`.  <!-- HECHO en `1068d4c` (**P1-098**): el bucle `tsHolder` de `E.endTurn` reconoce `seizethetime` (sin eso la ventana no se abria nunca y la carta era INJUGABLE); `NO_TARGET_KINDS` gana `turn_control` por el mismo motivo que `turn_start_block`; `onTurnStartPlay(handIdx, cardId)` con `catch` (P1-076); `?v=52`->`?v=53`; **navegador real NO certificado** (limite ya medido: el estado vive en el closure de `app.js`) => 6 aserciones estaticas en `test_hand_peek.js`. -->
+- [x] L14.d.5 **Verificar en navegador real** (leccion de P1-075: un test de Node no prueba  <!-- HECHO en `1068d4c` (**P1-098**): el bucle `tsHolder` de `E.endTurn` reconoce `seizethetime` (sin eso la ventana no se abria nunca y la carta era INJUGABLE); `NO_TARGET_KINDS` gana `turn_control` por el mismo motivo que `turn_start_block`; `onTurnStartPlay(handIdx, cardId)` con `catch` (P1-076); `?v=52`->`?v=53`; **navegador real NO certificado** (limite ya medido: el estado vive en el closure de `app.js`) => 6 aserciones estaticas en `test_hand_peek.js`. -->
   jugabilidad). Con el limite ya medido de L13.f: el estado del motor vive en el closure de
   `app.js` y `window.App` solo expone `start`, asi que hay que **declarar** el limite si no se
   puede llegar a la ventana; NO fabricar un estado sintetico para que renderice.
-- [ ] L14.d.6 Aserciones estaticas del cableado en `test_hand_peek.js` (el metodo que L13.f uso
+- [x] L14.d.6 Aserciones estaticas del cableado en `test_hand_peek.js` (el metodo que L13.f uso  <!-- HECHO en `1068d4c` (**P1-098**): el bucle `tsHolder` de `E.endTurn` reconoce `seizethetime` (sin eso la ventana no se abria nunca y la carta era INJUGABLE); `NO_TARGET_KINDS` gana `turn_control` por el mismo motivo que `turn_start_block`; `onTurnStartPlay(handIdx, cardId)` con `catch` (P1-076); `?v=52`->`?v=53`; **navegador real NO certificado** (limite ya medido: el estado vive en el closure de `app.js`) => 6 aserciones estaticas en `test_hand_peek.js`. -->
   al declarar su limite). COMMIT + PUSH.
 
-### [ ] L14.e - REGRESION en `test_fase2_rules.js`
+### [x] L14.e - REGRESION en `test_fase2_rules.js`  <!-- cerrado: ver los checkboxes de L14.e -->
 
-- [ ] L14.e.1 >= 2 escenarios, con el criterio de aceptacion de L14.a.14 afirmado de verdad.
-- [ ] L14.e.2 **Escenario 1 (el de la aceptacion)**: planta un grupo de B con tokens 1 y gastas su
+- [x] L14.e.1 >= 2 escenarios, con el criterio de aceptacion de L14.a.14 afirmado de verdad.  <!-- HECHO en `35f73fb`: **31 asertos verdes** y **32/32 corridas** sin fallos ni crashes. Destapo **P1-101** (`turn_control` ausente de `instant` => carta INJUGABLE), **P1-102** (`fresh()` crea a los dos con `human:false` y el bucle `tsHolder` hace `if(!tsp.human...)continue;` => la ventana nunca se abria), **P1-103** (N3/N4 sin ventana ni carta en la mano) y **P1-104** (la 364 tambien abre la ventana => los purges de L8c echan las dos cartas al mazo). -->
+- [x] L14.e.2 **Escenario 1 (el de la aceptacion)**: planta un grupo de B con tokens 1 y gastas su  <!-- HECHO en `35f73fb`: **31 asertos verdes** y **32/32 corridas** sin fallos ni crashes. Destapo **P1-101** (`turn_control` ausente de `instant` => carta INJUGABLE), **P1-102** (`fresh()` crea a los dos con `human:false` y el bucle `tsHolder` hace `if(!tsp.human...)continue;` => la ventana nunca se abria), **P1-103** (N3/N4 sin ventana ni carta en la mano) y **P1-104** (la 364 tambien abre la ventana => los purges de L8c echan las dos cartas al mazo). -->
   ficha para que su "fichas gastadas" sean observables; en la ventana `S.pendingTurnStart` juega
   364 de A; afirma `currentPid===A`, que `S.turn` avanza **exactamente una vez**, que el grupo de
   B conserva `tokens===0` (afirmado en el nodo, no en el log), y que todos los grupos de A
   tienen `tokens>=1`.
-- [ ] L14.e.3 **Escenario 2 (el retorno)**: termina el turno especial con `E.endTurn()` y afirma
+- [x] L14.e.3 **Escenario 2 (el retorno)**: termina el turno especial con `E.endTurn()` y afirma  <!-- HECHO en `35f73fb`: **31 asertos verdes** y **32/32 corridas** sin fallos ni crashes. Destapo **P1-101** (`turn_control` ausente de `instant` => carta INJUGABLE), **P1-102** (`fresh()` crea a los dos con `human:false` y el bucle `tsHolder` hace `if(!tsp.human...)continue;` => la ventana nunca se abria), **P1-103** (N3/N4 sin ventana ni carta en la mano) y **P1-104** (la 364 tambien abre la ventana => los purges de L8c echan las dos cartas al mazo). -->
   `currentPid===B` y que B juega su turno **una sola vez**.
-- [ ] L14.e.4 **Negativos**: 364 sin ventana `S.pendingTurnStart` da `throw` con el motivo
+- [x] L14.e.4 **Negativos**: 364 sin ventana `S.pendingTurnStart` da `throw` con el motivo  <!-- HECHO en `35f73fb`: **31 asertos verdes** y **32/32 corridas** sin fallos ni crashes. Destapo **P1-101** (`turn_control` ausente de `instant` => carta INJUGABLE), **P1-102** (`fresh()` crea a los dos con `human:false` y el bucle `tsHolder` hace `if(!tsp.human...)continue;` => la ventana nunca se abria), **P1-103** (N3/N4 sin ventana ni carta en la mano) y **P1-104** (la 364 tambien abre la ventana => los purges de L8c echan las dos cartas al mazo). -->
   oficial · 364 en la ventana del **propio** turno da `throw` · 364 dos veces por el mismo
   jugador da `throw` con el motivo de "once in a game" · el robo con `noDrawTurn` da `throw`.
-- [ ] L14.e.5 Determinismo (leccion de P1-078): `toHandL12` purga antes de insertar; asertos por
+- [x] L14.e.5 Determinismo (leccion de P1-078): `toHandL12` purga antes de insertar; asertos por  <!-- HECHO en `35f73fb`: **31 asertos verdes** y **32/32 corridas** sin fallos ni crashes. Destapo **P1-101** (`turn_control` ausente de `instant` => carta INJUGABLE), **P1-102** (`fresh()` crea a los dos con `human:false` y el bucle `tsHolder` hace `if(!tsp.human...)continue;` => la ventana nunca se abria), **P1-103** (N3/N4 sin ventana ni carta en la mano) y **P1-104** (la 364 tambien abre la ventana => los purges de L8c echan las dos cartas al mazo). -->
   uid, por tokens o por delta, nunca por numero absoluto de cartas.
-- [ ] L14.e.6 Asertos de log con `.some(function(x){ return /…/.test(x.msg||String(x)); })`;
+- [x] L14.e.6 Asertos de log con `.some(function(x){ return /…/.test(x.msg||String(x)); })`;  <!-- HECHO en `35f73fb`: **31 asertos verdes** y **32/32 corridas** sin fallos ni crashes. Destapo **P1-101** (`turn_control` ausente de `instant` => carta INJUGABLE), **P1-102** (`fresh()` crea a los dos con `human:false` y el bucle `tsHolder` hace `if(!tsp.human...)continue;` => la ventana nunca se abria), **P1-103** (N3/N4 sin ventana ni carta en la mano) y **P1-104** (la 364 tambien abre la ventana => los purges de L8c echan las dos cartas al mazo). -->
   **nunca `log[length-1]`** (regla 14).
-- [ ] L14.e.7 **30+ corridas consecutivas** (regla 13); `npm test` completo; FASE 4 con
+- [x] L14.e.7 **30+ corridas consecutivas** (regla 13); `npm test` completo; FASE 4 con  <!-- HECHO en `35f73fb`: **31 asertos verdes** y **32/32 corridas** sin fallos ni crashes. Destapo **P1-101** (`turn_control` ausente de `instant` => carta INJUGABLE), **P1-102** (`fresh()` crea a los dos con `human:false` y el bucle `tsHolder` hace `if(!tsp.human...)continue;` => la ventana nunca se abria), **P1-103** (N3/N4 sin ventana ni carta en la mano) y **P1-104** (la 364 tambien abre la ventana => los purges de L8c echan las dos cartas al mazo). -->
   **152/96/3/10/4/356**. COMMIT + PUSH.
 
-### [ ] L14.f - CIERRE
+### [x] L14.f - CIERRE  <!-- cerrado: ver los checkboxes de L14.f -->
 
-- [ ] L14.f.1 Seccion `## 66.` en `docs/audit/INWO_SURGICAL_AUDIT.md` en **ASCII sin tildes**,
+- [x] L14.f.1 Seccion `## 66.` en `docs/audit/INWO_SURGICAL_AUDIT.md` en **ASCII sin tildes**,  <!-- HECHO: seccion `## 66.` en `docs/audit/INWO_SURGICAL_AUDIT.md` (**ASCII sin tildes**, 0 acentos, 1 sola seccion, con guarda de idempotencia), **P1-093..P1-104** documentados uno a uno, y este lote cerrado en `plan.md`. -->
   con las subsecciones `### Hallazgo` / `### Correcciones` / `### Verificacion` /
   `### Limites declarados` / `### Lecciones` / `### Backlog`, escrita con script Node temporal +
   `fs.appendFileSync` cuya guarda **aborte si `## 66.` ya existe**, y borrar el temporal.
-- [ ] L14.f.2 IDs **P1-094..P1-097**: uno por correccion (turn_control, once-per-game,
+- [x] L14.f.2 IDs **P1-094..P1-097**: uno por correccion (turn_control, once-per-game,  <!-- HECHO: seccion `## 66.` en `docs/audit/INWO_SURGICAL_AUDIT.md` (**ASCII sin tildes**, 0 acentos, 1 sola seccion, con guarda de idempotencia), **P1-093..P1-104** documentados uno a uno, y este lote cerrado en `plan.md`. -->
   noDrawTurn, retorno del turno).
-- [ ] L14.f.3 Marcar `## [x] L14` con el resultado real y las desviaciones, y los sub-pasos
+- [x] L14.f.3 Marcar `## [x] L14` con el resultado real y las desviaciones, y los sub-pasos  <!-- HECHO: seccion `## 66.` en `docs/audit/INWO_SURGICAL_AUDIT.md` (**ASCII sin tildes**, 0 acentos, 1 sola seccion, con guarda de idempotencia), **P1-093..P1-104** documentados uno a uno, y este lote cerrado en `plan.md`. -->
   `### [x] L14.a` .. `### [x] L14.f` con nota `<!-- ... -->` en cada checkbox.
-- [ ] L14.f.4 Backlog declarado: el "all your groups get Action tokens" se aplica al ARBOL del
+- [x] L14.f.4 Backlog declarado: el "all your groups get Action tokens" se aplica al ARBOL del  <!-- HECHO: seccion `## 66.` en `docs/audit/INWO_SURGICAL_AUDIT.md` (**ASCII sin tildes**, 0 acentos, 1 sola seccion, con guarda de idempotencia), **P1-093..P1-104** documentados uno a uno, y este lote cerrado en `plan.md`. -->
   actor en el momento de robar el turno, no a los grupos que se coloquen despues dentro de ese
   mismo turno; y el alcance de "unless someone won" depende de `victoryStatus`, que se evalua al
   final del turno.
-- [ ] L14.f.5 COMMIT + PUSH.
+- [x] L14.f.5 COMMIT + PUSH.  <!-- HECHO: seccion `## 66.` en `docs/audit/INWO_SURGICAL_AUDIT.md` (**ASCII sin tildes**, 0 acentos, 1 sola seccion, con guarda de idempotencia), **P1-093..P1-104** documentados uno a uno, y este lote cerrado en `plan.md`. -->
 ## [ ] L15 - COMBOS DE GOAL
 
 - **Cartas (5)**: 294 Kill for Peace · 297 Let Them Eat Cake! · 343 Power to the People ·
