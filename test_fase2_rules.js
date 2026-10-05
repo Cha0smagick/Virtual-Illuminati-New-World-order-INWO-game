@@ -4284,10 +4284,34 @@ function readyToAttack(pid) {
   ok(E._raw().alignRule && E._raw().alignRule.mag === 8, 'L5b la regla sigue puesta tras dos turnos -> ' +
     JSON.stringify(E._raw().alignRule));
 
-  /* 4) Una segunda copia se rechaza: no se puede alterar dos veces la regla. */
+  /* 4) P1-138 (L21): una SEGUNDA NWO del mismo color SUSTITUYE a la anterior,
+   *    no se rechaza: "If a NWO card is in play, and another one of the same
+   *    color is played, the earlier one is discarded" (oficial :765-792). El test
+   *    anterior afirmaba el throw, o sea CODIFICABA el bug. Fear and Loathing es la
+   *    unica carta align_rule del mazo y es blue, luego esto es alcanzable. */
+  var prevBlue4 = E._raw().nwoInForce && E._raw().nwoInForce.blue;
+  ok(prevBlue4 && prevBlue4.name === 'Fear and Loathing',
+    'L5b P1-138 la NWO blue en vigor antes de la segunda es Fear and Loathing -> ' +
+      JSON.stringify(prevBlue4));
+  var copies4 = E._raw().players[0].hand.filter(function (x) { return x === C.cards[FL].idx; }).length;
   put(0, FL);
-  throws(function () { E.playPlot(0, C.cards[FL].idx, null, {}); }, /ya esta en juego/i,
-    'L5b una segunda Fear and Loathing se rechaza');
+  var copies4pico = E._raw().players[0].hand.filter(function (x) { return x === C.cards[FL].idx; }).length;
+  ok(copies4pico === copies4 + 1, 'L5b P1-138 la segunda copia esta en la mano antes de jugarla -> ' + copies4pico);
+  var r4 = E.playPlot(0, C.cards[FL].idx, null, {});
+  ok(r4 && r4.lastPlotResult && r4.lastPlotResult.alignRule === true,
+    'L5b P1-138 la segunda NWO blue SE JUEGA, no se rechaza -> ' +
+      JSON.stringify(r4 && r4.lastPlotResult));
+  ok(E._raw().alignRule && E._raw().alignRule.mag === 8 &&
+      E._raw().alignRule.card === 'Fear and Loathing',
+    'L5b P1-138 la regla SIGUE en vigor con magnitud 8 tras la sustitucion -> ' +
+      JSON.stringify(E._raw().alignRule));
+  var copies4b = E._raw().players[0].hand.filter(function (x) { return x === C.cards[FL].idx; }).length;
+  ok(copies4b === copies4,
+    'L5b P1-138 solo la copia jugada sale de la mano: ' + copies4 + ' -> +1 al ponerla -> ' + copies4b);
+  ok(E._raw().nwoInForce && E._raw().nwoInForce.blue &&
+      E._raw().nwoInForce.blue.name === 'Fear and Loathing',
+    'L5b P1-138 el registro de NWO en vigor sigue apuntando a Fear and Loathing -> ' +
+      JSON.stringify(E._raw().nwoInForce));
 
   /* 5) DESTROY: identicas -m y opuestas +m, o sea el signo INVIERTE. Con la
    *    regla puesta, leaderMod tiene que ser el NEGATIVO del caso de control
@@ -8024,6 +8048,110 @@ var e362c = err16(function () { play16(0, C16.scandal, null, { rivalPid: 1 }); }
 ok(/remove all Action tokens from his Groups of any one alignment/.test(e362c),
   'L16 362 sin alineacion elegida lo dice -> "' + e362c + '"');
 
+/* ==================== L21 REGLAS DE LAS NWO (una por color, la anterior se descarta) ==================== */
+var C21={};
+(function(){
+  var w={biggerbusiness:1,lawandorder:1,chickenineverypot:1,energycrisis:1,worldhunger:1,
+    madisonavenue:1,bigmedia:1,ninjas:1,hollywood:1};
+  for(var k in w) C21[k]=idxOfId(k);
+})();
+ok(C21.biggerbusiness>=0&&C21.lawandorder>=0&&C21.chickenineverypot>=0&&C21.energycrisis>=0
+  &&C21.worldhunger>=0&&C21.madisonavenue>=0&&C21.bigmedia>=0&&C21.ninjas>=0,
+  'L21 las 8 cartas de la regresion estan en el catalogo');
+/* el grupo con atributo green o nation: World Hunger (253? no: token_wither) es la unica NWO
+   que marca noTokens, y sin un objetivo real su rama de undo no se puede afirmar */
+var GREEN21=null;
+(function(){
+  for(var i=0;i<C.cards.length;i++){
+    var cc=C.cards[i];
+    if(!cc||cc.type!=='group')continue;
+    var al=cc.attrs||cc.attributes||[];
+    if(al.indexOf('green')>=0||al.indexOf('nation')>=0){GREEN21=i;break;}
+  }
+})();
+ok(GREEN21!=null,'L21 hay al menos un grupo con atributo green o nation (objetivo de World Hunger)');
+function nwo21(){ var st=E.getState(); return (st&&st.nwoInForce)||{}; }
+function mods21(uid,field){
+  var nd=node16(0,uid);
+  if(!nd)return [];
+  return (nd[field]||[]).map(function(m){return m.name;});
+}
+function hasMod21(uid,field,cardName){
+  return mods21(uid,field).some(function(nm){return nm===cardName||nm.indexOf(cardName+' (')===0;});
+}
+function noTokensOn21(){
+  var n=0;
+  for(var p=0;p<E._raw().players.length;p++){
+    walkAll(E._raw().players[p].structure,function(nd){ if(nd.noTokens)n++; });
+  }
+  return n;
+}
+function walkAll(nd,cb){ if(!nd)return; cb(nd); (nd.children||[]).forEach(function(k){walkAll(k,cb);}); }
+
+/* --- S1: dos NWO del MISMO color -> la segunda DESHACE a la primera --- */
+fresh(firstOf('adepts'),firstOf('cthulhu'));
+hand19(0,C21.biggerbusiness);
+plant(0,'g21a',C21.madisonavenue,1);   /* corporate puro */
+plant(0,'g21b',C21.bigmedia,1);        /* liberal+straight */
+E.playPlot(0,C21.biggerbusiness,null,{});
+ok(hasMod21('g21a','powerMods','Bigger Business'),
+  'S1 Bigger Business (yellow) da +2 Poder a Corporate');
+ok(!hasMod21('g21b','powerMods','Bigger Business'),
+  'S1 Bigger Business NO toca a un grupo straight no conservative');
+ok(nwo21().yellow&&nwo21().yellow.name==='Bigger Business',
+  'S1 la NWO yellow queda registrada en vigor');
+hand19(0,C21.lawandorder);              /* tambien yellow */
+E.playPlot(0,C21.lawandorder,null,{});
+ok(hasMod21('g21a','powerMods','Bigger Business')===false,
+  'S1 P1-139: la NWO yellow posterior DESHACE el modificador de la anterior');
+ok(hasMod21('g21b','powerMods','Law and Order'),
+  'S1 la NWO yellow entrante aplica su propia clausula straight');
+ok(nwo21().yellow&&nwo21().yellow.name==='Law and Order',
+  'S1 nwoInForce.yellow pasa a ser la carta nueva');
+ok(Object.keys(nwo21()).length===1,
+  'S1 sigue habiendo UNA sola NWO yellow en vigor (nunca mas de una por color)');
+
+/* --- S2: dos NWO de color DISTINTO -> ambas se acumulan --- */
+fresh(firstOf('adepts'),firstOf('cthulhu'));
+hand19(0,C21.biggerbusiness);
+plant(0,'g21c',C21.madisonavenue,1);
+E.playPlot(0,C21.biggerbusiness,null,{});
+hand19(0,C21.chickenineverypot);        /* blue */
+plant(0,'g21d',C21.ninjas,1);           /* violent */
+E.playPlot(0,C21.chickenineverypot,null,{});
+ok(hasMod21('g21c','powerMods','Bigger Business'),
+  'S2 la NWO yellow sigue en vigor tras jugar una blue (colores distintos no se tocan)');
+ok(hasMod21('g21d','powerMods','Chicken in Every Pot'),
+  'S2 la NWO blue aplica su clausula violent');
+ok(nwo21().yellow&&nwo21().blue&&Object.keys(nwo21()).length===2,
+  'S2 hay exactamente 2 NWO en vigor, una por color (el reglamento permite 3)');
+
+/* --- S3: token_wither (World Hunger, blue) y su undo --- */
+fresh(firstOf('adepts'),firstOf('cthulhu'));
+hand19(0,C21.worldhunger);
+plant(0,'g21e',GREEN21,1);
+plant(0,'g21f',C21.hollywood,1);        /* liberal: -2 Poder */
+E.playPlot(0,C21.worldhunger,null,{});
+ok(hasMod21('g21f','powerMods','World Hunger'),
+  'S3 World Hunger (blue) aplica -2 Poder a Liberal');
+ok(nwo21().blue&&nwo21().blue.name==='World Hunger',
+  'S3 la NWO blue queda registrada');
+var witherOn21=noTokensOn21();
+ok(witherOn21>0,
+  'S3 World Hunger marca noTokens en los grupos green/nation ('+witherOn21+' grupo/s)');
+hand19(0,C21.energycrisis);             /* tambien blue */
+plant(0,'g21g',C21.madisonavenue,1);
+E.playPlot(0,C21.energycrisis,null,{});
+ok(hasMod21('g21g','powerMods','Energy Crisis'),
+  'S3 la NWO blue entrante aplica su clausula corporate -2');
+ok(hasMod21('g21f','powerMods','World Hunger')===false,
+  'S3 P1-139: el modificador de Poder de la NWO blue anterior desaparece');
+ok(noTokensOn21()===0,
+  'S3 P1-139: el mismo color vuelve a ENCENDER las fichas (se undo de noTokens)');
+ok(nwo21().blue&&nwo21().blue.name==='Energy Crisis',
+  'S3 nwoInForce.blue pasa a ser la carta nueva');
+ok(!hasMod21('g21f','powerMods','World Hunger')&&hasMod21('g21g','powerMods','Energy Crisis'),
+  'S3 el estado final es exactamente el de la NWO entrante');
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });

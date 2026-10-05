@@ -8013,3 +8013,221 @@ contraatacada por 388 Stealing the Plans.
 - El `note` de `lastResult` de 253 declara la laguna del counter en texto visible para el
   jugador, no solo en el audit doc. Es el mismo criterio que usan las 3 ramas muertas
   declaradas y las 10 cartas congeladas.
+
+## 72. L21 - NEW WORLD ORDER: UNA POR COLOR, LA ANTERIOR SE DESCARTA
+
+### Hallazgo
+
+**H1 - El mazo tiene 14 cartas New World Order y la regla oficial de color NO se implementaba.**
+El reglamento (inwo_rules_extracted.txt, seccion EVIL SCHEMES, lineas 765-792) dice:
+`Once a NWO is played, it stays in force until removed in one of two ways: using a Plot or
+special ability that negates it, or playing another NWO card of the same color. There are
+three colors: red, blue and yellow. Only one NWO card of each color can be in play. If a NWO
+card is in play, and another one of the same color is played, the earlier one is discarded.
+Thus, there can never be more than three NWO cards in effect at once!`
+Medido en el mazo (campo `nwoColor`, anadido en L16.b): blue 5 (A Thousand Points of Light,
+Chicken in Every Pot, Energy Crisis, Fear and Loathing, World Hunger), red 5 (Gun Control,
+Peace in Our Time, Political Correctness, Solidarity, Tax Reform), yellow 4 (Bigger Business,
+Don't Forget to Smash the State, Law and Order, Military-Industrial Complex).
+El motor NO lo comprobaba: `applyBulkPower` (engine.js:3836) y `case 'token_wither'`
+(engine.js:4786) acumulan sus deltas en `powerMods` / `resistanceMods` / `noTokens` y NUNCA
+se quitan, y sus cartas se van al descarte al jugarse. En consecuencia se podian apilar las 14
+NWO a la vez (4 yellow + 5 blue + 5 red) con todos los modificadores sumados. Eso no es un
+detalle cosmetico: es una violacion del reglamento con impacto directo en la partida, porque el
+mazo tiene 4-5 cartas de cada color y todas se acumulan.
+
+**H2 - El caso alineado hacia lo CONTRARIO de lo impreso: lansaba en vez de sustituir.**
+`case 'align_rule'` (Fear and Loathing, la unica carta `align_rule` del mazo) hacia
+`throw new Error(c.name+' ya esta en juego: ...')` si `S.alignRule` ya estaba puesta. El
+reglamento dice que una NWO de color C se sustituye por otra de color C. Ademas el mensaje
+declaraba algo falso: decia que la regla previa era `effect.kind==='nwo'`, etiqueta que no
+tiene NINGUNA carta del mazo (0 de 421).
+
+**H3 - `DEAD_BRANCHES.nwo` era una DECLARACION FALSA.**
+`test_fase4_cards.js:100` decia `nwo: 'etiqueta historica New World Order; sin cartas en el
+mazo'`. Desde que L16.b anadio `nwoColor` hay 14 cartas NWO reales, 12 de ellas ya
+clasificadas con mecanica implementada (`bulk_power` x7, `align_rule`, `token_wither`,
+`goal` x2). La entrada debe PERMANECER en `DEAD_BRANCHES` (lo que sigue siendo cierto es
+que `effect.kind==='nwo'` no lo tiene ninguna carta, luego `case 'nwo'` es inalcanzable),
+pero su RAZON era incorrecta y por eso se corrige.
+
+**H4 - El estado permanente que las NWO escriben esta ETIQUETADO con el nombre de la carta,**
+lo que hace el deshacer puramente estructural, sin campos nuevos en el nodo:
+`applyBulkPower` empuja `{name: c.name + ' (' + v + ')', v: v}` en `powerMods` (engine.js:3881)
+y en `resistanceMods` (3885); `case 'token_wither'` empuja lo mismo (4818) y escribe
+`noTokens=true` (4809, UNICO escritor de ese flag en todo engine.js); `case 'align_rule'`
+escribe `S.alignRule={mag, card: c.name}` (5113). Deshacer = filtrar las entradas cuya etiqueta
+empieza por el nombre de la carta que se sustituye. Precedente del criterio: P1-127
+(`attrsRemoved` como espejo de `attrsAdded`).
+
+**H5 - Las Goal cards NWO quedan FUERA a proposito.**
+Peace in Our Time (red) y Military-Industrial Complex (yellow) son Goal cards:
+`case 'goal'` las rechaza (`no se juega, se revela al declarar victoria`). No son un esquema en
+vigor sino una condicion de victoria, luego no entran en la regla por color.
+
+**H6 - Dos NWO de la MISMA carta ( Fear and Loathing) hacen alcanzable la rama mas dificil.**
+Es la unica carta `align_rule` del mazo, luego la unica forma de que el guard de color
+dispare con el MISMO color es jugar una segunda COPIA. Ese caso vino a delatar tres bugs
+encadenados (P1-138).
+
+### Correcciones
+
+**P1-135 - el contador de unicidad de los scripts de parcheo era incorrecto (proceso, no motor).**
+`sub1` media las coincidencias con `s.split(re).length - 1`, pero `String.prototype.split` (y
+`match`) con un regex SIN flag `g` devuelven una entrada POR COINCIDENCIA MAS UNA POR GRUPO DE
+CAPTURA: un unico match con un grupo contaba como 2. El ancla era correcta y unica (medido: 1
+con `exec` en bucle, 2 con `split`). Arreglado en la raiz con `countRe21(re)`, que cuenta con
+un `RegExp` con flag `g` y bucle `exec` (con guarda `if(m[0].length===0) g.lastIndex++`).
+Clase de defecto que elimina: falsos abortes y falsos pases en cualquier ancla con grupos de
+captura. Anclas que nunca deben llevar grupos de captura si se van a contar con `split`.
+
+**P1-136 - crash en `publicState` que rompia 8 suites a la vez.**
+`nwoInForce:clone(S.nwoInForce)` reventaba porque `S.nwoInForce` se inicializa de forma
+PEREZOSA (solo al jugar una NWO) y `function clone(o){return JSON.parse(JSON.stringify(o));}`
+(engine.js:17) hace `JSON.parse(undefined)` -> SyntaxError. Traza: `clone` -> `publicState` ->
+`E.newGame` -> `app.js:459 onStart`. Ocho suites caidas a la vez. Arreglo:
+`clone(S.nwoInForce||{})`. REGLA que queda: nunca pasarle `undefined` a `clone()`; todo registro
+de juego expuesto en `publicState` se inicializa en el literal de `S` o se protege con `|| {}`.
+
+**P1-137 - atomicidad: el undo por color estaba ANTES del efecto (P1-033).**
+Estaba en el pre-hook, antes del `switch(eff.kind)`: si el efecto lanzaba (por ejemplo
+`applyBulkPower`: `la carta no declara ninguna clausula`), la NWO anterior del mismo color ya
+estaba deshecha, es decir estado alterado pese a carta rechazada. Movido al POST-hook
+(engine.js:6816, justo antes de `var linkedHere=...`), que es donde se registra
+`S.nwoInForce`. Es legitimo porque el undo filtra por NOMBRE de carta y la carta entrante
+escribe sus modificadores bajo otro nombre, luego el orden no altera el resultado.
+
+**P1-138 - TRES sub-bugs encadenados, todos reales, los dos primeros de motor.**
+1. El undo BORRABA la regla recien puesta. `case 'align_rule'` escribe
+   `S.alignRule={mag, card: c.name, color: c.nwoColor}` DENTRO del switch y el undo corre
+   despues (P1-137), luego al jugar una segunda Fear and Loathing la guarda
+   `S.alignRule.card===prev.name` era CIERTA (ambos son `'Fear and Loathing'`) y
+   `delete S.alignRule` se llevaba la regla nueva. Arreglo: comparar por IDENTIDAD de objeto.
+   El pre-hook captura `nwoPrevRule21=S.alignRule||null` y `undoNwoOfColor21` lo recibe como
+   segundo argumento; la guarda pasa a `if(S.alignRule&&prevRule21&&S.alignRule===prevRule21)`.
+2. El guard de `case 'align_rule'` comparaba EXISTENCIA, no COLOR. Asumia que si `S.alignRule`
+   seguia puesta al llegar al case era de otro color (porque el pre-hook ya habria borrado la
+   del mismo color), pero con P1-137 la del mismo color sigue puesta y el guard rechazaba la
+   sustitucion que el reglamento permite. Crash medido: `Fear and Loathing no se puede jugar:
+   la regla de alineaciones ya fue alterada por Fear and Loathing, una carta New World Order
+   de otro color`. Arreglo (engine.js:5229): `if (S.alignRule && S.alignRule.color !== c.nwoColor)`.
+3. Asercion mia mal planteada en el test (NO era bug de motor): el neto de `put` una copia y
+   jugarla es 0, no -1; se afirmaba `copies4b === copies4 - 1`.
+
+**P1-139 - la DECLARACION FALSA de `DEAD_BRANCHES.nwo` (H3) queda corregida**, y es el id que
+rotulan las aserciones de la regresion que fijan la regla por color.
+
+Lo demas que escribio L21, sin id propio por ser la mecanica del lote:
+- `modFromCard21(mod, cardName)` (matcher: `mod.name===cardName || mod.name.indexOf(cardName+' (')===0`;
+  el `indexOf` con el parentesis evita capturar por prefijo, y `Dictatorship` (engine.js:4540)
+  es el unico `powerMods` con nombre pelado, que ninguna NWO comparte).
+- `undoNwoOfColor21(color, prevRule21)`: filtra `powerMods` y `resistanceMods` de los nodos de
+  TODOS los jugadores; retira de `alignsAdded` lo que registro `S.nwoBecome`; si la saliente era
+  `token_wither` pone `noTokens=false`; borra `S.alignRule` solo si es la MISMA regla (por
+  identidad); quita la carta de `exposedPlots` del dueno y llama `discardPlot`; y borra
+  `S.nwoInForce[color]` y `S.nwoBecome[name]`. Devuelve el recuento de lo deshecho para el log.
+- Registro `S.nwoInForce` (por color, perezoso) + `S.nwoBecome` (nodos afectados por `become`).
+- Pre-hook `nwoMark21` y post-hook de registro + `log` del resumen de lo deshecho.
+- `align_rule` y `token_wither` anadidos a la lista `instant` de `E.playPlot`: el reglamento
+  dice que las NWO `can be played at any time`, y antes solo `bulk_power` lo podia ( de
+  alcance, sin id propio: es parte de la mecanica del lote).
+- `publicState` expone `nwoInForce` para que la UI pueda reprezentarlo.
+
+### Verificacion
+
+- `node --check` limpio en `game/js/engine.js`, `game/js/ui.js`, `game/js/app.js`,
+  `test_fase2_rules.js`, `test_fase4_cards.js`, `gen_cards.js`. CJK/FFFD = 0 en todos.
+- `npm test` -> ALL TESTS PASSED (11).
+- `node test_fase2_rules.js` -> FASE 2 RULES PASSED, con 21 asertos nuevos de L21.
+- Barrido 30/30 PASSED de `test_fase2_rules.js`.
+- `node test_fase4_cards.js` -> FASE 4 COVERAGE PASSED con **delta 0** en 'Plots/Resources sin
+  mecanica' (165 clasificadas, 83 sin mecanica, 3 ramas muertas declaradas, 10 bloqueadas,
+  4 huecos). Delta 0 es el valor CORRECTO y esperado: L21 no cambia `effect.kind` de ninguna
+  carta (la familia NWO ya se identificaba por `nwoColor` desde L16.b), toda la regla va en el
+  motor. Es el primer lote cuyo delta es 0 a proposito.
+- Que afirma cada escenario (todo sobre ESTADO observable, nunca sobre el log):
+  S1 Bigger Business (yellow) da +2 Poder a Corporate y NO toca a un straight no conservative;
+     la yellow registrada; al jugar Law and Order (tambien yellow) el modificador de la
+     anterior DESAPARECE, la clausula straight de la entrante aparece, `nwoInForce.yellow` pasa
+     a ser la nueva, y sigue habiendo EXACTAMENTE UNA yellow en vigor.
+  S2 Bigger Business (yellow) + Chicken in Every Pot (blue): la yellow sigue en vigor, la blue
+     aplica su clausula violent, y hay exactamente 2 NWO en vigor, una por color.
+  S3 World Hunger (blue) aplica -2 a Liberal y marca `noTokens` en 1 grupo green/nation (el
+     grupo se localiza por catalogo, no a ojo); al jugar Energy Crisis (tambien blue) el
+     modificador de la anterior desaparece, `noTokens` vuelve a 0 y el estado final es
+     exactamente el de la entrante.
+- El test L5b preexistente `una segunda Fear and Loathing se rechaza` CODIFICABA el bug (H2).
+  Reescrito a 5 asertos sobre estado observable: la carta previa esta registrada, la segunda SE
+  JUEGA (`lastPlotResult.alignRule===true`), `alignRule.mag===8` sigue en vigor tras la
+  sustitucion, el pico de copias en mano es `+1` y el neto `0`, y `nwoInForce.blue` sigue
+  apuntando a la carta. Un test verde que afirmaba el comportamiento equivocado.
+
+### Leccion
+
+1. **Un estado permanente se puede deshacer sin modelo de datos nuevo si se etiqueta con el
+   nombre de quien lo escribio.** Todas las NWO escribian su estado con la etiqueta `c.name`
+   dentro del propio objeto (`powerMods`, `resistanceMods`). Basto un filtro por nombre para
+   tener el deshacer, sin campo nuevo en el nodo y sin tocar `cards.js` (mismo criterio que
+   P1-127 con `attrsRemoved`). La lesson general: antes de inventar un registro para
+   'quitar lo que hizo una carta', comprobar si lo que esa carta escribio ya lleva su firma.
+2. **`clone()` es un round-trip JSON y no admite `undefined`.** Un registro perezoso (que solo
+   existe tras una jugada) expuesto en `publicState` rompe el juego entero en la PRIMERA llamada
+   de `newGame`, no en la jugada que lo crea. Ocho suites caidas a la vez por una linea.
+3. **Un veto de motor suele estar codificado como test.** El `throw` de `case 'align_rule'`
+   existia porque en su dia era lo sensato, y el test L5b lo congelaba. Al implementar la
+   regla correcta habia que cambiar el test, no el motor: leer el impreso antes de suspectar del
+   motor, y sospechar del test cuando el motor contradice el reglamento de forma literal.
+4. **Comparar por valor lo que identifica por identidad es la trampa del caso de color.**
+   `S.alignRule.card===prev.name` era cierto para dos COPIAS de la misma carta. Cuando la
+   identidad de lo que se sustituye es la que importa (una regla, un esquema), hay que
+   guardar la referencia, no su nombre.
+5. **Auditar las DECLARACIONES, no solo el codigo.** `DEAD_BRANCHES.nwo` seguiia afirmando
+   'sin cartas en el mazo' y era falso: una entrada de gate puede quedar obsoleta sin que
+   ningun test falle, porque el gate solo mira `effect.kind`. Las declaraciones escritas por un
+   lote anterior hay que volver a medirlas cuando un lote posterior anade el dato que las
+   contradice.
+6. **`split()`/`match()` con regex sin flag `g` cuentan un elemento POR GRUPO DE CAPTURA.**
+   Cualquier script de parcheo que mida unicidad con `split(re).length-1` tiene la guarda rota
+   toda ancla con `( )`. Tres scripts de este lote se escribieron y parchearon con el bug sin
+   notarlo; el que lo delato fue un anchor con un unico grupo de captura.
+
+### Backlog
+
+- **Veto `except during an Instant or Privileged Attack`** (el otro limite impreso de las NWO):
+  NO implementado. En este motor la lista `instant` de `E.playPlot` significa 'jugable con un
+  ataque abierto', que es justo lo que el reglamento permite para las cartas que dicen 'at any
+  time' (precedente P1-015, que distingue las que dicen EXCEPT during an attack, como 362).
+  Modelar el veto exigiria distinguir Instant de Privileged en `S.attack`, que hoy no se
+  distingue. DECLARADO, no defecto oculto.
+- **Sin indicador permanente en el HUD.** `publicState.nwoInForce` queda expuesto pero la UI no
+  lo dibuja: el jugador se entera del esquema en vigor por el `log` y por el propio efecto en
+  las cartas (Poder/Resistencia visibles). Backlog de UI, no de reglas.
+- **`become` de Political Correctness es INALCANZABLE con este roster.** Su clausula es
+  `{align:'conservative', maxPower:1}` y no hay NINGUN grupo Conservative con Poder <= 1 (los
+  tres son templars P3, princecharles P2, fraternalorders P5). El mecanismo de undo de
+  `alignsAdded` queda escrito y probado, pero el caso real es de facto vacio. DECLARADO.
+- **`S.nwoInForce` y `S.nwoBecome` no se limpian entre partidas de un mismo objeto `S`** (mismo
+  estilo que el backlog de `S.l18extra` en sec. 70). Hoy `newGame` reconstruye `S`, asi que no
+  hay fuga medible; se declara por si `S` pasa a ser persistente.
+- **`discardPlot` al sustituir abre la ventana de suceso** de 388 Stealing the Plans (P1-131).
+  Efecto colateral conocido y declarado, no defecto.
+- **`case 'nwo'` sigue siendo rama muerta**, ahora por una razon CORRECTA y documentada:
+  `effect.kind==='nwo'` no lo tiene ninguna carta. Con `nwoColor` el hueco queda visible y
+  cerrable (la regla 'reemplazar la anterior' ya no vive ahi, vive en el motor de L21); si
+  alguna vez se decisiona dar `effect.kind='nwo'` a las 14, esa rama pasaria a ser un segundo
+  sitio donde implementar la misma regla, luego habria que borrar una de las dos.
+- **Los 83 'Plots/Resources sin mecanica' son cola larga, no una familia grande.** Medido en
+  este turno: 82 firmas de texto distintas para 83 cartas (un unico grupo de 2: `Hoax` +
+  `Secrets Man Was Not Meant to Know`), repartidas en ~60 mecanicas distintas. Bloques
+  tematicos visibles: cancelacion/timing (~12), Resources que se linkean (~12), OCR manchado
+  (~10, no implementables a ojo sin re-OCR o fuente alternativa), 11 que ya estan en
+  `BLOCKED_CARDS`, y 3 NWO sin mecanica propia (`A Thousand Points of Light`, `Solidarity`,
+  `Tax Reform`) que ahora quedan cubiertas por la regla por color de L21 pero siguen sin clan
+  `effect.kind`. Completarlos todos es multi-lote, no un lote.
+- **10 cartas congeladas**, 3 ramas muertas declaradas y 4 huecos de texto declarados
+  (`california`, `margaretthatcher`, `ollienorth`, `vaticancity`) siguen igual, sin cambio en
+  este lote.
+- **Backlog de L16**: la ventana de reaccion de 253 Exposed! ('Unless this card is immediately
+  countered') declarada en sec. 71, con su conflicto de forma medido.
+- **Backlog de L18** (sec. 70): colocacion 'link' de 299 sin implementar, `E.arrowCount` sin
+  uso en la UI, `S.l18extra` sin limpiar.

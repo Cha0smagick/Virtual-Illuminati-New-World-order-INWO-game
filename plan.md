@@ -1177,6 +1177,31 @@ CERRADO 2026-10 (audit `## 69.`, P1-120..P1-123, 1 carta: 408).
 - [ ] L20.b DATOS + L20.c MOTOR (incluido "no cuentan como destruidos") + L20.d UI (el jugador
   elige, no se autoelige) + L20.e REGRESION + L20.f CIERRE.
 
+## [x] L21 - NEW WORLD ORDER: UNA POR COLOR, LA ANTERIOR SE DESCARTA
+CERRADO 2026-10 (audit `## 72.`, P1-135..P1-139, 14 cartas NWO, delta 0 en FASE 4).
+
+- **Cartas (14, familia ya identificada por el campo `nwoColor` de L16.b)**: 5 blue, 5 red, 4 yellow.
+- **Mecanica**: regla decolor de las NWO en el motor de `E.playPlot` (pre-hook + post-hook),
+  sin kind nuevo. `effect.kind` NO cambia de ninguna carta, luego el delta en FASE 4 es 0.
+- **Impreso**: `Once a NWO is played, it stays in force until removed in one of two ways: using
+  a Plot or special ability that negates it, or playing another NWO card of the same color. There
+  are three colors: red, blue and yellow. Only one NWO card of each color can be in play. If a
+  NWO card is in play, and another one of the same color is played, the earlier one is discarded.
+  Thus, there can never be more than three NWO cards in effect at once!`
+- **Aceptacion**: dos NWO del mismo color -> la segunda deshace el efecto permanente de la
+  primera (afirmado por los `powerMods`/`resistanceMods`/`noTokens` filtrados y por
+  `nwoInForce`, NO por el log); dos de color distinto -> ambas se acumulan; nunca hay mas de
+  una NWO por color.
+- [x] L21.a AUDIT del modelo de las NWO (medido: que cartes quedan en juego y cuales no, y
+  donde escribe cada una su estado permanente).
+- [x] L21.b DATOS: sin cambios en `gen_cards.js` (la familia ya era `nwoColor` de L16.b).
+- [x] L21.c MOTOR: `modFromCard21` + `undoNwoOfColor21` + registros `S.nwoInForce`/`S.nwoBecome`
+  + pre/post-hook + `align_rule` y `token_wither` en la lista `instant` (P1-135..P1-138).
+- [x] L21.d DECLARACION: se corrige la razon FALSA de `DEAD_BRANCHES.nwo` (P1-139).
+- [x] L21.e REGRESION: 21 asertos nuevos (S1 mismo color, S2 color distinto, S3 token_wither)
+  + reescritura del test L5b que codificaba el bug + barrido 30/30.
+- [x] L21.f CIERRE: seccion `## 72.` en ASCII + correccion de `DEAD_BRANCHES.nwo` + este plan.
+
 
 No son un fallo pendiente: son cartas cuyo texto impreso exige una mecanica que el motor no
 tiene, y el gate de FASE 4 las congela con `BLOCKED_CARDS` para que no se declaren jugables.

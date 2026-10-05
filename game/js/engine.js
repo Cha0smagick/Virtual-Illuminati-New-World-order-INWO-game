@@ -111,6 +111,85 @@ function outArrowsOf(node){
 function masterNodeOf(node){
   return findNodeThatHas(S.players[findOwnerPid(node.uid)].structure,node.uid);
 }
+/* ---------------------------------------------------------------- L21 -------
+ * REGLA DE LAS CARTAS NEW WORLD ORDER. La clave de color es el campo `nwoColor`
+ * que L16.b anadio al generador (14 cartas: 5 blue, 5 red, 4 yellow).
+ *   - "Only one NWO card of each color can be in play" -> S.nwoInForce[color].
+ *   - "the earlier one is discarded" -> se deshace su efecto y su carta sale.
+ *   - "there can never be more than three NWO cards in effect at once" -> son
+ *     tres colores, luego se cumple por construccion si el registro tiene 3.
+ * Los modificadores permanentes se localizan por la etiqueta del nombre: */
+function modFromCard21(mod, cardName){
+  if(!mod||typeof mod.name!=='string'||!cardName)return false;
+  /* coincidencia EXACTA o "Nombre (+N)": el nombre pelado lo usa 4540
+   * ('Dictatorship') y ninguna NWO se llama asi, pero anteponer el prefijo
+   * "Nombre (" evita que una carta captura otra que empiece por su nombre. */
+  return mod.name===cardName||mod.name.indexOf(cardName+' (')===0;
+}
+function undoNwoOfColor21(color, prevRule21){
+  if(!S||!S.nwoInForce)return null;
+  var prev=S.nwoInForce[color];
+  if(!prev)return null;
+  var undone={card:prev.name,color:color,powerMods:0,resistanceMods:0,becomes:0,noTokens:0,alignRule:false,discarded:false};
+  var prevCard=C.cards[prev.id]||null;
+  var prevKind=(prevCard&&prevCard.effect)?prevCard.effect.kind:'';
+  for(var qi=0;qi<S.players.length;qi++){
+    var qRoot=S.players[qi].structure;
+    walk(qRoot,function(n){
+      if(n===qRoot)return; /* la raiz es el Illuminati, no es "un grupo" */
+      if(Array.isArray(n.powerMods)){
+        var b=n.powerMods.length;
+        n.powerMods=n.powerMods.filter(function(m){return !modFromCard21(m,prev.name);});
+        undone.powerMods+=b-n.powerMods.length;
+      }
+      if(Array.isArray(n.resistanceMods)){
+        var b2=n.resistanceMods.length;
+        n.resistanceMods=n.resistanceMods.filter(function(m){return !modFromCard21(m,prev.name);});
+        undone.resistanceMods+=b2-n.resistanceMods.length;
+      }
+    });
+  }
+  /* La clausula `become` (339 / Political Correctness) ANADE la alineacion a
+   * `alignsAdded` como texto pelado, SIN etiqueta de carta, asi que no se puede
+   * filtrar por nombre. Por eso `applyBulkPower` registra que nodos toco cada
+   * `become` de una carta NWO (ver el parche de abajo). */
+  var bl=S.nwoBecome&&S.nwoBecome[prev.name];
+  if(Array.isArray(bl))for(var k=0;k<bl.length;k++){
+    var n2=findNode(bl[k].uid);
+    if(n2&&Array.isArray(n2.alignsAdded)){
+      var ix=n2.alignsAdded.indexOf(bl[k].align);
+      if(ix>=0){n2.alignsAdded.splice(ix,1);undone.becomes++;}
+    }
+  }
+  /* `noTokens` lo escribe UN solo sitio del motor (World Hunger, engine.js:4809),
+   * asi que revertirlo no pisa el flag que otra carta hubiera puesto. */
+  if(prevKind==='token_wither'){
+    for(var wq=0;wq<S.players.length;wq++){
+      var wRoot=S.players[wq].structure;
+      walk(wRoot,function(n){
+        if(n===wRoot)return;
+        if(n.noTokens){n.noTokens=false;undone.noTokens++;}
+      });
+    }
+  }
+  if(S.alignRule&&prevRule21&&S.alignRule===prevRule21){
+    delete S.alignRule;
+    undone.alignRule=true;
+  }
+  /* "the earlier one is discarded": 255 Fear and Loathing es la unica NWO que se
+   * deja expuesta en la mesa (engine.js:5114), asi que su carta se retira de
+   * `exposedPlots` y va al descarte. `discardPlot` ademas abre la ventana de
+   * suceso de 388 Stealing the Plans (P1-131): efecto colateral declarado. */
+  if(prev.pid!=null&&prev.pid>=0&&prev.pid<S.players.length){
+    var plPrev=S.players[prev.pid];
+    var ex=plPrev.exposedPlots.indexOf(prev.id);
+    if(ex>=0){plPrev.exposedPlots.splice(ex,1);discardPlot(prev.id,prev.pid);undone.discarded=true;}
+  }
+  delete S.nwoInForce[color];
+  if(S.nwoBecome)delete S.nwoBecome[prev.name];
+  return undone;
+}
+/* -------------------------------------------------------------------------- */
 function isStructureRoot(node){
   if(!S||!S.players)return false;
   for(var i=0;i<S.players.length;i++)if(S.players[i].structure===node)return true;
@@ -807,6 +886,8 @@ function publicState(){
      returnTurnTo:S.returnTurnTo==null?null:S.returnTurnTo,
      seizeUsed:S.players.map(function(p14){return!!(p14.flags&&p14.flags.seizeTimeUsed);}),
     extraArrows:clone(S.l18extra),
+  /* L21: que carta New World Order esta en vigor por color (hasta 3). */
+  nwoInForce:clone(S.nwoInForce||{}),
     victoryStatus:victoryStatus()
   };
 }
@@ -3889,8 +3970,17 @@ function applyBulkPower(pid, c, eff) {
            * sigue siendo Conservative y ademas es Criminal. */
           var bAl = String(mv.become).toLowerCase();
           if (!Array.isArray(n.alignsAdded)) n.alignsAdded = [];
-          if (nodeAligns(n, gc).indexOf(bAl) < 0) n.alignsAdded.push(bAl);
-        }
+          if (nodeAligns(n, gc).indexOf(bAl) < 0) {
+            n.alignsAdded.push(bAl);
+            /* L21: una alineacion anadida va como texto pelado, sin etiqueta de
+             * carta, asi que `undoNwoOfColor21` no la podria filtrar por nombre.
+             * Para las NWO se registra aqui que nodos toco esta clausula. */
+            if (c.nwoColor) {
+              if (!S.nwoBecome) S.nwoBecome = {};
+              if (!S.nwoBecome[c.name]) S.nwoBecome[c.name] = [];
+              S.nwoBecome[c.name].push({ pid: qi, uid: n.uid, align: bAl });
+            }
+          }        }
         bTouched.push({
           name: gc.name,
           owner: S.players[qi].name,
@@ -4014,7 +4104,18 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
   /* L20: 408 Upheaval! imprime "This card may be played at any time" - un "at any
    * time" DE VERDAD, sin "during your own turn". Entra en `instant` y por eso se
    * juega tambien en el turno del rival: el veto de turno propio NO se aplica. */
-  ||eff0.kind==='global_discard'||eff0.kind==='nwo_discard_one'||eff0.kind==='nwo_discard_all'||eff0.kind==='secret_expose');
+  ||eff0.kind==='global_discard'||eff0.kind==='nwo_discard_one'||eff0.kind==='nwo_discard_all'||eff0.kind==='secret_expose'
+  /* L21: las cartas New World Order "can be played at any time except during an
+   * Instant or Privileged Attack" (inwo_rules_extracted.txt:767-769). Las 7 de
+   * `bulk_power` ya estaban en `instant` desde L2 (engine.js:3970), pero 255 Fear and
+   * Loathing (`align_rule`) y 288 World Hunger (`token_wither`) NO, asi que solo se
+   * podian jugar en el turno de su dueno: el mazo permittingia 2 de sus 9 NWO fuera
+   * de la regla. El veto de "except during an Instant or Privileged Attack" NO se anade
+   * aqui a proposito: `instant` en este motor significa "se puede jugar con un ataque
+   * abierto", que es justo lo que el reglamento permite para el resto de las cartas
+   * que dicen "at any time" (P1-015 distingue las que dicen EXCEPT during an attack,
+   * como 362 Scandal, que brings su propio veto). */
+  ||eff0.kind==='align_rule'||eff0.kind==='token_wither');
   if(instant){
     if(S.phase==='setup')throw new Error('No se pueden jugar Plot cards durante la preparación');
     if(S.phase==='gameover')throw new Error('La partida ha terminado');
@@ -4046,6 +4147,18 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
   rejectUnverifiedCard(c);
   var eff=c.effect||{kind:'generic'};
   var lastResult=null;
+  /* L21 — REGLA DE LAS NWO, PRE-HOOK. Va DESPUES de toda la validacion de la
+   * cabecera y ANTES del switch de efectos, por el mismo motivo que P1-033: si la
+   * carta se rechaza, no se ha deshecho nada. Las Goal cards quedan fuera porque
+   * `case 'goal'` las rechaza ("no se juega, se revela al declarar victoria"): no
+   * son un "Esquema Malvado en vigor" sino una condicion de victoria, asi que la
+   * regla por color no les aplica (declarado en el audit, seccion 72). */
+  var nwoMark21=null,nwoUndone21=null,nwoPrevRule21=null;
+  if(c.nwoColor&&eff0.kind!=='goal'){
+    if(!S.nwoInForce)S.nwoInForce={};
+    nwoPrevRule21=S.alignRule||null;
+    nwoMark21={color:c.nwoColor};
+  }
   switch(eff.kind){
     case 'boost10':{
       /* P1-012 / P2-DATA-02 — la familia oficial "+10 Plots".
@@ -5108,9 +5221,17 @@ case 'bulk_power':{
        * seria incoherente con la mesa. */
       if(typeof eff.alignMag!=='number'||eff.alignMag<=0)
         throw new Error(c.name+': la carta no declara la magnitud de la regla (eff.alignMag)');
-      if(S.alignRule)
-        throw new Error(c.name+' ya esta en juego: la regla de alineaciones ya fue alterada por '+S.alignRule.card);
-      S.alignRule={mag:eff.alignMag,card:c.name};
+      /* L21 / P1-138: el reemplazo por color lo hace undoNwoOfColor21, en el
+       * POST-hook de E.playPlot (P1-137 lo movio alla para no alterar el estado si
+       * el efecto lanzaba). Por eso aqui la regla del MISMO color sigue puesta, y
+       * el unico caso que este throw debe cubrir es el de OTRO color, que la carta
+       * no puede deshacer. La comparacion es por COLOR, no por existencia. Antes
+       * L21 este throw saltaba para cualquier segunda carta, es decir rechazaba
+       * justo el caso que el reglamento SI permite ("the earlier one is discarded"). */
+      if (S.alignRule && S.alignRule.color !== c.nwoColor)
+        throw new Error(c.name + ' no se puede jugar: la regla de alineaciones ya fue alterada por '
+          + S.alignRule.card + ', una carta New World Order de otro color, y solo se sustituye jugando otra NWO de su color');
+      S.alignRule={mag:eff.alignMag,card:c.name,color:c.nwoColor||null};
       pl.exposedPlots.push(handIdx);
       log(c.name+': las alineaciones identicas valen ahora +'+eff.alignMag+' al controlar y -'+eff.alignMag+
           ' al destruir, y las opuestas al reves (regla alterada para el resto de la partida)');
@@ -6689,6 +6810,19 @@ case 'bulk_power':{
    *      es la carta, es el efecto (`linkedPlots` + el override del nodo).
    * La comprobacion es por identidad y no un flag, para que cualquier caso
    * futuro que exponga o enlace una carta quede excluido sin tocar este sitio. */
+  /* L21 — REGLA DE LAS NWO, POST-HOOK. Aqui el switch YA aplico el efecto, asi
+   * que registrar la NWO en vigor es seguro: si el case hubiera lanzado, esta
+   * linea no se ejecutaria. Va antes del `discardPlot` de P1-025 porque la carta
+   * que entra se descarta igual (su efecto vive en los nodos). */
+  if(nwoMark21){
+    nwoUndone21=undoNwoOfColor21(nwoMark21.color,nwoPrevRule21);
+    S.nwoInForce[nwoMark21.color]={name:c.name,id:handIdx,pid:pid};
+    if(nwoUndone21)
+      log(c.name+' ('+nwoMark21.color+'): sustituye a '+nwoUndone21.card
+        +' del mismo color, que queda descartada. Deshechos '+nwoUndone21.powerMods
+        +' modificadores de Poder, '+nwoUndone21.resistanceMods+' de Resistencia, '
+        +nwoUndone21.becomes+' alineacion(es) y '+nwoUndone21.noTokens+' grupo(s) sin ficha');
+  }
   var linkedHere=pl.linkedPlots.some(function(lp){return lp.cardId===handIdx;});
   if(pl.exposedPlots.indexOf(handIdx)<0&&!linkedHere)discardPlot(handIdx,pid);
   var out=publicState();

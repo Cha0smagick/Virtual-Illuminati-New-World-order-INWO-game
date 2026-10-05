@@ -97,7 +97,13 @@ const GOAL_TYPE_LABELS = new Set([
 const DEAD_BRANCHES = {
   paralyze: '§25.5 — ninguna carta de la familia Paralyze existe en esta transcripcion',
   zap: '§25.5 — ninguna carta de la familia Zap existe en esta transcripcion',
-  nwo: 'etiqueta historica New World Order; sin cartas en el mazo'
+  /* P1-139: la RAZON anterior ('sin cartas en el mazo') era FALSA desde que L16.b
+   * anadio el campo `nwoColor`: hay 14 cartas New World Order en el mazo (5 blue,
+   * 5 red, 4 yellow) y su regla oficial ya vive en el motor (L21). Lo que sigue
+   * siendo cierto es que la etiqueta `effect.kind==='nwo'` no la tiene NINGUNA carta
+   * (0 de 421), luego `case 'nwo'` es inalcanzable y esta entrada debe seguir. */
+  nwo: 'la etiqueta effect.kind===\'nwo\' no la tiene ninguna carta (0 de 421); la familia'
+    + ' NWO se identifica por el campo nwoColor (14 cartas) y su regla de color vive en L21'
 };
 
 /* Progreso. MAX_PENDING_PLR solo se BAJA a proposito (cuando se clasifican
