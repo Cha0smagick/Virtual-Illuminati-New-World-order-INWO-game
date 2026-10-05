@@ -6250,11 +6250,25 @@ E.endTurn=function(){
    * puede reaccionar, beginTurn corre sincrono como siempre (blast radius cero:
    * las partidas sin 405 nunca ven la ventana). El primer turno del juego no abre
    * ventana (startGame no es punto de reaccion, regla 10). */
+  /* L8c/L14 — 405 Unlucky 13 y 364 Seize the Time!: las dos se juegan "al
+   * comienzo del turno de un rival", o sea en ESTE punto exacto, entre endTurn y
+   * beginTurn: es el unico sitio donde "muy al principio del turno" es observable
+   * ANTES de que corra el autoDraw de Network (un bloqueo dentro de beginTurn
+   * llegaria tarde: P1-048). Solo se abre si un HUMANO distinto del jugador del
+   * turno tiene UNA DE LAS DOS en mano; si nadie puede reaccionar, beginTurn corre
+   * sincrono como siempre (blast radius cero: las partidas sin esas cartas nunca
+   * ven la ventana). El primer turno del juego no abre ventana (startGame no es
+   * punto de reaccion, regla 10).
+   *
+   * P1-098: antes solo se miraba 'unlucky13'. Con solo 364 en mano la ventana NO
+   * se abria, y como su timing ES la ventana, la carta era literalmente
+   * INJUGABLE — el mismo genero de fallo que P1-075 (ruta que el jugador no puede
+   * alcanzar) y que P1-085. Por eso el mismo bucle mira las dos. */
   var tsHolder=-1;
   for(var tsq=0;tsq<S.players.length;tsq++){
     var tsp=S.players[tsq];
     if(!tsp.human||tsq===next)continue;
-    if(tsp.hand.some(function(tshx){return C.cards[tshx]&&C.cards[tshx].id==='unlucky13';})){tsHolder=tsq;break;}
+    if(tsp.hand.some(function(tshx){var tsc=C.cards[tshx];return tsc&&(tsc.id==='unlucky13'||tsc.id==='seizethetime');})){tsHolder=tsq;break;}
   }
   if(tsHolder>=0){
     S.pendingTurnStart={forPid:next};

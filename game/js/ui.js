@@ -658,17 +658,32 @@ function attackPanel(st) {
    * buscando la 405 en las manos humanas. */
   var TS = st.pendingTurnStart;
   if (TS) {
-    var tsP = -1, tsIx = -1;
-    for (var tsQ = 0; tsQ < st.players.length; tsQ++) {
-      if (!st.players[tsQ].human || tsQ === TS.forPid) continue;
-      var tsHand = st.players[tsQ].hand || [];
-      for (var tsR = 0; tsR < tsHand.length; tsR++) {
-        if (C.cards[tsHand[tsR]] && C.cards[tsHand[tsR]].id === 'unlucky13') { tsP = tsQ; tsIx = tsHand[tsR]; break; }
-      }
-      if (tsP >= 0) break;
-    }
+    /* L14 (P1-095/P1-098) — la ventana de comienzo de turno ya ofrecia 405 Unlucky
+     * 13; ahora ofrece TAMBIEN 364 Seize the Time!, que comparte el timing ("Play
+     * this card at the beginning of any other players turn") pero NO el objetivo:
+     * las dos apuntan al jugador cuyo turno va a empezar, asi que ninguna tiene
+     * un objetivo de carta que elegir. Se buscan POR ID DE CARTA (unlucky13 /
+     * seizethetime) y no por indice, porque el indice de mano no es estable entre
+     * el render que pinto el panel y el click: el motor puede haber robado o
+     * descartado algo entre medias. Para cada carta encontrada se ofrece un boton
+     * propio con data-i (indice) y data-c (id), y el motor es quien valida si el
+     * jugador que la juega es el dueno y si la carta es legal en la ventana. */
+    var tsCards = [{ id: 'unlucky13', label: 'Unlucky 13', tip: 'Requiere la accion de un grupo Magic' },
+                   { id: 'seizethetime', label: 'Seize the Time!', tip: 'Roba el turno de ' + esc(TS.forName) + ' hasta que termine' }];
     var tsHtml = '<b>⏳ Comienzo del turno de ' + esc(TS.forName) + '</b>: los rivales pueden reaccionar. ';
-    if (tsP >= 0) tsHtml += '<button data-act="turnstartplay" data-i="' + tsIx + '" title="Requiere la accion de un grupo Magic">Jugar Unlucky 13</button> ';
+    for (var tsC = 0; tsC < tsCards.length; tsC++) {
+      for (var tsQ = 0; tsQ < st.players.length; tsQ++) {
+        if (!st.players[tsQ].human || tsQ === TS.forPid) continue;
+        var tsHand = st.players[tsQ].hand || [];
+        for (var tsR = 0; tsR < tsHand.length; tsR++) {
+          if (C.cards[tsHand[tsR]] && C.cards[tsHand[tsR]].id === tsCards[tsC].id) {
+            tsHtml += '<button data-act="turnstartplay" data-i="' + tsHand[tsR] + '" data-c="' + tsCards[tsC].id +
+              '" title="' + tsCards[tsC].tip + '">Jugar ' + tsCards[tsC].label + '</button> ';
+            break;
+          }
+        }
+      }
+    }
     tsHtml += '<button data-act="turnstartpass" title="Dejar comenzar el turno sin reaccionar">Pasar</button>';
     $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar">' + tsHtml + '</div>');
   }
@@ -1005,7 +1020,12 @@ function isOwnNode(uid) {
 /* L8c — 'turn_start_block' (405 Unlucky 13) se anade: apunta a un rival JUGADOR
  * (el cuyo turno va a empezar), no a un grupo; su boton vive en el panel de la
  * ventana de comienzo de turno, no en el selector de objetivo. */
-var NO_TARGET_KINDS = ['token_gift', 'attack_boost', 'deck_manip', 'turn_start_block'];
+/* L14 — 'turn_control' (364 Seize the Time!) se anade por el MISMO motivo que
+ * 'turn_start_block' (L8c, una linea arriba): su objetivo NO es una carta del
+ * tablero, es la VENTANA de comienzo de turno — el jugador al que se le roba el
+ * turno. Por eso su boton vive en el panel de esa ventana (el bloque TS de mas
+ * abajo) y no en el selector de objetivo, y por eso NO debe pasar por plotTarget. */
+var NO_TARGET_KINDS = ['token_gift', 'attack_boost', 'deck_manip', 'turn_start_block', 'turn_control'];
 /* L8a — MENU DE MANIPULACION DE MAZO (361 Savings & Loan Scam, 388 The Big Sellout,
  * 411 Voodoo Economics).
  *
@@ -2012,7 +2032,7 @@ function bindEvents() {
     else if (act === 'drawrestbot') { drawRest = 'bottom'; render(curState); }
     else if (act === 'drawpick') { clearSel(); CB.onResolveDraw({ pick: parseInt(btn.getAttribute('data-i'), 10), rest: drawRest }); }
     else if (act === 'drawtake') { clearSel(); CB.onResolveDraw({ take: btn.getAttribute('data-v') }); }
-    else if (act === 'turnstartplay') { clearSel(); CB.onTurnStartPlay(parseInt(btn.getAttribute('data-i'), 10)); }
+    else if (act === 'turnstartplay') { clearSel(); CB.onTurnStartPlay(parseInt(btn.getAttribute('data-i'), 10), btn.getAttribute('data-c')); }
     else if (act === 'turnstartpass') { clearSel(); CB.onTurnStartPass(); }
     /* L9 — 332 Orbital Mind Control Lasers. `pick` es el paso 1 (elegir grupo): no
      * toca el motor, solo guarda el objetivo en `sel` como hace el resto de menus de

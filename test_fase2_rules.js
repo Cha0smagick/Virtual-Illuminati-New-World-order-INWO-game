@@ -162,6 +162,20 @@ function readyToAttack(pid) {
   var guard4 = 0;
   while (S4.currentPid !== up4 && S4.phase !== 'gameover' && guard4++ < 8) E.endTurn();
   ok(S4.currentPid === up4, 'fixture: es el turno del jugador UFOs -> currentPid=' + S4.currentPid);
+  /* P1-078 (CUARTA aparicion del mismo defecto; esta es la mas antigua: L165 del
+   * bloque P1-001). El reparto inicial es ALEATORIO y el jugador de las metas (UFOs)
+   * puede traer YA cartas de meta en la mano. Medido: `habia 5` en vez de 3, con
+   * un Criminal Overlords y un Alternate Goals que no son los del fixture; entonces
+   * el limite impreso (1 meta, o 2 con Alternate Goals) se mide sobre una mano que
+   * el test no controlaba y el aserto se rompe sin que el motor haga nada raro.
+   * Se purga ANTES de empujar, con splice inverso sobre `h4` (que es la referencia
+   * VIVA a la mano: por eso el aserto posterior ve el mismo array). A partir de aqui
+   * la cuenta de `goalsBefore` es exactamente 3 y el aserto mide lo que el motor
+   * hace, que es lo que se queria medir. */
+  ['Fratricide', 'Hail Eris!', 'Criminal Overlords'].forEach(function (nm4) {
+    var ix4 = byName[nm4];
+    for (var k4 = h4.length - 1; k4 >= 0; k4--) if (h4[k4] === ix4) h4.splice(k4, 1);
+  });
   h4.push(byName['Fratricide'], byName['Hail Eris!'], byName['Criminal Overlords']);
   var goalsBefore = h4.filter(function (ix) { return C.cards[ix].effect && C.cards[ix].effect.kind === 'goal'; }).length;
   E.endTurn();
@@ -5439,18 +5453,44 @@ function readyToAttack(pid) {
     r.plotDeck.splice(di,1);
     r.players[pid].hand.push(ix);
   }
-  function deckOnlyL8c(ix){ /* devuelve la carta al mazo si el reparto la dejo en una mano, expuesta o en el descarte */
+/* P1-099 - ESTA funcion sirve para "dejar la carta SOLO en el mazo". La version
+     * anterior tenia un RETORNO TEMPRANO en cada rama: si la carta ya estaba en el
+     * mazo no hacia nada (y por tanto no garantia que no quedara ninguna copia en una
+     * mano), y en cuanto encontraba una la movia y salia, sin seguir mirando a los
+     * demas jugadores ni a las demas zonas.
+     * Con un reparto ALEATORIO y un mazo de Plots COMPARTIDO eso dejaba copias
+     * sueltas. MEDIDO: una 405 Unlucky 13 se quedaba en la mano de un jugador, el
+     * bucle `tsHolder` de E.endTurn la encontraba, se abria la ventana
+     * S.pendingTurnStart, beginTurn NO corria, el autoDraw de The Network no
+     * disparaba y el aserto de L8c S7 caia (1 de cada ~55 corridas).
+     * Ahora barre TODAS las zonas de TODOS los jugadores y no sale hasta acabarlas,
+     * y acepta VARIOS ids. Misma idea que P1-078 (la 3a vez): un fixture que coloca
+     * el estado no puede dejar de hacerlo porque el reparto traia algo de mas. */
+  function deckOnlyL8c(){
     var r=rawL8c();
-    if(r.plotDeck.indexOf(ix)>=0)return;
+    var ids=Array.prototype.slice.call(arguments).map(function(x){ return C.cards[x].id; });
     for(var p=0;p<r.players.length;p++){
       var h=r.players[p].hand;
-      var hi=h.indexOf(ix);
-      if(hi>=0){h.splice(hi,1);r.plotDeck.push(ix);return;}
-      var xpi=(r.players[p].exposedPlots||[]).indexOf(ix);
-      if(xpi>=0){r.players[p].exposedPlots.splice(xpi,1);r.plotDeck.push(ix);return;}
+      for(var i=h.length-1;i>=0;i--) if(ids.indexOf(C.cards[h[i]].id)>=0) h.splice(i,1);
+      ['exposedPlots','linkedPlots'].forEach(function(z){
+        var a=r.players[p][z];
+        if(!a) return;
+        for(var j=a.length-1;j>=0;j--){
+          if(a[j].cardId!=null && ids.indexOf(C.cards[a[j].cardId].id)>=0) a.splice(j,1);
+        }
+      });
     }
-    var dxi=r.plotDiscard.indexOf(ix);
-    if(dxi>=0){r.plotDiscard.splice(dxi,1);r.plotDeck.push(ix);}
+    ids.forEach(function(id){
+      var ixs=r.plotDeck.filter(function(x){ return C.cards[x].id===id; });
+      if(ixs.length===1) return;
+      var keep=ixs.length?ixs[0]:null;
+      for(var k=r.plotDeck.length-1;k>=0;k--){
+        if(ixs.indexOf(r.plotDeck[k])>=0 && r.plotDeck[k]!==keep) r.plotDeck.splice(k,1);
+      }
+      if(keep==null) for(var q=0;q<C.cards.length;q++) if(C.cards[q].id===id){ keep=q; break; }
+      if(keep!=null) r.plotDeck.push(keep);
+    });
+    return ids;
   }
   function plotsOfL8c(pid){ return rawL8c().players[pid].hand.filter(function(ix){return C.cards[ix].type==='plot';}).length; }
 
@@ -5597,11 +5637,18 @@ function readyToAttack(pid) {
     freshL8c(firstOf('ufos'),firstOf('network'));
     /* idem S1: la 405 del reparto inicial abre la ventana y bloquearia el turno de
        R1 antes del control positivo. Al mazo primero. */
-    deckOnlyL8c(idxOfId('unlucky13'));
     toHumanTurnL8c();
     /* el jugador inicial es aleatorio: R1 puede no haber tomado el turno 1. Se
        le da un turno propio (endTurn) para que el autoDraw dispare AL MENOS una
        vez, y el control positivo busca el log sin importar el turno. */
+    /* P1-099: la 405 se purga AHORA, despues de toHumanTurnL8c() y no antes.
+     * El reparto y el propio autoDraw de The Network (roba 2 Plots) pueden dejar una
+     * 405 en una mano, y entonces el bucle tsHolder de E.endTurn abre la ventana
+     * pendingTurnStart, beginTurn no corre y el control positivo de abajo nunca ve
+     * el autoDraw. Con la ventana ya cerrada y la carta solo en el mazo, el
+     * endTurn de este bloque es determinista. Es el mismo patron que P1-078. */
+    deckOnlyL8c(idxOfId('unlucky13'), idxOfId('seizethetime'));
+    if(E.getState().pendingTurnStart) E.resolvePendingTurnStart({ pass: true });
     E.endTurn();
     ok(saidL8c(/Plot cards al inicio del turno \(The Network\)/),
       'L8c S7 control positivo: el turno de R1 robo 2 Plots al inicio');
@@ -6015,6 +6062,16 @@ ok(!!L9c332 && !!L9c357 &&
     if (d >= 0) S.plotDeck.splice(d, 1);
     d = S.groupDeck.indexOf(ix);
     if (d >= 0) S.groupDeck.splice(d, 1);
+    /* P1-078 (TERCERA aparicion del mismo defecto: ya se corrigio en toHandL10 y
+     * en toHandL12). El reparto inicial de la partida es ALEATORIO, asi que a veces
+     * la carta que este fixture va a insertar YA esta en la mano: el reparto la deja
+     * ahi y toHandL11 anade una segunda copia. Al jugar se consume una y QUEDA la
+     * otra, y el aserto de L11 (que afirma que la habilitadora sale de la mano con
+     * indice hand.indexOf(CR) < 0) se rompe sin que el motor haya hecho nada raro.
+     * Medido: ~3 de cada 80 corridas. La REGLA que sale de las tres apariciones:
+     * ningun toHand* empuja sin purgar antes. Purga con splice INVERSO para no
+     * cambiar la identidad del array de mano, que otros bloques ya tienen capturada. */
+    for (var kL11 = S.players[pid].hand.length - 1; kL11 >= 0; kL11--) if (S.players[pid].hand[kL11] === ix) S.players[pid].hand.splice(kL11, 1);
     S.players[pid].hand.push(ix);
     return ix;
   };

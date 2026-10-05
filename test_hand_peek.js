@@ -202,6 +202,36 @@ ok(/onUseDisasterBoost:\s*function\s*\(resourceUid\)/.test(appTxt)
 ok(/case 'disaster_defence':\{/.test(fs.readFileSync(path.join(root, 'game', 'js', 'engine.js'), 'utf8')),
    'L13.f: el motor no tiene ningun case \'disaster_defence\' (FASE 4 lo habria detectado)');
 
+/* ---------- 5) L14.d: el cableado de UI de turn_control (364 Seize the Time!) ---------- */
+const UIT = fs.readFileSync(UIJS, 'utf8');
+{
+  /* P1-098 — el AGUJERO que hace injugable a 364 sin este gate. El timing IMPRESO de
+   * 364 es "at the beginning of any other player's turn", y esa ventana la abre
+   * E.endTurn. El bucle que decide si la ventana se abre buscaba SOLO 'unlucky13':
+   * con 364 en la mano y ningun Unlucky 13, la ventana no se abria nunca y la carta
+   * no tenia NINGUN camino de juego. Se afirma en los tres sitios que eran
+   * necesarios, no en uno, porque el fallo era de las tres capas a la vez. */
+  const noTarget = /var NO_TARGET_KINDS\s*=\s*\[([^\]]*)\]/;
+  const mNt = UIT.match(noTarget);
+  ok(!!mNt && mNt[1].indexOf("'turn_control'") >= 0,
+     'P1-098: turn_control esta en NO_TARGET_KINDS (el objetivo de 364 es la VENTANA, no una carta)');
+  ok(UIT.indexOf("seizethetime") >= 0,
+     'P1-098: la ventana de comienzo de turno ofrece tambien 364 Seize the Time!');
+  ok(UIT.indexOf('data-c="') >= 0 && UIT.indexOf("getAttribute('data-c')") >= 0,
+     'P1-098: el boton de la ventana pasa el id de la carta, no solo el indice de mano');
+  ok(/onTurnStartPlay:\s*function\s*\(handIdx,\s*cardId\)/.test(appTxt) &&
+     appTxt.indexOf('E.playPlot(humanPid(), handIdx, null, {})') >= 0,
+     'P1-098: app.js juega la carta con humanPid() (durante la ventana currentPid apunta al OBJETIVO)');
+  {
+    const at = appTxt.search(/onTurnStartPlay:\s*function\s*\(handIdx,\s*cardId\)/);
+    const trozo = at >= 0 ? appTxt.slice(at, at + 400) : '';
+    ok(!!trozo && /catch\s*\(/.test(trozo),
+       'P1-098: onTurnStartPlay tiene red try/catch (un rechazo del motor debe llegar al registro, P1-076)');
+  }
+  const eng = fs.readFileSync(path.join(root, 'game', 'js', 'engine.js'), 'utf8');
+  ok(/tsc\.id==='unlucky13'\|\|tsc\.id==='seizethetime'/.test(eng),
+     'P1-098: el bucle que abre la ventana de comienzo de turno reconoce las DOS cartas');
+}
 if (failures.length) {
   console.error('HAND PEEK FAILURES (' + failures.length + '):');
   failures.forEach(function (f) { console.error('  - ' + f); });

@@ -168,8 +168,16 @@ var CB = {
   /* L8c — 405 Unlucky 13: la ventana de comienzo de turno se cierra desde aqui.
    * El play usa humanPid(), NO currentPid: durante la ventana currentPid apunta
    * al jugador cuyo turno va a empezar (el objetivo), no al que reacciona. */
-  onTurnStartPlay: function (handIdx) {
-    try { E.playPlot(humanPid(), handIdx, null, {}); after('Unlucky 13 jugado'); }
+  /* L8c/L14 — la ventana de comienzo de turno se cierra desde aqui, y ahora la
+   * comparten 405 Unlucky 13 y 364 Seize the Time!.
+   * El play usa humanPid(), NO currentPid: durante la ventana el motor ya ha
+   * movido currentPid al jugador cuyo turno va a empezar (engine.js: S.currentPid=next
+   * al abrir la ventana), o sea el OBJETIVO, no el que reacciona.
+   * cardId solo se usa para el texto del registro: el motor valida la carta por si
+   * misma y su error (si lo hay) llega al registro por el catch, no por aqui. */
+  onTurnStartPlay: function (handIdx, cardId) {
+    var nm = cardId === 'seizethetime' ? 'Seize the Time!' : (cardId === 'unlucky13' ? 'Unlucky 13' : 'la carta');
+    try { E.playPlot(humanPid(), handIdx, null, {}); after(nm + ' jugada en el comienzo del turno'); }
     catch (e) { log('! ' + e.message); }
   },
   onTurnStartPass: function () {
