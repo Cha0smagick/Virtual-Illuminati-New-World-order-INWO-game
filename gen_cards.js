@@ -2095,13 +2095,17 @@ for (const k in L13_FX) { L13_FXN[norm(k)] = L13_FX[k]; }
  * card more than once", o sea el limite es del jugador, y en un mazo normal solo hay
  * una copia de la carta asi que el flag del jugador es lo que hace falta.
  *
- * TIMING. NO se declara `instant:true` aunque el texto diga "at any time" en otras
- * cartas de este lote: 364 imprime "at the beginning of any other player's turn", que
- * NO es "at any time". Es exactamente la ventana `S.pendingTurnStart`, el mismo
- * precedente que 405 (case 'turn_start_block'). Anadirla a la lista `instant` de
- * `E.playPlot` aplicaria `requireOwnMain(pid)` y dejaria la carta INJUGABLE, porque en
- * el momento de la ventana no es el turno de nadie. Por eso `instant:false` queda
- * declarado en el dato: documenta que el timing lo aporta el case, no la lista.
+  * TIMING (P1-101, corregido al medir). El dato declara `instant` NO por el texto
+  * ("at the beginning of any other player's turn" NO es "at any time") sino porque en
+  * la lista `instant` de `E.playPlot` lo que significa es "esta carta NO requiere turno
+  * propio". Al abrirse la ventana pendingTurnStart, E.endTurn ya ha movido currentPid al
+  * rival que va a empezar: si la carta NO estuviera en la lista, requireOwnMain(actor)
+  * lanzaria "No es tu turno" y 364 seria INJUGABLE. El timing de verdad lo valida su
+  * case (ventana abierta + forPid distinto del actor), igual que 405 Unlucky 13, que
+  * comparte esta misma ventana y SI esta en la lista. Anadirla es lo correcto; lo que
+  * se declaraba al reves era una suposicion no medida.
+  * El dato deja `instant` implicitamente (no se declara el campo) porque el case lo
+  * exige de forma implicita; la declaracion de alcance real es la de este comentario.
  *
  * COSTE. El impreso NO pide ninguna accion ("Play this card at the beginning of any
  * other player's turn", sin "Requires Action"). Se declara `freeAction:true` y NO se

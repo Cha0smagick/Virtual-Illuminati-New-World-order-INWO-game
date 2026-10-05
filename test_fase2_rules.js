@@ -5522,7 +5522,15 @@ function readyToAttack(pid) {
     freshL8c();
     /* la 405 puede haber caido en una mano por el reparto inicial aleatorio:
        devolverla al mazo para que "sin 405 en ninguna mano" sea cierto. */
-    deckOnlyL8c(idxOfId('unlucky13'));
+    /* P1-104: la 364 (Seize the Time!) ABRE LA VENTANA DE COMIENZO DE TURNO igual que
+     * la 405, porque el bucle tsHolder de E.endTurn las reconoce a las dos (P1-098).
+     * Por eso todo purge de L8c tiene que echar las dos al mazo: si el reparto
+     * aleatorio deja una 364 en una mano HUMANA, el endTurn abre ventana y el control
+     * de L8c (que afirma 'sin 405 en ninguna mano -> beginTurn sincrono, sin ventana')
+     * falla. Mismo genero que P1-099: una fixture no puede asumir que una carta esta
+     * donde dice, con reparto aleatorio y mazo compartido. deckOnlyL8c ya acepta
+     * varios ids (asi se reescribio en P1-099), asi que solo hay que pasarle los dos. */
+    deckOnlyL8c(idxOfId('unlucky13'), idxOfId('seizethetime'));
     var tS0=rawL8c().turn;
     E.endTurn();
     ok(E.getState().phase==='main'&&!E.getState().pendingTurnStart&&rawL8c().turn===tS0+1,
@@ -6815,6 +6823,212 @@ ok(copiesInHandL12(0, IX.weaklink) === 1 && E._raw().players[0].resources.length
   rstEN();
   var nAEN = nodeByUidL13(0, 'pA');
   ok(!!nAEN && nAEN.devastated !== true, 'L13 E-neg SIN 245 el mismo Disaster con el mismo dado FALLA -> devastated=' + (nAEN ? String(nAEN.devastated) : 'AUSENTE') + ' | ' + logTailL13(3));
+/* ============ L14 - MANIPULACION DE TURNO (364 Seize the Time!) ============ */
+/* P1-100 - Fixtures PROPIOS del lote. Tres lecciones del proyecto aplicadas de
+ * entrada, porque 364 es la carta mas delicada que ha pasado por aqui:
+ *  (1) P1-078 (4 apariciones ya corregidas: L9-metas, L10, L11, L12): el reparto
+ *      inicial es ALEATORIO, asi que todo fixture que inserte en la mano PURGA
+ *      antes de empujar. Y NADA puede asumir que una carta esta "solo en el mazo":
+ *      los mazos de Plot son COMPARTIDOS entre jugadores.
+ *  (2) P1-099: el TIMING de 364 ES la ventana S.pendingTurnStart. Si el fixture
+ *      deja una 364 o una 405 en una mano, E.endTurn abre la ventana, beginTurn no
+ *      corre y el turno del actor nunca empieza. Por eso este bloque SIEMPRE deja
+ *      esas dos cartas solo en el mazo y SIEMPRE cierra la ventana antes de medir.
+ *  (3) El registro del motor son OBJETOS {t,p,msg}: los asertos usan
+ *      .some(x=>/…/.test(x.msg||String(x))) y NUNCA log[length-1] (regla 14).
+ *      logTailL13 devuelve un STRING (hace JSON.stringify internamente): no
+ *      encadenar .join().
+ */
+var C14 = {
+  seize: 364,            /* Seize the Time!  - la carta de este lote */
+  unlucky: 405,           /* Unlucky 13       - la otra carta de esta ventana */
+  grp: 140,               /* Stonehenge P3 [magic]: un grupo cualquiera con ficha */
+  illuA: 'adeptsofhermes1', illuB: 'servantsofcthulhu1'
+};
+function ix14(id) { for (var i14 = 0; i14 < C.cards.length; i14++) if (C.cards[i14].id === id) return i14; return -1; }
+function throwMsgL14(fn) { try { fn(); } catch (e14) { return String((e14 && e14.message) || e14); } return ''; }
+/* Mete la carta SOLO en el mazo compartido de Plots: barre las manos de TODOS los
+ * jugadores y, en cada una, exposedPlots y linkedPlots; y deja exactamente 1 copia
+ * en el mazo. Es el fix de P1-099 aplicado aqui por el mismo motivo: con reparto
+ * aleatorio y mazo compartido, "esta carta no esta en ninguna mano" NO se puede
+ * asumir, y si queda en una mano el bucle tsHolder de E.endTurn abre la ventana. */
+function deckOnlyL14(ix) {
+  var r14 = E._raw(), n14 = 0;
+  for (var p14 = 0; p14 < r14.players.length; p14++) {
+    var pl14 = r14.players[p14];
+    for (var h14 = pl14.hand.length - 1; h14 >= 0; h14--) if (pl14.hand[h14] === ix) { pl14.hand.splice(h14, 1); n14++; }
+    if (pl14.exposedPlots) for (var x14 = pl14.exposedPlots.length - 1; x14 >= 0; x14--) if (pl14.exposedPlots[x14] === ix) { pl14.exposedPlots.splice(x14, 1); n14++; }
+    if (pl14.linkedPlots) for (var k14 = pl14.linkedPlots.length - 1; k14 >= 0; k14--) if (pl14.linkedPlots[k14] && pl14.linkedPlots[k14].cardId === ix) { pl14.linkedPlots.splice(k14, 1); n14++; }
+  }
+  while (r14.plotDeck.indexOf(ix) >= 0) { r14.plotDeck.splice(r14.plotDeck.indexOf(ix), 1); n14++; }
+  if (n14 === 0) r14.plotDeck.push(ix);
+  return ix;
+}
+/* Inserta en la mano POR IDENTIDAD DE CATALOGO. Se saca la copia del mazo (para que
+ * la cuenta sea la que el test cree) y PURGA cualquier copia previa: el reparto es
+ * aleatorio y sin purgar aparecen las flakes de P1-078. */
+function toHandL14(pid, cardId) {
+  var r14 = E._raw();
+  for (var d14 = r14.plotDeck.indexOf(cardId); d14 >= 0; d14 = r14.plotDeck.indexOf(cardId)) r14.plotDeck.splice(d14, 1);
+  for (var g14 = r14.groupDeck.indexOf(cardId); g14 >= 0; g14 = r14.groupDeck.indexOf(cardId)) r14.groupDeck.splice(g14, 1);
+  var h14 = r14.players[pid].hand;
+  for (var k14 = h14.length - 1; k14 >= 0; k14--) if (h14[k14] === cardId) h14.splice(k14, 1);
+  h14.push(cardId);
+  return cardId;
+}
+/* Partida nueva con P0 en su turno principal y SIN ventana abierta. ownMainTurnL12()
+ * no sirve aqui: devuelve true en el acto si P0 ya esta en su turno y no avanza, y
+ * ademas puede dejar la ventana de comienzo de turno abierta. */
+function ownTurnL14() {
+  for (var k14 = 0; k14 < 14; k14++) {
+    var s14 = E.getState();
+    if (s14.pendingTurnStart) E.resolvePendingTurnStart({ pass: true });
+    if (s14.phase === 'main' && s14.currentPid === 0 && !E.getState().pendingTurnStart) return true;
+    E.endTurn();
+  }
+  var s2 = E.getState();
+  return s2.phase === 'main' && s2.currentPid === 0 && !s2.pendingTurnStart;
+}
+/* fresh + 364 y 405 SOLO en el mazo + ventana cerrada + P0 en su turno principal. */
+function freshL14() {
+  /* P1-102: esta partida NO puede usar fresh(), que crea a los DOS jugadores con
+   * human:false. El bucle tsHolder de E.endTurn (engine.js, el que abre la ventana
+   * de comienzo de turno) hace `if(!tsp.human||tsq===next)continue;`: la ventana
+   * existe PARA que el jugador humano pueda reaccionar, asi que con los dos
+   * jugadores no humanos no hay quien pueda reaccionar y la ventana no se abre
+   * nunca. Medido: sin esto, E.endTurn pasaba de largo, S1 fallaba con
+   * 'E.endTurn abre la ventana -> null' y la 364 era INJUGABLE en el test.
+   * El precedente es freshL8c (L8c), que ya usa human:true para P0.
+   * El motor NO tiene IA: maybeRunAI vive en app.js, asi que marcar a P0 humano
+   * NO hace que nadie juegue por el y el fixture sigue controlando todo. */
+  E.newGame([{ name: 'A', human: true }, { name: 'B', human: false }]);
+  E.setIlluminati(0, C14.illuA);
+  E.setIlluminati(1, C14.illuB);
+  E.startGame();
+  deckOnlyL14(C14.seize); deckOnlyL14(C14.unlucky);
+  E.resolvePendingTurnStart({ pass: true });
+  return ownTurnL14();
+}
+function nodesWithTokensL14(pid, min) {
+  var out14 = [], root14 = E._raw().players[pid].structure;
+  (function recL14(n14) { for (var i14 = 0; i14 < n14.children.length; i14++) { if (n14.children[i14].cardId != null) out14.push(n14.children[i14]); recL14(n14.children[i14]); } })(root14);
+  return out14.filter(function (n14) { return n14.tokens >= min; }).length;
+}
+
+/* ---- ESCENARIO 1 (aceptacion del lote): A roba el turno de B en la ventana ---- */
+ok(freshL14(), 'L14 S1 el fixture deja a P0 en su turno principal y con la ventana cerrada');
+/* El grupo de B va con la ficha YA GASTADA (tokens 0). Esa es la afirmacion del
+ * impreso que el lote declara como aceptacion: "B conserva sus fichas gastadas".
+ * Si el motor le repusiera ficha al robar A el turno, este aserto caeria. */
+plant(1, 'bL14', C14.grp, 0);
+/* Dos grupos de A, uno con ficha y otro sin ella: "all your groups get Action tokens"
+ * exige los dos. */
+plant(0, 'a1L14', C14.grp, 0);
+/* P1-101: la 364 tiene que estar en la mano ANTES del endTurn. El bucle tsHolder de
+ * E.endTurn solo abre la ventana si encuentra la carta en una mano: si se mete despues,
+ * no hay ventana y no hay nada que robar. Por eso esta llamada va aqui y no despues. */
+toHandL14(0, C14.seize);
+plant(0, 'a2L14', C14.grp, 1);
+E.endTurn();
+var winL14 = E.getState().pendingTurnStart;
+var turnWin = E._raw().turn;
+ok(!!winL14 && winL14.forPid === 1, 'L14 S1 E.endTurn abre la ventana de comienzo de turno del rival -> ' + JSON.stringify(winL14));
+var rS1 = throwMsgL14(function () { E.playPlot(0, C14.seize, null, {}); });
+ok(!rS1, 'L14 S1 364 se juega en la ventana del comienzo del turno de un rival -> ' + (rS1 || 'OK'));
+ok(E.getState().currentPid === 0, 'L14 S1 despues de 364 el turno activo es el del que la robo -> currentPid=' + E.getState().currentPid);
+ok(E._raw().turn === turnWin + 1, 'L14 S1 el turno se avanza EXACTAMENTE una vez al robarlo: S.turn ' + turnWin + ' -> ' + E._raw().turn);
+var nbL14 = null, na1L14 = null, na2L14 = null;
+(function () { var r14 = E._raw();
+  (function fL14(n14) { if (n14.uid === 'bL14') nbL14 = n14; if (n14.uid === 'a1L14') na1L14 = n14; if (n14.uid === 'a2L14') na2L14 = n14;
+    for (var i14 = 0; i14 < n14.children.length; i14++) fL14(n14.children[i14]); })(r14.players[1].structure);
+  (function gL14(n14) { if (n14.uid === 'bL14') nbL14 = n14; if (n14.uid === 'a1L14') na1L14 = n14; if (n14.uid === 'a2L14') na2L14 = n14;
+    for (var i14 = 0; i14 < n14.children.length; i14++) gL14(n14.children[i14]); })(r14.players[0].structure); })();
+ok(!!nbL14 && nbL14.tokens === 0, 'L14 S1 el grupo del INTERRUMPIDO conserva su ficha gastada (tokens 0) -> ' + (nbL14 ? String(nbL14.tokens) : 'AUSENTE'));
+ok(!!na1L14 && na1L14.tokens === 1 && !!na2L14 && na2L14.tokens === 1,
+   'L14 S1 "all your groups get Action tokens": los grupos del actor quedan TODOS con 1 -> a1=' + (na1L14 ? String(na1L14.tokens) : 'AUSENTE') + ' a2=' + (na2L14 ? String(na2L14.tokens) : 'AUSENTE'));
+ok(E._raw().players[0].flags.noDrawTurn === true, 'L14 S1 el turno robado queda marcado SIN robo');
+ok(E._raw().players[0].flags.seizeTimeUsed === true, 'L14 S1 el uso queda marcado en el JUGADOR (una vez por partida), no en la carta');
+ok(nodesWithTokensL14(0, 1) === nodesWithTokensL14(0, 0), 'L14 S1 ningun grupo del actor se queda sin ficha');
+ok(E.getState().log.some(function (x) { return /Seize the Time!: el turno pasa a/.test(x.msg || String(x)); }),
+   'L14 S1 el registro dice que el turno pasa al que lo robo -> ' + JSON.stringify((E.getState().log||[]).slice(-3).map(function(x){return x.msg||String(x);})));
+
+/* ---- ESCENARIO 2 (retorno): al terminar el turno especial, el turno vuelve a B ---- */
+var turnAfter = E._raw().turn;
+E.endTurn();
+ok(E.getState().currentPid === 1, 'L14 S2 al terminar el turno especial el turno vuelve al interrumpido -> currentPid=' + E.getState().currentPid);
+ok(E._raw().turn === turnAfter + 1, 'L14 S2 el turno del interrumpido arranca UNA sola vez -> S.turn ' + turnAfter + ' -> ' + E._raw().turn);
+ok(E._raw().returnTurnTo == null, 'L14 S2 ya no queda ningun turno pendiente de devolver');
+E.endTurn();
+ok(E.getState().currentPid === 0, 'L14 S2 el interrumpido juega EXACTAMENTE un turno: al terminarlo vuelve el actor -> currentPid=' + E.getState().currentPid);
+
+/* ---- NEGATIVO 1: sin la ventana de comienzo de turno abierta ---- */
+ok(freshL14(), 'L14 N1 fixture otra vez, sin ventana');
+toHandL14(0, C14.seize);
+var n1L14 = throwMsgL14(function () { E.playPlot(0, C14.seize, null, {}); });
+ok(!!n1L14 && /solo es jugable al comienzo del turno de un rival/.test(n1L14),
+   'L14 N1 RECHAZA fuera de la ventana (impreso: "at the beginning of any other players turn") -> ' + (n1L14 || 'NO RECHAZO'));
+
+/* ---- NEGATIVO 2: la ventana es la del PROPIO turno ---- */
+ok(freshL14(), 'L14 N2 fixture otra vez');
+/* Montaje crudo del estado: E.endTurn SIEMPRE abre la ventana para el rival, asi
+ * que para probar este rechazo hay que apuntarla al propio jugador. Se hace sobre
+ * _raw() a proposito: es la unica forma de llegar al segundo rechazo del case. */
+E._raw().pendingTurnStart = { forPid: 0 };
+toHandL14(0, C14.seize);
+var n2L14 = throwMsgL14(function () { E.playPlot(0, C14.seize, null, {}); });
+ok(!!n2L14 && /no puedes robarte tu propio turno/.test(n2L14),
+   'L14 N2 RECHAZA robarte tu propio turno -> ' + (n2L14 || 'NO RECHAZO'));
+E._raw().pendingTurnStart = null;
+
+/* ---- NEGATIVO 3: una sola vez por partida (impreso: "No player may use this card
+       more than once in a game") ---- */
+ok(freshL14(), 'L14 N3 fixture otra vez');
+  /* P1-103: la ventana se ABRE con E.endTurn(), y para que el bucle tsHolder del
+   * motor la abra tiene que encontrar la 364 en una mano HUMANA (P1-102). Con la
+   * carta ya en la mano de P0, el endTurn la ve, monta S.pendingTurnStart={forPid:1}
+   * y deja currentPid en el rival: ese es el estado en el que la 364 se juega.
+   * Sin estas dos lineas el playPlot de este negativo se ejecutaba SIN ventana (y
+   * en N3 ademas sin la carta en la mano), asi que el negativo no probaba nada. */
+  toHandL14(0, C14.seize);
+  E.endTurn();
+  ok(!!E.getState().pendingTurnStart, 'L14 fixture: la ventana de comienzo de turno esta abierta para N3/N4');
+plant(1, 'bL14', C14.grp, 0);
+var n3aL14 = throwMsgL14(function () { E.playPlot(0, C14.seize, null, {}); });
+ok(!n3aL14, 'L14 N3 el PRIMER uso de 364 si se permite -> ' + (n3aL14 || 'OK'));
+ok(E._raw().players[0].flags.seizeTimeUsed === true, 'L14 N3 el primer uso deja la marca en el jugador');
+E._raw().pendingTurnStart = { forPid: 1 };
+toHandL14(0, C14.seize);
+var n3L14 = throwMsgL14(function () { E.playPlot(0, C14.seize, null, {}); });
+ok(!!n3L14 && /ya la ha usado/.test(n3L14),
+   'L14 N3 RECHAZA el segundo uso (impreso: "No player may use this card more than once in a game") -> ' + (n3L14 || 'NO RECHAZO'));
+E._raw().pendingTurnStart = null;
+
+/* ---- NEGATIVO 4: sin robo durante el turno robado (impreso: "you may not draw
+       Plot or Group cards for any reason") ---- */
+ok(freshL14(), 'L14 N4 fixture otra vez');
+  /* P1-103: la ventana se ABRE con E.endTurn(), y para que el bucle tsHolder del
+   * motor la abra tiene que encontrar la 364 en una mano HUMANA (P1-102). Con la
+   * carta ya en la mano de P0, el endTurn la ve, monta S.pendingTurnStart={forPid:1}
+   * y deja currentPid en el rival: ese es el estado en el que la 364 se juega.
+   * Sin estas dos lineas el playPlot de este negativo se ejecutaba SIN ventana (y
+   * en N3 ademas sin la carta en la mano), asi que el negativo no probaba nada. */
+  toHandL14(0, C14.seize);
+  E.endTurn();
+  ok(!!E.getState().pendingTurnStart, 'L14 fixture: la ventana de comienzo de turno esta abierta para N3/N4');
+plant(1, 'bL14', C14.grp, 0);
+throwMsgL14(function () { E.playPlot(0, C14.seize, null, {}); });
+ok(E._raw().players[0].flags.noDrawTurn === true, 'L14 N4 el turno robado queda marcado sin robo');
+var n4pL14 = throwMsgL14(function () { E.drawPlot(0); });
+var n4gL14 = throwMsgL14(function () { E.drawGroup(0); });
+ok(!!n4pL14 && /no puedes robar Plot/.test(n4pL14),
+   'L14 N4 RECHAZA robar un Plot (impreso: "you may not draw Plot or Group cards for any reason") -> ' + (n4pL14 || 'NO RECHAZO'));
+ok(!!n4gL14 && /no puedes robar Group/.test(n4gL14),
+   'L14 N4 RECHAZA robar un Group -> ' + (n4gL14 || 'NO RECHAZO'));
+/* Y la RECUPERACION: el veto es de ESE turno, no permanente. */
+E.endTurn();
+E.resolvePendingTurnStart({ pass: true });
+ok(ownTurnL14(), 'L14 N4 vuelve a ser el turno del actor tras el turno especial');
+ok(!throwMsgL14(function () { E.drawPlot(0); }), 'L14 N4 en su turno normal el actor vuelve a poder robar Plot');
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });

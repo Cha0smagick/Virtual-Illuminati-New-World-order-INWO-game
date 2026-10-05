@@ -3814,7 +3814,14 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
    * ids de carta, por el criterio que ya explican los comentarios de L1/L2/L8a.
    * 413 Warehouse 23 es un Resource y no pasa por aqui. */
   ||eff0.kind==='resource_effect'
-  ||eff0.kind==='turn_start_block');
+  /* P1-101 (L14.e): 364 Seize the Time! comparte ventana con 405 Unlucky 13 y por eso
+     * tiene que estar aqui igual que el. `instant` en esta lista NO significa "se puede
+     * jugar a cualquier hora": significa "esta carta NO requiere turno propio". Durante
+     * la ventana pendingTurnStart, E.endTurn ya ha movido currentPid al rival que va a
+     * empezar, asi que requireOwnMain(actor) lanzaria "No es tu turno" y la carta seria
+     * INJUGABLE. El timing real lo valida su case (ventana abierta + forPid distinto del
+     * actor), no esta lista. L14.c razono al reves y por eso el bug solo se vio al medir. */
+  ||eff0.kind==='turn_control'||eff0.kind==='turn_start_block');
   if(instant){
     if(S.phase==='setup')throw new Error('No se pueden jugar Plot cards durante la preparación');
     if(S.phase==='gameover')throw new Error('La partida ha terminado');
@@ -5958,11 +5965,13 @@ case 'bulk_power':{
        * empezar. La diferencia es que 405 CONSUME la ventana para BLOQUEAR el robo y
        * arranca el turno del rival; 364 la consume para ROBARSE el turno.
        *
-       * POR QUE NO ES `instant`: la lista `instant` de `E.playPlot` (L3740) hace que
-       * un kind instantaneo se salte `requireOwnMain`. El impreso de 364 NO dice "at
-       * any time": dice "at the beginning of any other player's turn". Declararlo
-       * instant haria que el motor exigiera turno propio y la carta seria literalmente
-       * INJUGABLE (el mismo genero de fallo que P1-054).
+       * POR QUE ES `instant` (P1-101, corregido al medir). En esta lista `instant` NO
+       * significa "se puede jugar a cualquier hora": significa "esta carta NO requiere
+       * turno propio". Al abrirse la ventana pendingTurnStart, E.endTurn YA ha movido
+       * currentPid al rival que va a empezar, asi que requireOwnMain(actor) lanzaria
+       * "No es tu turno" y la carta seria INJUGABLE. El timing real lo valida ESTE
+       * case (ventana abierta + forPid distinto del actor), igual que en 405, que esta
+       * en la misma lista. L14.c razono al reves y por eso el bug solo aparecio al medir.
        *
        * EL COSTE ES GRATIS: el impreso no pide ninguna accion ("No player may use this
        * card more than once in a game" es la unica restriccion). Por eso esta carta NO
