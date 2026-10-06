@@ -2576,6 +2576,57 @@ const L23_FX = {
 };
 const L23_FXN = {};
 for (const k in L23_FX) { L23_FXN[norm(k)] = L23_FX[k]; }
+/* L24 - COMBINAR DOS ATAQUES DEL MISMO TIPO SOBRE EL MISMO OBJETIVO.
+ *
+ * Cartas: 251 Combined Disasters y 380 Spasm of Violence. Sus textos impresos son
+ * LA MISMA FRASE con el nombre del tipo de ataque cambiado, asi que comparten un
+ * unico kind (DoD#4 se cumple limpio: mismo dato de estado, mismos calificadores
+ * salvo `comboType`, que es DATO).
+ *
+ * IMPRESO (verbatim de research/scribd_inwo_cards_full.html):
+ *   251 'you may combine two Disasters on the same target! You must play both of
+ *        the Disaster cards, as well. Pick one Disaster to be the main one, and
+ *        follow all the instructions on its card. Add the Power (but none of the
+ *        other effects) of the other Disaster.'
+ *   380 '... two Assassinations on the same target! ... Pick one of the
+ *        Assassinations to be the main one ... Add the Power (but none of the
+ *        other effects) of the other Assassination.'
+ *
+ * DECLARACION DE INTERPRETACION (es lo que el motor implementa):
+ *  - 'Pick one to be the MAIN one, and follow ALL the instructions on its card' ->
+ *    el ataque combinado se evalua con el efecto de la carta MAIN: sus clausulas
+ *    `power`, su `destroyMargin`, su restriccion de objetivo y su coste son los
+ *    suyos. La carta SEGUNDA solo aporta Poder.
+ *  - 'Add the Power (but none of the other effects) of the other Disaster' -> se
+ *    suma `plotPowerFor(secondaryEff, tc, 10, nd)`, es decir SOLO el valor de su
+ *    clausula `power` evaluada contra el mismo objetivo. NO se suman sus extras
+ *    (addSummonerPower, mayAddPowerFromAligns, onPlay, altUse) ni su margen.
+ *  - 'You must play both of the Disaster cards, as well' -> el motor exige las DOS
+ *    cartas en tu mano, de kind `comboType`, DISTINTAS entre si, y las dos salen
+ *    de la mano al resolverse.
+ *  - 'on the same target' -> un unico `targetUid` compartido por las dos; no hay
+ *    forma de combinarlas sobre objetivos distintos porque solo hay un objetivo.
+ *  - TIMING: no son 'at any time'. El impreso no lo dice, luego NO entran en la
+ *    lista `instant` de E.playPlot: exigen su propio turno (`requireOwnMain`).
+ *
+ * LO QUE NO SE IMPLEMENTA (declarado, no es deuda oculta):
+ *  - El uso alternativo (P1-021) de la carta MAIN y de la carta SEGUNDA se ignora:
+ *    el combinado es un ataque nuevo, no un ataque en curso al que se le anada un
+ *    bonus, asi que `altUse` no aplica.
+ *  - El margen de destruccion es el de la MAIN (es lo que dice el impreso:
+ *    'follow all the instructions on its card').
+ *  - March on Washington, Ketchup is a Vegetable y Faction Fight quedan FUERA del
+ *    lote: los tres tambien se juegan 'junto con' otra carta, pero su efecto es
+ *    distinto (sustituir una accion / volver el ataque privilegiado con +5 / dar
+ *    +5 y volverlo Universal) y meterlos aqui violaria DoD#4.
+ */
+const L24_FX = {
+  'combineddisasters': { kind:'combo_attack', comboType:'disaster', needsTwoOfType:true, sameTarget:true, mainFullInstructions:true, secondaryPowerOnly:true, mustPlayBoth:true, notInstant:true, t:"By playing this card, you may combine two Disasters on the same target! You must play both of the Disaster cards, as well. Pick one Disaster to be the main one, and follow all the instructions on its card. Add the Power (but none of the other effects) of the other Disaster." },
+  'spasmofviolence': { kind:'combo_attack', comboType:'assassination', needsTwoOfType:true, sameTarget:true, mainFullInstructions:true, secondaryPowerOnly:true, mustPlayBoth:true, notInstant:true, t:"By playing this card, you may combine two Assassinations on the same target! You must play both of the Assassination cards, as well. Pick one of the Assassinations to be the main one, and follow all the instructions on its card. Add the Power (but none of the other effects) of the other Assassination." }
+};
+const L24_FXN = {};
+for (const k in L24_FX) { L24_FXN[norm(k)] = L24_FX[k]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence'];
 
 
@@ -2865,7 +2916,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

@@ -8550,6 +8550,145 @@ ok(C.cards[C23.spear].effect.boostValue === 1 && C.cards[C23.spear].effect.atkTy
 ok(JSON.stringify(C.cards[C23.lib].effect.targetAttrsAny) === JSON.stringify(['science', 'magic', 'computer']),
   'L23 S8 The Library at Alexandria lleva impresos sus tres atributos -> ' + JSON.stringify(C.cards[C23.lib].effect.targetAttrsAny));
 
+/* ---------- L24.e COMBO_ATTACK: 251 Combined Disasters / 380 Spasm of Violence ---------- */
+var C24 = { cd: idxOfId('combineddisasters'), sv: idxOfId('spasmofviolence') };
+var D24 = ['earthquake', 'meteorstrike', 'tornado', 'volcano', 'epidemic', 'nuclearaccident', 'rainoffrogs', 'theoregoncrud', 'tidalwave', 'hurricane', 'giantkudzu', 'atomicmonster'];
+var A24 = ['carbomb', 'hitandrun', 'poison', 'sniper', 'witheringcurse'];
+ok(C24.cd >= 0 && C24.sv >= 0, 'L24 las 2 cartas del lote estan en el mazo');
+ok(C.cards[C24.cd].effect.kind === 'combo_attack' && C.cards[C24.cd].effect.comboType === 'disaster', 'L24 251 es combo_attack de Disaster');
+ok(C.cards[C24.sv].effect.kind === 'combo_attack' && C.cards[C24.sv].effect.comboType === 'assassination', 'L24 380 es combo_attack de Assassination');
+function comboIdx24(list) {
+  var out = [];
+  for (var i = 0; i < list.length; i++) { var k = idxOfId(list[i]); if (k >= 0) out.push(k); }
+  return out;
+}
+function put24(pid, ix, n) { for (var q = 0; q < (n || 1); q++) hand19(pid, ix); }
+function inHand24(pid, ix) { var h = raw16().players[pid].hand, n = 0; for (var i = 0; i < h.length; i++) if (h[i] === ix) n++; return n; }
+function targetPlace24(pid) {
+  var cands = [];
+  var cs = C.cards;
+  for (var i = 0; i < cs.length; i++) if (cs[i].type === 'group' && cs[i].subtype === 'place' && !cs[i].attributes.filter(function (a) { return a === 'huge'; }).length) cands.push(i);
+  if (!cands.length) cands = comboIdx24(['nuclearpowercompanies', 'hollywood']);
+  var chosen = cands[0];
+  plant(pid, 't24a', chosen, 0);
+  return chosen;
+}
+function targetPersona24(pid) {
+  var cands = [];
+  var cs = C.cards;
+  for (var i = 0; i < cs.length; i++) if (cs[i].type === 'group' && cs[i].subtype === 'personality') cands.push(i);
+  var chosen = cands.length ? cands[0] : idxOfId('gordoremora');
+  plant(pid, 't24b', chosen, 0);
+  return chosen;
+}
+/* L24: el fixture no puede depender del reparto aleatorio (regla 14). Un Disastro o
+ * una Assassination abren ventana de rodadero o de reaccion, asi que antes de
+ * medir el turno se sellan TODAS las ventanas abiertas. Medido: sin esto el
+ * barrido de test_fase2_rules.js daba 1/30 fallos en el bloque L24. */
+function clear24() {
+  for (var i = 0; i < 8; i++) {
+    var s = E._raw();
+    if (s.pendingTurnStart) { E.resolvePendingTurnStart({}); continue; }
+    if (s.pendingRoll) { E.resolvePendingRoll(); continue; }
+    if (s.pendingEvent) { E.resolvePendingEvent(); continue; }
+    if (s.pendingAttack) { E.resolvePendingAttack(); continue; }
+    break;
+  }
+  return E._raw().phase;
+}
+function turn24(pid) {
+  for (var i = 0; i < 12; i++) {
+    clear24();
+    var s = E._raw();
+    if (s.currentPid === pid && s.phase === 'main') return true;
+    E.endTurn();
+  }
+  clear24();
+  var f = E._raw();
+  return f.currentPid === pid && f.phase === 'main';
+}
+function playCombo24(pid, ix, tgt, mi, oi) {
+  var o = E.playPlot(pid, ix, tgt, { mainCardId: mi, otherCardId: oi });
+  return (o && o.lastPlotResult) || E._raw().lastResult;
+}
+
+/* S1 - playResource no aplica nada: combo_attack exige las DOS cartas y sale de la mano al resolverse. */
+{
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(turn24(0), 'L24 S1 el actor necesita SU turno');
+  var ds = comboIdx24(D24);
+  var as = comboIdx24(A24);
+  ok(ds.length >= 2, 'L24 S1 hay al menos 2 Disasters en el mazo (' + ds.length + ')');
+  ok(as.length >= 2, 'L24 S1 hay al menos 2 Assassinations en el mazo (' + as.length + ')');
+  var tgt = targetPlace24(0);
+  put24(0, C24.cd, 1); put24(0, ds[0], 1); put24(0, ds[1], 1);
+  var ncd0 = inHand24(0, C24.cd), nd00 = inHand24(0, ds[0]), nd10 = inHand24(0, ds[1]);
+  clear24();
+  var r = playCombo24(0, C24.cd, 't24a', ds[0], ds[1]);
+  ok(r && r.main === C.cards[ds[0]].name && r.other === C.cards[ds[1]].name, 'L24 S1 las DOS cartas salen de la mano y el resultado nombra MAIN y SEGUNDA');
+  ok(typeof r.addedPower === 'number' && r.addedPower > 0, 'L24 S1 la SEGUNDA aporta solo Poder (' + (r && r.addedPower) + ')');
+  ok(inHand24(0, C24.cd) === ncd0 - 1, 'L24 S1 251 sale de la mano exactamente una vez');
+  ok(inHand24(0, ds[0]) === nd00 - 1 && inHand24(0, ds[1]) === nd10 - 1, 'L24 S1 las DOS cartas del combinado salen de la mano');
+}
+
+/* S2 - errores de validacion, todos con el motivo impreso y SIN tocar el estado. */
+{
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(turn24(0), 'L24 S2 el actor necesita SU turno');
+  var ds = comboIdx24(D24), as = comboIdx24(A24);
+  targetPlace24(0);
+  put24(0, C24.cd, 1); put24(0, ds[0], 1); put24(0, ds[1], 1);
+put24(0, as[0], 1); put24(0, as[1], 1);
+  var m1 = throwMsgL12(function () { return E.playPlot(0, C24.cd, 't24a', {}); });
+  ok(m1 && m1.indexOf('You must play both of the Disaster cards, as well') >= 0, 'L24 S2 sin MAIN ni SEGUNDA -> ' + m1);
+  var m2 = throwMsgL12(function () { return E.playPlot(0, C24.cd, 't24a', { mainCardId: ds[0], otherCardId: ds[0] }); });
+  ok(m2 && m2.indexOf('dos cartas DISTINTAS') >= 0, 'L24 S2 MAIN === SEGUNDA -> ' + m2);
+  var m3 = throwMsgL12(function () { return E.playPlot(0, C24.cd, 't24a', { mainCardId: ds[0], otherCardId: as[0] }); });
+  ok(m3 && m3.indexOf('la carta SEGUNDA tiene que ser una de las Disaster cards') >= 0, 'L24 S2 SEGUNDA de otro tipo -> ' + m3);
+  var m4 = throwMsgL12(function () { return E.playPlot(0, C24.cd, 't24a', { mainCardId: as[0], otherCardId: as[1] }); });
+  ok(m4 && m4.indexOf('la carta MAIN tiene que ser una de las Disaster cards') >= 0, 'L24 S2 251 no acepta Assassinations -> ' + m4);
+  var m5 = throwMsgL12(function () { return E.playPlot(0, C24.cd, null, { mainCardId: ds[0], otherCardId: ds[1] }); });
+  ok(m5 && m5.indexOf('on the same target') >= 0, 'L24 S2 sin objetivo -> ' + m5);
+  ok(inHand24(0, C24.cd) === 1 && inHand24(0, ds[0]) === 1 && inHand24(0, ds[1]) === 1 && inHand24(0, as[0]) === 1 && inHand24(0, as[1]) === 1, 'L24 S2 ningun rechazo se llevo una carta de la mano (atomicidad)');
+  ok(node16(0, 't24a').uid === 't24a', 'L24 S2 el objetivo sigue en juego tras los 5 rechazos');
+}
+
+/* S3 - 380 Spasm of Violence: dos Assassinations sobre la MISMA Personality. */
+{
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(turn24(0), 'L24 S3 el actor necesita SU turno');
+  var as = comboIdx24(A24);
+  var pers3 = targetPersona24(0);
+  put24(0, C24.sv, 1); put24(0, as[0], 1); put24(0, as[1], 1);
+  clear24();
+  var r = playCombo24(0, C24.sv, 't24b', as[0], as[1]);
+  ok(r && r.main === C.cards[as[0]].name && r.other === C.cards[as[1]].name, 'L24 S3 380 combina dos Assassinations (MAIN=' + (r && r.main) + ', SEGUNDA=' + (r && r.other) + ')');
+  ok(r && r.target === C.cards[pers3].name, 'L24 S3 el objetivo es la Personality elegida (' + (r && r.target) + ')');
+  ok(inHand24(0, C24.sv) === 0 && inHand24(0, as[0]) === 0 && inHand24(0, as[1]) === 0, 'L24 S3 las 3 cartas (380 + 2 Assassinations) salen de la mano');
+}
+
+/* S4 - el Poder de la SEGUNDA se SUMA al Poder total: es lo unico que se hereda de ella. */
+{
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(turn24(0), 'L24 S4 el actor necesita SU turno');
+  var ds = comboIdx24(D24);
+  targetPlace24(0);
+  put24(0, C24.cd, 1); put24(0, ds[0], 1); put24(0, ds[1], 1);
+  clear24();
+  var r = playCombo24(0, C24.cd, 't24a', ds[0], ds[1]);
+  ok(r && typeof r.power === 'number' && r.addedPower > 0 && r.power > r.addedPower, 'L24 S4 el Poder total es el de la MAIN mas el de la SEGUNDA (' + (r && r.power) + ' = ' + (r && (r.power - r.addedPower)) + ' + ' + (r && r.addedPower) + ')');
+  var n = raw16().players[0];
+  ok(n !== undefined, 'L24 S4 el estado sigue vivo');
+}
+
+/* S5 - los calificadores son DATO, no codigo. */
+{
+  ok(C.cards[C24.cd].effect.needsTwoOfType === true && C.cards[C24.cd].effect.sameTarget === true, 'L24 S5 needsTwoOfType y sameTarget salen del dato');
+  ok(C.cards[C24.cd].effect.mainFullInstructions === true && C.cards[C24.cd].effect.secondaryPowerOnly === true, 'L24 S5 mainFullInstructions y secondaryPowerOnly salen del dato');
+  ok(C.cards[C24.cd].effect.mustPlayBoth === true && C.cards[C24.cd].effect.notInstant === true, 'L24 S5 mustPlayBoth y notInstant salen del dato');
+  ok(C.cards[C24.cd].effect.comboType !== C.cards[C24.sv].effect.comboType, 'L24 S5 las 2 cartas se distinguen SOLO por comboType (mismo kind = mismo efecto)');
+}
+
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });

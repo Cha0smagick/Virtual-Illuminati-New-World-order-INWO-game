@@ -281,6 +281,12 @@ var CB = {
     try { E.useAttackBonus(E.getState().currentPid, { resourceUid: resourceUid }); after('El Resource aporta su bonus al ataque'); }
     catch (e) { log('! ' + e.message); }
   },
+  onPlayCombo: function (handIdx, targetUid, mainCardId, otherCardId) {
+    try {
+      E.playPlot(humanPid(), handIdx, targetUid, { mainCardId: mainCardId, otherCardId: otherCardId });
+      after('⛓ Ataque combinado anunciado');
+    } catch (e) { log('! ' + e.message); }
+  },
   onMoveGroup: function (uid, newParentUid) { E.moveGroup(E.getState().currentPid, uid, newParentUid); after('Grupo movido'); },
   onEndTurn: function () { endTurnFlow(); }
 };

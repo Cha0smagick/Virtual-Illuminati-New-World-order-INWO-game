@@ -517,6 +517,39 @@ function extraOf(nd) {
   return (typeof v === 'number' && v > 0) ? v : 0;
 }
 
+/* L24 - 251 Combined Disasters / 380 Spasm of Violence.
+ * El jugador elige la MAIN y la SEGUNDA (dos cartas del tipo impreso, distintas
+ * entre si) y despues ELIGE el objetivo en el tablero: el objetivo NUNCA se
+ * auto-elige (DoD#6). El motor valida que las dos sean del tipo correcto y que
+ * esten en la mano, asi que aqui solo se filtra lo obvious para no encolar dos
+ * prompts inutiles. */
+function comboCards24(ct) {
+  var out = [];
+  var h = (curState.me && curState.me.hand) || [];
+  for (var i = 0; i < h.length; i++) {
+    if (((h[i].effect || {}).kind) === ct) out.push({ label: h[i].name, value: String(i) });
+  }
+  return out;
+}
+function startCombo24(ix) {
+  var c24 = curState.me.hand[ix];
+  var ct24 = (c24.effect || {}).comboType;
+  if (!ct24) return;
+  var lbl24 = ct24 === 'disaster' ? 'Disaster' : 'Assassination';
+  var all24 = comboCards24(ct24);
+  if (all24.length < 2) { log('Necesitas al menos dos ' + lbl24 + ' cards en la mano para combinar.'); return; }
+  prompt('1/2 · Elige la carta MAIN (se siguen todas sus instrucciones):', all24).then(function (vm) {
+    if (!vm) return;
+    var mi24 = parseInt(vm, 10);
+    var rest24 = comboCards24(ct24).filter(function (o) { return parseInt(o.value, 10) !== mi24; });
+    prompt('2/2 · Elige la SEGUNDA (solo aporta su Poder):', rest24).then(function (vo) {
+      if (!vo) return;
+      sel = { mode: 'comboTarget', data: { handIdx: ix, mainCardId: curState.me.hand[mi24].idx, otherCardId: curState.me.hand[parseInt(vo, 10)].idx } };
+      log('PASO 3/3 · Elige el objetivo del ataque combinado.');
+      render();
+    });
+  });
+}
 function nodeHtml(nd, st, pid, depth) {
   var isRoot = /-root$/.test('' + nd.uid);
   var kids = nd.children || [];
@@ -535,6 +568,8 @@ function nodeHtml(nd, st, pid, depth) {
   if (hostMode) { if (open) { cls += ' pick'; legalTxt = ' ⬇ SUELTA AQUÍ'; } else cls += ' dim'; }
   else if (mode === 'target') { cls += isRoot ? ' dim' : ' pickT'; }
   else if (mode === 'plotTarget') { if (open) cls += ' pick'; else cls += ' dim'; }
+  /* L24: combo_attack (251/380) — el objetivo se elige aqui; es el mismo para las dos cartas. */
+  else if (mode === 'comboTarget') { cls += ' pickT'; }
   else if (mode === 'aid' || mode === 'oppose') { if (own && nd.tokens > 0) { cls += ' pickS'; } else cls += ' dim'; }
   else if (mode === 'attacker' || mode === 'pickMover') { if (own && nd.tokens > 0 && !isRoot) { cls += ' pickA'; } else cls += ' dim'; }
   /* L19 — 354 Reorganization, paso 1: CUALQUIER grupo tuyo (la raiz/Illuminati no es
@@ -1381,6 +1416,7 @@ function route(uid) {
     else if (m === 'target') { clearSel(); CB.onDeclareAttack(d.type, d.attackerUid, { uid: uid }); }
     else if (m === 'moveTo') { clearSel(); CB.onMoveGroup(d.uid, uid); }
     else if (m === 'plotTarget') { clearSel(); CB.onPlayPlot(d.handIdx, uid); }
+    else if (m === 'comboTarget') { clearSel(); CB.onPlayCombo(d.handIdx, uid, d.mainCardId, d.otherCardId); }
     /* L19 — 354 Reorganization. Dos clics por movimiento: primero el grupo que se
        mueve, despues su maeastre nuevo. Se acumulan en d.moves y se aplican
        TODOS de golpe, porque el motor valida la lista entera antes de tocar nada
@@ -1561,6 +1597,9 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
   /* L20 — 408 pide una eleccion POR JUGADOR, no un objetivo. El camino generico
    * plotTarget haria que un solo clic, y por lo tanto un solo jugador, descartara. */
   var isUpheaval = c.type === 'plot' && c.effect && c.effect.kind === 'global_discard';
+  /* L24: 251 Combined Disasters / 380 Spasm of Violence — se juegan eligiendo dos
+     cartas del mismo tipo y despues UN objetivo compartido. */
+  var isCombo = c.type === 'plot' && c.effect && c.effect.kind === 'combo_attack';
   var isNwoOne = c.type === 'plot' && c.effect && c.effect.kind === 'nwo_discard_one';
   var isScandal = c.type === 'plot' && c.effect && c.effect.kind === 'token_strip_aligned';
   /* L22 — Hoax, Secrets Man Was Not Meant to Know y Computer Security son cartas
@@ -1595,6 +1634,9 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
   var upheavalEntry = isUpheaval
     ? { label: '🌍 Upheaval!: CADA jugador descarta un grupo (gasto 1 accion Illuminati)', value: 'upheaval' }
     : null;
+  var comboEntry24 = isCombo
+    ? { label: '⛓ COMBINAR DOS ' + (c.effect.comboType === 'disaster' ? 'Disasters' : 'Assassinations') + ' sobre el MISMO objetivo', value: 'combo' }
+    : null;
   var reorgEntry = isReorg
     ? { label: '🔀 REORGANIZAR mi Power Structure (gasto 1 accion de mi Illuminati)', value: 'reorg' }
     : null;
@@ -1615,11 +1657,12 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
     deckEntry,
     reorgEntry,
     upheavalEntry,
+    comboEntry24,
     nwoOneEntry,
     scandalEntry,
     negateEntry22,
     negPassEntry22,
-    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck && !isTurnStart && !isReorg && !isUpheaval && !isNwoOne && !isScandal && !isNegator22) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
+    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck && !isTurnStart && !isReorg && !isUpheaval && !isCombo && !isNwoOne && !isScandal && !isNegator22) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
     c.type === 'plot' ? { label: 'ℹ ¿Cuándo sirven los Plots?', value: 'info' } : null,
     c.type !== 'illuminati' ? { label: '🗑 Descartar', value: 'discard' } : null,
     { label: 'Cancelar', value: null }
@@ -1672,6 +1715,7 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
       clearSel();
       startUpheaval20(ix);
     }
+    else if (v === 'combo') { startCombo24(ix); }
     else if (v === 'nwoOne') {
       clearSel();
       startNwoOne16(ix);
@@ -1809,6 +1853,7 @@ var EFF_SEC = {
 };
 /* Las 48 familias de mecanica que declara el dataset (45 mecánicas + 3 sinPseudo). */
 var KIND_ES = {
+  combo_attack: 'Combinar dos ataques del mismo tipo sobre el mismo objetivo',
   illu_special: 'Poder especial de Illuminati', align_edit: 'Editar alineamientos',
   align_rule: 'Regla de alineamiento', angst: 'Angustia', assassination: 'Asesinato',
   attack_boost: 'Refuerzo de ataque', bodyguard: 'Guardia de corps', boost10: 'Refuerzo de +10',
@@ -2107,6 +2152,12 @@ var FIELD_ES = [
   ['anyAttacker','eff','el bonus alcanza a los ataques de <b>cualquier</b> jugador'],
   ['countsMagic','eff','los ataques que aidan se consideran <b>Magic</b>'],
   ['needsOpenAttack','modo','su ACCION se usa con el ataque <b>abierto</b>, antes de la tirada'],
+  ['needsTwoOfType','modo','exige DOS cartas del mismo tipo en tu mano'],
+  ['comboType','modo','el tipo de ataque que se combina: Disaster o Assassination'],
+  ['mainFullInstructions','modo','una de las dos es la <b>MAIN</b>: se siguen <b>todas</b> sus instrucciones'],
+  ['secondaryPowerOnly','modo','la <b>SEGUNDA</b> solo aporta su Poder'],
+  ['sameTarget','modo','las dos cartas van contra el <b>mismo</b> objetivo'],
+  ['mustPlayBoth','modo','<b>hay que jugar las dos</b> cartas, no solo esta'],
 ];
 var FIELD_MAP = {};
 for (var _fi = 0; _fi < FIELD_ES.length; _fi++) FIELD_MAP[FIELD_ES[_fi][0]] = true;

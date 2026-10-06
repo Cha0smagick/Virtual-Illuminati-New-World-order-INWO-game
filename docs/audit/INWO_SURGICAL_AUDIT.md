@@ -8627,3 +8627,217 @@ completo.
 6. Flake preexistente de `test_appflow.js` ("No se puede terminar el turno con
    un ataque sin resolver"), declarado desde `## 71.` y no reproducido.
 
+## 75. L24 - COMBINAR DOS ATAQUES DEL MISMO TIPO SOBRE EL MISMO OBJETIVO (combo_attack)
+
+### Hallazgo
+
+**H1 - La familia "se juega JUNTO CON otra carta" existia en el mazo (5 cartas) y no en el motor.**
+Al re-bucketizar los 77 pendientes por la ESTRUCTURA de su clausula impreso aparecio un grupo
+que no estaba en ningun bucket anterior: cinco cartas cuyo texto empieza por "Play this card
+along with..." o "By playing this card, you may combine...". Son
+`combineddisasters`, `spasmofviolence`, `marchonwashington`, `ketchupisavegetable` y
+`factionfight`. Ninguna estaba clasificada (`kind=unverified`), ninguna tenia rama en el motor,
+y ninguna aparecia en la lista de "Resources que se linkean" ni en la de "tiempo/negacion" que
+venia usando desde L22.
+
+**H2 - De las cinco, DOS son literalmente la MISMA FRASE con el tipo de ataque cambiado, y solo
+esas dos pueden compartir un unico `kind` sin violar DoD#4.**
+Texto impreso verbatim (fuente `research/scribd_inwo_cards_full.html`):
+
+- 251 **Combined Disasters**: `By playing this card, you may combine two Disasters on the same
+  target! You must play both of the Disaster cards, as well. Pick one Disaster to be the main
+  one, and follow all the instructions on its card. Add the Power (but none of the other
+  effects) of the other Disaster.`
+- 380 **Spasm of Violence**: `By playing this card, you may combine two Assassinations on the same
+  target! You must play both of the Assassination cards, as well. Pick one of the Assassinations
+  to be the main one, and follow all the instructions on its card. Add the Power (but none of the
+  other effects) of the other Assassination.`
+
+La unica diferencia es el sustantivo ("Disasters" / "Assassinations"). El resto de la frase
+-- la obligacion de jugar LAS DOS, la eleccion de una MAIN, "follow all the instructions on its
+card", y el "Add the Power (but none of the other effects)" de la SEGUNDA -- es identico palabra
+por palabra. Un solo `kind` con `comboType` como dato cumple la regla de DoD#4 de forma limpia,
+que es el mismo argumento que L5a uso para las tres Plots de `attack_boost`: si el DATO DE ESTADO
+que escriben es el mismo y solo cambian los calificadores, el `kind` es uno.
+
+**H3 - El lote NO entra en la lista `instant`.** El impreso de las dos cartas no dice "at any
+time": dice "you may combine". Es una declaracion de jugabilidad, no una excepcion de timing. Por
+eso el dato declara `notInstant:true` y la carta exige su propio turno via `requireOwnMain`,
+igual que L19 (354 Reorganization) decidio por el mismo motivo: "at any time DURING YOUR OWN turn"
+y "you may combine" no son la misma cosa que "at any time".
+
+**H4 - El embudo real de un Instant Attack to Destroy ya existia y es clonar, no inventar.**
+Medido: `E.declareAttack` NO sirve (exige atacante propio, engine.js:2683, y los Disasters "do
+not require an action"). El camino real de un Plot `disaster` o `assassination` es
+`announcePlotInstantAttack(pid,pc,tUid,opts)` (engine.js:3869) seguido de
+`reactionWindowOpen(ann)` / `applyPlotInstantAttack(ann)` (engine.js:5036-5043). `ann` lleva
+`{pid,cardIdx,cardName,tUid,nd,tc,eff,victim,power,defPower,pos,str,notes}` y se construye con
+`str = power - defPower - pos` (engine.js:3977). L24 clona ese bloque entero y solo anade una
+linea de suma.
+
+**H5 - El Poder de la SEGUNDA se evalua con el MISMO evaluador que la MAIN, y `str` hay que
+recalcularlo.** `announcePlotInstantAttack` calcula el Poder de la carta con
+`plotPowerFor(eff,tc,10,nd)` (engine.js:3884), que recorre las clausulas `power:[...]`
+(`ifAttr`, `ifNames`, `value`) contra el objetivo concreto. Para la carta SEGUNDA solo se pide ese
+numero: `plotPowerFor(cO24.effect,ann24.tc,10,ann24.nd)`. Como `str` se calcula AL FINAL de la
+funcion (engine.js:3977), sumar al Poder obliga a **recalcular la fuerza** a mano
+(`ann24.str = ann24.power - ann24.defPower - ann24.pos`); si solo se sumase a `power`, el ataque
+usaria la fuerza vieja y el "+Poder de la segunda" no tendria efecto. Este es el mismo motivo por
+el que L23:  "el timing es parte del contrato".
+
+**H6 - "follow all the instructions on its card" se cumple pasando la MAIN a `ann`, no la
+combo.** `ann.eff` gobierna todo lo que `applyPlotInstantAttack` hace despues: el margen de
+destruccion, las acciones del atacante, el bonus del Illuminati, la defensa del objetivo. Pasando
+la MAIN, esas reglas son las suyas y las de la SEGUNDA no se aplican -- que es exactamente lo que
+dice el parentetesis "(but none of the other effects)".
+
+**H7 - Los usos alternativos (P1-021) de cualquiera de las dos cartas NO se aplican, y se
+declara.** Doce Disaster y cinco Assassination del mazo tienen `altUse` (Atomic Monster,
+Plague of Demons), que es un camino de codigo DISTINTO dentro de `case 'assassination'/case
+'disaster'`: exige un ataque abierto y ya resuelto=false, filtra por `altUse.targetNames`
+normalizados (el bug P1-020), y empuja a `A2.boosts`. L24 no lo ejecuta porque el impreso de
+"Add the Power (but none of the other effects)" no lo menciona. Queda declarado en Backlog.
+
+**H8 - Los tres DESCARTADOS y por que.**
+- `marchonwashington` (`Play this card along with a Plot card that requires an action or
+  actions. This card substitutes for any one action of a Power of 6 or less...`): nocombination
+  de ataques, es un SUSTITUTO DE COSTE. Su efecto es cobrar una accion ajena; el de L24 es
+ estructive. Meterlo seria exactamente el "casi" que DoD#4 prohibe.
+- `ketchupisavegetable` (`Play this card along with any Attack to Destroy any Government group.
+  The attack becomes Privileged, and you get a +5 bonus.`): su efecto es volver el ataque
+  privilegiado y anadir un +5. No anade Poder de una segunda carta.
+- `factionfight` (`Played along with a duplicate card for any Group controlled by one of your
+  rivals, this gives an extra +5 bonus to the attack, and makes that attack U[niversal]`): +5 y
+  cambia el TIPO de ataque a Universal. Ademas **no esta en el HTML de referencia**, asi que su
+  texto sigue siendo solo OCR.
+
+### Correcciones
+
+- **P1-148 - `case 'combo_attack'` en el `switch(eff.kind)` de `E.playPlot`** (engine.js:~4979,
+  insertado justo antes del bloque `case 'assassination':` / `case 'disaster':`).
+  Valida ENTE y por este orden, sin mutar nada hasta que todo pasa:
+  1. `ct24 = eff.comboType` y `nm24` = su plural impreso ("Disaster cards" / "Assassination
+     cards"); si el dato no declara uno de los dos, `throw` pidiendo el dato.
+  2. `if(!targetUid) throw c.name+': "on the same target" - elige el objetivo del ataque
+     combinado'`.
+  3. `if(mi24===oi24) throw c.name+': "combine two" ... cards - la MAIN y la SEGUNDA tienen que
+     ser dos cartas DISTINTAS'`.
+  4. Conteo de copias de MAIN y SEGUNDA en la mano **con un bucle** (no con `filter().length`
+     sobre un array temporal, que devuelve un array NUEVO y por tanto una copia vacia): si
+     falta alguna, `throw c.name+': "You must play both of the '+nm24+', as well" - de las dos
+     cartas, al menos una no esta en tu mano'`.
+  5. La MAIN tiene que ser de `kind===ct24`; si no, `throw c.name+': la carta MAIN tiene que ser
+     una de las '+nm24+' (elegiste X, que es de tipo "assassination")'`.
+  6. La SEGUNDA, igual (mismo mensaje con "SEGUNDA").
+  Motivo: el orden presencia -> MAIN -> SEGUNDA es el que lee el impreso ("You must play both...
+  Pick one... to be the main one"), y validar antes de mutar es el criterio de atomicidad
+  P1-033/P1-022 que este motor ya sigue en todas las cartas.
+  Mutacion (solo si las 6 validaciones pasaron):
+  `ann24 = announcePlotInstantAttack(pid, cM24, targetUid, opts)` (le pasa la MAIN),
+  `pw24 = plotPowerFor(cO24.effect, ann24.tc, 10, ann24.nd)`,
+  `ann24.power += pw24`,
+  `ann24.str = ann24.power - ann24.defPower - ann24.pos`  <-- **P1-148, el punto critico**,
+  `ann24.notes.push('+'+pw24+' de '+cO24.name+' - solo su Poder: "Add the Power (but none of the
+  other effects)"')`, saca **las dos** cartas de la mano con `indexOf` + `splice`, y despues
+  replica el camino de las lineas 5036-5043: `if(reactionWindowOpen(ann24)){ S.pendingAttack={
+  pid,cardIdx,cardName,tUid,tc,ann,cancelled:null}; log(...); lastResult={ok:null,pending:true,...};
+  } else { lastResult = applyPlotInstantAttack(ann24); }`. En los dos ramos anade
+  `lastResult.main`, `lastResult.other` y `lastResult.addedPower`.
+- **Familia de datos `L24_FX`/`L24_FXN`** en `gen_cards.js`, insertada justo antes de
+  `const ACTION_COST_KINDS = [`, con `kind:'combo_attack'` para las dos y los calificadores
+  `comboType`, `needsTwoOfType`, `sameTarget`, `mainFullInstructions`, `secondaryPowerOnly`,
+  `mustPlayBoth`, `notInstant`, y el `t:` **verbatim del HTML** (el OCR de `cards.js` de estas dos
+  cartas esta manchado, igual que paso en L23). Cadena `pfx`: `|| L23_FXN[key] || L24_FXN[key] ||`.
+- **UI** (`ui.js`): `nodeHtml` reconoce el modo `comboTarget` (`cls += ' pickT'`); `route()`
+  enruta ese modo a `CB.onPlayCombo(d.handIdx, uid, d.mainCardId, d.otherCardId)`; `KIND_ES`
+  recibe `combo_attack: 'Combinar dos ataques del mismo tipo sobre el mismo objetivo',` (sin esto
+  `test_hand_peek.js` falla con "effect.kind no tiene etiqueta en KIND_ES", el guard que ya cazo
+  `turn_control` en L14, `global_discard` en L20 y `res_attack_bonus` en L23); el flag `isCombo`
+  apaga el boton generico "Jugar Plot ahora" y da paso a `comboEntry24` en el prompt de mano;
+  `FIELD_ES` recibe los 6 calificadores antes del `];` de cierre; y dos helpers nuevos antes de
+  `nodeHtml`: `comboCards24(ct)` (filtra la mano por `effect.kind===ct`) y `startCombo24(ix)`
+  (prompt 1/2 elige MAIN, prompt 2/2 elige la SEGUNDA, y deja `sel` en modo `comboTarget` con
+  `log('PASO 3/3 ...')`).
+- **UI - DoD#6, el objetivo se ELIGE**: los tres pasos son prompts + un clic en el nodo. No hay
+  ningun auto-elegido.
+- **`game/js/app.js`**: `onPlayCombo(handIdx, targetUid, mainCardId, otherCardId)` antes de
+  `onMoveGroup`, con `try/catch` + `after(...)`, mismo patron que `onUseAttackBonus` de L23.
+- **Regresion** en `test_fase2_rules.js`: 27 asertos, 5 escenarios, todos afirmando estado
+  observable (S1 las dos cartas salen de la mano y `addedPower>0`; S2 los 5 rechazos con el
+  motivo impreso y SIN coste ni carta gastada; S3 Spasm of Violence sobre una Personality;
+  S4 `r.power > r.addedPower` y la descomposicion cuadrando, medido `32 = 16 + 16`; S5 los
+  calificadores salen del DATO y las dos cartas se distinguen SOLO por `comboType`).
+
+### Verificacion
+
+- `node --check` limpio en `gen_cards.js`, `game/js/engine.js`, `game/js/ui.js`,
+  `game/js/app.js` y `test_fase2_rules.js`. CJK/U+FFFD = 0 en los cinco.
+- `node gen_cards.js` -> "written 421".
+- `node test_fase4_cards.js` -> `FASE 4 COVERAGE PASSED (173 cartas clasificadas, 75
+  Plots/Resources sin mecanica (techo 176), 3 ramas muertas declaradas, 10 cartas bloqueadas
+  congeladas, 4 huecos de texto declarados)`, reparto `{"plot":50,"resource":25}`. Delta
+  **exacto -2** (77 -> 75) y el reparto de kinds ya incluye `"combo_attack":2`.
+- `node test_fase2_rules.js` -> `FASE 2 RULES PASSED`, 0 fallos. **Barrido 30/30 PASSED.**
+- `node test_hand_peek.js` -> `HAND PEEK PASSED (751 lineas sobre 421 cartas)`.
+- `npm test` -> **ALL TESTS PASSED (11)**, exit 0.
+
+### Leccion
+
+1. **Un lote se decide por la ESTRUCTURA del texto impreso, no por el tema.** Ninguna de las
+   cinco cartas de esta familia esta tematicamente junto a las Plots de negacion de L22 ni a
+   los Resources que se linkean de L12: las cinco comparten la forma "se juega JUNTO CON otra
+   carta". Rebucketizar por estructura -- y no por lo que la carta "trata sobre" -- es lo que
+   destapo el grupo. Es el mismo criterio que uso el audit de L23 para encontrar los tres
+   Resources de bono de ataque.
+2. **"follow all the instructions on its card" se implementa pasando la carta correcta al
+   evaluador, no escribiendo una rama por instruccion.** `announcePlotInstantAttack` ya resuelve
+   margen de destruccion, acciones del atacante, bonus de Illuminati, defensa del objetivo,
+   defensa triplicada y Earthquake Projector. Clonar su bloque y elegir que carta se le pasa es
+   mas barato y mas fiel que reimplementar nada.
+3. **Un dato derivado se calcula AL FINAL de su funcion: si lo mutas despues, recalculalo.**
+   `ann.str` se calcula en la ultima linea de `announcePlotInstantAttack` (engine.js:3977), y
+   por eso sumar Poder a `ann.power` sin volver a restar `defPower` y `pos` habria dejado el
+   bonus sin efecto. Es la misma trampa que en L23 con `A.boosts` y `computeStrength(true)`: la
+   magnitud que se lee no es la que se escribe.
+4. **Contar copias de una carta en la mano: bucle, no `filter().length` sobre un array
+   temporal.** El motor lo cuenta con un `for`. En el test, `filter().length` sobre el resultado
+   de `filter()` devuelve 0 porque `filter` devuelve un array NUEVO. Es el mismo error que
+   documenta L15 con P1-110.
+5. **Al validar dos cartas a la vez, el orden de los mensajes ES el orden del impreso**, y el
+   test tiene que reflejarlo: presencia de las dos, luego MAIN, luego SEGUNDA. Escribi el
+   primer test en orden inverso y fallo por eso (no era bug del motor). Un `throw` tambien es
+   una interfaz.
+6. **Crecer el juego vuelve a destapar ventanas que el reparto aleatorio decide abrir.** El
+   barrido de L24 dio 1/30 fallos: un Disaster o una Assassination abren ventana de RODADERO o de
+   REACCION, y los helpers de turno heredados dependian del reparto. La cura fue en el fixture
+   (`clear24()` resuelve las cuatro ventanas en orden, `turn24(pid)` exige `phase==='main'`), no
+   silenciando el sintoma. Es la tercera vez que sale (L19 destapo 2, L23 destapo el flake de
+   `test_respond.js`, L24 este) y la leccion ya no es opcional: **toda regresion nueva se corre
+   30 veces y, si falla, se mide la tasa antes de atribuirla al lote.**
+
+### Backlog
+
+1. **Las 3 cartas "se juega JUNTO CON" que quedaron fuera** y por que: `marchonwashington`
+   (sustituye una accion de Poder <= 6 y descarta la cima del mazo), `ketchupisavegetable`
+   (vuelve el ataque privilegiado y anade +5), `factionfight` (+5 y vuelve el ataque Universal).
+   Ninguna comparte el DATO DE ESTADO de `combo_attack`, luego cada una necesita su `kind`. La
+   primera que se implemente (`ketchupisavegetable`) es pequena: tocar `A.privilege` y
+   `A.boosts` de un ataque ya declarado, con el mismo molde que L23.
+2. **Los usos alternativos (P1-021) de las cartas combinadas no se ejecutan.** Si se quisiera,
+   habria que extender el `case 'combo_attack'` con el camino de `altUse`, que exige un ataque
+   abierto SIN resolver y filtra por `altUse.targetNames` normalizados.
+3. **`combo_attack` no admite mas de dos cartas.** El mazo no tiene ninguna carta de tres
+   ataques combinados, luego no es una laguna; se declara para que no se lea como forgot.
+4. **La ventana de reaccion de un ataque combinado**: se abre con la fuerza YA sumada
+   (`reactionWindowOpen(ann24)`), asi que un `res_nullify` de L6 la puede anular por completo,
+   que es lo coherente con "Pick one Disaster to be the main one, and follow all the
+   instructions on its card". No verificado con un fixture real de anulacion.
+5. **La misma laguna de L23 sigue abierta**: "or to any Disaster" no es representable, porque un
+   Disaster es un Instant Attack que no pasa por `computeStrength`. Aqui es irrelevante (esta
+   carta ES sobre Disasters) pero las dos familias comparten la limitacion.
+6. **Los 75 pendientes** son cola larga y multi-lote. Reparto vigente: ~18 Plots de
+   tiempo/negacion (reutilizarian la ventana `S.pendingNegation` de L22), ~12 Resources que se
+   linkean a un grupo con efecto permanente (cada uno con un efecto distinto), y el resto con OCR
+   manchado. Siguen vivos los 3 ramas muertas declaradas, los 4 huecos de texto, las 10 cartas
+   congeladas de `BLOCKED_CARDS` y el flake preexistente de `test_appflow.js`.
+

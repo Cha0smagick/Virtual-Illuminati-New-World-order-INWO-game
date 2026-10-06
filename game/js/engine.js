@@ -4976,6 +4976,75 @@ case 'force_align':{
           log('ZAP sobre toda la estructura de '+S.players[q].name);break;}
       }
       break;}
+    /* L24 - COMBINAR DOS ATAQUES DEL MISMO TIPO SOBRE EL MISMO OBJETIVO.
+     *
+     * IMPRESO (251 Combined Disasters): 'you may combine two Disasters on the same
+     * target! You must play both of the Disaster cards, as well. Pick one Disaster
+     * to be the main one, and follow all the instructions on its card. Add the
+     * Power (but none of the other effects) of the other Disaster.'
+     * (380 Spasm of Violence es la MISMA frase con 'Assassinations').
+     *
+     * PRECEDENTE EXACTO: el bloque `case 'assassination': case 'disaster':` de este
+     * mismo switch, que es el unico camino del motor para un Instant Attack to
+     * Destroy hecho por un Plot (P1-016). Se clona entero y solo se anade la
+     * cunning de la carta SEGUNDA.
+     *
+     * DECLARACION DE INTERPRETACION:
+     *  - 'Pick one to be the MAIN one, and follow ALL the instructions on its
+     *    card' -> el ataque se evalua con el efecto de la MAIN (sus clausulas
+     *    power, su destroyMargin, su restriccion de objetivo y su coste). Por eso
+     *    se le pasa `cMain` a announcePlotInstantAttack y NO se le pasa cOth.
+     *  - 'Add the Power (but none of the other effects)' -> se suma SOLO
+     *    plotPowerFor() de la SEGUNDA contra el mismo objetivo. Sus extras
+     *    (addSummonerPower, mayAddPowerFromAligns, onPlay, altUse) NO se suman:
+     *    eso es exactamente lo que el imprimirme excluye.
+     *  - 'You must play both of the Disaster cards, as well' -> se exigen las DOS
+     *    cartas en tu mano, de kind comboType y DISTINTAS entre si, y las dos
+     *    salen de la mano al resolverse.
+     *  - TIMING: el impreso no dice 'at any time', luego NO entra en la lista
+     *    `instant`: exige su propio turno (requireOwnMain, yavalidado arriba).
+     *  - LO QUE NO SE APLICA (declarado): el uso alternativo (P1-021) de
+     *    cualquiera de las dos, porque un combinado es un ataque NUEVO y no un
+     *    ataque en curso al que se le anade un bonus.
+     */
+    case 'combo_attack':{
+      var ct24=eff.comboType;
+      var nm24=ct24==='disaster'?'Disaster cards':'Assassination cards';
+      /* --- VALIDACION ENTERA antes de mutar nada (leccion de atomicidad) --- */
+      if(!targetUid)
+        throw new Error(c.name+': "on the same target" — elige el objetivo del ataque combinado');
+      var mi24=opts.mainCardId,oi24=opts.otherCardId;
+      if(mi24==null||oi24==null)
+        throw new Error(c.name+': "You must play both of the '+nm24+', as well" — elige la MAIN y la SEGUNDA');
+      if(mi24===oi24)
+        throw new Error(c.name+': "combine two" '+nm24+' — la MAIN y la SEGUNDA tienen que ser dos cartas DISTINTAS');
+      var hm24=0,ho24=0,h24;
+      for(h24=0;h24<pl.hand.length;h24++){ if(pl.hand[h24]===mi24)hm24++; if(pl.hand[h24]===oi24)ho24++; }
+      if(!hm24||!ho24)
+        throw new Error(c.name+': "You must play both of the '+nm24+', as well" — de las dos cartas, al menos una no esta en tu mano');
+      var cM24=card(mi24),cO24=card(oi24);
+      if(!cM24||!cM24.effect||cM24.effect.kind!==ct24)
+        throw new Error(c.name+': la carta MAIN tiene que ser una de las '+nm24+' (elegiste '+(cM24?cM24.name+', que es de tipo "'+((cM24.effect||{}).kind||'?')+'"':'nada')+')');
+      if(!cO24||!cO24.effect||cO24.effect.kind!==ct24)
+        throw new Error(c.name+': la carta SEGUNDA tiene que ser una de las '+nm24+' (elegiste '+(cO24?cO24.name+', que es de tipo "'+((cO24.effect||{}).kind||'?')+'"':'nada')+')');
+      /* --- MUTACION --- */
+      var ann24=announcePlotInstantAttack(pid,cM24,targetUid,opts);
+      var pw24=plotPowerFor(cO24.effect,ann24.tc,10,ann24.nd);
+      ann24.power+=pw24;
+      ann24.str=ann24.power-ann24.defPower-ann24.pos;
+      ann24.notes.push('+'+pw24+' de '+cO24.name+' — solo su Poder: "Add the Power (but none of the other effects)"');
+      var q24=pl.hand.indexOf(mi24); if(q24>=0)pl.hand.splice(q24,1);
+      var w24=pl.hand.indexOf(oi24); if(w24>=0)pl.hand.splice(w24,1);
+      if(reactionWindowOpen(ann24)){
+        S.pendingAttack={pid:pid,cardIdx:c.idx,cardName:c.name,tUid:targetUid,tc:ann24.tc,ann:ann24,cancelled:null};
+        log(c.name+': '+cM24.name+' + '+cO24.name+' contra '+ann24.tc.name+': ventana de reaccion abierta (fuerza '+ann24.str+')');
+        lastResult={ok:null,pending:true,strength:ann24.str,power:ann24.power,defense:ann24.defPower,
+          target:ann24.tc.name,plot:c.name,main:cM24.name,other:cO24.name,addedPower:pw24,notes:ann24.notes};
+      }else{
+        lastResult=applyPlotInstantAttack(ann24);
+        lastResult.main=cM24.name;lastResult.other=cO24.name;lastResult.addedPower=pw24;
+      }
+      break;}
     case 'assassination':
     case 'disaster':{
       /* P1-021 — USO ALTERNATIVO. El texto impreso de dos Disaster trae una

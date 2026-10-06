@@ -1260,3 +1260,35 @@ Si un lote anterior construye la mecanica que necesitan, se desbloquean y se imp
 - [x] L23.f CIERRE: audit `## 74.` en ASCII (P1-146..P1-147) + este bloque
 
 **Lagunas DECLARADAS** (no son bugs, son clausulas del impreso sin soporte): `"or to any Disaster"` (los Disasters no pasan por `computeStrength`, luego no hay `A.boosts`), `"considered Magic"` de la Spear, los valores NEGATIVOS del Weather Satellite (`A.boosts` se suma entero), `"cancel the action"` de Bigfoot/Loch Ness, la re-tirada de Angel's Feather, el "must then be discarded" de Rogue Boomer, y que `anyAttacker:true` de la Spear es dato pero `requireOwnMain` obliga a que sea TU turno. Las 4 cartas del mismo patron que quedaron FUERA y por que: `rogueboomer` (2 clausulas), `lochnessmonster` (3), `weathersatellite` (condicionales y negativos), `bigfoot` (cancelar acciones).
+
+## [x] L24 - COMBINAR DOS ATAQUES DEL MISMO TIPO SOBRE EL MISMO OBJETIVO
+    -> audit ## 75., P1-148, 251 Combined Disasters / 380 Spasm of Violence
+
+**Cartas:** 2 cartas con UN SOLO kind `combo_attack`. Sus textos impresos son la MISMA frase
+con el tipo de ataque cambiado, asi que el unico kind se sostiene por el mismo argumento que
+L5a uso para las tres Plots de `attack_boost`: el DATO DE ESTADO que escriben es el mismo
+(un ataque a destruir ya anunciado, con el Poder de una segunda carta sumada) y lo unico que
+cambia son los calificadores, que van como dato (`comboType`).
+
+**Que aporta:** clona el subsistema de Instant Attack de Plot (`announcePlotInstantAttack` +
+`plotPowerFor` + `reactionWindowOpen` / `applyPlotInstantAttack`) y anade UNA linea: el Poder de
+la carta SEGUNDA, evaluado con `plotPowerFor` contra el MISMO objetivo, sumado a `ann.power` con
+`ann.str` RECALCULADO. Todo lo demas (margen de destruccion, acciones del atacante, bonus del
+Illuminati, defensa del objetivo) lo governing la MAIN, que es lo que dice "follow all the
+instructions on its card".
+
+- [x] L24.a AUDIT de precedentes: el camino real de un Plot `disaster`/`assassination`
+      (L4979-5045), `announcePlotInstantAttack` (L3869), `plotPowerFor` (L3884),
+      `applyPlotInstantAttack` (L3988) y por que `E.declareAttack` NO sirve.
+- [x] L24.b DATOS: `L24_FX`/`L24_FXN` con los 2 `t:` verbatim del HTML + cadena `pfx`.
+- [x] L24.c MOTOR: `case 'combo_attack'` con las 6 validaciones enteras antes de mutar.
+- [x] L24.d UI: `KIND_ES`, `FIELD_ES` x6, modo `comboTarget`, 3 pasos (MAIN -> SEGUNDA ->
+      objetivo ELEGIDO con un clic), callback `CB.onPlayCombo`.
+- [x] L24.e REGRESION: 27 asertos, 5 escenarios + robustez del fixture (barrido 30/30).
+- [x] L24.f CIERRE: audit `## 75.` en ASCII + este bloque.
+
+**Lagunas DECLARADAS:** los usos alternativos (P1-021) de las cartas combinadas; la ventana de
+reaccion del ataque combinado (abre con la fuerza ya sumada) sin fixture real de anulacion; y
+las 3 cartas "se juega JUNTO CON" que quedan fuera por efecto distinto (`marchonwashington`
+sustituye una accion, `ketchupisavegetable` vuelve el ataque privilegiado +5, `factionfight`
++5 y Universal), cada una con su propio `kind` cuando le toque.
