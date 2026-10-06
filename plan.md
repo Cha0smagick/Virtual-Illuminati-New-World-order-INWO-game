@@ -1292,3 +1292,50 @@ reaccion del ataque combinado (abre con la fuerza ya sumada) sin fixture real de
 las 3 cartas "se juega JUNTO CON" que quedan fuera por efecto distinto (`marchonwashington`
 sustituye una accion, `ketchupisavegetable` vuelve el ataque privilegiado +5, `factionfight`
 +5 y Universal), cada una con su propio `kind` cuando le toque.
+
+## [x] L25 - MODIFICAR EL PRIVILEGIO DE UN ATAQUE EN CURSO
+    -> audit ## 76., P1-149, 194 Interference / 226 Deep Agent / 253 Ketchup is a Vegetable
+
+**Cartas:** 3 cartas con UN SOLO kind `attack_privilege`. Se eligieron por la ESTRUCTURA
+de su texto impreso, no por el tema: las tres cambian el dato `S.attack.privilege` de un
+ataque YA declarado (194 y 226 lo quitan, 253 lo pone y anade +5), asi que el unico kind se
+sostiene con el mismo argumento de L5a y L23: el DATO DE ESTADO es el mismo y lo unico que
+cambia son los calificadores, que van como dato (`mode`, `noReinstate`, `atkType`,
+`targetAlign`, `boostValue`). 194 y 226 son literalmente la misma frase salvo "the privilege
+may not be reinstated".
+
+**Que aporta:** NO crea el campo. `A.privilege` ya estaba modelado y leido desde P1-026 (lo
+pone `case 'privileged_attack'` y lo lee `E.addSupport` al impedir que un tercero se
+sume al ataque): quitarle el privilegio a un ataque EN CURSO es literalmente devolverle a
+los terceros la capacidad de INTERFERIR. Lo unico que faltaba era el marcador `privilegeLocked`
+(P1-149) para que "the privilege may not be reinstated" de 226 tenga efecto, mas el `case` que
+valida e implementa los tres impresos. Delta FASE 4 = -3 exacto (75 -> 72 sin mecanica).
+
+- [x] L25.a AUDIT de precedentes: `S.attack.privilege` ya existe (engine.js:2689 lo
+      inicializa, 6162-6188 lo pone, 2797 lo lee en `E.addSupport`), `E.togglePrivilege`
+      (2763-2770) es el UNICO consumidor de `privilegedUsed` / `privilegedPerTurn`, y el
+      glosario oficial de Interference ya estaba citado en P1-026.
+- [x] L25.b DATOS: `L25_FX`/`L25_FXN` con los 3 `t:` verbatim de
+      `research/scribd_inwo_cards_full.html` + la 6 declaraciones de interpretacion + la
+      cadena `pfx`.
+- [x] L25.c MOTOR: **P1-149** `A.privilegeLocked:false` en el inicializador de `S.attack`
+      + su guard en `case 'privileged_attack'` ANTES del veto viejo (si no, el mensaje
+      correcto es inalcanzable), y `case 'attack_privilege'` con las 4 validaciones
+      enteras antes de mutar y el gasto al final (P1-033). Suman `attack_privilege` a la
+      lista `instant`: se juegan CON un ataque declarado.
+- [x] L25.d UI: `NO_TARGET_KINDS` (el objetivo es el ataque, no un nodo), etiqueta en
+      `KIND_ES` (obligatoria, guard de `test_hand_peek.js`) y 8 entradas del glosario en
+      `FIELD_ES`. **Sin callback nuevo en `app.js`**: va por `CB.onPlayPlot(handIdx)`.
+- [x] L25.e REGRESION en `test_fase2_rules.js`: 57 asertos, 5 escenarios (revoke por un
+      rival, revoke + `privilegeLocked` + el veto de 346, grant_plus + bonus, 5 rechazos con
+      atomicidad, y los calificadores como dato). Barrido 30/30.
+- [x] L25.f CIERRE: audit `## 76.` en ASCII puro (3 guardas probadas; cazo 3 em-dash
+      U+2014), `plan.md` cerrado y temporales borrados.
+
+**Lagunas DECLARADAS:** `bimboateleven` ("+5 on an Attack to Destroy any male
+Personality") NO es implementable fielmente: el dataset no tiene campo de genero (0 claves
+que caseen con `/gender|sex|male|female|man|woman/i` en las 22 Personalities). Y toda la
+familia "cancelar una accion YA realizada" (`bigfoot`, `lochnessmonster`, `hallucinations`,
+`massmurder`, `arewehavingfunyet`) queda FUERA: no existe modelo de accion ejecutada
+(`tokensUsed`/`hasActed`/`actedThisTurn` = 0 coincidencias; los 9 `usedThisTurn` son de
+Resources y significan "esta capacidad ya se uso"), luego es un subsistema NUEVO.

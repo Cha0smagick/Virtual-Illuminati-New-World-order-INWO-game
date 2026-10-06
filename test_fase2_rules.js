@@ -8689,6 +8689,246 @@ put24(0, as[0], 1); put24(0, as[1], 1);
   ok(C.cards[C24.cd].effect.comboType !== C.cards[C24.sv].effect.comboType, 'L24 S5 las 2 cartas se distinguen SOLO por comboType (mismo kind = mismo efecto)');
 }
 
+/* ===================== L25 — MODIFICAR EL PRIVILEGIO DE UN ATAQUE EN CURSO =====================
+ * 194 Interference · 226 Deep Agent · 253 Ketchup is a Vegetable   (kind attack_privilege)
+ *
+ * Lo que se afirma es el DATO DE ESTADO que las tres tocan (`S.attack.privilege`, mas
+ * `S.boosts` en el caso de Ketchup) y el lock de "the privilege may not be reinstated",
+ * nunca la aritmetica ni el log.
+ */
+var C25 = {
+  interference: idxOfId('interference'),
+  deepagent: idxOfId('deepagent'),
+  ketchup: idxOfId('ketchupisavegetable'),
+  priv: idxOfId('privilegedattack'),
+  ninjas: idxOfId('ninjas'),
+  nsa: idxOfId('nsa'),
+  billclinton: idxOfId('billclinton'),
+  hollywood: idxOfId('hollywood')
+};
+
+/* Avanza hasta el turno de `pid` con la partida YA establescida: `twoPlayerGuard`
+ * (engine.js:2671) impide atacar antes de que AMBOS completen su primer turno, asi que
+ * `turn24` de L24 (que solo mira currentPid+phase) no basta aqui. Se combina su idea con
+ * la comprobacion de `readyToAttack`. */
+function turn25(pid) {
+  for (var i = 0; i < 14; i++) {
+    clear24();
+    var s25 = E._raw();
+    if (s25.phase === 'gameover') return false;
+    var listo = s25.currentPid === pid && s25.phase === 'main';
+    if (listo) {
+      for (var q = 0; q < s25.players.length; q++) {
+        if (!s25.players[q].turnsCompleted || s25.players[q].turnsCompleted < 1) { listo = false; break; }
+      }
+    }
+    if (listo) return true;
+    E.endTurn();
+  }
+  return false;
+}
+function raw25() { return E._raw(); }
+function atk25() { return E._raw().attack; }
+function err25(fn) { return throwMsgL14(fn); }
+function boosts25() { var A = atk25(); return A ? A.boosts : []; }
+function privMods25() { return boosts25().filter(function (b) { return b.name === 'Ketchup is a Vegetable'; }); }
+
+/* Abre un ataque a DESTRUIR de 0 contra un grupo de 1, con el atacante teniendo ficha.
+ * tUid permite elegir el objetivo (o posponerlo para jugar primero una Plot de L25). */
+function abrirAtaque25(tUid) {
+  /* 2 fichas: `E.declareAttack` gasta 1 al atacar, asi que tras el ataque debe quedar 1.
+   * Asi el aserto "el atacante NO pierde ficha por la interferencia" distingue las dos
+   * cosas en vez de medir 0 == 0. */
+  plant(0, 'a25', C25.ninjas, 2);
+  if (tUid) plant(1, tUid, C25.nsa, 0);
+  var out = E.declareAttack(0, 'destroy', { attackerUid: 'a25', uid: tUid || 'nsa25' });
+  clear24();
+  return out;
+}
+/* Pone el ataque en Privileged jugando 346 (la unica carta privileged_attack del mazo). */
+function privilege25() {
+  hand19(0, C25.priv);
+  E._raw().players[0].illumTokens = 1;
+  return E.playPlot(0, C25.priv, null, {});
+}
+
+/* ---------- S1: 194 Interference — un RIVAL le quita el privilegio al ataque ---------- */
+(function L25_S1() {
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(turn25(0), 'L25 S1: el atacante es el jugador 0 y le toca');
+  abrirAtaque25('nsa25');
+  ok(!!atk25(), 'L25 S1: hay un ataque declarado');
+  var pr = privilege25();
+  ok(atk25().privilege === true, 'L25 S1: tras 346 Privileged Attack el ataque ES privilegiado');
+
+  /* "Playing this card is a free action": el jugador rival juega la Plot sin turno propio
+     porque attack_privilege esta en la lista instant, igual que 346. */
+  hand19(1, C25.interference);
+  plant(1, 'r25', C25.billclinton, 1);
+  var out = E.playPlot(1, C25.interference, null, {});
+  var r = out.lastPlotResult;
+  ok(r && r.attack_privilege === false, 'L25 S1: 194 notifica que el privilegio ha sido anulado');
+  ok(atk25().privilege === false, 'L25 S1: el ataque ya NO es privilegiado (estado observable)');
+  ok(atk25().privilegeLocked !== true, 'L25 S1: 194 NO bloquea la reinstalacion (eso es de Deep Agent)');
+  ok(node16(1, 'r25').tokens === 0, 'L25 S1: la ficha del grupo que interfiere se gaste (coste de la interferencia)');
+  ok(node16(0, 'a25').tokens === 1, 'L25 S1: al atacante NO se le toca la ficha');
+  ok(C25.interference !== undefined && raw25().players[1].hand.indexOf(C25.interference) < 0,
+     'L25 S1: la Plot sale de la mano del rival');
+  ok(err25(function () { privilege25(); }) !== null,
+     'L25 S1: sin privilegio no se puede volver a jugar 346 sobre este ataque');
+})();
+
+/* ---------- S2: 226 Deep Agent — quita el privilegio Y lo bloquea para siempre ---------- */
+(function L25_S2() {
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(turn25(0), 'L25 S2: turno del atacante');
+  abrirAtaque25('nsa25');
+  privilege25();
+  ok(atk25().privilege === true, 'L25 S2: el ataque arranca privilegiado');
+
+  hand19(1, C25.deepagent);
+  plant(1, 'r25', C25.billclinton, 1);
+  var out = E.playPlot(1, C25.deepagent, null, {});
+  var r = out.lastPlotResult;
+  ok(r && r.locked === true, 'L25 S2: 226 notifica privilege_locked');
+  ok(atk25().privilege === false, 'L25 S2: el ataque ya no es privilegiado');
+  ok(atk25().privilegeLocked === true, 'L25 S2: privilegeLocked=true — "the privilege may not be reinstated"');
+  ok(node16(1, 'r25').tokens === 0, 'L25 S2: se gasta la ficha de la interferencia');
+
+  /* El efecto de la frase: 346 ya NO puede volver a privilegiar ESE ataque. */
+  hand19(0, C25.priv);
+  E._raw().players[0].illumTokens = 1;
+  var m = err25(function () { return E.playPlot(0, C25.priv, null, {}); });
+  ok(m !== null && /may not be reinstated/.test(m),
+     'L25 S2: 346 sobre un ataque con privilegeLocked lanza el motivo impreso de Deep Agent');
+  ok(atk25().privilege === false, 'L25 S2: el ataque sigue SIN privilegiado tras el rechazo');
+})();
+
+/* ---------- S3: 253 Ketchup — vuelve privilegiado un ataque a destruir un Government ---------- */
+(function L25_S3() {
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(turn25(0), 'L25 S3: turno del atacante');
+  abrirAtaque25('nsa25');
+  ok(atk25().privilege === false, 'L25 S3: el ataque arranca SIN privilegio (Ketchup lo concede)');
+  var n0 = boosts25().length;
+
+  hand19(0, C25.ketchup);
+  plant(0, 'm25', C25.billclinton, 1);
+  var out = E.playPlot(0, C25.ketchup, null, {});
+  var r = out.lastPlotResult;
+  ok(r && r.privilege === true, 'L25 S3: Ketchup notifica que el ataque queda privilegiado');
+  ok(atk25().privilege === true, 'L25 S3: S.attack.privilege === true');
+  var km = privMods25();
+  ok(km.length === 1 && km[0].v === 5, 'L25 S3: "you get a +5 bonus" — un unico bonus de +5 en A.boosts');
+  ok(boosts25().length === n0 + 1, 'L25 S3: se anade exactamente un bonus, no se pisa ninguno');
+  ok(r.target === 'N.S.A.', 'L25 S3: el objetivo Government se lee del ataque en curso (no se elige dos veces)');
+  ok(node16(0, 'm25').tokens === 1 && node16(0, 'a25').tokens === 1,
+     'L25 S3: Ketchup NO gasta ninguna ficha — su texto no imprime coste (a diferencia de 194 y 226)');
+  ok(E.previewStrength().boosts >= 5, 'L25 S3: el +5 entra en la cuenta real de fuerza del ataque');
+})();
+
+/* ---------- S4: los 5 rechazos con el motivo impreso, y ATOMICIDAD en todos ---------- */
+(function L25_S4() {
+  var S = [];
+  function esc(txt, cond) { S.push([txt, cond]); }
+
+  /* (a) 194 sobre un ataque que NO es privilegiado */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(turn25(0), 'L25 S4a: turno del atacante');
+  abrirAtaque25('nsa25');
+  hand19(1, C25.interference);
+  plant(1, 'r25', C25.billclinton, 1);
+  var ma = err25(function () { return E.playPlot(1, C25.interference, null, {}); });
+  esc('S4a 194 sin privilegio: ' + (ma || '(no lanzo)'), ma !== null && /no hay privilegio que negar/.test(ma));
+  esc('S4a el ataque sigue como estaba', atk25().privilege === false && privMods25().length === 0);
+  esc('S4a la ficha del rival NO se gasto (atomicidad)', node16(1, 'r25').tokens === 1);
+  esc('S4a la Plot sigue en su mano', raw25().players[1].hand.indexOf(C25.interference) >= 0);
+
+  /* (b) 194 sin ninguna ficha de grupo propio: la interferencia no se puede pagar */
+  privilege25();
+  ok(atk25().privilege === true, 'L25 S4b: el ataque ya es privilegiado');
+  raw25().players[1].structure.children.forEach(function (n) { n.tokens = 0; });
+  var mb = err25(function () { return E.playPlot(1, C25.interference, null, {}); });
+  esc('S4b sin ficha para interferir: ' + (mb || '(no lanzo)'),
+      mb !== null && /interference itself is an action for each group that interferes/.test(mb));
+  esc('S4b el privilegio NO se toco (atomicidad)', atk25().privilege === true);
+
+  /* (c) 253 sobre un ataque a CONTROLAR: el impreso dice "any Attack to Destroy" */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(turn25(1), 'L25 S4c: turno del jugador 1 (que ataca)');
+  plant(1, 'a25b', C25.ninjas, 1);
+  plant(0, 't25c', C25.nsa, 0);
+  E.declareAttack(1, 'control', { attackerUid: 'a25b', uid: 't25c' });
+  clear24();
+  hand19(1, C25.ketchup);
+  var mc = err25(function () { return E.playPlot(1, C25.ketchup, null, {}); });
+  esc('S4c Ketchup en un ataque a controlar: ' + (mc || '(no lanzo)'),
+      mc !== null && /Attack to Destroy/.test(mc));
+  esc('S4c el ataque NO se privilegió (atomicidad)', atk25().privilege === false);
+
+  /* (d) 253 sobre un objetivo que no es Government */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(turn25(0), 'L25 S4d: turno del atacante');
+  /* Montaje explicito y NO con pop(): `plant` empuja al final de `children`, asi que
+   * `pop()` no necesariamente quita el nodo recien plantado y dejaba DOS nodos con
+   * el mismo uid; `findNode` encontraba el Government y el rechazo no se producia. */
+  plant(0, 'a25d', C25.ninjas, 2);
+  /* OJO: Bill Clinton es government+liberal+straight, o sea SI es Government (medido),
+   * asi que servia de pagador pero NO de objetivo negativo. El objetivo no Government
+   * es Hollywood (liberal puro). */
+  ok(C.cards[C25.hollywood].alignments.indexOf('government') < 0,
+     'L25 S4d Hollywood no es Government (comprobado, no supuesto)');
+  plant(1, 'hl25', C25.hollywood, 0);
+  E.declareAttack(0, 'destroy', { attackerUid: 'a25d', uid: 'hl25' });
+  clear24();
+  hand19(0, C25.ketchup);
+  var md = err25(function () { return E.playPlot(0, C25.ketchup, null, {}); });
+  esc('S4d Ketchup contra un objetivo no Government: ' + (md || '(no lanzo)'),
+      md !== null && /any Government group/.test(md));
+  esc('S4d ni privilegio ni bonus (atomicidad)', atk25().privilege === false && privMods25().length === 0);
+
+  /* (e) 253 sobre un ataque que YA es privilegiado */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  ok(turn25(0), 'L25 S4e: turno del atacante');
+  abrirAtaque25('nsa25');
+  privilege25();
+  var nb = boosts25().length;
+  hand19(0, C25.ketchup);
+  var me = err25(function () { return E.playPlot(0, C25.ketchup, null, {}); });
+  esc('S4e Ketchup sobre un ataque ya privilegiado: ' + (me || '(no lanzo)'),
+      me !== null && /ya es privilegiado/.test(me));
+  esc('S4e no se metio el +5 (atomicidad)', boosts25().length === nb && privMods25().length === 0);
+
+  S.forEach(function (p) { ok(p[1], 'L25 ' + p[0]); });
+})();
+
+/* ---------- S5: los calificadores son DATO, y las 3 cartas se distinguen solo por `mode` ---------- */
+(function L25_S5() {
+  var kinds = {}, modes = {};
+  [C25.interference, C25.deepagent, C25.ketchup].forEach(function (ix) {
+    var c = C.cards[ix];
+    ok(!!c, 'L25 S5: la carta esta en el catalogo');
+    kinds[c.effect.kind] = (kinds[c.effect.kind] || 0) + 1;
+    modes[c.effect.mode] = (modes[c.effect.mode] || 0) + 1;
+  });
+  ok(Object.keys(kinds).length === 1 && kinds['attack_privilege'] === 3,
+     'L25 S5: las 3 cartas comparten UN SOLO kind attack_privilege (DoD#4)');
+  ok(Object.keys(modes).length === 2 && modes['revoke'] === 2 && modes['grant_plus'] === 1,
+     'L25 S5: se distinguen SOLO por mode: 2 revoke + 1 grant_plus');
+  var eInt = C.cards[C25.interference].effect, eDeep = C.cards[C25.deepagent].effect,
+      eKet = C.cards[C25.ketchup].effect;
+  ok(eInt.mode === eDeep.mode && eInt.kind === eDeep.kind,
+     'L25 S5: 194 y 226 comparten kind y mode (misma mecanica, distinto efecto sobre el lock)');
+  ok(eInt.noReinstate === false && eDeep.noReinstate === true,
+     'L25 S5: noReinstate es lo unico que distingue a Deep Agent, y es DATO');
+  ok(eKet.targetAlign === 'government' && eKet.atkType === 'destroy' && eKet.boostValue === 5,
+     'L25 S5: los calificadores de Ketchup salen del dato (government / destroy / +5)');
+  ok(eKet.noPrivilegeQuota === true && eKet.grantPrivilege === true,
+     'L25 S5: Ketchup concede el privilegio sin consumir el cupo de la faccion (DECLARACION 5)');
+  [eInt, eDeep, eKet].forEach(function (ef) {
+    ok(ef.anyTime === true, 'L25 S5: las 3 se juegan con un ataque declarado, sin turno propio');
+  });
+})();
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });

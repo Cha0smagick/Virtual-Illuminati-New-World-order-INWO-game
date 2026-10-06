@@ -1086,11 +1086,15 @@ function isOwnNode(uid) {
  * tablero, es la VENTANA de comienzo de turno — el jugador al que se le roba el
  * turno. Por eso su boton vive en el panel de esa ventana (el bloque TS de mas
  * abajo) y no en el selector de objetivo, y por eso NO debe pasar por plotTarget. */
+/* L25 (194 Interference, 226 Deep Agent, 253 Ketchup is a Vegetable): el "objetivo" de las
+ * tres es el ATAQUE EN CURSO, que lo fija `S.attack` y es uno solo. No hay ningun nodo que
+ * elegir, asi que van por el mismo camino que `attack_boost` (L5) y `token_gift` (L1): el
+ * boton generico "Jugar ya", que llama `CB.onPlayPlot(handIdx)` sin objetivo. */
 var NO_TARGET_KINDS = ['token_gift', 'attack_boost', 'deck_manip', 'turn_start_block', 'turn_control',
   /* L16 — 379 Sweeping Reforms descarta TODAS las cartas New World Order que haya en
    * juego: no hay un objetivo unico que elegir. 207 (nwo_discard_one) SI elige una
    * concreta y por eso NO entra aqui (lleva boton propio). */
-  'nwo_discard_all'];
+  'nwo_discard_all', 'attack_privilege'];
 /* L8a — MENU DE MANIPULACION DE MAZO (361 Savings & Loan Scam, 388 The Big Sellout,
  * 411 Voodoo Economics).
  *
@@ -1853,6 +1857,7 @@ var EFF_SEC = {
 };
 /* Las 48 familias de mecanica que declara el dataset (45 mecánicas + 3 sinPseudo). */
 var KIND_ES = {
+  attack_privilege: 'Modificar el privilegio de un ataque en curso',
   combo_attack: 'Combinar dos ataques del mismo tipo sobre el mismo objetivo',
   illu_special: 'Poder especial de Illuminati', align_edit: 'Editar alineamientos',
   align_rule: 'Regla de alineamiento', angst: 'Angustia', assassination: 'Asesinato',
@@ -1988,6 +1993,14 @@ function hookEs(v) {
  * escapado. El orden de las entradas es el orden en que se imprimen: coste, obj, eff,
  * fin, modo. */
 var FIELD_ES = [
+  ['mode','modo: <b>revoke</b> (niega el privilegio existente) o <b>grant_plus</b> (lo concede y suma un bonus)'],
+  ['eitherSide','el ataque puede ser de cualquiera de los dos bandos, incluso tuyo'],
+  ['needsPrivilege','solo tiene efecto si el ataque en curso ya es privilegiado'],
+  ['costActionOneGroup','jugar la Plot es gratis, pero la interferencia cuesta 1 ficha de accion de un grupo tuyo'],
+  ['noReinstate','el privilegio NO se puede reinstate: <b>the privilege may not be reinstated</b>'],
+  ['permanentRevoke','la revocacion es permanente para ese ataque'],
+  ['grantPrivilege','concede el privilegio a un ataque que no lo tenia'],
+  ['noPrivilegeQuota','no consume el cupo de ataques privilegiados de la faccion'],
   ['payAttr', 'coste', 'un <em>action token</em> de un grupo con atributo <b>%s</b>'],
   ['payAttrAny', 'coste', 'un <em>action token</em> de un grupo con atributo <b>%s</b>'],
   ['payAlign', 'coste', 'un <em>action token</em> de un grupo <b>%s</b>'],

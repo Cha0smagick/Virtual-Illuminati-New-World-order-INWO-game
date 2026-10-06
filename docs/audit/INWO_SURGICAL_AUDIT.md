@@ -8841,3 +8841,240 @@ normalizados (el bug P1-020), y empuja a `A2.boosts`. L24 no lo ejecuta porque e
    manchado. Siguen vivos los 3 ramas muertas declaradas, los 4 huecos de texto, las 10 cartas
    congeladas de `BLOCKED_CARDS` y el flake preexistente de `test_appflow.js`.
 
+## 76. L25 - MODIFICAR EL PRIVILEGIO DE UN ATAQUE EN CURSO (kind `attack_privilege`, 3 cartas, P1-149)
+
+### Hallazgo
+
+**H1. `S.attack.privilege` YA estaba modelado y leido desde P1-026.** Medido en
+`engine.js`: se inicializa en `E.declareAttack` (linea 2689, `privilege:false`), lo
+pone `case 'privileged_attack'` (346 Privileged Attack, lineas 6162-6188) y lo lee
+`E.addSupport` (linea 2797: `if(A.privilege&&pid!==A.pid&&pid!==A.targetPid) throw
+new Error('El ataque es PRIVILEGIADO...')`). El comentario P1-026 ya cita el glosario
+oficial de Interference (`inwo_rules_extracted.txt:1140-1148`). Consecuencia directa
+y comprobable: **quitarle el privilegio a un ataque en curso es literalmente
+devolverle a los terceros la capacidad de INTERFERIR**, que es lo que hace el
+motor cuando `A.privilege` es falso. La familia no inventaba nada: usaba un dato
+que ya existia y que solo se escribia en un sitio.
+
+**H2. Las 3 cartas comparten la ESTRUCTURA del texto, no el tema.** 194 y 226 son
+LITERALMENTE la misma frase salvo el final ("You may totally negate the privilege
+of a privileged attack. The attack continues, but the privilege may not be
+reinstated!"); 253 comparte el verbo ("the attack becomes Privileged") y anade un
+bono. Por eso el lote se decidio por la estructura impresa y no por el tema: las
+tres escriben el MISMO dato de estado (`S.attack.privilege`, mas `A.boosts` en el
+caso de Ketchup) y lo unico que cambia son los CALIFICADORES, que son datos. Es el
+mismo argumento de kind unico que L5a y L23, aqui con `mode` en vez de `comboType`.
+
+Textos impresos verbatim (fuente `research/scribd_inwo_cards_full.html`):
+
+- **194 Interference**: `You may interfere with a privileged attack, on either
+  side. No other players may interfere unless they use other Plot cards or special
+  abilities. Playing this card is a free action, but interference itself is an
+  action for each group that interferes.`
+- **226 Deep Agent**: `You may totally negate the privilege of a privileged attack.
+  The attack continues, but the privilege may not be reinstated! Playing this card
+  is a free action, but interference itself is an action for each group that
+  interferes.`
+- **253 Ketchup is a Vegetable**: `Infiltrating government positions, your agents
+  have deliberately announced stupid policies, undermining public trust. Play this
+  card along with any Attack to Destroy any Government group. The attack becomes
+  Privileged, and you get a +5 bonus.`
+
+**H3. "the privilege may not be reinstated" NO significa nada sin un dato nuevo.**
+Medido: `A.privilege` es un booleano y lo unico que lo pone en `true` es el
+propio `case 'privileged_attack'`, que ademas tiene su propio veto `if(Ap.privilege)
+throw`. Sin un marcador extra, jugar 346 sobre un ataque al que Deep Agent le acaba
+de quitar el privilegio volveria a ponerlo en `true` y la frase de 226 seria letra
+muerta. L25 anade `A.privilegeLocked` (P1-149) para que la frase tenga efecto.
+
+**H4. `bimboateleven` NO es implementable fielmente y queda FUERA del lote.** Su
+texto impreso es "+5 on an Attack to Destroy any male Personality". Sonda sobre
+`cards.js`: **0 claves que caseen con `/gender|sex|male|female|man|woman/i`** en las
+22 Personalities del mazo, luego el filtro impreso no tiene ninguna fuente de
+datos. Declarado; no se implementa a ojo.
+
+**H5. La familia "cancelar una accion YA realizada" es un subsistema que NO
+existe.** Sonda: `tokensUsed` / `hasActed` / `actedThisTurn` / `alreadyActed` =
+**0 coincidencias**; las 9 ocurrencias de `usedThisTurn` son todas de Resources
+(L13 y L23) y marcan "esta capacidad ya se uso", que es otra cosa. Por eso
+`bigfoot`, `lochnessmonster`, `hallucinations`, `massmurder` y `arewehavingfunyet`
+quedan FUERA de L25 pese a tocar el mismo dato `A`: su clausula es "cancel the
+action", o sea deshacer algo yaExecutado. Declarado como subsistema NUEVO.
+
+**H6. Ketchup NO imprime coste, luego NO se cobra ficha.** Comprobado en el
+motor: el `case 'attack_privilege'` solo cobra cuando `mode!=='grant_plus'`, que es
+donde la clausula "interference itself is an action for each group that interferes"
+de 194 y 226 obliga a pagar. Ademas Ketchup NO consume `pl.flags.privilegedUsed`
+ni exige `illuEff(pid).privilegedPerTurn`: esos dos solo se leen en
+`E.togglePrivilege` (lineas 2763-2770), que es el UNICO sitio del motor que los
+consulta, y 346 no esta en juego cuando Ketchup se juega.
+
+### Correcciones
+
+**P1-149** -- dos cambios, el dato y su consumidor:
+
+1. `S.attack` gana `privilegeLocked:false` en su inicializador de `E.declareAttack`
+   (linea 2689, `privilege:false,` -> `privilege:false,privilegeLocked:false,`).
+   No choca con el invariante P1-005, que veta campos nuevos en `det`.
+2. `case 'privileged_attack'` (346) gana un guard nuevo **ANTES** de su `if(Ap.privilege)`:
+   `if(Ap.privilegeLocked) throw new Error(c.name+': "the privilege may not be
+   reinstated" (Deep Agent) - este ataque ya no puede volver a ser privilegiado');`
+   El orden importa: si el guard nuevo fuera despues del `if(Ap.privilege)`, el
+   mensaje correcto nunca se veria, porque en un ataque ya privilegiado el veto
+   viejo salta primero.
+
+**`case 'attack_privilege'`** -- insertado antes del `default:` de `E.playPlot`
+(linea 7150 tras el patch), con la validacion ENTERA antes de mutar y el gasto al
+final (P1-033), en este orden impreso:
+
+1. `A25=S.attack` abierto y sin resolver (si no, no hay "ataque en curso" al que
+   cambiarle el privilegio).
+2. Coste: solo si `mode!=='grant_plus'`, `firstUsableAid(pid, function(){return true;})`
+   -- o sea al menos 1 ficha de un grupo propio, que es lo que obliga la clausula
+   "interference itself is an action for each group that interferes".
+3. `grant_plus`: `A25.type` debe ser `destroy` ("along with any Attack to Destroy"),
+   el objetivo debe tener la alineacion `government` via `nodeAligns`, y el ataque
+   NO debe ser ya privilegiado (`!A25.privilege`), porque "becomes Privileged" es un
+   cambio de estado, no un refresco.
+4. `revoke`: `A25.privilege===true`, si no "no hay privilegio que negar".
+
+Mutacion: `spendGroupToken(pid, aid25.uid)` primero; luego `grant_plus` ->
+`A25.privilege=true` + `A25.boosts.push({name:c.name,v:5})`; `revoke` ->
+`A25.privilege=false` y, si `eff.noReinstate`, `A25.privilegeLocked=true`. Cierra con
+`lastResult={ok:true, plot, attack_privilege, mode, privilege, boost, target}` o
+`{..., privilege:false, locked, paidBy}`.
+
+**Lista `instant`**: `||eff0.kind==='attack_privilege'` anadida (linea 4314). Se
+juegan CON un ataque declarado, no requieren turno propio; el mismo criterio que
+L23 con `res_attack_bonus`.
+
+**Datos** (`gen_cards.js`): `L25_FX` / `L25_FXN` justo antes de
+`const ACTION_COST_KINDS = [`, enganchado en la cadena `pfx` como
+`|| L24_FXN[key] || L25_FXN[key] ||`. Las 3 entradas con `anyTime:true` y un bloque
+de comentario largo con **6 DECLARACIONES de interpretacion**: el coste de un grupo
+para la interferencia; "free action" por construccion (el kind es gratis de por si);
+"on either side" sin restriccion de bando (cualquier jugador puede interferir, y el
+motor solo exige un grupo propio del que cobrar ficha); `noReinstate` ->
+`privilegeLocked`; Ketchup no consume la cuota de 346; Ketchup exige destroy +
+government. Delta FASE 4 = **-3 exacto** (75 -> 72 sin mecanica; 173 -> 176
+clasificadas).
+
+**UI** (`ui.js`, 3 puntos): `'attack_privilege'` en `NO_TARGET_KINDS` (el objetivo
+es el ataque en curso, no un nodo del tablero, asi que la UI NO debe pedir un nodo),
+etiqueta en `KIND_ES` (obligatoria: `test_hand_peek.js` falla si un `effect.kind` no
+la tiene, mismo guard que cazo `turn_control` en L14, `global_discard` en L20 y
+`combo_attack` en L24) y 8 entradas en el glosario `FIELD_ES`.
+**NO hace falta callback nuevo en `app.js`**: al no haber nodo objetivo, la carta se
+juega por el boton generico `CB.onPlayPlot(handIdx)` -> `E.playPlot(pid, handIdx,
+undefined)`. Es el mismo criterio por el que L14 no toco `app.js`.
+
+**Regresion** (`test_fase2_rules.js`): bloque insertado justo antes del
+`if (failures.length) {` FINAL (el ancla es unica; se localiza con
+`t.lastIndexOf`). **57 asertos, 5 escenarios**, todos afirmando estado observable:
+S1 194 por un RIVAL quita el privilegio (y la ficha del atacante NO se gasta);
+S2 226 quita el privilegio, deja `privilegeLocked===true`, y 346 sobre ese ataque
+lanza; S3 253 vuelve privilegiado un ataque a destruir un Government y mete un
+unico bonus de 5; S4 cinco rechazos con motivo impreso **y atomicidad** (sin
+privilegio / sin ficha / a controlar / objetivo no Government / ya privilegiado);
+S5 los calificadores son DATO. Helpers nuevos: `turn25`, `raw25`, `atk25`, `err25`,
+`boosts25`, `privMods25`, `abrirAtaque25`, `privilege25`, `C25`.
+
+
+**P1-150** -- los scripts de parcheo con `join('\n')` DESTRUIDEN el mapa de finales
+de linea de los ficheros que tienen EOL mixto, y el coste lo paga el commit, no el juego.
+Medido en este lote: `_l25ui.cjs` reescribio `game/js/ui.js` entero en LF. El blob de HEAD lo
+tiene con EOL MIXTO (2133 CRLF + 536 LF), luego `git diff --numstat` paso de **14/1** a
+**2147/2134**: 4281 lineas de ruido EOL que ocultaban los 15 cambios reales. El sintoma se
+descubre mirando el numstat de cada fichero, no leyendo el diff. La comprobacion que lo
+distingue en un segundo es `git --no-pager diff --numstat --ignore-cr-at-eol`: si el par de
+numeros se reduce a las lineas reales, el problema es SOLO de EOL. La reparacion que se
+ aplico (y que hay que hacer SIEMPRE antes de commitear): (1) copiar el fichero, (2)
+`git checkout -- <fichero>` para recuperar el EOL de HEAD, (3) reaplicar los cambios con la
+herramienta `edit` en vez de con un script, porque `edit` preserva el EOL del resto y solo
+escribe el que uno pone en el `newString`, (4) anclar en una linea de la ZONA affected (una
+de las tres zonas de `ui.js` es LF y dos son CRLF) y poner `\r\n` en el `newString` cuando la
+zona es CRLF, (5) verificar con `node --check` y comparando el contenido LOGICO (con
+`\r\n` normalizado a `\n`) contra la copia: deben ser identicos. Resultado medido: el
+`numstat` de `ui.js` volvio a **14/1**, identico al de `--ignore-cr-at-eol`, y el contenido
+logico resulto IDENTICO al del fichero previo a la reparacion (prueba dura de que no se
+perdio nada). El mismo aviso aplica a `engine.js` y `test_fase2_rules.js`, que tambien
+tienen EOL mixto en el arbol de trabajo.
+
+### Verificacion
+
+- `node --check` limpio en `gen_cards.js`, `game/js/engine.js`, `game/js/ui.js` y
+  `test_fase2_rules.js`. CJK/U+FFFD = 0 en los cuatro.
+- `npm test` -> **ALL TESTS PASSED (11)**: P0 REGRESSION, SMOKE, RESPOND, HAND PEEK
+  (783 lineas sobre 421 cartas), FASE 2 RULES, FASE 4 COVERAGE, CARD RESEARCH
+  MANIFEST.
+- `node test_fase4_cards.js` -> **FASE 4 COVERAGE PASSED (176 clasificadas, 72
+  Plots/Resources sin mecanica, 3 ramas muertas, 10 bloqueadas, 4 huecos de texto)**;
+  delta exacto **-3**.
+- `node test_fase2_rules.js` -> **FASE 2 RULES PASSED**, 57 asertos de L25.
+- **Barrido 30/30 PASSED** de `test_fase2_rules.js` (regla 14).
+- `game/js/app.js` sin tocar: el kind no necesita callback propio.
+
+### Leccion
+
+1. **Antes de escribir un lote, buscar el dato que la carta escribe: puede que ya
+   exista y que lo unico que falte sea su lector.** `A.privilege` estaba desde
+   P1-026 y solo lo escribia una carta; L25 no creo el campo, creo el `case` y el
+   flag que le faltaba a la frase. Eso tambien se opone a la tentacion de meter
+   una capa nueva.
+2. **Una frase impresa que "no puede pasar" necesita un estado que lo impida.** Si
+   un texto dice "may not be reinstated" y el unico estado es un booleano que otro
+   puede volver a poner, la clausula es decorativa: leer el texto entero y comprobar
+   que el motor puede cumplir cada verbo.
+3. **El orden de los `throw` de un `case` es una interfaz.** En 346 el guard nuevo
+   tiene que ir ANTES del viejo, porque si no el mensaje correcto es inalcanzable
+   en el caso mas frecuente. Y la regresion lo tiene que reflejar.
+4. **Antes de afirmar "este grupo no cumple el filtro", COMPRUEBA el dato, y anade
+   un `ok` que lo compruebe en el propio test.** Aqui `billclinton` resulto ser
+   `["government","liberal","straight"]` (MEDIDO) y era el fixture negativo
+   equivocado; lo mismo habia pasado en L23 con `ninjas` y su atributo `magic`. Con
+   el `ok(...)` de comprobacion, si el roster cambia el test falla con un mensaje
+   claro en vez de "no lanzo".
+5. **`plant()` empuja al FINAL de `structure.children`, luego un `pop()` posterior
+   no quita necesariamente lo recien plantado.** Un fixture que plantaba, hacia
+   `pop()` y volvia a plantar dejaba DOS nodos con el mismo uid, y `findNode`
+   encontraba el que el test creia haber quitado: el rechazo no se producia y el
+   aserto "pasa" sin comprobar nada. Montar el `children` explicitamente.
+6. **Un helper de test que "anda cerca" puede no cumplir un invariante del motor.**
+   `turn24` (de L24) llegaba al turno del actor pero no cumplia `twoPlayerGuard`
+   (engine.js:2671), que impide atacar antes del primer turno completo de los dos.
+   Cuando el motor lance, leer el NOMBRE del invariante y su linea, en vez de
+   asumir que el helper estaba mal.
+7. **Parchear arrays literales partidos en varias lineas**: buscar el `];` en la
+   MISMA linea que abre el array falla cuando hay comentarios en medio
+   (`NO_TARGET_KINDS`). Escanear hasta la primera linea que contenga `];`.
+
+8. **Un diff enorme no es trabajo: es EOL.** Antes de alarmarse por un `--stat` de miles de
+   lineas, correr `git --no-pager diff --numstat --ignore-cr-at-eol`. Si el par se reduce,
+   el codigo esta bien y lo que hay que reparar es el mapa de finales de linea. Y la
+   reparacion se hace con la herramienta `edit`, no con otro script: un script que hace
+   `join('\n')` volveria a normalizar el fichero entero y a reproducir el problema.
+
+### Backlog
+
+- **La familia "cancelar una accion ya realizada" es el AGUJERO grande que queda**
+  (`bigfoot`, `lochnessmonster`, `hallucinations`, `massmurder`,
+  `arewehavingfunyet`): necesita un subsistema nuevo (registrar que se ha ejecutado
+  una accion y poder deshacerla), no una linea mas.
+- **`bimboateleven`** declaraada por falta de campo de genero en el dataset: hace
+  falta anadir el genero a las Personalities del mazo antes de poder implementarla.
+- El veto oficial de las NWO ("except during an Instant or Privileged Attack")
+  sigue sin implementarse; en este motor `instant` significa "jugable con un ataque
+  abierto".
+- 299 (Let's Get REALLY Organized) solo se coloca DEBAJO, no linkeada; `E.arrowCount`
+  no se usa en la UI y `S.l18extra` no se limpia.
+- Sin indicador permanente de las NWO en vigor en el HUD
+  (`publicState.nwoInForce` se expone pero no se dibuja).
+- `become` de Political Correctness es inalcanzable con este roster.
+- Los **72 pendientes** son cola larga multi-lote. Candidatos: las ~18 Plots de
+  tiempo/negacion (`readmylips` y `coverup` = "the attack becomes a failure" sobre
+  un ataque YA RESUELTO, que es otro subsistema nuevo; `backlash` deshacer un cambio
+  de Plot, que se puede apoyarse en el mecanismo de deshacer por ETIQUETA de L21;
+  `powergrab` reusa `E.autoTakeover`), y las que reutilizarian la ventana
+  `S.pendingNegation` de L22.
+- Flake preexistente declarado: `test_appflow.js` ("No se puede terminar el turno
+  con un ataque sin resolver"), visto una vez, no reproducido.

@@ -2686,7 +2686,7 @@ E.declareAttack=function(pid,type,target){
   if(!attCard)throw new Error('Atacante sin carta válida');
 
   var A={id:'a'+(S.uidCounter++),pid:pid,type:type,
-    attackerUid:attackerUid,aids:[],opposes:[],privilege:false,
+    attackerUid:attackerUid,aids:[],opposes:[],privilege:false,privilegeLocked:false,
     boosts:[],defBoosts:[],selfDefended:false,resolved:false};
   var tn='';
 
@@ -4311,6 +4311,10 @@ var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='b
      cuando la partida ya no es de nadie; aqui hace falta lo mismo pero el motor
      lo comprueba dentro del case (que exige S.attack del propio jugador). */
   ||eff0.kind==='privileged_attack'
+  /* L25: 194 Interference, 226 Deep Agent y 253 Ketchup se juegan CON un ataque ya
+     declarado (igual que 346, dos lineas arriba), asi que tampoco requieren turno
+     propio: quien las juega puede ser cualquiera de los dos bandos. */
+  ||eff0.kind==='attack_privilege'
   /* P1-027: las de la ventana de SUCESO ("Play immediately when/after") y la
      segunda bala ("immediately after you fail a roll to destroy"). */
   ||EVENT_KINDS.indexOf(eff0.kind)>=0||eff0.kind==='second_bullet'
@@ -6165,6 +6169,8 @@ case 'bulk_power':{
       var Ap=S.attack;
       if(Ap.pid!==pid)
         throw new Error(c.name+': el ataque que quieres privilegiar no es tuyo');
+            if(Ap.privilegeLocked)
+        throw new Error(c.name+': "the privilege may not be reinstated" (Deep Agent) - este ataque ya no puede volver a ser privilegiado');
       if(Ap.privilege)
         throw new Error(c.name+': ese ataque ya es privilegiado');
       if(Ap.aids.length||Ap.opposes.length)
@@ -7144,6 +7150,79 @@ case 'bulk_power':{
          immediately after the other card is played". Misma via de reaccion. */
       throw new Error(c.name+': "'+'"It may be played at any time, as long as it used immediately after the other card is played."'+'" — no se juega desde la mano: solo como respuesta a una Plot recien jugada');
     }
+
+    /* ===== L25 — MODIFICAR EL PRIVILEGIO DE UN ATAQUE EN CURSO (P1-149) =====
+     * 194 Interference: "You may interfere with a privileged attack, on either
+     *   side. ... Playing this card is a free action, but interference itself is
+     *   an action for each group that interferes."
+     * 226 Deep Agent: "You may totally negate the privilege of a privileged attack.
+     *   The attack continues, but the privilege may not be reinstated! ..."
+     * 253 Ketchup is a Vegetable: "Play this card along with any Attack to Destroy
+     *   any Government group. The attack becomes Privileged, and you get a +5 bonus."
+     *
+     * Las TRES escriben el mismo dato de estado (`S.attack.privilege`), asi que
+     * comparten un kind; lo que cambia son los CALIFICADORES, que son datos.
+     * El efecto del privilegio ya lo leia `E.addSupport` desde P1-026
+     * (engine.js:2797): con el ataque privilegiado solo atacante y defensor
+     * participan. Quitarle el privilegio a un ataque es literalmente devolverle
+     * la capacidad de INTERFERIR a los terceros, que es lo que dicen 194 y 226.
+     *
+     * No hay ventana propia: el suceso que reacciona es "el ataque ya esta
+     * declarado", y eso lo fija `S.attack` (mismo argumento que 346 en su dia).
+     * Se valida ENTE antes de mutar y se paga al final (P1-033).
+     */
+    case 'attack_privilege':{
+      if(!S.attack||S.attack.resolved)
+        throw new Error(c.name + ": solo se juega con un ataque ya declarado y todavia sin resolver (el timing ES el ataque en curso)");
+      var A25=S.attack;
+      var grant25=(eff.mode==='grant_plus');
+      /* --- COSTE / OBJETIVO impreso, validado ENTERO antes de mutar --- */
+      var aid25=null;
+      if(eff.mode!=='grant_plus'){
+        /* "interference itself is an action for each group that interferes": se
+           implementa como al menos UNA ficha de accion de un grupo tuyo (un grupo
+           que interfiere = una ficha). Ver DECLARACION 1 del bloque de datos. */
+        if(eff.costActionOneGroup)
+          aid25=firstUsableAid(pid,function(){return true;});
+        if(!aid25)
+          throw new Error(c.name + ": interference itself is an action for each group that interferes y ningun grupo tuyo tiene ficha de accion");
+      }
+      if(grant25){
+        /* "Play this card along with any Attack to Destroy any Government group" */
+        if(eff.atkType&&A25.type!==eff.atkType)
+          throw new Error(c.name + ": along with any Attack to Destroy y el ataque en curso es a " + A25.type + ", no a destruir");
+        var tN25=A25.targetUid?findNode(A25.targetUid):null;
+        var tC25=tN25?card(tN25.cardId):null;
+        var al25=eff.targetAlign?String(eff.targetAlign).toLowerCase():null;
+        if(al25&&(!tC25||nodeAligns(tN25,tC25).indexOf(al25)<0))
+          throw new Error(c.name + ": any Government group y el objetivo del ataque (" + (tC25 ? tC25.name : "el que sea") + ") no es Government");
+        if(A25.privilege)
+          throw new Error(c.name+': "The attack becomes Privileged" y ese ataque ya es privilegiado');
+      }else{
+        /* "interfere with a privileged attack" / "negate the privilege of a
+        privileged attack" — si no es privilegiado no hay nada que negar. */
+        if(eff.needsPrivilege&&!A25.privilege)
+          throw new Error(c.name+': el ataque en curso no es privilegiado — no hay privilegio que negar');
+      }
+      /* --- MUTACION (todo ya validado) --- */
+      if(aid25)spendGroupToken(pid,aid25.uid);
+      if(grant25){
+        A25.privilege=true;
+        /* DECLARACION 5: no consume el cupo `privilegedUsed` ni exige
+           `privilegedPerTurn`; esas reglas son de las cartas de Privileged Attack
+           y Ketchup no las imprime. */
+        var v25=typeof eff.boostValue==='number'?eff.boostValue:0;
+        if(v25)A25.boosts.push({name:c.name,v:v25});
+        log(pl.name+' juega '+c.name+': el ataque contra '+(tC25?tC25.name:'el objetivo')+' queda PRIVILEGIADO'+(v25?(' y +'+v25):''));
+        lastResult={ok:true,plot:c.name,attack_privilege:grant25,mode:eff.mode,
+                    privilege:true,boost:v25,target:tC25?tC25.name:null};
+        break;}
+      A25.privilege=false;
+      if(eff.noReinstate)A25.privilegeLocked=true;
+      log(pl.name+' juega '+c.name+': el ataque '+(A25.attackerUid?'de '+A25.attackerUid:'')+' ya NO es privilegiado'+(eff.noReinstate?' y no puede volver a serlo':''));
+      lastResult={ok:true,plot:c.name,attack_privilege:false,mode:eff.mode,
+                  privilege:false,locked:!!A25.privilegeLocked,paidBy:aid25?card(aid25.cardId).name:null};
+      break;}
 
     default:{
       throw new Error('La carta "'+c.name+'" tiene una mecánica no implementada.');

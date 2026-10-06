@@ -2627,6 +2627,51 @@ const L24_FX = {
 const L24_FXN = {};
 for (const k in L24_FX) { L24_FXN[norm(k)] = L24_FX[k]; }
 
+/* ================= L25 - MODIFICAR EL PRIVILEGIO DE UN ATAQUE EN CURSO =================
+ * Las 3 cartas de esta familia escriben el MISMO dato de estado: el booleano
+ * `S.attack.privilege` del ataque en curso. Por eso comparten UN SOLO kind con
+ * `mode` por carta, que es exactamente el criterio que L5a y L23Jmearon para
+ * `attack_boost` y `res_attack_bonus`: "un kind compartido es legitimo cuando el
+ * DATO DE ESTADO es el mismo y solo cambian los calificadores, que son datos".
+ *
+ * LO QUE YA EXISTIA (medido, no supuesto):
+ *  - `E.declareAttack` inicializa `S.attack` con `privilege:false` (engine.js:2689).
+ *  - `case 'privileged_attack'` (346 Privileged Attack) la pone a true (engine.js:6183).
+ *  - `E.addSupport` la LEE de verdad desde P1-026 (engine.js:2797): con el ataque
+ *    privilegiado solo el atacante y el defensor pueden participar. O sea que el
+ *    privilegio ya tiene efecto en el motor y L25 lo USA en las dos direcciones.
+ *  - `E.togglePrivilege` concede/quita el privilegio al declarar el ataque y es el
+ *    UNICO sitio que consume `illuEff(pid).privilegedPerTurn` (engine.js:2763-2770).
+ *
+ * TIMING: las tres se juegan CON un ataque ya declarado, igual que 346 (que esta en
+ * la lista `instant` por el mismo motivo). Por eso van las tres ahi y el motor se
+ * salta `requireOwnMain`: quien las juega no es necesariamente quien tiene el turno.
+ *
+ * INTERPRETACIONES DECLARADAS (con motivo):
+ * 1. "interference itself is an action for each group that interferes" (194 y 226) es la
+ *    UNICA clausula de coste de las dos. Se implementa como "necesitas al menos una
+ *    ficha de accion de un grupo tuyo" (1 grupo que interfiere = 1 ficha). NO se puede
+ *    pedir mas: el texto no dice cuantas y la faccion podria ser un Illuminati entero.
+ * 2. "Playing this card is a free action" se cumple por construccion: jugar la Plot no
+ *    cobra nada; lo que se gasta es la ficha de la INTERFERENCIA.
+ * 3. "on either side" (194) y "You may totally negate the privilege of a privileged
+ *    attack" (226) no ponen ninguna restriccion de bando: cualquier jugador puede
+ *    quitarle el privilegio a cualquier ataque, incluido el suyo propio.
+ * 4. 226 "the privilege may not be reinstated" se implementa con `S.attack.
+    privilegeLocked`, que el guard de `case 'privileged_attack'` lee para rechazar
+ *    volver a privilegiar ESE ataque. Es la unica forma de que la frase signifique algo.
+ * 5. 253 Ketchup "The attack becomes Privileged" NO consume el cupo `privilegedUsed` ni
+ *    exige `privilegedPerTurn`: esas reglas son de las cartas de Privileged Attack, y
+ *    Ketchup no las imprime. DECLARADO, no accidental.
+ * 6. 253 exige un ataque a DESTRUIR y objetivo Government porque es lo que imprime.
+ */
+const L25_FX = {
+  'interference': { kind:'attack_privilege', mode:'revoke', anyTime:true, eitherSide:true, needsPrivilege:true, costActionOneGroup:true, noReinstate:false, t:"You may interfere with a privileged attack, on either side. No other players may interfere unless they use other Plot cards or special abilities. Playing this card is a free action, but interference itself is an action for each group that interferes." },
+  'deepagent': { kind:'attack_privilege', mode:'revoke', anyTime:true, eitherSide:true, needsPrivilege:true, costActionOneGroup:true, noReinstate:true, permanentRevoke:true, t:"You may totally negate the privilege of a privileged attack. The attack continues, but the privilege may not be reinstated! Playing this card is a free action, but interference itself is an action for each group that interferes." },
+  'ketchupisavegetable': { kind:'attack_privilege', mode:'grant_plus', anyTime:true, needsPrivilege:false, atkType:'destroy', targetAlign:'government', boostValue:5, grantPrivilege:true, noPrivilegeQuota:true, t:"Infiltrating government positions, your agents have deliberately announced stupid policies, undermining public trust. Play this card along with any Attack to Destroy any Government group. The attack becomes Privileged, and you get a +5 bonus." }
+};
+const L25_FXN = {};
+for (const k25 in L25_FX) { L25_FXN[norm(k25)] = L25_FX[k25]; }
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence'];
 
 
@@ -2916,7 +2961,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias
