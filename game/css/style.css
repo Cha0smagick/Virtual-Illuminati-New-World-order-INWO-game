@@ -81,6 +81,7 @@ img { display: block; }
 .hpill b { color: var(--gold); }
 .hpill.p { color: var(--cyan); border-color: rgba(53, 196, 217, .4); }
 .hpill.w { color: var(--gold-hi); border-color: var(--line); }
+.hpill.nwo { color: #A78BFA; border-color: rgba(167, 139, 250, .45); }
 .hpill.atk, .hpill .atk, span.atk {
   color: #fff; background: var(--red);
   border-color: transparent;

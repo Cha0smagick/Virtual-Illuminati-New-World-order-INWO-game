@@ -4575,6 +4575,17 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
    * regla por color no les aplica (declarado en el audit, seccion 72). */
   var nwoMark21=null,nwoUndone21=null,nwoPrevRule21=null;
   if(c.nwoColor&&eff0.kind!=='goal'){
+    /* P1-154 (L27): el impreso de TODAS las NWO dice "Play this card at any time,
+       except during an Instant or Privileged Attack". La mitad "Instant" ya esta
+       cubierta de fabrica: E.instantAttack no abre S.attack y se resuelve dentro de
+       la misma llamada, asi que playPlot no puede ejecutarse durante un Instant
+       Attack. La mitad "Privileged" faltaba: un ataque privilegiado SI vive en
+       S.attack (privilege=true: 346/A25/Bavarian) y hasta aqui las NWO eran jugables
+       encima de el, contradiciendo el impreso. L21 dejo este veto fuera a proposito
+       (comentario de la lista instant) y quedo en el backlog; se cobra aqui, en el
+       pre-hook, ANTES de tocar nwoInForce/alignRule y antes de la ventana L22. */
+    if(S.attack&&S.attack.privilege)
+      throw new Error(c.name+' no se puede jugar durante un ataque Privilegiado (impreso NWO: "at any time, except during an Instant or Privileged Attack")');
     if(!S.nwoInForce)S.nwoInForce={};
     nwoPrevRule21=S.alignRule||null;
     nwoMark21={color:c.nwoColor};

@@ -9087,4 +9087,16 @@ tienen EOL mixto en el arbol de trabajo.
 
 **Tests**: test_fase2_rules S1..S6 (pago por grupos, insuficiencia+atomicidad, atributo incorrecto, via Illuminati, mazo corto). Bug de fixture detectado y corregido: C26 carecia de la clave `hackers` (S6a plantaba undefined). Leccion reiterada: fixture que depende de la suerte => el error aparece en un S distinto al que lo escribe; validar claves de fixture contra el comentario que las acompana.
 
-**Estado**: 395 pasa de BLOQUEADA (P1-038) a implementada. Backlog: 72 pendientes restantes (familia cancelar-accion requiere subsistema deshacer; readmylips/coverup "attack becomes failure"; veto NWO en Instant/Privileged Attack; 299 solo-debajo; indicador NWO en HUD).
+**Estado**: 395 pasa de BLOQUEADA (P1-038) a implementada. Backlog: 72 pendientes restantes (familia cancelar-accion requiere subsistema deshacer; readmylips/coverup "attack becomes failure"; 299 solo-debajo).
+
+## 78. L27 - VETO NWO "Instant or Privileged Attack" + INDICADOR HUD (P1-154, P1-155)
+
+**Regla impresa**: las 14 cartas New World Order (nwoColor azul/rojo/amarillo) se juegan "at any time, except during an Instant or Privileged Attack". La mitad "at any time" ya existia desde L21 (la lista `instant` de E.playPlot, engine 4449-4538, incluye align_rule y bulk_power con comentario que aplazaba el veto a backlog). La mitad "except" faltaba por completo.
+
+**P1-154 (motor)**: veto anadido en el pre-hook L21 de E.playPlot (dentro de `if(c.nwoColor&&eff0.kind!=='goal'){`, ANTES de tocar nwoInForce/nwoPrevRule21/nwoMark21): `if(S.attack&&S.attack.privilege) throw` con el motivo impreso citado. Patron identico al de 278 Hex y 400 Weak Link (`eff.notDuringPrivileged`). La mitad "Instant" es estructural: E.instantAttack nunca abre S.attack (resuelve sincrono), asi que con `S.attack.privilege` basta. El juego de la NWO durante un ataque NORMAL sigue permitido (S7a).
+
+**P1-155 (UI)**: pildora NWO en el header (#hdrInfo) junto a la de ataque: `⊕ nombre1 · nombre2` a partir de `publicState.nwoInForce` ({color:{name,id,pid}}, expuesto por motor desde L21 pero nunca dibujado). CSS `.hpill.nwo` violeta #A78BFA (game/css/style.css).
+
+**Tests**: test_fase2_rules S7a (NWO azul fearandloathing juega DURANTE ataque normal abierto; regla activa y ataque sigue abierto), S7b (con E.togglePrivilege, lanza el motivo impreso exacto, regla NO activada, carta sigue en mano), S7c (regresion: NWO en turno principal sin ataque sigue funcionando). Fixture determinista: grupos violent/peaceful calculados localmente (los VIOLENT/PEACEFUL del bloque P1-026 son IIFE-locales; leccion: helpers de seccion no traspasan IIFE).
+
+**Estado**: veto NWO + indicador HUD cerrados. Quedan en backlog: familia cancelar-accion (subsistema deshacer), readmylips/coverup "attack becomes failure", 299 solo-debajo, bimboateleven genero (requiere campo `gender` en gen_cards.js), undo-by-etiqueta (backlash).

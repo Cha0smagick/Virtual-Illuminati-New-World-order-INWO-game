@@ -434,11 +434,17 @@ function render(state) {
   peekHide();
   var st = state;
   var cur = st.players[st.currentPid];
+  /* P1-155 (L27): las NWO en juego quedan expuestas (publicState.nwoInForce = {color:{name,id,pid}});
+   * sin esta píldora el jugador no ve qué regla de NWO está activa ni de qué color. */
+  var nwoIn = st.nwoInForce || {};
+  var nwoNames = Object.keys(nwoIn).map(function (k) { return nwoIn[k].name; }).join(' · ');
+  var nwoPill = nwoNames ? '<span class="hpill nwo">⊕ ' + esc(nwoNames) + '</span>' : '';
   $('hdrInfo').innerHTML =
     '<span class="hpill">Turno <b>' + st.turn + '</b></span>' +
     '<span class="hpill p">' + esc(String(st.phase).toUpperCase()) + '</span>' +
     '<span class="hpill w">▶ ' + esc(cur ? cur.name : '?') + '</span>' +
-    (st.attack && !st.attack.resolved ? '<span class="atk">⚔ ATAQUE EN CURSO</span>' : '');
+    (st.attack && !st.attack.resolved ? '<span class="atk">⚔ ATAQUE EN CURSO</span>' : '') +
+    nwoPill;
 
   $('hdrBtns').innerHTML = goalBars(st) + (st.phase === 'gameover' ?
     '<button class="primary ngbtn" data-act="newgame" title="Volver al menú de selección">⟳ NUEVO JUEGO</button>' : '');

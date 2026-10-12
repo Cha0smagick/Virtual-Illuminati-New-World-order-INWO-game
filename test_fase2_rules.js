@@ -9296,6 +9296,56 @@ function err26(fn) { return throwMsgL14(fn); }
   S.forEach(function (p) { ok(p[1], 'L26 S6: ' + p[0]); });
 })();
 
+/* ---------- S7: P1-154 (L27) — veto NWO "except during an Instant or Privileged Attack" ----------
+ * Regla impresa de las NWO: "Play this card at any time, except during an Instant or
+ * Privileged Attack". La mitad Instant ya esta cubierta estructuralmente (E.instantAttack
+ * no abre S.attack, y playPlot no corre dentro de el). La mitad Privileged vive en
+ * S.attack.privilege y se veto en el pre-hook L21 de E.playPlot. */
+(function L27_S7() {
+  var S = [];
+  function esc(txt, cond) { S.push([txt, cond]); }
+  var FEAR = idxOfId('fearandloathing'); /* NWO azul, kind align_rule, alignMag 8 */
+  /* hasAlign vive en otro IIFE: replica local (mismo criterio: group + alignments) */
+  function gWith(a) {
+    return C.cards.filter(function (c) { return c.type === 'group' && (c.alignments || []).indexOf(a) >= 0; })[0];
+  }
+  var VI = gWith('violent'), PE = gWith('peaceful');
+
+  /* (a) NWO durante un ataque NORMAL abierto: la regla impresa lo PERMITE */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  var me = readyToAttack(0);
+  plant(me, 'n1', VI.idx, 1); plant(1 - me, 'n2', PE.idx, 1);
+  hand22(me, FEAR);
+  E.declareAttack(me, 'destroy', { attackerUid: 'n1', uid: 'n2' });
+  var antes = raw26().plotDeck.length;
+  E.playPlot(me, FEAR, null, {});
+  esc('S7a NWO (align_rule) se juega durante un ataque normal y la regla queda activa',
+      !!raw26().alignRule && raw26().alignRule.card === C.cards[FEAR].name);
+  esc('S7a el ataque sigue abierto tras jugar la NWO', !!raw26().attack && !raw26().attack.resolved);
+
+  /* (b) NWO durante un ataque PRIVILEGIADO: la regla impresa lo PROHIBE */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  me = readyToAttack(0);
+  plant(me, 'n1', VI.idx, 1); plant(1 - me, 'n2', PE.idx, 1);
+  hand22(me, FEAR);
+  E.declareAttack(me, 'destroy', { attackerUid: 'n1', uid: 'n2' });
+  E.togglePrivilege();
+  var mb = err26(function () { return E.playPlot(me, FEAR, null, {}); });
+  esc('S7b NWO en ataque Privilegiado: ' + (mb || '(NO lanzo)'), /ataque Privilegiado/.test(mb || ''));
+  esc('S7b el rechazo NO activo la regla NWO', !raw26().alignRule);
+  esc('S7b la carta vuelve/sigue en la mano (estado intacto)',
+      raw26().players[me].hand.indexOf(FEAR) >= 0);
+
+  /* (c) regresion: en turno propio sin ataque la NWO sigue jugandose igual que en L21 */
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');
+  hand22(0, FEAR);
+  E.playPlot(0, FEAR, null, {});
+  esc('S7c NWO en turno propio sin ataque sigue funcionando',
+      !!raw26().alignRule && raw26().alignRule.card === C.cards[FEAR].name);
+
+  S.forEach(function (p) { ok(p[1], 'L27 S7: ' + p[0]); });
+})();
+
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });
