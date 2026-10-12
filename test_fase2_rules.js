@@ -26,7 +26,7 @@ function throws(fn, re, m) {
  * toHandL14 hacen con las suyas. Es la regla 14 (fixture sin reparto aleatorio). */
 function isNegatorCard(ix) {
   var e = ix != null && C.cards[ix] ? C.cards[ix].effect : null;
-  return !!(e && (e.kind === 'plot_negate_prev' || e.kind === 'plot_negate_computer'));
+  return !!(e && (e.kind === 'plot_negate_prev' || e.kind === 'plot_negate_computer' || e.kind === 'plot_negate_steal'));
 }
 function stripNegators22() {
   var r = E._raw(), k;
@@ -4820,8 +4820,22 @@ function readyToAttack(pid) {
   }
   function setHand(pid, list) { raw().players[pid].hand = list.slice(); }
   /* Botin: tres Plots medidas en el mazo que NO son cartas de L7, para que el
-   * contenido de la mano del rival sea exactamente el que el test decide. */
-  var LOOT = [185, 186, 187];
+    * contenido de la mano del rival sea exactamente el que el test decide.
+    * L30: ya no pueden ser indices fijos — 185 era la 18 and a Half Minute Gap
+    * (hueco de texto sin efecto) y ahora ES una carta de negacion (abriria la
+    * ventana de negacion en cuanto Logic Bomb se juega). Se eligen las primeras
+    * 3 Plots del catalogo que no sean negadoras ni de la familia peek. */
+  var LOOT = (function () {
+    var out = [];
+    for (var li = 0; li < C.cards.length && out.length < 3; li++) {
+      var lc = C.cards[li], le = lc && lc.effect;
+      if (!lc || lc.type !== 'plot') continue;
+      if (isNegatorCard(li)) continue;
+      if (le && le.kind && le.kind.indexOf('peek_') === 0) continue;
+      out.push(li);
+    }
+    return out;
+  })();
   function lootInto(pid, n) {
     var out = LOOT.slice(0, n);
     out.forEach(fromDeck);
@@ -9377,6 +9391,107 @@ function err26(fn) { return throwMsgL14(fn); }
   esc('S8c l18extra limpio tras destruir (' + JSON.stringify(extra2) + ')',
       !extra2 || !('g8' in extra2));
   S.forEach(function (p) { ok(p[1], 'L28 S8: ' + p[0]); });
+})();
+
+/* ================= L30 — Forgery (260) + Payoff (333) + 18 and a Half Minute Gap (185) ================= */
+(function () {
+  var S = [];
+  function ok(cond, msg) { S.push([msg, !!cond]); if (!cond) { console.log('   FAIL: ' + msg); } }
+  function esc(txt, cond) { S.push([txt, !!cond]); if (!cond) { console.log('   FAIL: ' + txt); } }
+  function tMsg(fn) { try { fn(); } catch (e30) { return String((e30 && e30.message) || e30); } return ''; }
+
+  /* ---- S1: Forgery 260 — takeover automatico que duplica un Unique Resource en juego ---- */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var FO = idxOfId('forgery'); esc('S1a forgery emitida', FO !== null);
+    var WH = -1;
+    for (var w30 = 0; w30 < C.cards.length && WH < 0; w30++)
+      if (C.cards[w30].type === 'resource' && /unique/i.test(String(C.cards[w30].text || ''))) WH = w30;
+    esc('S1b hay Unique Resource en el mazo', WH >= 0);
+    readyToAttack(0); /* el turno inicial puede ser del rival: ponerlo en pid 0 antes de jugar */
+    hand22(1, WH);
+    E._raw().players[1].resources.push({ uid: 'r9001', cardId: WH, linkedTo: E._raw().players[1].illumId, tokens: 0 });
+    var RZ = -1;
+    for (var i30 = 0; i30 < C.cards.length && RZ < 0; i30++)
+      if (C.cards[i30].type === 'resource' && i30 !== WH) RZ = i30;
+    esc('S1c hay segunda Resource', RZ >= 0);
+    hand22(0, FO); hand22(0, RZ);
+    var it0 = E._raw().players[0].illumTokens;
+    /* 2º arg = indice de CATALOGO (P1-059); resourceHandIdx tambien es indice de catalogo */
+    E.playPlot(0, FO, null, { resUid: 'r9001', resourceHandIdx: RZ });
+    var s1 = E._raw();
+    ok(s1.players[0].resources.some(function (r) { return r.cardId === RZ; }), 'S1d la Resource elegida entra en juego');
+    ok(s1.players[0].flags.autoTakeover === true, 'S1e consume el takeover automatico del turno');
+    ok(s1.players[0].illumTokens === it0, 'S1f no paga ficha de Illuminati');
+    ok(s1.groupDiscard.indexOf(WH) >= 0, 'S1g el dueño del otro ejemplar lo descarta');
+    ok(!s1.players[1].resources.some(function (r) { return r.cardId === WH; }), 'S1h el ejemplar rival sale del juego');
+    esc('S1i Forgery se consume (sale de la mano)', E._raw().players[0].hand.indexOf(FO) < 0); /* la carta se gasta: un replay lo rechaza la gate de mano antes de llegar al case */
+  })();
+
+  /* ---- S2: Payoff 333 — reacciona al duplicado de un rival y lo descarta ---- */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var PF = idxOfId('payoff'); esc('S2a payoff emitida', PF !== null);
+    var MB = idxOfId('mediablitz'); esc('S2b mediablitz emitida', MB !== null);
+    var GI = -1, MG = -1;
+    for (var j30 = 0; j30 < C.cards.length && (GI < 0 || MG < 0); j30++) {
+      var cc = C.cards[j30];
+      if (cc.type !== 'group' || (cc.attributes || []).indexOf('media') < 0) continue;
+      if (GI < 0 && j30 !== MB) GI = j30;
+      else if (MG < 0 && j30 !== GI) MG = j30;
+    }
+    esc('S2c grupo y grupo media', GI >= 0 && MG >= 0);
+    readyToAttack(0); /* el turno inicial puede ser del rival */
+    plant(0, 'm30', MG, 1);
+    hand22(0, GI); hand22(0, MB); hand22(1, PF);
+    E._raw().players[1].destroyedByMe.push(GI);
+    if (E.getState().pendingEvent) E.resolvePendingEvent(); /* §38: un suceso del ciclo de turnos no debe tapar la ventana dup_played */
+    E.playGroupFromHand(0, GI, MB, 'm30'); /* el punto de colocacion debe ser un grupo propio, no el Illuminati */
+    var ev = E._raw().pendingEvent;
+    ok(ev && ev.kind === 'dup_played', 'S2d ventana dup_played abierta');
+    if (ev) {
+      var nodeUid = ev.data.nodeUid;
+      E._raw().currentPid = 1;
+      E.playPlot(1, PF);
+      E._raw().currentPid = 0;
+      var raw2 = E._raw();
+      var still = false;
+      (function w(n) { if (n.uid === nodeUid) still = true; (n.children || []).forEach(w); })(raw2.players[0].structure);
+      ok(!still, 'S2e el duplicado sale de la estructura');
+      ok(raw2.groupDiscard.indexOf(GI) >= 0, 'S2f el duplicado va al descarte de Grupos');
+      ok(raw2.players[1].destroyedByMe.indexOf(GI) >= 0, 'S2g contador de destruidos restaurado');
+      ok(ev.data.claimed === true, 'S2h duplicado marcado como reclamado');
+      ok(raw2.plotDiscard.indexOf(MB) >= 0, 'S2i habilitadora al descarte');
+    }
+  })();
+
+  /* ---- S3: 18 and a Half Minute Gap 185 — anula la Plot del rival y se la queda ---- */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var GAP = idxOfId('18andahalfminutegap'); esc('S3a gap emitida', GAP !== null);
+    var B10 = -1;
+    for (var k30 = 0; k30 < C.cards.length && B10 < 0; k30++)
+      if (C.cards[k30].effect && C.cards[k30].effect.kind === 'boost10') B10 = k30;
+    esc('S3b boost10 emitida', B10 >= 0);
+    readyToAttack(1); /* el turno inicial puede ser de A: ponerlo en pid 1 antes de jugar */
+    hand22(0, GAP); hand22(1, B10);
+    E._raw().players[0].illumTokens = 2;
+    var pre = E._raw();
+    var topPlot = pre.plotDeck[pre.plotDeck.length - 1], topGroup = pre.groupDeck[pre.groupDeck.length - 1];
+    var pdL = pre.plotDeck.length, gdL = pre.groupDeck.length;
+    E.playPlot(1, B10, null, { boostMode: 'hold' });
+    ok(!!E._raw().pendingNegation, 'S3c ventana de negacion abierta');
+    E.resolvePendingNegation('negate', 0, GAP);
+    var s3 = E._raw();
+    ok(s3.players[0].hand.indexOf(B10) >= 0, 'S3d la Plot anulada va a la mano del negador');
+    ok(s3.players[0].illumTokens === 0, 'S3e paga TODAS las fichas del Illuminati');
+    ok(s3.plotDiscard.indexOf(topPlot) >= 0 && s3.plotDiscard.indexOf(GAP) >= 0, 'S3f cima de Plots y la Gap al descarte');
+    ok(s3.groupDiscard.indexOf(topGroup) >= 0, 'S3g cima de Groups al descarte');
+    ok(s3.plotDeck.length === pdL - 1 && s3.groupDeck.length === gdL - 1, 'S3h ambos mazos pierden su cima');
+    ok(!s3.pendingNegation, 'S3i ventana cerrada');
+  })();
+
+  S.forEach(function (p) { ok(p[1], 'L30: ' + p[0]); });
 })();
 
 /* ================= L29 — Fnord! (258) reroll + Crop Circles (232) deck-search ================= */

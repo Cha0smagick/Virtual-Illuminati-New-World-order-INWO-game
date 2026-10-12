@@ -242,7 +242,7 @@ function undoNwoOfColor21(color, prevRule21){
  * del jugador de Hoax.
  */
 function isNegationKind(eff){
-  return !!(eff&&(eff.kind==='plot_negate_prev'||eff.kind==='plot_negate_computer'));
+  return !!(eff&&(eff.kind==='plot_negate_prev'||eff.kind==='plot_negate_computer'||eff.kind==='plot_negate_steal'));
 }
 /* DECLARACION DE INTERPRETACION (ya escrita en gen_cards.js, L22_FX): el
  * impreso de Computer Security es "any Plot card that concerns Computers or is
@@ -285,6 +285,12 @@ function negationCostWays(rpid,eff){
     if(pl.illumTokens>=1)ways.push({via:'illumAll'});
     var nTop=eff.topDiscard||2;
     if(S.plotDeck.length>=nTop)ways.push({via:'topDiscard',n:nTop});
+  }else if(eff.costMode==='illumAllGap'){
+    if(pl.illumTokens<1)
+      return {ok:false,why:'"You must spend all the Action tokens now on your Illuminati (minimum 1!)" — no tienes ninguna ficha de accion en tu Illuminati',ways:ways};
+    if(S.plotDeck.length<1||S.groupDeck.length<1)
+      return {ok:false,why:'"discard the top undrawn card from both your Plot and Groups decks" — uno de tus mazos esta vacio',ways:ways};
+    ways.push({via:'illumAll'});
   }else if(eff.costMode==='groupOrIllum'){
     var nd=firstUsableAid(rpid,function(cc,nn){return hasAttr(cc,eff.payAttr,nn);});
     if(nd)ways.push({via:'grupo',uid:nd.uid,name:card(nd.cardId).name});
@@ -315,6 +321,17 @@ function payNegationCost(rpid,eff,via){
       throw new Error('"You must also discard your own top undrawn Plot card" — solo te quedan '+nxA.length+' Plot en el mazo');
     for(var mA=0;mA<nxA.length;mA++)S.plotDiscard.push(nxA[mA]);
     out.extraTop=nxA.length;
+  }
+  /* L30 — 18 and a Half Minute Gap: "discard the top undrawn card from both
+     your Plot and Groups decks". Obligatorio, no es una via alternativa. */
+  if(eff.gapDiscard){
+    var gpP=topOfDeck(S.plotDeck,1);
+    if(gpP.length<1)throw new Error('"discard the top undrawn card from both your Plot and Groups decks" — tu mazo de Plots esta vacio');
+    S.plotDiscard.push(gpP[0]);
+    var gpG=topOfDeck(S.groupDeck,1);
+    if(gpG.length<1)throw new Error('"discard the top undrawn card from both your Plot and Groups decks" — tu mazo de Groups esta vacio');
+    S.groupDiscard.push(gpG[0]);
+    out.gapDiscard={plot:1,group:1};
   }
   if(via.via==='power'){
     var need=eff.payMinPower||6,used=[];
@@ -2632,6 +2649,12 @@ E.playGroupFromHand=function(pid,dupIdx,enablerIdx,parentUid){
   }
   log(pl.name+' juega '+dc.name+' como DUPLICADO con '+ec.name+
       ' ('+(needAss?'asesinado':'destruido')+' por '+plan.ownerName+'): ya no cuenta como destruido');
+  /* L30 — Payoff: "Play this card immediately when a rival plays a duplicate
+     card for any Group you control." El suceso es el juego del duplicado;
+     la ventana solo abre si alguien tiene Payoff en mano (openEventWindow). */
+  openEventWindow({kind:'dup_played',byPid:pid,label:pl.name+' juega el duplicado '+dc.name,
+    data:{nodeUid:nd.uid,dupIdx:dupIdx,dupName:dc.name,enablerIdx:enablerIdx,
+          ownerPid:plan.ownerPid,claimed:false}});
   var out=publicState();
   out.lastPlotResult={ok:true,plot:ec.name,duplicate:dc.name,cost:costL11,
     releasedFrom:plan.ownerName,releasedFromPid:plan.ownerPid,assassinated:plan.assassinated};
@@ -3397,7 +3420,7 @@ var EVENT_CTX=null;
    aqui o su rama nunca se alcanzaria (el mismo defecto de clase "el dato existe
    pero vive en otro sitio" que P1-026 y P1-031). 278 Hex y 259 Foiled! NO entran:
    no responden a un suceso abierto, se juegan directamente. */
-var EVENT_KINDS=['stealing_the_plans','embezzlement','takeover_return'];
+var EVENT_KINDS=['stealing_the_plans','embezzlement','takeover_return','dup_payoff'];
 
 /* ¿Esta carta sirve para este suceso, y la puede jugar este jugador? */
 function eventReactionAllowed(eff,pid,ev){
@@ -3421,6 +3444,11 @@ function eventReactionAllowed(eff,pid,ev){
     if(eff.kind!=='stealing_the_plans')return {ok:false,why:'solo reacciona a que otro jugador descarte una Plot'};
     if(ev.data&&ev.data.taken)return {ok:false,why:'ese descarte ya fue reclamado'};
     if(ev.data&&ev.data.cardIdx==null)return {ok:false,why:'no hay ninguna Plot que robar'};
+    return {ok:true};
+  }
+  if(ev.kind==='dup_played'){
+    if(eff.kind!=='dup_payoff')return {ok:false,why:'solo reacciona a que otro jugador juegue un duplicado'};
+    if(ev.data&&ev.data.claimed)return {ok:false,why:'ese duplicado ya fue anulado'};
     return {ok:true};
   }
   if(ev.kind==='autoTakeover'){
@@ -6755,6 +6783,81 @@ case 'bulk_power':{
       lastResult={ok:true,plot:c.name,pending:true,
                   reason:'roba '+card(pM.data.cardIdx).name+', paga con '+card(pay).name};
       break;}
+    case 'dup_payoff':{
+      /* L30 — Payoff: "Play this card immediately when a rival plays a duplicate
+       * card for any Group you control. You have bought the loyalty of the
+       * dissident faction that your rival was courting. He must discard his
+       * duplicate Group card." Reacciona a la ventana 'dup_played' que abre
+       * E.playGroupFromHand (L11). "for any Group you control": el original
+       * duplicado es una carta que el reactivo destruyo y guardo
+       * (dupOriginalPlanL11 da ownerPid = quien la destruyo). Sin coste impreso.
+       * El duplicado va al descarte de Grupos y el contador de destruidos del
+       * reactivo se RESTAURA (inverso del paso 7 de L11). */
+      if(!S.pendingEvent)throw new Error(c.name+': no hay ningun suceso pendiente');
+      var pP=S.pendingEvent;
+      if(pP.kind!=='dup_played')throw new Error(c.name+': solo reacciona a un duplicado recien jugado');
+      if(pP.data.claimed)throw new Error(c.name+': ese duplicado ya fue anulado');
+      var okP=eventReactionAllowed(eff,pid,pP);
+      if(!okP.ok)throw new Error(c.name+': '+okP.why);
+      var ndP=findNode(pP.data.nodeUid);
+      if(ndP){
+        var owP=findOwnerPid(ndP.uid);
+        var parP=null;
+        if(owP!=null){
+          walk(S.players[owP].structure,function(nP){
+            if(parP)return;
+            for(var cP=0;cP<nP.children.length;cP++)
+              if(nP.children[cP].uid===ndP.uid){parP={parent:nP,k:cP};break;}
+          });
+        }
+        if(parP){
+          var dupP=parP.parent.children.splice(parP.k,1)[0];
+          S.groupDiscard.push(dupP.cardId);
+        }
+      }
+      var oqP=S.players[pP.data.ownerPid];
+      if(oqP&&oqP.destroyedByMe.indexOf(pP.data.dupIdx)<0)oqP.destroyedByMe.push(pP.data.dupIdx);
+      pP.data.claimed=true;pP.claimedTo=pid;pP.responders=[];
+      log(c.name+': '+pl.name+' compra al disidente: el duplicado '+(ndP?card(ndP.cardId).name:pP.data.dupName)+' de '+S.players[pP.byPid].name+' va al descarte');
+      lastResult={ok:true,plot:c.name,pending:true,reason:'el duplicado rival fue descartado'};
+      break;}
+    case 'resource_forge':{
+      /* L30 — Forgery: PLOT de takeover automatico. "...automatic takeover of a
+       * Resource card from your hand, duplicating any Unique Resource already in
+       * play. Your Resource is the real one. The owner of the other one must
+       * discard it." No paga accion (takeover automatico); consume el takeover
+       * libre del turno (mismo flag que E.autoTakeover). El duplicado es la
+       * Resource card que el jugador ELIGE de su mano; todos los ejemplares en
+       * juego de la carta duplicada van al descarte de Grupos. */
+      var ruF=(opts&&opts.resUid)||null;
+      var tgF=ruF?findResourceEntry(ruF):null;
+      if(!tgF)throw new Error(c.name+': elige el Unique Resource en juego que vas a duplicar (el motor no lo elige por ti)');
+      var tcF=card(tgF.entry.cardId);
+      if(!(tcF&&(tcF.unique===true||/unique/i.test(String(tcF.text||'')))))
+        throw new Error(c.name+': '+tcF.name+' no es un Unique Resource');
+      var rhiF=(opts&&opts.resourceHandIdx);
+      if(rhiF==null)throw new Error(c.name+': elige la Resource card de tu mano que entra en juego');
+      if(pl.hand.indexOf(rhiF)<0)throw new Error(c.name+': esa Resource card no esta en tu mano');
+      var rcF=card(rhiF);
+      if(!rcF||rcF.type!=='resource')throw new Error(c.name+': "'+rcF.name+'" no es una Resource card');
+      pl.flags.autoTakeover=true;
+      removeFromHand(pl,rhiF);
+      pl.resources.push({uid:'r'+(S.uidCounter++),cardId:rhiF,linkedTo:(opts&&opts.parentUid)||pl.illumId,tokens:0});
+      var deadF=[];
+      for(var qF=0;qF<S.players.length;qF++){
+        var arrF=S.players[qF].resources;
+        for(var rF=arrF.length-1;rF>=0;rF--){
+          if(arrF[rF].cardId===tgF.entry.cardId){
+            deadF.push({pid:qF,cardId:arrF[rF].cardId});
+            arrF.splice(rF,1);
+          }
+        }
+      }
+      deadF.forEach(function(dF){S.groupDiscard.push(dF.cardId);});
+      log(c.name+': '+pl.name+' coloca '+rcF.name+' duplicando a '+tcF.name+(deadF.length?(' — '+deadF.map(function(dF){return S.players[dF.pid].name;}).join(', ')+' descarta su ejemplar'):''));
+      lastResult={ok:true,card:c.name,kind:'resource_forge',placed:rcF.name,
+        duplicated:tcF.name,discarded:deadF.map(function(dF){return {pid:dF.pid,card:card(dF.cardId).name};})};
+      break;}
     case 'bodyguard':
     case 'talisman':{
       /* P1-016 — CARTAS DE CANCELACION. Estas dos cartas solo existen gracias a la
@@ -7508,6 +7611,13 @@ case 'bulk_power':{
          immediately after the other card is played". Misma via de reaccion. */
       throw new Error(c.name+': "'+'"It may be played at any time, as long as it used immediately after the other card is played."'+'" — no se juega desde la mano: solo como respuesta a una Plot recien jugada');
     }
+    case 'plot_negate_steal':{
+      /* 18 and a Half Minute Gap (L30): como Hoax, carta de REACCION; se juega
+       * con E.resolvePendingNegation('negate', ...), que cobra TODAS las fichas
+       * del Illuminati y descarta la cima de ambos mazos, y la Plot anulada va
+       * a la MANO del negador (stealToHand). */
+      throw new Error(c.name+': "'+'"Play this card immediately after someone else plays a Plot card."'+'" — no se juega desde la mano: solo como respuesta a una Plot recien jugada');
+    }
 
     /* ===== L25 — MODIFICAR EL PRIVILEGIO DE UN ATAQUE EN CURSO (P1-149) =====
      * 194 Interference: "You may interfere with a privileged attack, on either
@@ -8002,21 +8112,27 @@ E.resolvePendingNegation=function(action,rpid,cardIdx){
   if(!okN.ok)throw new Error(cN.name+': '+okN.why);
   /* COSTE: se paga DESPUES de validar todo (P1-033) y por el RESPONDIENTE. */
   var paidN=payNegationCost(rpid,eN,okN.via);
-  /* "Both cards are discarded": la Plot anulada sale de la mano del actor
-     (estaba todavia ahi: la ventana se abrio ANTES de la cola P1-012) y la
-     carta de negacion de la mano del respondiente. Cada una, UNA vez. */
+  /* Destino de la Plot anulada: descartada ("Both cards are discarded") o, para
+     18 and a Half Minute Gap (L30), robada ("Instead, add it to your own hand!").
+     La carta de negacion SIEMPRE se descarta. Cada carta, UNA vez. */
   var plP=S.players[P.pid];
   var hxP=plP.hand.indexOf(P.handIdx);
   if(hxP>=0)plP.hand.splice(hxP,1);
   var hxR=rP.hand.indexOf(cardIdx);
   if(hxR>=0)rP.hand.splice(hxR,1);
   S.pendingNegation=null;
-  discardPlot(P.handIdx,P.pid);
+  var stealN=!!eN.stealToHand;
+  if(stealN){
+    rP.hand.push(P.handIdx);
+    log(cN.name+' de '+rP.name+' anula '+P.cardName+' de '+plP.name+' y se la queda: "'+'"That card has no effect. Instead, add it to your own hand!"'+'"');
+  }else{
+    discardPlot(P.handIdx,P.pid);
+    log(cN.name+' de '+rP.name+' anula '+P.cardName+' de '+plP.name+': "'+'"That card has no effect. Both cards are discarded."'+'"');
+  }
   discardPlot(cardIdx,rpid);
-  log(cN.name+' de '+rP.name+' anula '+P.cardName+' de '+plP.name+': "'+'"That card has no effect. Both cards are discarded."'+'"');
   var out=publicState();
   out.lastPlotResult={ok:true,negated:true,card:cN.name,kind:eN.kind,negatedCard:P.cardName,
-    negator:rP.name,paid:paidN};
+    negator:rP.name,paid:paidN,stolen:stealN?card(P.handIdx).name:undefined};
   return out;
 };
 /* Sonda para la regresion y para la UI: el estado de la ventana de negacion. */

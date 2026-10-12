@@ -2525,11 +2525,9 @@ for (const k in L16_FX) { L16_FXN[norm(k)] = L16_FX[k]; }
  *    precedent engine.js:5713) y hay 16 grupos con atributo "computer" en el
  *    mazo, luego las dos ramas son alcanzables.
  *
- * Lo que NO se implementa y se declara: "18 and a Half Minute Gap" pertenece
- * a esta misma familia por su clausula temporal, pero su OCR esta truncado
- * ("Instead, add it to your...") y no aparece en la fuente de texto completa;
- * se declara como HUECO DE TEXTO (5to, junto a california, margaretthatcher,
- * ollienorth y vaticancity) en lugar de inventar el final del texto.
+ * "18 and a Half Minute Gap" pertenece a esta misma familia por su clausula
+ * temporal. (HUECO CERRADO en L30: la transcripcion completa salio del scribd
+ * y vive en L30_FX.)
  * ------------------------------------------------------------------ */
 const L22_FX = {
   'hoax': { kind:'plot_negate_prev',
@@ -2744,6 +2742,30 @@ const L29_FX = {
 };
 const L29_FXN = {};
 for (const k29 in L29_FX) { L29_FXN[norm(k29)] = L29_FX[k29]; }
+
+/* L30 — P1-160: Forgery, Payoff y 18 and a Half Minute Gap. Textos verbatim de
+ * research/scribd_inwo_cards_full.html. 18 and a Half Minute Gap CIERRA el hueco
+ * de texto declarado en la familia L22 (ver comentario de arriba): la
+ * transcripcion completa salio del scribd. */
+const L30_FX = {
+  'Forgery': {
+    kind: 'resource_forge',
+    t: 'Hah! You have been deceived by a clever duplicate—but we have the real thing! This card lets you make an automatic takeover of a Resource card from your hand, duplicating any Unique Resource already in play. Your Resource is the real one. The owner of the other one must discard it.'
+  },
+  'Payoff': {
+    kind: 'dup_payoff',
+    t: 'Play this card immediately when a rival plays a duplicate card for any Group you control. You have bought the loyalty of the dissident faction that your rival was courting. He must discard his duplicate Group card.'
+  },
+  '18 and a Half Minute Gap': {
+    kind: 'plot_negate_steal',
+    stealToHand: true,
+    costMode: 'illumAllGap',
+    gapDiscard: true,
+    t: 'Play this card immediately after someone else plays a Plot card. That card has no effect. Instead, add it to your own hand! You must spend all the Action tokens now on your Illuminati (minimum 1!), and discard the top undrawn card from both your Plot and Groups decks. Requires Discards and All Illuminati Actions'
+  }
+};
+const L30_FXN = {};
+for (const k30 in L30_FX) { L30_FXN[norm(k30)] = L30_FX[k30]; }
 
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
@@ -3034,7 +3056,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

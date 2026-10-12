@@ -1391,3 +1391,57 @@ Circles 232). FASE 4 queda con 0 Plots sin mecanica clasificable pendiente de lo
 **Lagunas DECLARADAS:** los "30 seconds" de Crop Circles no se simulan (no hay
 reloj en el motor). El remezclado tras la busqueda es uniforme (no se conserva el
 orden visto, que el impreso no exige).
+
+## 80. L30 - Forgery (260) + Payoff (333) + 18 and a Half Minute Gap (185)
+
+**Auditoria:** 2 plots unverified del backlog + el 5to hueco de texto de la
+familia L22 (185). Textos verbatim de `research/scribd_inwo_cards_full.html`;
+185 CIERRA el hueco declarado en gen_cards.js (~2528).
+
+- [x] L30.b DATOS: `L30_FX`/`L30_FXN` en `gen_cards.js` (`kind:'resource_forge'`
+      / `'dup_payoff'` / `'plot_negate_steal'` con `stealToHand`,
+      `costMode:'illumAllGap'`, `gapDiscard`); comentario del hueco L22
+      actualizado (HUECO CERRADO).
+- [x] L30.c MOTOR: `plot_negate_steal` en `isNegationKind` (185 es carta de
+      REACCION via `E.resolvePendingNegation('negate',...)`; su case rechaza
+      jugarla desde la mano); rama `illumAllGap` en `negationCostWays` (todas
+      las fichas del Illuminati, minimo 1; ambos mazos con carta) y bloque
+      `gapDiscard` en `payNegationCost` (cima de Plots y de Groups al
+      descarte); en `resolvePendingNegation`, `eff.stealToHand` manda la Plot
+      anulada a la MANO del negador (`lastPlotResult.stolen`) en vez de
+      descartarla; suceso `dup_played` abierto al final de
+      `E.playGroupFromHand` (L11) con `EVENT_KINDS` += `'dup_payoff'` (la
+      lista es de kinds de CARTAS de reaccion, no de sucesos) y rama
+      `dup_played` en `eventReactionAllowed`; case `dup_payoff`: saca el
+      duplicado de la estructura (al descarte de Grupos), RESTAURA el contador
+      `destroyedByMe` del reactivo (inverso del paso 7 de L11) y marca
+      `claimed`; case `resource_forge`: takeover automatico que duplica un
+      Unique Resource EN JUEGO eligiendo la Resource de la mano
+      (`opts.resUid`, `opts.resourceHandIdx`), consume `flags.autoTakeover`
+      (mismo flag que `E.autoTakeover`) y manda TODOS los ejemplares en juego
+      de la duplicada al descarte de Grupos.
+- [x] L30.d UI: `KIND_ES` (`dup_payoff`, `resource_forge`, `plot_negate_steal`);
+      `FIELD_ES` (`stealToHand`, `gapDiscard`).
+- [x] L30.e REGRESION (S1/S2/S3 en `test_fase2_rules.js`): Forgery coloca la
+      Resource elegida, consume el takeover, no paga ficha, el rival descarta
+      su ejemplar y la carta se gasta; Payoff abre ventana al jugar un
+      duplicado, el duplicado sale de la estructura al descarte, el contador de
+      destruidos se restaura, se marca claimed y la habilitadora va al
+      descarte; 185 anula la Plot rival, se la queda en mano, paga TODAS las
+      fichas del Illuminati y descarta la cima de ambos mazos. LECCIONES
+      (P1-160): (1) `EVENT_KINDS` lista kinds de cartas de reaccion, no kinds
+      de suceso; (2) tras `startGame()` el turno puede no ser del jugador 0:
+      los fixtures L30 usan `readyToAttack(pid)` antes de jugar; (3) el punto
+      de colocacion de `playGroupFromHand` debe ser un grupo propio, no el
+      Illuminati; (4) el `LOOT` del bloque L7 ya no admite indices fijos (185
+      era un hueco sin efecto y ahora abre ventanas de negacion): botin
+      dinamico determinista sin negadoras ni peek (regla 14).
+- [x] L30.f CIERRE: `npm test` = ALL TESTS PASSED (11 suites); `audit:mechanics`
+      sanidad limpia (0 NaN, 0 errores de ejecucion, 0 familias no manejadas;
+      implemented-pending-engine 162 -> 165); `?v=56`.
+
+**Lagunas DECLARADAS:** Payoff interpreta "for any Group you control" como el
+original que el reactivo destruyo y conserva (`dupOriginalPlanL11`); no se
+exige que ese grupo siga en juego. Forgery descarta TODOS los ejemplares en
+juego de la carta duplicada, no solo el de un rival (con 2+ ejemplares el
+impreso no distingue y el motor no inventa).
