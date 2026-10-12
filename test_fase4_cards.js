@@ -156,7 +156,15 @@ const BLOCKED_CARDS = {
    * mazo compartido (S.plotDeck), asi que "miro el mazo de ese rival" no tiene nada
    * que mirar. No es un texto sin transcribir: es una subspecies de motor que falta. */
   'anofferyoucantrefuse': '§52 "two extra Plot cards not from your deck, but from the deck of a rival" — el motor tiene UN S.plotDeck compartido, no mazos de Plot por jugador (INJUGABLE)',
-  'theinternetworm': '§52 "the top three undrawn cards in HIS Plot deck are discarded" — mismo hueco: no existe mazo de Plot de un rival que The Internet Worm pueda destruir (INJUGABLE)',
+  /* L26 · 395 The Internet Worm SALIO de esta lista, y el motivo es que su bloqueo era
+   * otro. Sigue faltando el mazo de Plot POR JUGADOR — por eso 191 sigue congelada. Pero
+   * 395 no mira la mano de nadie: "the top three undrawn cards in HIS Plot deck are
+   * discarded" se cumple sin mas sobre el unico S.plotDeck, y las tres cartas van
+   * DIRECTAS a S.plotDiscard sin pasar por discardPlot porque el impreso añade "No one
+   * may look at them" (es decir: el jugador no elige, y el rival no se entero). El
+   * efecto es observable en el unico sitio donde se puede observar un mazo global: las
+   * tres Plot que ya no se pueden robar. No se ha inventado un mazo por jugador para
+   * cerrar una carta; se ha leido la que hay. Ver seccion 51 de la auditoria. */
   'counterspell': '§38 un Resource no puede atacar ni ayudar a un ataque (esta en pl.resources con tokens:0 y sin nodo), asi que "any Magic Resource used to attack you" nunca ocurre',
   'hattrick': '§38 exigiria deshacer una Plot ya resuelta de forma transaccional',
   'ilied': '§38 el motor no tiene tratos que cumplir, luego el marcador no lo consumiria nadie (INJUGABLE)',

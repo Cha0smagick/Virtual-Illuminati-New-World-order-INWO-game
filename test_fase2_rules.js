@@ -8929,6 +8929,373 @@ function privilege25() {
     ok(ef.anyTime === true, 'L25 S5: las 3 se juegan con un ataque declarado, sin turno propio');
   });
 })();
+/* ===================== L26 - HACER QUE UN RIVAL PIERDA PLOT CARDS =====================
+ * 187 Agent in Place (peek_discard) · 266 George the Janitor (peek_choice) ·
+ * 395 The Internet Worm (deck_burn).   P1-154.
+ *
+ * Las tres imprimen "Play this card at any time. It requires an action by ..." y las tres
+ * hacen que un rival se quede SIN Plot cards. Cambia el COMO, y por eso son tres kinds:
+ * 187 hace que descarte una que el jugador elige viendo; 266 obliga al rival a elegir una
+ * y despues el jugador decide A CIEGAS; 395 quema las tres de cima sin que nadie las vea.
+ *
+ * Lo que se afirma es siempre el efecto OBSERVABLE y jamas la aritmetica: quien se queda
+ * sin la Plot, que hay en `S.plotDiscard`, en que etapa queda la ventana, y cuantas fichas
+ * se gastaron. NO se cuentan cartas en mano (las utilidades de test las mutan) y NO se mira
+ * `log[length-1]`: se busca en todo el log con `.some()` y se vuelcan las ultimas lineas.
+ */
+var C26 = {
+  agent: idxOfId('agentinplace'),       /* 187 */
+  janitor: idxOfId('georgethejanitor'), /* 266 */
+  worm: idxOfId('theinternetworm'),     /* 395 */
+  hackers: idxOfId('hackers'),          /* Poder IMPRESO 3, computer */
+  nsa: idxOfId('nsa'),                  /* Poder IMPRESO 5, computer */
+  algore: idxOfId('algore'),            /* Poder IMPRESO 1, computer */
+  ama3: idxOfId('ama'),                 /* Poder IMPRESO 3, NO computer */
+  lot1: idxOfId('logicbomb'),           /* Plot de relleno para la mano del rival */
+  lot2: idxOfId('mutualbetrayal')       /* Plot de relleno para la mano del rival */
+};
+function raw26() { return E._raw(); }
+function pk26() { return E.getState().pendingPeek; }
+function hand26(pid) { return raw26().players[pid].hand.slice(); }   /* COPIA, para comparar */
+function said26(re) {
+  return raw26().log.some(function (l) { return re.test(l.msg || String(l)); });
+}
+function last3_26() {
+  return JSON.stringify((raw26().log || []).slice(-3).map(function (x) { return x.msg; }));
+}
+function err26(fn) { return throwMsgL14(fn); }
+
+/* ---------- S1: 187 Agent in Place — ve las Plot ocultas del rival y le hace descartar una ---------- */
+(function L26_S1() {
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  hand22(0, C26.agent);
+  hand22(1, C26.lot1);
+  plant(0, 'a26', C26.nsa, 1);
+
+  E.playPlot(0, C26.agent, null, {});
+  var PK = pk26();
+  ok(!!PK, 'L26 S1: 187 abre la ventana de espionaje ("You may look at all his hidden Plot cards")');
+  ok(PK && PK.kind === 'peek_discard' && PK.discardable === true,
+     'L26 S1: la ventana se abre en modo "descartar una" y no en modo robar/exponer');
+  ok(PK && PK.rivalPid === 1, 'L26 S1: el rival elegido es el unico que tiene Plot ocultas');
+  ok(PK && PK.restCount >= 1 && PK.cards.length >= 1,
+     'L26 S1: la ventana lista al menos una Plot oculta de ' + (PK ? PK.rivalName : '?') +
+     ' -> restCount=' + (PK ? PK.restCount : '?') + ' / ' + last3_26());
+  ok(node16(0, 'a26').tokens === 0,
+     'L26 S1: se gasto la UNICA accion del grupo con Poder 4 o mas (' + C.cards[C26.nsa].name + ', Poder impreso ' +
+     C.cards[C26.nsa].power + '), como imprime el texto');
+  ok(said26(/Agent in Place.*mira \d+ Plot oculta\(s\) de B/),
+     'L26 S1: el registro nombra la carta y a quien mira -> ' + last3_26());
+
+  /* Ahora la eleccion del jugador: una de las que ha visto. Se cierra primero la ventana de
+     suceso de la propia jugada, porque `discardPlot` no pisa una decision ajena. */
+  var victim = PK.cards[0].idx;
+  var handRivalAntes = hand26(1);
+  var descAntes = raw26().plotDiscard.slice();
+  clear24();
+  var rr1 = E.resolvePendingPeek({ discardOne: victim }, 0);
+  var res1 = rr1.lastPlotResult || {};
+
+  var despues = raw26().plotDiscard;
+  var anadidas = despues.slice(descAntes.length);
+  ok(anadidas.length === 1 && anadidas[0] === victim,
+     'L26 S1: la Plot elegida por el jugador va al DESCARTE (P1-025) -> +' + anadidas.length +
+     ' carta(s): ' + JSON.stringify(anadidas.map(function (ix) { return C.cards[ix].name; })));
+  ok(raw26().players[1].hand.indexOf(victim) < 0,
+     'L26 S1: el rival se ha quedado SIN la Plot en la mano');
+  ok(raw26().players[1].revealedBy.indexOf(victim) >= 0,
+     'L26 S1: el rival sabe cual ha perdido (queda en revealedBy)');
+  ok(hand26(1).length === handRivalAntes.length - 1,
+     'L26 S1: solo se ha perdido UNA Plot, no todas -> ' + handRivalAntes.length + ' -> ' + hand26(1).length);
+  ok(pk26() === null, 'L26 S1: la ventana queda cerrada tras la eleccion');
+  /* 187 SI dice QUE carta se ha perdido (nombra el nombre); 395 no (S5). Ese contraste es
+     el punto de la familia, asi que se comprueba aqui contra el propio resultado. OJO: NO se
+     comprueba que haya `pendingEvent`, porque `openEventWindow` solo abre si alguien puede
+     reaccionar al suceso — con las manos vacias no hay ventana, y eso es lo correcto. */
+  ok(res1.ok === true && res1.by === 'A' && res1.from === 'B' &&
+     res1.discarded === C.cards[victim].name,
+     'L26 S1: el resultado nombra la carta perdida, quien la hace descartar y de quien es -> ' +
+     JSON.stringify(res1));
+  /* OJO: el registro dice "hace que B DESCARTE" (tercera persona: lo hace el rival). */
+  ok(said26(new RegExp('descarte ' + C.cards[victim].name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))),
+     'L26 S1: el registro dice que el rival hace que se descarte ' + C.cards[victim].name + ' -> ' + last3_26());
+})();
+
+/* ---------- S2: 187 — los rechazos con el motivo IMPRESO, y atomicidad en todos ---------- */
+(function L26_S2() {
+  var S = [];
+  function esc(txt, cond) { S.push([txt, cond]); }
+
+  /* (a) 187 sin ninguna ficha de grupo propio: "requires an action by one group with a
+   *     Power of 4 or more" — el grupo de Poder 3 NO paga (se mira el IMPRESO, como en 303). */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  hand22(0, C26.agent);
+  hand22(1, C26.lot1);
+  plant(0, 'a26', C26.algore, 1);           /* Poder impreso 1 */
+  plant(0, 'b26', C26.ama3, 1);              /* Poder impreso 3, y NO es computer */
+  var ma = err26(function () { return E.playPlot(0, C26.agent, null, {}); });
+  esc('S2a 187 sin grupo de Poder 4+: ' + (ma || '(NO lanzo)'),
+      /Poder de 4 o mas/.test(ma));
+  esc('S2a NO se abre ventana', pk26() === null);
+  esc('S2a las dos fichas intactas (atomicidad)',
+      node16(0, 'a26').tokens === 1 && node16(0, 'b26').tokens === 1);
+  esc('S2a la Plot sigue en mi mano', raw26().players[0].hand.indexOf(C26.agent) >= 0);
+
+  /* (b) descartar una Plot que NO estaba entre las vistas */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  hand22(0, C26.agent);
+  hand22(1, C26.lot1);
+  plant(0, 'a26', C26.nsa, 1);
+  var oculta = raw26().plotDeck.slice();
+  E.playPlot(0, C26.agent, null, {});
+  var antes2 = raw26().plotDiscard.slice();
+  var r2 = E.resolvePendingPeek({ discardOne: oculta[0] }, 0);  /* esta en el MAZO, no en la ventana */
+  var res2 = r2.lastPlotResult || {};
+  esc('S2b una Plot que no estaba entre las vistas: ' + (res2.reason || JSON.stringify(res2)),
+      res2.ok === false && /no estaba entre las que viste/.test(res2.reason || ''));
+  esc('S2b el descarte NO cambia', raw26().plotDiscard.length === antes2.length);
+  esc('S2b la ventana sigue ABIERTA (el jugador puede elegir bien)', !!pk26());
+
+  /* (c) el alcance de la ventana: 187 NO autoriza "exponer todas" */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  hand22(0, C26.agent);
+  hand22(1, C26.lot1);
+  plant(0, 'a26', C26.nsa, 1);
+  E.playPlot(0, C26.agent, null, {});
+  var manoRival3 = hand26(1);
+  var r3 = E.resolvePendingPeek({ exposeAll: true }, 0);
+  var res3 = r3.lastPlotResult || {};
+  esc('S2c 187 con exposeAll (no impreso): ' + (res3.reason || JSON.stringify(res3)),
+      res3.ok === true && /no se ha hecho nada/.test(res3.reason || ''));
+  esc('S2c el rival conserva TODAS sus Plot ocultas',
+      JSON.stringify(hand26(1)) === JSON.stringify(manoRival3));
+
+  S.forEach(function (p) { ok(p[1], 'L26 S2: ' + p[0]); });
+})();
+
+/* ---------- S3: 266 George the Janitor — el rival elige, y despues el jugador decide A CIEGAS ---------- */
+(function L26_S3() {
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  hand22(0, C26.janitor);
+  hand22(1, C26.lot1);
+  hand22(1, C26.lot2);
+  plant(0, 'a26', C26.algore, 1);   /* "an action by one group": cualquiera, sin Poder minimo */
+
+  E.playPlot(0, C26.janitor, null, {});
+  var PK = pk26();
+  ok(!!PK && PK.staged === true && PK.stage === 1,
+     'L26 S3: 266 abre la ventana en ETAPA 1, que es la del RIVAL ("That rival must now pick")');
+  ok(!!PK && PK.restCount >= 2,
+     'L26 S3: el rival tiene al menos 2 Plot ocultas para elegir -> ' + (PK ? PK.restCount : '?') + ' / ' + last3_26());
+  ok(node16(0, 'a26').tokens === 0,
+     'L26 S3: se gasto la UNICA accion de MI grupo (el pagador lo elige el motor, no el jugador)');
+  ok(said26(/George the Janitor.*obliga a B a elegir una Plot oculta/),
+     'L26 S3: el registro nombra la carta y a quien obliga -> ' + last3_26());
+
+  var posElegida = 1;
+  var elegida = PK.cards[posElegida].idx;
+  var resto = PK.cards.filter(function (c, i) { return i !== posElegida; })
+                      .map(function (c) { return c.idx; });
+  var manoAntes = hand26(1);
+
+  /* ETAPA 1: responde el RIVAL (actorPid = rivalPid), no quien abrio la ventana. */
+  var r1 = E.resolvePendingPeek({ janitorPick: posElegida }, 1);
+  var PK2 = pk26();
+  ok(PK2 && PK2.stage === 2,
+     'L26 S3: tras la eleccion del rival la ventana SIGUE ABIERTA y pasa a ETAPA 2 -> ' +
+     JSON.stringify(r1.lastPlotResult || {}));
+  ok(PK2 && PK2.cards.length === 0,
+     'L26 S3: en ETAPA 2 el motor ya NO proyecta las cartas — es "without looking" (P1-152)');
+  ok(PK2 && PK2.restCount === PK.restCount,
+     'L26 S3: lo unico que se ve en ETAPA 2 es un RECUENTO (' + (PK2 ? PK2.restCount : '?') +
+     '), que no filtra nada');
+  ok(JSON.stringify(hand26(1)) === JSON.stringify(manoAntes),
+     'L26 S3: en ETAPA 1 todavia NO se ha perdido ninguna Plot (solo se ha elegido una)');
+
+  /* ETAPA 2: responde el DUENO ("Now you decide"). Rama "picked". */
+  E.resolvePendingPeek({ janitorBlind: 'picked' }, 0);
+  ok(raw26().players[1].hand.indexOf(elegida) < 0,
+     'L26 S3: "que exponga la que ha elegido" — el rival se queda SIN esa Plot en la mano');
+  ok(raw26().players[0].exposedPlots.indexOf(elegida) >= 0,
+     'L26 S3: la Plot elegida queda EXPUESTA (lo dice "expose that card")');
+  var siguenOcultas = resto.every(function (ix) { return raw26().players[1].hand.indexOf(ix) >= 0; });
+  ok(siguenOcultas,
+     'L26 S3: las OTRAS Plot del rival siguen ocultas y en su mano — no se exponen de rebote');
+  ok(raw26().players[1].revealedBy.indexOf(elegida) >= 0,
+     'L26 S3: el rival sabe cual ha tenido que exponer');
+  ok(pk26() === null, 'L26 S3: la ventana queda cerrada tras la etapa 2');
+})();
+
+/* ---------- S4: 266 — la rama "rest" y los rechazos de actor (QUIEN decide) ---------- */
+(function L26_S4() {
+  var S = [];
+  function esc(txt, cond) { S.push([txt, cond]); }
+
+  /* (a) rama "rest": "or expose all his other hidden Plots" */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  hand22(0, C26.janitor);
+  hand22(1, C26.lot1);
+  hand22(1, C26.lot2);
+  plant(0, 'a26', C26.algore, 1);
+  E.playPlot(0, C26.janitor, null, {});
+  var PK = pk26();
+  var posE = 0, elegidaE = PK.cards[0].idx;
+  var otras = PK.cards.filter(function (c, i) { return i !== posE; }).map(function (c) { return c.idx; });
+  E.resolvePendingPeek({ janitorPick: posE }, 1);
+  E.resolvePendingPeek({ janitorBlind: 'rest' }, 0);
+  var expuestas = otras.every(function (ix) { return raw26().players[0].exposedPlots.indexOf(ix) >= 0; });
+  esc('S4a "rest": se exponen TODAS LAS OTRAS (' + otras.length + ')', expuestas);
+  esc('S4a "rest": cada otra sale de la mano del rival',
+      otras.every(function (ix) { return raw26().players[1].hand.indexOf(ix) < 0; }));
+  esc('S4a "rest": la que eligio NO se expone (sigue oculta)',
+      raw26().players[0].exposedPlots.indexOf(elegidaE) < 0 &&
+      raw26().players[1].hand.indexOf(elegidaE) >= 0);
+
+  /* (b) la etapa 1 NO la puede resolver quien abrio la ventana */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  hand22(0, C26.janitor);
+  hand22(1, C26.lot1);
+  plant(0, 'a26', C26.algore, 1);
+  E.playPlot(0, C26.janitor, null, {});
+  var rb = E.resolvePendingPeek({ janitorPick: 0 }, 0);      /* actor equivocado: el dueno */
+  var resb = rb.lastPlotResult || {};
+  esc('S4b el dueno NO puede elegir en ETAPA 1: ' + (resb.reason || JSON.stringify(resb)),
+      resb.ok === false && /rival/.test(resb.reason || ''));
+  esc('S4b la ventana sigue en ETAPA 1', pk26() && pk26().stage === 1);
+
+  /* (c) la etapa 2 NO la puede resolver el rival */
+  E.resolvePendingPeek({ janitorPick: 0 }, 1);
+  var rc = E.resolvePendingPeek({ janitorBlind: 'picked' }, 1);  /* actor equivocado: el rival */
+  var resc = rc.lastPlotResult || {};
+  esc('S4c el rival NO puede decidir en ETAPA 2: ' + (resc.reason || JSON.stringify(resc)),
+      resc.ok === false && /de quien abrio la ventana/.test(resc.reason || ''));
+  esc('S4c NO se ha expuesto nada todavia', raw26().players[0].exposedPlots.length === 0);
+
+  /* (d) un valor que no es 'picked' ni 'rest' */
+  var rd = E.resolvePendingPeek({ janitorBlind: 'todo' }, 0);
+  var resd = rd.lastPlotResult || {};
+  esc('S4d valor invalido: ' + (resd.reason || JSON.stringify(resd)),
+      resd.ok === false && /picked/.test(resd.reason || ''));
+  esc('S4d la ventana sigue en ETAPA 2', pk26() && pk26().stage === 2);
+
+  /* (e) no se puede decidir A CIEGAS sin que el rival haya elegido: se salta a la etapa 2 */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  hand22(0, C26.janitor);
+  hand22(1, C26.lot1);
+  plant(0, 'a26', C26.algore, 1);
+  E.playPlot(0, C26.janitor, null, {});
+  var re_ = E.resolvePendingPeek({ janitorBlind: 'picked' }, 0);   /* la ventana esta en ETAPA 1 */
+  var rese = re_.lastPlotResult || {};
+  esc('S4e decidir a ciegas sin eleccion del rival: ' + (rese.reason || JSON.stringify(rese)),
+      rese.ok === false && /primero el rival elige una/.test(rese.reason || ''));
+  esc('S4e NO se ha expuesto ninguna Plot', raw26().players[0].exposedPlots.length === 0);
+  esc('S4e la ventana sigue en ETAPA 1, esperando al rival', pk26() && pk26().stage === 1);
+
+  S.forEach(function (p) { ok(p[1], 'L26 S4: ' + p[0]); });
+})();
+
+/* ---------- S5: 395 The Internet Worm — quema las tres de cima SIN QUE NADIE LAS MIRE ---------- */
+(function L26_S5() {
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  hand22(0, C26.worm);
+  E._raw().players[0].illumTokens = 1;
+
+  var mazo = raw26().plotDeck.slice();
+  var desc = raw26().plotDiscard.slice();
+  var n0 = mazo.length;
+  ok(n0 >= 3, 'L26 S5: el mazo de Plot tiene al menos 3 cartas para quemar -> ' + n0);
+  var quemadas = [mazo[n0 - 1], mazo[n0 - 2], mazo[n0 - 3]];   /* topOfDeck saca con pop() */
+  var nombres = quemadas.map(function (ix) { return C.cards[ix].name; });
+
+  var r = E.playPlot(0, C26.worm, null, {});
+  var res = r.lastPlotResult || {};
+  ok(raw26().plotDeck.length === n0 - 3,
+     'L26 S5: salen 3 cartas del mazo de Plot -> ' + n0 + ' -> ' + raw26().plotDeck.length);
+  /* La propia carta jugada tambien va al descarte (cola de playPlot), asi que se filtra
+   fuera: lo que hay que comprobar es que las TRES quemadas estan y en ese orden. */
+  var anadidas = raw26().plotDiscard.filter(function (ix) { return ix !== C26.worm; }).slice(-3);
+  ok(anadidas.length === 3 && anadidas[0] === quemadas[0] &&
+     anadidas[1] === quemadas[1] && anadidas[2] === quemadas[2],
+     'L26 S5: van al DESCARTE las tres de cima, en ese orden -> ' +
+     JSON.stringify(anadidas.map(function (ix) { return C.cards[ix].name; })));
+  ok(/3 Plot de la cima se descartaron a ciegas/.test(res.reason || ''),
+     'L26 S5: el resultado dice que se descartaron A CIEGAS -> ' + JSON.stringify(res));
+  ok(raw26().players[0].illumTokens === 0,
+     'L26 S5: se gasto la UNICA accion de mi Illuminati ("requires an action by your Illuminati")');
+  /* ESTA es la asercion de "No one may look at them": ninguno de los tres nombres sale. */
+  ok(nombres.every(function (nm) { return !said26(new RegExp(nm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))); }),
+     'L26 S5: NINGUNO de los tres nombres sale en el registro — "No one may look at them" -> ' +
+     nombres.join(' / ') + ' || ' + last3_26());
+  ok(nombres.length === 3,
+     'L26 S5: el escenario ha fijado 3 nombres que comprobar (control de lectura)');
+
+  /* El mazo de Plot es GLOBAL: "one of your rivals" no da eleccion de destino. */
+  ok(raw26().players[0].hand.indexOf(C26.worm) < 0, 'L26 S5: la 395 sale de mi mano al jugarse');
+})();
+
+/* ---------- S6: 395 — la rama Computer, el filtro de atributo, y atomicidad ---------- */
+(function L26_S6() {
+  var S = [];
+  function esc(txt, cond) { S.push([txt, cond]); }
+
+  /* (a) un solo grupo Computer con Poder impreso 3 basta ("a total Power of 3 or more") */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  hand22(0, C26.worm);
+  E._raw().players[0].illumTokens = 0;
+  plant(0, 'a26', C26.hackers, 1);          /* hackers: Poder impreso 3, computer */
+  var mazoA = raw26().plotDeck.length;
+  E.playPlot(0, C26.worm, null, {});
+  esc('S6a 395 pagada con UN grupo Computer de Poder 3',
+      raw26().plotDeck.length === mazoA - 3 && node16(0, 'a26').tokens === 0);
+
+  /* (b) Poder Computer TOTAL insuficiente: NO se gasta nada (dos pasadas, P1-033) */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  hand22(0, C26.worm);
+  E._raw().players[0].illumTokens = 0;
+  plant(0, 'a26', C26.algore, 1);           /* computer, Poder impreso 1 */
+  plant(0, 'b26', C26.ama3, 1);              /* NO computer, Poder impreso 3 */
+  var mazoB = raw26().plotDeck.length, descB = raw26().plotDiscard.length;
+  var mb = err26(function () { return E.playPlot(0, C26.worm, null, {}); });
+  esc('S6b Poder Computer total 1 < 3: ' + (mb || '(NO lanzo)'),
+      /necesitas 3 de Poder de grupos computer/.test(mb || ''));
+  esc('S6b NO se quema nada', raw26().plotDeck.length === mazoB &&
+      raw26().plotDiscard.length === descB);
+  esc('S6b las DOS fichas intactas (atomicidad)',
+      node16(0, 'a26').tokens === 1 && node16(0, 'b26').tokens === 1);
+  esc('S6b la 395 sigue en mi mano', raw26().players[0].hand.indexOf(C26.worm) >= 0);
+
+  /* (c) un grupo NO computer con Poder 3 NO paga: el filtro de atributo es real */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  hand22(0, C26.worm);
+  E._raw().players[0].illumTokens = 0;
+  plant(0, 'a26', C26.ama3, 1);              /* Poder impreso 3 pero NO computer */
+  var mazoC = raw26().plotDeck.length;
+  var mc = err26(function () { return E.playPlot(0, C26.worm, null, {}); });
+  esc('S6c un Poder 3 que NO es computer no paga: ' + (mc || '(NO lanzo)'), (mc || '') !== '');
+  esc('S6c NO se quema nada', raw26().plotDeck.length === mazoC);
+  esc('S6c su ficha sigue intacta', node16(0, 'a26').tokens === 1);
+
+  /* (d) y el Illuminati tiene prioridad: con ficha suya no hace falta ningun grupo */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  hand22(0, C26.worm);
+  E._raw().players[0].illumTokens = 1;
+  var mazoD = raw26().plotDeck.length;
+  E.playPlot(0, C26.worm, null, {});
+  esc('S6d con accion de Illuminati se queman las 3 y NO se toca ningun grupo',
+      raw26().plotDeck.length === mazoD - 3 && raw26().players[0].illumTokens === 0);
+
+  /* (e) el mazo no llega a 3: el motivo es el oficial y no se cobra nada */
+  fresh(firstOf('adepts'), firstOf('cthulhu'));
+  hand22(0, C26.worm);
+  E._raw().players[0].illumTokens = 1;
+  while (raw26().plotDeck.length > 1) raw26().plotDeck.pop();
+  var me = err26(function () { return E.playPlot(0, C26.worm, null, {}); });
+  esc('S6e mazo de 1 carta: ' + (me || '(NO lanzo)'), /solo tiene 1/.test(me || ''));
+  esc('S6e la ficha del Illuminati NO se gasto', raw26().players[0].illumTokens === 1);
+
+  S.forEach(function (p) { ok(p[1], 'L26 S6: ' + p[0]); });
+})();
+
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });

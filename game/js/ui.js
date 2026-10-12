@@ -710,6 +710,89 @@ function attackPanel(st) {
     }
     $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar">' + dh + '</div>');
   }
+  /* L26 · VENTANA DE ESPIONAJE. Abarca los cuatro kinds de `PEEK_KINDS` de L7 (303, 322,
+   * 386, 242) y los tres de L26 (187, 266) — P1-151: hasta ahora el motor sabia abrirlas y
+   * cerrarlas, pero la UI NO las pintaba ni tenia forma de cerrarlas, de modo que jugar 303,
+   * 322, 386 o 242 desde el navegador dejaba la partida ATASCADA. Para 187 y 266 eso era
+   * bloqueante, asi que se cierra la laguna de las cuatro a la vez.
+   * No hay ningun boton "resolver": el efecto de estas cartas ES la decision que se toma
+   * viendo las cartas, asi que —igual que `pendingDraw`, la unica de las ventanas
+   * anteriores en la que el efecto es la decision— cada boton ES una respuesta. Quien es
+   * el actor de cada respuesta lo decide `app.js` en `onResolvePeek`, porque en la etapa 1
+   * del 266 quien elige es el RIVAL y no quien abrio la ventana. */
+  var PK = st.pendingPeek;
+  if (PK) {
+    var ph = '<b>' + esc(PK.label) + '</b>';
+    var nPj = PK.restCount || 0, cJx = 0, cDx = 0, nEx = 0, cSx = 0;
+    if (PK.cancelledBy) {
+      ph += '<br>La anul&oacute; ' + esc(PK.cancelledBy.card) + ' de ' + esc(PK.cancelledBy.by) +
+            ': no ver&aacute;s ninguna de sus Plot.';
+    } else if (PK.staged && PK.stage === 1) {
+      /* 266 George the Janitor, etapa 1: "That rival must now pick one of his hidden Plot
+       * cards". Quien elige es el rival. El dueno ve las mismas cartas porque la pantalla es
+       * compartida: es un pacto de "no mires", no una barrera tecnica (LIMITACION). */
+      ph += '<br>' + esc(PK.rivalName) + ' debe elegir UNA de sus ' + nPj + ' Plot ocultas.';
+      for (cJx = 0; cJx < PK.cards.length; cJx++) {
+        ph += ' <button data-act="peekjanitor" data-i="' + cJx +
+              '" title="Obligarle a elegir esta Plot">' + esc(PK.cards[cJx].name) + '</button>';
+      }
+    } else if (PK.staged && PK.stage === 2) {
+      /* Etapa 2: "Now you decide (without looking) whether he must expose that card, or
+       * expose all his other hidden Plots." El motor ya no proyecta las cartas aqui. */
+      ph += '<br>Sin mirar: ' + esc(PK.rivalName) + ' ya ha elegido una de sus ' + nPj +
+            ' Plot ocultas. Ahora decide.';
+      ph += ' <button data-act="peekblind" data-v="picked" class="primary"' +
+            ' title="Que exponga solo la que ha elegido">que exponga la que ha elegido</button>';
+      ph += ' <button data-act="peekblind" data-v="rest"' +
+            ' title="Que exponga todas las demas">que exponga las OTRAS</button>';
+    } else if (PK.discardable) {
+      /* 187 Agent in Place: "You may look at all his hidden Plot cards, and pick one for him
+       * to discard!" — uno por boton, con el indice de carta y no la posicion, porque el
+       * motor exige que sea una de las que vio. */
+      ph += '<br>Elige UNA de las ' + nPj + ' Plot ocultas de ' + esc(PK.rivalName) +
+            ' para que la descarte.';
+      for (cDx = 0; cDx < PK.cards.length; cDx++) {
+        ph += ' <button data-act="peekdiscard" data-i="' + PK.cards[cDx].idx +
+              '" title="Hacer que descarte esta Plot">' + esc(PK.cards[cDx].name) + '</button>';
+      }
+    } else if (PK.kind === 'peek_expose') {
+      /* 322 Mutual Betrayal: "expose any or all of them, as long as you also expose an equal
+       * number of your own Plots". El motor acota el numero pedido a lo que tengas propio sin
+       * exponer, asi que el boton no promete una cantidad que luego no se cumpla. */
+      ph += '<br>Cu&aacute;ntas de sus ' + nPj +
+            ' Plot ocultas expones, y otras tantas tuyas.';
+      for (nEx = 1; nEx <= nPj; nEx++) {
+        ph += ' <button data-act="peekexposeeq" data-v="' + nEx + '" title="Exponer ' + nEx +
+              ' suyas y otras ' + nEx + ' tuyas">' + nEx + '</button>';
+      }
+    } else {
+      /* 303 Logic Bomb ("choose one to take for yourself") y 386 The Auditor from Hell
+       * ("choose one to take for yourself, or expose them all!"). */
+      if (PK.kind === 'peek_rob') ph += '<br>Qued&aacute;tela con una, o exp&oacute;nelas todas.';
+      for (cSx = 0; cSx < PK.cards.length; cSx++) {
+        ph += ' <button data-act="peeksteal" data-i="' + PK.cards[cSx].idx +
+              '" title="Quedarme con esta Plot">' + esc(PK.cards[cSx].name) + '</button>';
+      }
+      if (PK.kind === 'peek_rob') {
+        ph += ' <button data-act="peekexposeall"' +
+              ' title="Exponerlas todas en vez de robar una">exponer TODAS</button>';
+      }
+    }
+    /* El 242 Double-Cross se juega desde la mano (no es una decision de esta ventana), asi
+     * que aqui solo se avisa de que hay alguien que puede anularla. */
+    if (PK.responders && PK.responders.length) {
+      ph += '<br><small>' + esc(PK.responders[0].cardName) + ' de ' +
+            esc(PK.responders[0].name) + ' puede anularla si lo juegas ahora.</small>';
+    }
+    if (!PK.cancelledBy && !(PK.staged && PK.stage === 1)) {
+      /* "you MAY" (DECLARACION 5): el motor no puede obligar a decidir, asi que siempre hay
+       * salida. En la etapa 1 del 266 NO se ofrece, porque el impreso si obliga
+       * ("must now pick"); ahi el unico camino es elegir una. */
+      ph += ' <button data-act="peeknone"' +
+            ' title="No hacer nada con lo que has visto">nada</button>';
+    }
+    $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar">' + ph + '</div>');
+  }
   /* L8c — 405 Unlucky 13: ventana de COMIENZO DE TURNO. A diferencia de las otras
    * ventanas, aqui el efecto ES la decision: jugar la carta o dejar pasar. El motor
    * solo la abre si un HUMANO distinto del jugador del turno tiene 405 en mano, y
@@ -1094,7 +1177,14 @@ var NO_TARGET_KINDS = ['token_gift', 'attack_boost', 'deck_manip', 'turn_start_b
   /* L16 — 379 Sweeping Reforms descarta TODAS las cartas New World Order que haya en
    * juego: no hay un objetivo unico que elegir. 207 (nwo_discard_one) SI elige una
    * concreta y por eso NO entra aqui (lleva boton propio). */
-  'nwo_discard_all', 'attack_privilege'];
+  'nwo_discard_all', 'attack_privilege',
+  /* L26 (187 Agent in Place, 266 George the Janitor, 395 The Internet Worm): las tres
+   * "hacen que un rival PIERDA Plot cards", pero no hay un nodo que elegir. El RIVAL lo
+   * elige el motor con `firstRivalWithHidden(pid)` (o da igual, en 395, porque el mazo de
+   * Plot es global) y el grupo que paga la accion lo elige `firstUsableAid` segun el
+   * calificador impreso. Por eso van por "Jugar ya" igual que las de L25: si pidieran
+   * objetivo, el jugador tendria que adivinar cual es. */
+  'peek_discard', 'peek_choice', 'deck_burn'];
 /* L8a — MENU DE MANIPULACION DE MAZO (361 Savings & Loan Scam, 388 The Big Sellout,
  * 411 Voodoo Economics).
  *
@@ -1872,7 +1962,10 @@ var KIND_ES = {
   messiah: 'El Mesias', mistakenidentity: 'Identidad equivocada',
   mothersmarch: 'La marcha de las madres', murphyslaw: 'La ley de Murphy',
   peek_block: 'Mirar y bloquear', peek_expose: 'Mirar y exponer', peek_rob: 'Mirar y robar',
-  peek_steal: 'Mirar y robar la carta', power_increase: 'Aumentar Poder',
+  peek_steal: 'Mirar y robar la carta',
+  /* L26 — las tres quitan Plot cards a un rival, cada una de una manera. */
+  peek_discard: 'Mirar y hacer que descarte una', peek_choice: 'Obligar a elegir y decidir a ciegas',
+  deck_burn: 'Quemar las tres de cima', power_increase: 'Aumentar Poder',
   resource_effect: 'Manipulacion de Resources',
   res_attack_bonus: 'Bono de ataque con un Resource',
   privileged_attack: 'Ataque Privilegiado', res_nullify: 'Anular Recurso',
@@ -2468,6 +2561,16 @@ function bindEvents() {
     else if (act === 'drawrestbot') { drawRest = 'bottom'; render(curState); }
     else if (act === 'drawpick') { clearSel(); CB.onResolveDraw({ pick: parseInt(btn.getAttribute('data-i'), 10), rest: drawRest }); }
     else if (act === 'drawtake') { clearSel(); CB.onResolveDraw({ take: btn.getAttribute('data-v') }); }
+      /* L26 · respuesta de la ventana de ESPIONAJE. Cada boton ES la decision (P1-151), asi
+       * que no hay un "resolver" aparte. `actorPid` no se pasa aqui: lo elige `app.js` en
+       * `onResolvePeek`, porque en la etapa 1 del 266 decide el rival y no quien la abrio. */
+      else if (act === 'peekjanitor') { clearSel(); CB.onResolvePeek({ janitorPick: parseInt(btn.getAttribute('data-i'), 10) }); }
+      else if (act === 'peekblind') { clearSel(); CB.onResolvePeek({ janitorBlind: btn.getAttribute('data-v') }); }
+      else if (act === 'peekdiscard') { clearSel(); CB.onResolvePeek({ discardOne: parseInt(btn.getAttribute('data-i'), 10) }); }
+      else if (act === 'peeksteal') { clearSel(); CB.onResolvePeek({ steal: parseInt(btn.getAttribute('data-i'), 10) }); }
+      else if (act === 'peekexposeall') { clearSel(); CB.onResolvePeek({ exposeAll: true }); }
+      else if (act === 'peekexposeeq') { clearSel(); CB.onResolvePeek({ exposeEqual: parseInt(btn.getAttribute('data-v'), 10) }); }
+      else if (act === 'peeknone') { clearSel(); CB.onResolvePeek(null); }
     else if (act === 'turnstartplay') { clearSel(); CB.onTurnStartPlay(parseInt(btn.getAttribute('data-i'), 10), btn.getAttribute('data-c')); }
     else if (act === 'turnstartpass') { clearSel(); CB.onTurnStartPass(); }
     /* L9 — 332 Orbital Mind Control Lasers. `pick` es el paso 1 (elegir grupo): no

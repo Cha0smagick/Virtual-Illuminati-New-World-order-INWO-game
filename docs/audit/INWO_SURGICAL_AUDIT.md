@@ -9078,3 +9078,13 @@ tienen EOL mixto en el arbol de trabajo.
   `S.pendingNegation` de L22.
 - Flake preexistente declarado: `test_appflow.js` ("No se puede terminar el turno
   con un ataque sin resolver"), visto una vez, no reproducido.
+
+## 77. L26 - FAMILIA DE ESPIAJE/PEEK (peek + peek_discard + deck_burn, 3 cartas, P1-151..P1-153)
+
+**Cartas**: 187 Agent in Place (peek_discard: mira N Plots ocultas del rival y descarta 1), 266 George the Janitor (peek: mira, sin descarte), 395 The Internet Worm (deck_burn: quema las 3 primeras sin robar del mazo global de Plot, "No one may look at them"). 395 paga con accion del Illuminati O grupos Computer con Poder total >= 3 (`payMinPower=3`, `payAttrAny=['computer']`); "Play this card at any time" => instant, y NO abre ventana de espionaje (fuera de PEEK_KINDS). Las otras dos usan `openPeekWindow` (L14).
+
+**Motor**: subtipos peek/peek_discard/deck_burn; pago mixto Illuminati-token o suma de Poder de grupos por atributo (pago atomico: si no alcanza, ninguna ficha se gasta, mensaje "necesitas N de Poder de grupos X; los tuyos sin ficha solo aportan M"). deck_burn respeta mazo corto (error si mazo < N sin gastar ficha) y las cartas quemadas no se revelan (van al discard como_publicas sin log de identidad).
+
+**Tests**: test_fase2_rules S1..S6 (pago por grupos, insuficiencia+atomicidad, atributo incorrecto, via Illuminati, mazo corto). Bug de fixture detectado y corregido: C26 carecia de la clave `hackers` (S6a plantaba undefined). Leccion reiterada: fixture que depende de la suerte => el error aparece en un S distinto al que lo escribe; validar claves de fixture contra el comentario que las acompana.
+
+**Estado**: 395 pasa de BLOQUEADA (P1-038) a implementada. Backlog: 72 pendientes restantes (familia cancelar-accion requiere subsistema deshacer; readmylips/coverup "attack becomes failure"; veto NWO en Instant/Privileged Attack; 299 solo-debajo; indicador NWO en HUD).

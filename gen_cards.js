@@ -2672,6 +2672,56 @@ const L25_FX = {
 };
 const L25_FXN = {};
 for (const k25 in L25_FX) { L25_FXN[norm(k25)] = L25_FX[k25]; }
+
+/* =============================================================================
+ * L26 - HACER QUE UN RIVAL PIERDA PLOT CARDS
+ * -----------------------------------------------------------------------------
+ * Las tres imprimen "Play this card at any time. It requires an action by ..." y
+ * las tres hacen que un rival se quede con menos Plot cards en la mano. Es UNA
+ * sola familia (regla 6 del plan): un unico camino de motor ("valida at any time
+ * + cobra el coste impreso + aplica el modo de perdida"), y lo que cambia es el
+ * COMO se pierde la carta, que es justo lo que el impreso distingue:
+ *
+ *   187 Agent in Place      mira las ocultas del rival y el jugador descarta una
+ *   266 George the Janitor  el rival elige una oculta y el jugador decide A CIEGAS
+ *   395 The Internet Worm   quema la cima del mazo de Plot sin que nadie la vea
+ *
+ * DECLARACIONES (mismo formato numerado que L25):
+ * 1. "Pick one rival" NO es eleccion de objetivo de jugador en 395. El mazo de Plot
+ *    es GLOBAL (P1-025), asi que "the top three undrawn cards in HIS Plot deck" se
+ *    cumple solo: hay una sola cima que quemar y no hay destino que elegir. Por eso
+ *    395 no abre ventana de espionaje y por eso tampoco entra en PEEK_KINDS.
+ * 2. 187 y 266 SI abren ventana de espionaje, asi que sus kinds van en PEEK_KINDS y
+ *    se saltan `requireOwnMain` por la misma via que 303/322/386 ("at any time").
+ * 3. 266 tiene DOS ETAPAS en la MISMA ventana: "That rival must now pick one of his
+ *    hidden Plot cards. Now you decide (without looking) whether he must expose
+ *    that card, or expose all his other hidden Plots." El impreso exige que el
+ *    dueno decida SIN MIRAR, asi que la eleccion del rival se guarda como POSICION
+ *    dentro de `data.cards` y NO se proyecta en `publicState` para el dueno.
+ * 4. "Computer group(s) with a TOTAL Power of 3 or more" (395) NO es lo mismo que
+ *    "one group with a Power 4 or more" (187), aunque los dos se declaren con
+ *    `payMinPower`. Se distinguen por el kind, no por el campo: 187 busca UN grupo
+ *    con `power>=payMinPower`; 395 SUMA los Poderes IMPRESOS de varios y no gasta
+ *    hasta saber que llega. Es el mismo criterio que ya usa `force_align` (§50).
+ * 5. "or by your Illuminati" (395) es el Illuminati GENERICO, sin codigo: por eso
+ *    declara `payIllum:true` y no `illumCode` (que es el patron de 386, donde el
+ *    impreso SI nombra un Illuminati concreto). El orden de pago es el de 386:
+ *    primero los grupos por atributo, despues el Illuminati.
+ * 6. El grupo que paga lo elige el MOTOR, no el jugador (mismo criterio que 303,
+ *    322 y 386): el impreso dice "requires an action by one group", no "by a group
+ *    of your choice".
+ * ========================================================================== */
+const L26_FX = {
+  'agentinplace': { kind:'peek_discard', mode:'any_one_hidden', anyTime:true, payMinPower:4, discardOne:1,
+    t:"Play this card at any time. This card requires an action by one group with a Power 4 or more. Pick one rival. You may look at all his hidden Plot cards, and pick one for him to discard!" },
+  'georgethejanitor': { kind:'peek_choice', mode:'blind_expose', anyTime:true, payAnyGroup:true, stages:2, pickCount:1,
+    t:"Boss? Their dumpster was full. I got as much as I could Play this card at any time. It requires an action by one group. Pick a rival. That rival must now pick one of his hidden Plot cards. Now you decide (without looking) whether he must expose that card, or expose all his other hidden Plots." },
+  'theinternetworm': { kind:'deck_burn', mode:'illum_or_attr_power', anyTime:true, payAttrAny:['computer'], payMinPower:3, payIllum:true, burnCount:3,
+    t:"All the dataits lost! Lost! Pick one of your rivals to suffer your wrath. The top three undrawn cards in his Plot deck are discarded. No one may look at them. Play this card at any time. It requires an action by your Illuminati, or by Computer group(s) with a total Power of 3 or more." }
+};
+const L26_FXN = {};
+for (const k26 in L26_FX) { L26_FXN[norm(k26)] = L26_FX[k26]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence'];
 
 
@@ -2961,7 +3011,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

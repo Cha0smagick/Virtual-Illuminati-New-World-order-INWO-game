@@ -849,7 +849,7 @@ E.newGame=function(configs){
  * nada: la ficha se cobra al jugar la carta espía (P1-022) y la carta espía va
  * sola a `S.plotDiscard` (P1-025). Lo único que faltaba -y lo único que esta
  * ventana implementa- es que NO pueda ver nada. */
-var PEEK_KINDS=['peek_steal','peek_expose','peek_rob','peek_block'];
+var PEEK_KINDS=['peek_steal','peek_expose','peek_rob','peek_block','peek_discard','peek_choice'];
 
 /* Una Plot OCULTA es una carta de tipo plot que está en la mano del rival y que
  * no está ya en su `exposedPlots` (es decir, no se ha dejado boca arriba). Esta
@@ -882,7 +882,14 @@ function firstRivalWithHidden(pid){
 function openPeekWindow(rd){
   var P={kind:rd.kind,label:rd.label,byPid:rd.byPid,
     data:{byName:S.players[rd.byPid].name,rivalPid:rd.rivalPid,
-          cards:hiddenPlotsOf(rd.rivalPid).slice()},
+          cards:hiddenPlotsOf(rd.rivalPid).slice(),
+          /* L26: 187 deja descartar UNA de las vistas (`discardable`); 266 tiene DOS
+           * etapas (`staged`), el rival elige y luego el dueno decide A CIEGAS.
+           * `pickPos` es una POSICION dentro de `data.cards`: el nombre de la carta
+           * elegida no sale nunca de aqui, que es lo que hace cierto el "without
+           * looking" del impreso. */
+          discardable:!!rd.discardable,staged:!!rd.staged,
+          stage:rd.staged?1:0,pickPos:null},
     cancelledBy:null,responders:[]};
   /* Sólo responde 242 (peek_block) y sólo el dueño de las Plot espiadas: es el
      que el texto llama "your hidden Plot cards". Se recorre TODAS las manos,
@@ -912,13 +919,28 @@ function openPeekWindow(rd){
  *                          puede obligar a decidir (DECLARACIÓN 5).
  * La verdad de lo que se ha gastado y de la carta que se ha perdido es
  * responsabilidad de quien la jugó (P1-022 / P1-025); aquí sólo se resuelve la
- * decisión. */
-function closePendingPeek(act){
+ * decisión.
+ *   {discardOne:<indice>}  L26 · 187 Agent in Place, "pick one for him to discard"
+ *   {janitorPick:<pos>}     L26 · 266 George the Janitor, ETAPA 1 (el rival elige;
+ *                           `pos` es la POSICION en la lista, no el indice de carta)
+ *   {janitorBlind:'picked'|'rest'} L26 · 266 ETAPA 2 (el dueno decide sin mirar)
+ * `actorPid` es OPCIONAL: si viene, se exige que quien actue sea exactamente a quien
+ * el impreso nombra en cada etapa; si no viene, no se comprueba (LIMITACION
+ * DECLARADA, y es lo que deja intactos a 303/322/386/242, que llamaban con un solo
+ * argumento). */
+function closePendingPeek(act,actorPid){
   var P=S.pendingPeek;
   if(!P)return null;
   S.pendingPeek=null;
   var d=P.data,res=null,me=S.players[P.byPid],them=S.players[d.rivalPid];
-  if(P.cancelledBy){
+  /* L26: 187 y 266 NO imprimen "expose all" ni "roba": solo lo que dicen. Sin esta
+   * guarda, las ramas generales de abajo dejarian hacer con estas dos cartas cosas que
+   * el texto no autoriza. 242 Double-Cross manda siempre, asi que se comprueba `!cancelledBy`
+   * antes: si el rival lo ha anulado, la ventana va a su rama, no a esta. */
+  if(!P.cancelledBy&&(d.discardable||d.staged)&&
+     !(act&&(act.discardOne!=null||act.janitorPick!=null||act.janitorBlind!=null))){
+    res={ok:true,reason:'no se ha hecho nada con lo que se vio'};
+  }else if(P.cancelledBy){
     log('DOUBLE-CROSS: '+P.cancelledBy.cardName+' de '+P.cancelledBy.name+
         ' anula a '+me.name+': no ve ninguna de las Plot de '+them.name);
     res={ok:false,cancelled:true,reason:'anulado por '+P.cancelledBy.cardName,by:me.name};
@@ -976,6 +998,86 @@ function closePendingPeek(act){
       log(me.name+' roba '+card(si).name+' de las Plot ocultas de '+them.name+' (queda expuesta)');
       res={ok:true,stolen:card(si).name,from:them.name,to:me.name};
     }
+  }else if(d.staged&&d.stage===1&&act&&act.janitorPick!=null){
+    /* L26 · 266 George the Janitor, ETAPA 1: "That rival must now pick one of his
+     * hidden Plot cards". El RIVAL elige y la ventana SIGUE ABIERTA, porque el
+     * impreso anade una segunda decision que es mia ("Now you decide..."). Solo se
+     * guarda la POSICION dentro de `data.cards`: el nombre de la carta elegida no
+     * sale de aqui, que es lo que hace cierto el "without looking". */
+    var jpos=Number(act.janitorPick);
+    if(actorPid!=null&&actorPid!==d.rivalPid){
+      S.pendingPeek=P;   /* P1-155: una respuesta RECHAZADA no cierra la ventana */
+      res={ok:false,reason:'la Plot oculta la elige el rival espiado, no tu'};
+    }else if(!(jpos>=0&&jpos<d.cards.length)){
+      S.pendingPeek=P;
+      res={ok:false,reason:'elegiste una posicion que no estaba entre las que habia'};
+    }else{
+      d.pickPos=jpos;
+      d.stage=2;
+      S.pendingPeek=P;
+      res={ok:null,pending:true,stage:2,restCount:Math.max(0,d.cards.length-1),
+        reason:'el rival ya ha elegido; ahora decides sin mirar'};
+    }
+  }else if(d.staged&&d.stage===2&&act&&act.janitorBlind!=null){
+    /* L26 · 266 George the Janitor, ETAPA 2: "Now you decide (without looking)
+     * whether he must expose that card, or expose all his other hidden Plots."
+     * Se resuelve de una vez: se recorren TODAS las vistas y se exponen las que
+     * toque segun la eleccion. "all his OTHER hidden Plots" no es un error de
+     * redaccion: son opciones excluyentes, y en las dos la Plot expuesta sale de la
+     * mano — que es el modelo que ya usa la rama `exposeAll` de esta misma funcion:
+     * una Plot esta oculta mientras esta en la mano, y expuesta se aparta. */
+    if(actorPid!=null&&actorPid!==P.byPid){
+      S.pendingPeek=P;   /* P1-155 */
+      res={ok:false,reason:'la ultima decision es de quien abrio la ventana'};
+    }else if(act.janitorBlind!=='picked'&&act.janitorBlind!=='rest'){
+      S.pendingPeek=P;
+      res={ok:false,reason:'indica "picked" o "rest" para saber que se expone'};
+    }else{
+      var wantOne=act.janitorBlind==='picked',nJ=0;
+      for(var qJ=0;qJ<d.cards.length;qJ++){
+        /* P1-156: SOLO sale de la mano la Plot que se expone. Una Plot esta oculta
+         * mientras esta en la mano (es el modelo de la rama `exposeAll`), asi que
+         * arranquar las demas seria dejar de esconder justamente lo que el jugador
+         * eligio NO ver: la rama "rest" tiene que dejar intacta la elegida. */
+        if((qJ===d.pickPos)!==wantOne)continue;
+        var tq=d.cards[qJ],atJ=them.hand.indexOf(tq);
+        if(atJ>=0)them.hand.splice(atJ,1);
+        me.exposedPlots.push(tq);
+        them.revealedBy.push(tq);
+        nJ++;
+      }
+      log(me.name+' obliga a '+them.name+' a exponer '+nJ+' Plot oculta(s) ('+
+          (wantOne?'solo la que habia elegido':'todas menos la que habia elegido')+')');
+      res={ok:true,exposed:nJ,of:them.name,choice:wantOne?'picked':'rest'};
+    }
+  }else if(d.discardable&&act&&act.discardOne!=null){
+    /* L26 · 187 Agent in Place: "pick one for him to discard!". Aqui SI se usa
+     * `discardPlot` (P1-025), al reves que la quema a ciegas de 395: el rival SI
+     * tiene que enterarse de lo que pierde, y `discardPlot` es el unico punto de
+     * entrada al descarte de Plot. */
+    var di=act.discardOne;
+    if(d.cards.indexOf(di)<0){
+      S.pendingPeek=P;   /* P1-155 */
+      res={ok:false,reason:'esa Plot no estaba entre las que viste'};
+    }else{
+      var atD=them.hand.indexOf(di);
+      if(atD>=0)them.hand.splice(atD,1);
+      them.revealedBy.push(di);
+      discardPlot(di,d.rivalPid);
+      log(me.name+' hace que '+them.name+' descarte '+card(di).name);
+      res={ok:true,discarded:card(di).name,from:them.name,by:me.name};
+    }
+  }else if(d.staged&&d.stage===1&&act&&act.janitorBlind!=null){
+    /* P1-157: en ETAPA 1 el rival AUN NO ha elegido, asi que la decision a ciegas no
+     * tiene sentido. Se rechaza en vez de caer en el "no hacer nada" de abajo, porque
+     * ese cerraria la ventana y dejaria al rival sin poder elegir nunca. */
+    S.pendingPeek=P;
+    res={ok:false,reason:'todavia no se puede decidir: primero el rival elige una'};
+  }else if(d.staged&&d.stage===2&&act&&act.janitorPick!=null){
+    /* Al reves: en ETAPA 2 la eleccion del rival YA esta hecha y es irrevocable, porque
+     * "Now you decide" es la segunda parte del mismo impreso. */
+    S.pendingPeek=P;
+    res={ok:false,reason:'el rival ya ha elegido: ahora te toca decidir a ti sin mirar'};
   }else{
     res={ok:true,reason:'no se ha hecho nada con lo que se vio'};
   }
@@ -986,13 +1088,16 @@ function closePendingPeek(act){
 
 /* Cierre de la ventana desde fuera del motor (la UI y la IA). Es idempotente:
  * llamarlo dos veces con la ventana ya cerrada no rompe nada. */
-E.resolvePendingPeek=function(act){
+E.resolvePendingPeek=function(act,actorPid){
   if(!S.pendingPeek){
     var out0=publicState();
     out0.lastPlotResult={ok:false,reason:'No hay ninguna espionaje pendiente'};
     return out0;
   }
-  return closePendingPeek(act||null);
+  /* L26: 266 George the Janitor reparte la ventana en DOS etapas y cada una la
+   * resuelve un jugador distinto, asi que el actor se propaga. Sigue siendo
+   * opcional: los kinds antiguos funcionan igual sin el. */
+  return closePendingPeek(act||null,actorPid==null?null:actorPid);
 };
 
 function publicState(){
@@ -1036,7 +1141,40 @@ function publicState(){
       byPid:S.pendingPeek.byPid,byName:S.pendingPeek.data.byName,
       rivalPid:S.pendingPeek.data.rivalPid,
       rivalName:S.players[S.pendingPeek.data.rivalPid]?S.players[S.pendingPeek.data.rivalPid].name:'',
-      cards:S.pendingPeek.data.cards.map(function(ix){return {idx:ix,name:card(ix).name};}),
+      cards:(function(){
+        /* L26: 266 George the Janitor imprime "Now you decide (without looking)".
+         * El dueno de la ventana NO puede ver las Plot, porque las elige el rival. La
+         * lista se proyecta solo mientras quien la mira es el rival.
+         * P1-152 (L26): el filtro mira SOLO la etapa, no el jugador. Filtrar por
+         * `S.currentPid` (como hacia la primera version de L26) era un error de
+         * LOGICA, no de seguridad: 266 George the Janitor se juega "at any time", asi
+         * que puede abrirse con el turno del dueno, y en ese caso `currentPid` no era
+         * ni el dueno ni el rival -> las cartas NO se proyectaban -> el rival no tenia
+         * ningun boton para elegir y la ventana quedaba ATASCADA sin salida. En la
+         * etapa 1 las cartas son del RIVAL y son las que el rival tiene que ver, asi
+         * que se proyectan siempre.
+         *
+         * LIMITACION DECLARADA: solo la etapa 2 oculta las cartas, que es donde el
+         * dueno decide "without looking" y donde no hay nada que ver. En la etapa 1 el
+         * dueno del janitor PUEDE ver en su pantalla las cartas que elige el rival,
+         * porque la pantalla es compartida y no hay modo de ocultarlas a una persona
+         * sin impedirle al rival elegir. En un mazo local eso es un pacto de "no
+         * mires", no una barrera tecnica. Los kinds antiguos NO pasan por aqui:
+         * `staged` es falso y su proyeccion queda igual que antes. */
+        var dp=S.pendingPeek.data;
+        if(dp.staged&&dp.stage===2)return [];
+        return dp.cards.map(function(ix){return {idx:ix,name:card(ix).name};});
+      })(),
+      /* El numero de Plot que el rival tiene ocultas. Es un RECUENTO, no un nombre,
+       * asi que no filtra nada, y es lo unico que la UI necesita para pintar la etapa 2
+       * ("ya ha elegido una de sus N Plot ocultas") sinProjection de cartas. */
+      restCount:S.pendingPeek.data.cards.length,
+      /* La etapa y los recuentos SI se proyectan: son lo que la UI necesita para
+       * pintar "el rival elige" y "tu decides sin mirar", y no filtran nada. La
+       * POSICION elegida (`pickPos`) NO se proyecta nunca: revelaria cual eligio. */
+      stage:S.pendingPeek.data.staged?S.pendingPeek.data.stage:0,
+      staged:!!S.pendingPeek.data.staged,
+      discardable:!!S.pendingPeek.data.discardable,
       cancelledBy:S.pendingPeek.cancelledBy?{card:S.pendingPeek.cancelledBy.cardName,by:S.pendingPeek.cancelledBy.name}:null,
       responders:S.pendingPeek.responders?S.pendingPeek.responders.slice():[]}:null,
  /* L8b: la ventana de robo es INTIMA del jugador que roba (233/367 eligen entre sus
@@ -4315,6 +4453,11 @@ var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='b
      declarado (igual que 346, dos lineas arriba), asi que tampoco requieren turno
      propio: quien las juega puede ser cualquiera de los dos bandos. */
   ||eff0.kind==='attack_privilege'
+  /* L26: 395 The Internet Worm imprime "Play this card at any time". NO entra en
+     PEEK_KINDS porque no abre ventana de espionaje: quema la cima del mazo global
+     de Plot y ya. Las otras dos de L26 (187 Agent in Place y 266 George the
+     Janitor) si la abren, y por eso basta con que PEEK_KINDS las recoja mas abajo. */
+  ||eff0.kind==='deck_burn'
   /* P1-027: las de la ventana de SUCESO ("Play immediately when/after") y la
      segunda bala ("immediately after you fail a roll to destroy"). */
   ||EVENT_KINDS.indexOf(eff0.kind)>=0||eff0.kind==='second_bullet'
@@ -6105,6 +6248,112 @@ case 'bulk_power':{
       lastResult={ok:null,pending:true,peek:true,card:c.name,rival:S.players[rR1].name,
         hidden:hidR.length,canExposeAll:!!eff.canExposeAll,paidWith:viaR,
         reason:'ventana de espionaje abierta'};
+      break;}
+    case 'peek_discard':{
+      /* L26 · 187 Agent in Place: "Play this card at any time. This card requires an
+       * action by one group with a Power 4 or more. Pick one rival. You may look at
+       * all his hidden Plot cards, and pick one for him to discard!"
+       * El Poder que se mira es el IMPRESO (`cc.power`), no el actual: es lo que dice
+       * "a group with a Power 4 or more" y es el mismo criterio que ya usa 303 Logic
+       * Bomb. El grupo que paga lo elige el MOTOR, no el jugador, porque el impreso no
+       * dice "of your choice" — igual que 303, 322 y 386. */
+      var rDip=opts.rivalPid!=null?opts.rivalPid:firstRivalWithHidden(pid);
+      if(rDip==null||rDip<0||rDip===pid)throw new Error(c.name+': elige un rival que tenga alguna Plot oculta');
+      var hidDip=hiddenPlotsOf(rDip);
+      if(!hidDip.length)throw new Error(c.name+': '+S.players[rDip].name+' no tiene ninguna Plot oculta');
+      var ndDip=firstUsableAid(pid,function(cc){return cc.power>=eff.payMinPower;});
+      if(!ndDip)throw new Error(c.name+': requiere la accion de un grupo con un Poder de '+eff.payMinPower+' o mas');
+      spendGroupToken(pid,ndDip.uid);
+      openPeekWindow({kind:eff.kind,
+        label:c.name+' sobre las Plot de '+S.players[rDip].name,byPid:pid,rivalPid:rDip,discardable:true});
+      log(c.name+': '+pl.name+' mira '+hidDip.length+' Plot oculta(s) de '+S.players[rDip].name+
+          ' y podra descartar una (accion de '+card(ndDip.cardId).name+')');
+      lastResult={ok:null,pending:true,peek:true,card:c.name,rival:S.players[rDip].name,
+        hidden:hidDip.length,discardable:true,
+        paidWith:{uid:ndDip.uid,name:card(ndDip.cardId).name,via:'grupo'},
+        reason:'ventana de espionaje abierta'};
+      break;}
+    case 'peek_choice':{
+      /* L26 · 266 George the Janitor: "It requires an action by one group. Pick a
+       * rival. That rival must now pick one of his hidden Plot cards. Now you decide
+       * (without looking) whether he must expose that card, or expose all his other
+       * hidden Plots."
+       * El coste impreso es "an action by one group": cualquiera de los tuyos. Es el
+       * mismo criterio con el que 322 Mutual Betrayal paga su "one group", asi que se
+       * reutiliza el calificador `payAnyGroup` en vez de inventar uno nuevo. */
+      var rJ=opts.rivalPid!=null?opts.rivalPid:firstRivalWithHidden(pid);
+      if(rJ==null||rJ<0||rJ===pid)throw new Error(c.name+': elige un rival que tenga alguna Plot oculta');
+      var hidJ=hiddenPlotsOf(rJ);
+      if(!hidJ.length)throw new Error(c.name+': '+S.players[rJ].name+' no tiene ninguna Plot oculta');
+      var ndJ=firstUsableAid(pid,function(){return true;});
+      if(!ndJ)throw new Error(c.name+': requiere la accion de uno de tus grupos');
+      spendGroupToken(pid,ndJ.uid);
+      openPeekWindow({kind:eff.kind,
+        label:c.name+' sobre las Plot de '+S.players[rJ].name,byPid:pid,rivalPid:rJ,staged:true});
+      log(c.name+': '+pl.name+' obliga a '+S.players[rJ].name+' a elegir una Plot oculta (accion de '+card(ndJ.cardId).name+')');
+      lastResult={ok:null,pending:true,peek:true,card:c.name,rival:S.players[rJ].name,
+        hidden:hidJ.length,staged:true,
+        paidWith:{uid:ndJ.uid,name:card(ndJ.cardId).name,via:'grupo'},
+        reason:'ventana de espionaje abierta: el rival elige primero'};
+      break;}
+    case 'deck_burn':{
+      /* L26 · 395 The Internet Worm: "Play this card at any time. It requires an
+       * action by your Illuminati, or by Computer group(s) with a total Power of 3 or
+       * more." + "The top three undrawn cards in his Plot deck are discarded. No one
+       * may look at them."
+       *
+       * DOS COSAS DEL IMPRESO QUE NO SON NEGOCIABLES:
+       *  - "his Plot deck" + "the top three undrawn cards": el mazo de Plot es GLOBAL
+       *    (P1-025), asi que hay una sola cima y no hay destino que elegir. Por eso no
+       *    se abre ventana y por eso este kind NO esta en PEEK_KINDS.
+       *  - "No one may look at them": por eso las cartas van DIRECTAS a `S.plotDiscard`
+       *    SIN pasar por `discardPlot`, que imprimiria sus nombres y abriria una ventana
+       *    de suceso que el impreso no pide. Es el criterio de la quema a ciegas que ya
+       *    usa `payNegationCost`.
+       *
+       * COSTE DISYUNTIVO, en el orden que fija 386: primero los grupos por atributo,
+       * despues el Illuminati. Pero aqui el grupo no es uno solo: es "Computer group(s)
+       * with a TOTAL Power of 3 or more", asi que se RECOGE primero y se GASTA despues
+       * (P1-033), igual que `force_align`: si el pago no se completa, no se ha gastado
+       * nada. "your Illuminati" es el GENERICO, sin codigo, asi que se declara
+       * `payIllum` y no `illumCode` (que es el patron de 386, donde el impreso SI
+       * nombra un Illuminati concreto). */
+      var burnB=eff.burnCount||3;
+      /* Se comprueba la cima ANTES de cobrar nada: si el mazo no llega, el rechazo no
+       * puede haber dejado fichas gastadas (P1-033). */
+      if(S.plotDeck.length<burnB)
+        throw new Error(c.name+': el mazo de Plot solo tiene '+S.plotDeck.length+' cartas y el impreso exige '+burnB);
+      var paidB=null;
+      if(pl.illumTokens>=1){pl.illumTokens--;paidB={via:'illuminati',groups:[]};}
+      if(!paidB){
+        var needB=eff.payMinPower,pickedB=[],attrsB=eff.payAttrAny||[];
+        walk(pl.structure,function(nB){
+          if(needB<=0)return;
+          if(nB===pl.structure)return;
+          if(noTokensFlag(nB))return;
+          if(!nB.tokens||nB.tokens<1)return;
+          var ncB=card(nB.cardId);
+          if(!ncB)return;
+          var okB=false;
+          for(var aB=0;aB<attrsB.length;aB++)if(hasAttr(ncB,attrsB[aB],nB)){okB=true;break;}
+          if(!okB)return;
+          pickedB.push({uid:nB.uid,name:ncB.name,power:curPower(nB)});
+          needB-=curPower(nB);
+        });
+        if(needB>0){
+          if(!pickedB.length)
+            throw new Error(c.name+': necesitas una accion de tu Illuminati, o grupos '+attrsB.join(' o ')+' con Poder total '+eff.payMinPower+', y no tienes ninguna de las dos');
+          throw new Error(c.name+': necesitas '+eff.payMinPower+' de Poder de grupos '+attrsB.join(' o ')+'; los tuyos sin ficha solo aportan '+(eff.payMinPower-needB)+' (accion del Illuminati: sin fichas)');
+        }
+        pickedB.forEach(function(gB){spendGroupToken(pid,gB.uid);});
+        paidB={via:'groups',groups:pickedB};
+      }
+      var ixsB=topOfDeck(S.plotDeck,burnB);
+      for(var jB=0;jB<ixsB.length;jB++)S.plotDiscard.push(ixsB[jB]);
+      log(c.name+': '+pl.name+' descarta '+burnB+' Plot de la cima del mazo sin que nadie las vea (pagado con '+
+          (paidB.via==='illuminati'?'una accion del Illuminati':paidB.groups.map(function(gB){return gB.name;}).join(' + '))+')');
+      lastResult={ok:true,plot:c.name,burned:burnB,paidWith:paidB,
+        reason:'las '+burnB+' Plot de la cima se descartaron a ciegas'};
       break;}
     case 'peek_block':{
       /* 242 Double-Cross: "Play this card at any time a rival uses a Plot card to

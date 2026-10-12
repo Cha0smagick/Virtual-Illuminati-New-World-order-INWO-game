@@ -85,7 +85,21 @@ var CB = {
   /* L22 — resolver la ventana de NEGACION. handIdx solo se usa con 'negate': es
    * el indice de catalogo de la carta de negacion del jugador humano. Con 'pass' no
    * hace falta, porque lo unico que hay que hacer es dejar que la Plot se juegue. */
-  onResolveNegation: function (action, handIdx) {
+  /* L26 · VENTANA DE ESPIONAJE. El segundo argumento de `E.resolvePendingPeek` es el
+     * ACTOR de la decision, y no siempre es quien abrio la ventana: en la etapa 1 del 266
+     * George the Janitor el impreso dice "That rival must now pick one of his hidden Plot
+     * cards", o sea que decide el RIVAL. En la etapa 2 ("Now you decide") y en las demas
+     * cartas decide quien la abrio. Por eso se lee de la ventana en vez de usar
+     * `humanPid()` a pelo: si se usara el dueno, el motor rechazaria la etapa 1 (P1-153).
+     * Si no hay ventana, `actor` queda a null y el motor responde con su "no hay ninguna
+     * espionaje pendiente" sin lanzar. */
+    onResolvePeek: function (action) {
+      var pk = E.getState().pendingPeek;
+      var actor = pk ? (pk.staged && pk.stage === 1 ? pk.rivalPid : pk.byPid) : null;
+      E.resolvePendingPeek(action, actor);
+      after('Espionaje resuelto');
+    },
+    onResolveNegation: function (action, handIdx) {
     E.resolvePendingNegation(action, humanPid(), handIdx == null ? null : handIdx);
     after(action === 'negate' ? 'Plot anulada: ambas cartas al descarte' : 'Plot jugada: nadie la niega');
   },
