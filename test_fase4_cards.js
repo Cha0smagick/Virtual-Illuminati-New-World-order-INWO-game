@@ -132,10 +132,10 @@ const KNOWN_TEXT_GAPS = {
 /* Las cartas bloqueadas, con el subsistema que falta. Congeladas aqui para
  * que "bloqueada" sea ejecutable.
  * P1-016 cerro la ventana de reaccion, asi que Bodyguard y Talisman salieron de
- * esta lista. Head in a Jar SIGUE bloqueada: ademas de la ventana necesita la
- * mecanica de "asesinado"/resurreccion, que el motor no tiene. */
+ * esta lista. Head in a Jar SALE en L33 (P1-164): el ataque de destruccion
+ * contra la Personality se intercepta en applyAttackResult (A.headJar), el nodo
+ * queda vivo con assassinationBonus=10 y la carta queda linkeada a el. */
 const BLOCKED_CARDS = {
-  'headinajar': 'P1-016 cerrada, pero falta la mecanica de "asesinado"/resurreccion (§30.1)',
   /* P1-079 - 348 Purge SALE de BLOCKED_CARDS. Estaba congelada por "P1-DATA-03
    * Global Power ausente (§30.3)", pero ese subsistema YA EXISTE: es `globalNeutral`,
    * implementado en L10 (§61, P1-067). El modelo del motor es que un grupo tiene
@@ -149,7 +149,9 @@ const BLOCKED_CARDS = {
    * Power"). 348 sale por el mismo motivo. Explicacion completa en §64 del audit. */
   /* §38 — las 5 de la familia de reaccion inmediata que NO tienen mecanica que las
      sostenga. No es pereza: cada motivo esta comprobado contra el motor. */
-  'andstaydead': '§38 sin mecanica de resurreccion en el motor, asi que "gone forever" no seria observable (INJUGABLE)',
+  /* §38 - And STAY Dead! y Counterspell SALIERON en L33 (P1-164): goneForever ya
+     existe (S.goneForever + gate en dupOriginalPlanL11) y Counterspell se juega
+     como Plot instant durante el ataque (destruye un Resource Magic del atacante). */
   /* L8a: las dos cartas de L8 que habian quedado fuera NO por su texto sino por una
    * limitacion estructural del motor. El juego real reparte Plot cards de un mazo
    * POR JUGADOR ("a rival's Plot deck" / "his Plot deck"); este motor tiene UN solo
@@ -165,7 +167,6 @@ const BLOCKED_CARDS = {
    * efecto es observable en el unico sitio donde se puede observar un mazo global: las
    * tres Plot que ya no se pueden robar. No se ha inventado un mazo por jugador para
    * cerrar una carta; se ha leido la que hay. Ver seccion 51 de la auditoria. */
-  'counterspell': '§38 un Resource no puede atacar ni ayudar a un ataque (esta en pl.resources con tokens:0 y sin nodo), asi que "any Magic Resource used to attack you" nunca ocurre',
   'hattrick': '§38 exigiria deshacer una Plot ya resuelta de forma transaccional',
   'ilied': '§38 el motor no tiene tratos que cumplir, luego el marcador no lo consumiria nadie (INJUGABLE)',
   'vultures': '§38 el motor no tiene el camino "jugar un grupo de la mano, fallar el takeover y descartarlo" (placeUnder lanza y la carta sigue en la mano); las reglas oficiales si (inwo_rules_extracted.txt:226-241)',

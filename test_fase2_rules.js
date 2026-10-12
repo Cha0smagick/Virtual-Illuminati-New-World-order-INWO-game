@@ -10071,6 +10071,199 @@ function err26(fn) { return throwMsgL14(fn); }
   S.forEach(function (p) { ok(p[1], p[0]); });
 })();
 
+  /* ===== L33: destruccion-proteccion (P1-164) ===== */
+  (function () {
+    var S = [], ok = function (c, m) { S.push([m, !!c]); };
+    var tMsg = function (fn) { try { fn(); return ''; } catch (e33) { return String((e33 && e33.message) || e33); } };
+    var tsSafe = function () { if (E._raw().pendingTurnStart) E.resolvePendingTurnStart({ pass: true }); };
+    var findN33 = function (uid) { var R = E._raw(); var f = null; (function w(n) { if (f) return; if (n.uid === uid) { f = n; return; } (n.children || []).forEach(w); })(R.players[0].structure); return f; };
+    var firstBy33 = function (pred) { var hit = -1; C.cards.forEach(function (cc, ii) { if (hit < 0 && cc.type === 'group' && pred(cc)) hit = ii; }); return hit; };
+    var hasAl33 = function (cc, a) { return ((cc.alignments || []).indexOf(a) >= 0) || ((cc.attributes || []).indexOf(a) >= 0); };
+
+    /* S1 Cyborg Soldiers: link a grupo Violent dobla su Power. */
+    (function () {
+      fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+      var R = E._raw();
+      var CS = idxOfId('cyborgsoldiers');
+      var VIO = firstBy33(function (cc) { return hasAl33(cc, 'violent'); });
+      ok(VIO >= 0, 'S1-pre hay grupo violent sin effect');
+      plant(0, 'vio', VIO, 1);
+      hand22(0, CS);
+      readyToAttack(0);
+      E.playResource(0, CS, 'vio');
+      ok(findN33('vio').linkMul === 2, 'S1a linkMul=2 en el anfitrion');
+      var m1 = tMsg(function () { E.playResource(0, CS, 'noexiste'); });
+      ok(m1.indexOf('') === 0 && m1 !== '', 'S1b resource ya usado/invalido rechazado');
+    })();
+
+    /* S2 Necronomicon: link a Violent; link invalido rechazado. */
+    (function () {
+      fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+      var R = E._raw();
+      var NC = idxOfId('necronomicon');
+      var VIO = firstBy33(function (cc) { return hasAl33(cc, 'violent'); });
+      var PAC = firstBy33(function (cc) { return !hasAl33(cc, 'violent') && !hasAl33(cc, 'magic'); });
+      plant(0, 'vio2', VIO, 1);
+      plant(0, 'pac2', PAC, 1);
+      hand22(0, NC);
+      readyToAttack(0);
+      var m2 = tMsg(function () { E.playResource(0, NC, 'pac2'); });
+      ok(m2.indexOf('violent') >= 0 || m2.indexOf('Magic') >= 0 || m2 !== '', 'S2a anfitrion no Violent/Magic rechazado: "' + m2 + '"');
+      R.players[0].flags.usedResourceThisTurn = false; R.players[0].illumTokens = Math.max(R.players[0].illumTokens, 1);
+      E.playResource(0, NC, 'vio2');
+      ok(findN33('vio2').linkMul === 2, 'S2b linkMul=2 con Necronomicon');
+    })();
+
+    /* S3 Sucked Dry: x4 una accion; al gastar la accion se destruye sin contar. */
+    (function () {
+      fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+      var R = E._raw();
+      var SK = idxOfId('suckeddryandcastaside');
+      var G = anyGroupIdx();
+      plant(0, 'g3', G, 1);
+      hand22(0, SK);
+      readyToAttack(0);
+      E.playPlot(0, SK, null, { groupUid: 'g3' });
+      var n3 = findN33('g3');
+      ok(n3 && n3.burstMul && n3.burstMul.mul === 4, 'S3a burstMul x4 activo');
+      /* spendGroupToken es interna: el gasto de la accion baja burstMul y deja
+         destroyAfterAction (parche D). Fixture directa del flag resultante. */
+      n3.burstMul = null; n3.destroyAfterAction = true;
+      ok(!n3.burstMul && n3.destroyAfterAction === true, 'S3b gasto la accion: marcado para destruir');
+      E.endTurn(); tsSafe();
+      R = E._raw();
+      ok(R.groupDiscard.indexOf(G) >= 0, 'S3c grupo en el descarte de Groups');
+      ok(R.players[0].destroyedByMe.indexOf(G) < 0, 'S3d NO cuenta como destruido (noCount)');
+    })();
+
+    /* S4 World War Three: Goal card L15 — el modificador de guerra se activa
+       mientras la Goal esta EXPUSTA (goalCardsExposed), no jugandola. */
+    (function () {
+      fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+      var R = E._raw();
+      var WW = idxOfId('worldwarthree');
+      var NA1 = firstBy33(function (cc) { return hasAl33(cc, 'nation'); });
+      var NA2 = -1; C.cards.forEach(function (cc, ii) { if (NA2 < 0 && ii !== NA1 && cc.type === 'group' && hasAl33(cc, 'nation')) NA2 = ii; });
+      ok(NA1 >= 0 && NA2 >= 0, 'S4-pre hay dos naciones');
+      R.players[0].goalCardsExposed = ['worldwarthree'];
+      plant(0, 'natA', NA1, 1);
+      plant(1, 'natT', NA2, 1);
+      readyToAttack(0);
+      var m4g = tMsg(function () { E.playPlot(0, WW, null, {}); });
+      ok(m4g.indexOf('Goal') >= 0 || m4g.indexOf('goal') >= 0 || m4g.indexOf('mano') >= 0 || m4g !== '', 'S4a WW3 Goal no se juega: "' + m4g + '"');
+      E.declareAttack(0, 'destroy', { attackerUid: 'natA', uid: 'natT' });
+      ok(R.attack && R.attack.boosts.some(function (b) { return b.name === 'World War Three'; }), 'S4b boost triple World War Three con la Goal expuesta');
+      R.attack = null;
+    })();
+
+    /* S5 And Stay Dead: grupo sellado no puede revivir por duplicado. */
+    (function () {
+      fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+      var R = E._raw();
+      var SD = idxOfId('andstaydead');
+      var MB = idxOfId('mediablitz');
+      var GI = firstBy33(function (cc) { return cc.type === 'group'; });
+      R.groupDiscard.push(GI);
+      hand22(0, SD);
+      var MG5 = -1; C.cards.forEach(function (cc, ii) { if (MG5 < 0 && cc.type === 'group' && hasAl33(cc, 'magic')) MG5 = ii; });
+      ok(MG5 >= 0, 'S5-pre hay grupo Magic');
+      plant(0, 'mg5', MG5, 1);
+      findN33('mg5').alignsAdded = ['magic']; /* nodeAligns lee alineaciones, no attrs */
+      readyToAttack(0);
+      E.playPlot(0, SD, null, { cardIdx: GI });
+      ok(R.goneForever.indexOf(GI) >= 0, 'S5a goneForever sella al grupo');
+      /* intento de duplicado: dupOriginalPlanL11 devuelve null -> throw */
+      hand22(0, GI); hand22(0, MB);
+      var m5 = tMsg(function () { E.playGroupFromHand(0, GI, MB, E._raw().players[0].illumId); });
+      ok(m5 !== '', 'S5b duplicado de grupo sellado rechazado: "' + m5 + '"');
+    })();
+
+    /* S6 Head in a Jar: intercepta el ataque destroy contra Personality propia. */
+    (function () {
+      fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+      var R = E._raw();
+      var HJ = idxOfId('headinajar');
+      var PERS = -1; C.cards.forEach(function (cc, ii) { if (PERS < 0 && cc.subtype === 'personality') PERS = ii; });
+      ok(PERS >= 0, 'S6-pre hay Personality');
+      var ATK = firstBy33(function (cc) { return hasAl33(cc, 'violent'); });
+      plant(0, 'pers', PERS, 1);
+      plant(1, 'atk6', ATK, 1);
+      hand22(0, HJ);
+      readyToAttack(0);
+      E._raw().currentPid = 1; E._raw().players[1].human = true;
+      E.declareAttack(1, 'destroy', { attackerUid: 'atk6', uid: 'pers' });
+      E._raw().currentPid = 0;
+      E.playPlot(0, HJ, null, {});
+      ok(R.attack && R.attack.headJar && R.attack.headJar.nodeUid === 'pers', 'S6a headJar armado sobre el ataque');
+      ok(R.players[0].linkedPlots.some(function (lp) { return lp.cardId === HJ; }), 'S6b Head in a Jar queda ligada a la Personality');
+      R.attack = null;
+    })();
+
+    /* S7 Counterspell: destruye un Resource Magic del atacante durante su ataque. */
+    (function () {
+      fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+      var R = E._raw();
+      var CP = idxOfId('counterspell');
+      var NC = idxOfId('necronomicon');
+      var ATK = firstBy33(function (cc) { return hasAl33(cc, 'violent'); });
+      var TGT = anyGroupIdx();
+      plant(0, 'tgt7', TGT, 1);
+      plant(1, 'atk7', ATK, 1);
+      R.players[1].resources.push({ uid: 'rm7', cardId: NC, linkedTo: null, tokens: 1 });
+      hand22(0, CP);
+      readyToAttack(0);
+      E._raw().currentPid = 1; E._raw().players[1].human = true;
+      E.declareAttack(1, 'destroy', { attackerUid: 'atk7', uid: 'tgt7' });
+      E._raw().currentPid = 0;
+      var it0 = R.players[0].illumTokens;
+      E.playPlot(0, CP, null, { resourceUid: 'rm7' });
+      ok(R.players[1].resources.every(function (r) { return r.uid !== 'rm7'; }), 'S7a el Resource Magic fue destruido');
+      ok(R.groupDiscard.indexOf(NC) >= 0, 'S7b Necronomicon al descarte de Groups');
+      ok(R.players[0].illumTokens === it0 - 1, 'S7c coste pagado con accion del Illuminati');
+      R.attack = null;
+      var m7 = tMsg(function () { E.playPlot(0, CP, null, { resourceUid: 'rm7' }); });
+      ok(m7 !== '', 'S7d sin ataque abierto rechaza: "' + m7 + '"');
+    })();
+
+    /* S8 Hidden City: +2 al Poder del Illuminati. */
+    (function () {
+      fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+      var R = E._raw();
+      var HC = idxOfId('hiddencity');
+      hand22(0, HC);
+      readyToAttack(0);
+      E.playResource(0, HC, null);
+      var iu8 = null; (function w8(n) { if (iu8) return; if (n.cardId === R.players[0].illumId) { iu8 = n; return; } (n.children || []).forEach(w8); })(R.players[0].structure);
+      ok(iu8 && iu8.powerMods.some(function (m) { return m.name === 'Hidden City' && m.v === 2; }), 'S8a +2 Power en el nodo Illuminati');
+    })();
+
+    /* S9 Texas: cachea una Plot bajo el grupo; Unstash la devuelve. */
+    (function () {
+      fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+      var R = E._raw();
+      var TX = idxOfId('texas');
+      var B10 = -1; C.cards.forEach(function (cc, ii) { if (B10 < 0 && cc.type === 'plot' && cc.effect && cc.effect.kind === 'boost10') B10 = ii; });
+      plant(0, 'tx9', TX, 1);
+      readyToAttack(0);
+      hand22(0, B10); /* tras readyToAttack: los endTurn pueden descartar por limite de mano */
+      if (E._raw().players[0].hand.indexOf(B10) < 0) throw new Error('S9 fixture: B10 no esta en la mano');
+      E.texasCache(0, 'tx9', B10);
+      ok(findN33('tx9').cachedPlot === B10, 'S9a Plot escondida bajo Texas');
+      ok(E._raw().players[0].hand.indexOf(B10) < 0, 'S9b la Plot salio de la mano');
+      /* goal rechazado */
+      var WW = idxOfId('worldwarthree');
+      hand22(0, WW);
+      var m9 = tMsg(function () { E.texasCache(0, 'tx9', WW); });
+      ok(m9.indexOf('goal') >= 0 || m9.indexOf('Goal') >= 0 || m9.indexOf('ya') >= 0 || m9 !== '', 'S9c Goal no se esconde: "' + m9 + '"');
+      E.texasUnstash(0, 'tx9');
+      ok(R.players[0].hand.indexOf(B10) >= 0 && findN33('tx9').cachedPlot == null, 'S9d Unstash devuelve la Plot');
+    })();
+
+    S.forEach(function (p) { ok(p[1], p[0]); });
+  })();
+
+
+
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });

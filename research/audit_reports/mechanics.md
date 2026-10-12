@@ -1,8 +1,8 @@
 # Auditoría de mecánicas — INWO
 
 ## Familias de efecto
-- unverified: 199 (bloqueado: falta fuente/motor)
-- ability_unverified: 26 (bloqueado: falta fuente/motor)
+- unverified: 188 (bloqueado: falta fuente/motor)
+- ability_unverified: 21 (bloqueado: falta fuente/motor)
 - illu_special: 18 (motor específico)
 - boost10: 15 (motor específico)
 - disaster: 13 (motor específico)
@@ -19,6 +19,7 @@
 - attack_privilege: 3 (motor específico)
 - res_attack_bonus: 3 (motor específico)
 - deck_manip: 3 (motor específico)
+- controller_token_if: 2 (motor específico)
 - takeover_return: 2 (motor específico)
 - combo_attack: 2 (motor específico)
 - resistance_increase: 2 (motor específico)
@@ -28,20 +29,27 @@
 - plot_negate_prev: 2 (motor específico)
 - control_arrows: 2 (motor específico)
 - align_edit: 2 (motor específico)
+- self_tokens_double: 1 (motor específico)
 - fraternal_draw: 1 (motor específico)
 - corporate_extra_draw: 1 (motor específico)
+- communist_bonuses: 1 (motor específico)
+- plot_cache: 1 (motor específico)
 - sin-effect: 1 (sin efecto)
 - plot_negate_steal: 1 (motor específico)
 - peek_discard: 1 (motor específico)
 - group_boost_timed: 1 (motor específico)
+- stay_dead: 1 (motor específico)
 - angst: 1 (motor específico)
 - nwo_discard_one: 1 (motor específico)
 - bodyguard: 1 (motor específico)
 - bribery: 1 (motor específico)
+- weird_refuel: 1 (motor específico)
 - plot_negate_computer: 1 (motor específico)
 - computervirus: 1 (motor específico)
+- counterspell: 1 (motor específico)
 - cropcircles: 1 (motor específico)
 - tripled_once: 1 (motor específico)
+- cyborg_link: 1 (motor específico)
 - dictatorship: 1 (motor específico)
 - peek_block: 1 (motor específico)
 - embezzlement: 1 (motor específico)
@@ -52,16 +60,21 @@
 - resource_forge: 1 (motor específico)
 - peek_choice: 1 (motor específico)
 - def_triple: 1 (motor específico)
+- head_jar: 1 (motor específico)
 - resource_destroy: 1 (motor específico)
+- hidden_city: 1 (motor específico)
 - feud_pick: 1 (motor específico)
 - peek_steal: 1 (motor específico)
+- market_strip: 1 (motor específico)
 - messiah: 1 (motor específico)
 - mistakenidentity: 1 (motor específico)
 - mothersmarch: 1 (motor específico)
 - murphyslaw: 1 (motor específico)
 - peek_expose: 1 (motor específico)
+- necro_link: 1 (motor específico)
 - dup_payoff: 1 (motor específico)
 - linked_token_source: 1 (motor específico)
+- extra_takeover: 1 (motor específico)
 - privileged_attack: 1 (motor específico)
 - structure_reorg: 1 (motor específico)
 - res_nullify: 1 (motor específico)
@@ -69,6 +82,7 @@
 - turn_control: 1 (motor específico)
 - turn_start_lock: 1 (motor específico)
 - stealing_the_plans: 1 (motor específico)
+- sucked_burst: 1 (motor específico)
 - nwo_discard_all: 1 (motor específico)
 - talisman: 1 (motor específico)
 - peek_rob: 1 (motor específico)
@@ -77,18 +91,19 @@
 - timewarp: 1 (motor específico)
 - turn_start_block: 1 (motor específico)
 - global_discard: 1 (motor específico)
+- disaster_mod: 1 (motor específico)
 - token_wither: 1 (motor específico)
 
 ## Estados de mecánica
 - implemented: 1
-- implemented-pending-engine: 170
+- implemented-pending-engine: 186
 - implemented-special: 18
-- source-text-unmapped: 33
-- unverified: 199
+- source-text-unmapped: 28
+- unverified: 188
 - Pendientes de verificación/motor: source-text-unmapped, unverified
 
 ## Simulación y sanidad
-- Muestras de dados: 29
+- Muestras de dados: 33
 - Dados inválidos: 0
 - NaN: 0
 - Poder null: 0

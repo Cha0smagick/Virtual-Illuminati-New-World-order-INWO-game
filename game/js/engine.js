@@ -462,6 +462,8 @@ function curPower(node){
      el motor lo soporta para que la mecanic este lista cuando la cola de
      destruccion diferida exista, y para que el valor sea observable. */
   if(node.burstMul&&typeof node.burstMul.mul==='number')p*=node.burstMul.mul;
+  /* L33 — 235 Cyborg Soldiers / 324 Necronomicon: "Power is doubled". */
+  if(node.linkMul&&typeof node.linkMul==='number')p*=node.linkMul;
   /* L5c — 189 Albino Alligators: "+10 Power or Resistance (your choice) to any
      Weird group you control. If used with an action ... counts only for that
      action. If used for defense, the bonus lasts until the end of the current
@@ -802,6 +804,7 @@ E.newGame=function(configs){
       phase:'setup',turn:0,round:1,currentPid:-1,turnCompleted:false,
     players:[],groupDeck:[],plotDeck:[],groupDiscard:[],plotDiscard:[],
     neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,pendingAlignEdit:null,pendingResDestroy:null,pendingLyhf:null,pendingNegation:null,returnTurnTo:null,alignRetro:{},l18extra:{},alignRule:null,log:[],uidCounter:100,winner:null,
+  goneForever:[],
     config:{goalCount:(configs.goalCount||12)},
     lastRoll:null
   };
@@ -2665,6 +2668,8 @@ function placeUnder(pid,handIdx,parentUid){
  * des-conteo. Falla con el motivo oficial si el original no existe, y lo hace
  * ANTES de que la funcion llamante haya tocado nada (atomicidad). */
 function dupOriginalPlanL11(cardId,needAss){
+  /* L33 — 192 And Stay Dead!: "gone forever no card or special ability can revive it". */
+  if(S.goneForever&&S.goneForever.indexOf(cardId)>=0)return null;
   for(var q=0;q<S.players.length;q++){
     var oq=S.players[q];
     var inAss=(oq.assassinatedBy||[]).indexOf(cardId)>=0;
@@ -2841,6 +2846,41 @@ E.playResource=function(pid,handIdx,linkedToUid){
    * poder dejar la referencia en la MISMA entrada. */
   switch(resFx){
     case 'bulk_power': applyBulkPower(pid, c, c.effect); break;
+    /* L33 — Cyborg Soldiers / Necronomicon: se enlazan a un grupo Violent
+       (Necronomicon tambien acepta Magic) y DOBRAN su Poder (nd.linkMul,
+       leido por curPower). destroyGroup borra el Cyborg; el Necronomicon
+       se deslinkea. */
+    case 'cyborg_link':{
+      var ndC=findNode(linkedToUid);
+      if(!ndC||findOwnerPid(linkedToUid)!==pid)throw new Error(c.name+': enlazalo a un grupo tuyo');
+      var ccC3=card(ndC.cardId);
+      if(!nodeAligns(ndC,ccC3).some(function(aC){return aC==='violent';}))throw new Error(c.name+': el anfitrion debe ser Violent');
+      ndC.linkMul=2;
+      log(c.name+': el Poder de '+ccC3.name+' se dobla');
+      break;
+    }
+    case 'necro_link':{
+      var ndN=findNode(linkedToUid);
+      if(!ndN||findOwnerPid(linkedToUid)!==pid)throw new Error(c.name+': enlazalo a un grupo tuyo');
+      var ccN=card(ndN.cardId);
+      var alN=nodeAligns(ndN,ccN);
+      if(!alN.some(function(aN){return aN==='violent'||aN==='magic';}))throw new Error(c.name+': el anfitrion debe ser Violent o Magic');
+      ndN.linkMul=2;
+      log(c.name+': el Poder de '+ccN.name+' se dobla... y el libro vigila');
+      break;
+    }
+    case 'hidden_city':{
+      /* L33 — Hidden City: "+2 to their Power and Global Power" del Illuminati.
+         El bono va al nodo del Illuminati (powerMods aditivo); removeResUid lo
+         limpia si la carta sale del juego. */
+      var iuH=null;
+      walk(pl.structure,function(nh){if(!iuH&&nh.cardId===pl.illumId)iuH=nh;});
+      if(!iuH)throw new Error(c.name+': no encuentro tu nodo Illuminati');
+      iuH.powerMods=iuH.powerMods||[];
+      iuH.powerMods.push({name:'Hidden City',v:2});
+      log(c.name+': el Illuminati gana +2 de Poder y Poder Global');
+      break;
+    }
     case 'draw_hook': break;
     case 'resource_effect':{
       /* L12 - 378 Suicide Squad y 413 Warehouse 23 son Resource cards: colocar la carta NO
@@ -2976,6 +3016,9 @@ function spendGroupToken(pid,uid){
      action". Gastar la ficha ES la accion, asi que aqui se consume, igual que
      el triple de 234. El modo DEFENSA no se toca: caduca por turno. */
   if(nd.timedBoost&&nd.timedBoost.mode==='action')nd.timedBoost=null;
+  /* L33 — 377 Sucked Dry: "for one action only". Gastar la ficha ES la accion:
+     la destruccion diferida se dispara (settle/endTurn la ejecutan). */
+  if(nd.burstMul){nd.burstMul=null;nd.destroyAfterAction=true;}
 }
 
 /* P1-022 — REGLA OFICIAL, inwo_rules_extracted.txt:405 (columna derecha):
@@ -3111,7 +3154,20 @@ E.declareAttack=function(pid,type,target){
      con UNA ficha, nunca con dos pools a la vez. */
   spendGroupToken(pid,attackerUid);
   S.attack=A;
-  log(pl.name+' declara ataque a '+type+' con '+attCard.name+' contra '+(tn||'?'));
+  log(pl.name+' declara ataque a '+type+' con '+attCard.name+' contra '+(tn||'?'));  /* L33 — 419 World War Three: "Any Nation making a direct Attack to Destroy
+     against another Nation has tripled power." Global: basta con que ALGUIEN
+     tenga la carta en juego (linkedPlots, linkedTo:null). reward/fallo: settle(). */
+  (function(){
+    var anW=findNode(target.attackerUid),tnW=findNode(target.uid);
+    if(!anW||!tnW||A.type!=='destroy')return;
+    var acW=card(anW.cardId),tcW=card(tnW.cardId);
+    if(!acW||!tcW||!hasAttr(acW,'nation')||!hasAttr(tcW,'nation'))return;
+    var hasWW=S.players.some(function(qw){return (qw.goalCardsExposed||[]).indexOf('worldwarthree')>=0;});
+    if(!hasWW)return;
+    A.boosts.push({name:'World War Three',v:2*curPower(anW)});
+    log('World War Three: '+acW.name+' ataca con el triple de su Poder');
+  })();
+
   return publicState();
 };
 
@@ -3851,8 +3907,44 @@ E.resolveAttack=function(){
     else result='fallo';
     A.det=det;A.resultText=result;
     S.lastResultText=(A.type==='control'?'CONTROLAR':'DESTRUIR')+' → '+result+
-      (det.roll!=null?(' · tiraste '+det.roll+' · necesitabas ≤'+det.total):(' · fuerza '+det.total));
+      (det.roll!=null?(' · tiraste '+det.roll+' · necesitabas ≤'+det.total):(' · fuerza '+det.total));    var defW3=findOwnerPid(A.targetUid);
     applyAttackResult(A,det,result);
+    /* L33 — hooks de destruccion-proteccion (Sucked no cuenta; WW3 y Necro si). */
+    var anF=findNode(A.attackerUid);
+    if(anF&&anF.destroyAfterAction){
+      anF.destroyAfterAction=false;
+      log(card(anF.cardId).name+' se apaga tras su accion x4: destruido (no cuenta para metas)');
+      destroyGroup(A.pid,A.attackerUid,{noCountAsDestroyed:true});
+    }
+    var wwOn=S.players.some(function(qw){return (qw.goalCardsExposed||[]).indexOf('worldwarthree')>=0;});
+    if(wwOn&&A.type==='destroy'){
+      var acW2=anF?card(anF.cardId):null;
+      var tnd2=findNode(A.targetUid);
+      var tcW2=tnd2?card(tnd2.cardId):null;
+      if(acW2&&tcW2&&hasAttr(acW2,'nation')&&hasAttr(tcW2,'nation')){
+        if(roll!=null&&roll<=total&&!forcedFail){
+          var gW2=drawFrom(S.plotDeck,S.plotDiscard,'plots');
+          if(gW2!=null)S.players[A.pid].hand.push(gW2);
+          anF.tokens=(anF.tokens||0)+1;
+          log('World War Three: '+acW2.name+' vence — roba una Plot y gana una ficha de accion');
+        }else if(roll!=null&&!forcedFail){
+          var anW3=findNode(A.attackerUid);
+          if(anW3){
+            var defP=(defW3!=null?defW3:A.pid);
+            log('World War Three: '+acW2.name+' cae en la invasion — cuenta para '+S.players[defP].name);
+            destroyGroup(defP,A.attackerUid);
+          }
+        }
+      }
+    }
+    if(roll!=null&&(roll===11||roll===12)){
+      var anN=findNode(A.attackerUid);
+      if(anN){
+        var necO=null;
+        S.players.forEach(function(qn,qi){if(necO==null&&qn.resources.some(function(rn){var cn=card(rn.cardId);return rn.linkedTo===A.attackerUid&&cn&&cn.effect&&cn.effect.kind==='necro_link';}))necO=qi;});
+        if(necO!=null){log('Necronomicon: '+card(anN.cardId).name+' saca un '+roll+' — es destruido');destroyGroup(necO,A.attackerUid);}
+      }
+    }
     return publicState();
   };
   if(det.total<2)return settle(null,det.total,false,null);
@@ -3908,8 +4000,11 @@ function applyAttackResult(A,det,resultText){
     tNode.tokens=1;
     placeCapturedSubtree(pid,tNode);
     log('¡'+S.players[pid].name+' toma CONTROL de '+card(tNode.cardId).name+' y todo su títere!');
-  }else if(success&&A.type==='destroy'){
-    destroyGroup(A.pid,A.targetUid);
+  }else if(success&&A.type==='destroy'){        var jnH=(A.headJar&&findNode(A.headJar.nodeUid))?findNode(A.headJar.nodeUid):null;
+        if(jnH&&A.headJar.pid===A.pid){
+          jnH.jarred=true;jnH.assassinationBonus=10;A.headJar.applied=true;
+          log('Head in a Jar: '+card(jnH.cardId).name+' sobrevive al golpe (sigue en juego, actua por telefono)');
+        }else destroyGroup(A.pid,A.targetUid);
   }else{
     log(resultText+' — ataque de '+S.players[pid].name+' falló');
     if(A.type==='control'){
@@ -3951,6 +4046,8 @@ function destroyGroup(byPid,targetUid,opts){
   var root=S.players[owner].structure;
   var parent=findNodeThatHas(root,targetUid);
   var node=findNode(targetUid);
+  /* L33 — 148 Texas: "If Texas is captured or destroyed, the Plot is lost." */
+  if(node&&node.cachedPlot!=null){S.plotDiscard.push(node.cachedPlot);node.cachedPlot=null;log('la Plot escondida bajo '+card(node.cardId).name+' se pierde');}
   /* P1-009: Shangri-La — "You cannot destroy any groups except Violent ones and
      rival Illuminati." El bloqueo se evalúa ANTES de detach() para que un veto no
      deje la estructura a medio desmontar. */
@@ -3961,7 +4058,12 @@ function destroyGroup(byPid,targetUid,opts){
   node=detach(parent,targetUid);clearL18Extra(node);
   var c=card(node.cardId);
   if(!noCount)S.players[byPid].destroyedByMe.push(node.cardId);
-  S.groupDiscard.push(node.cardId);
+  S.groupDiscard.push(node.cardId);  /* L33 — 324 Necronomicon: al caer el grupo anfitrion, el libro SE DESLINKEA
+     (no se destruye con el). Va antes del filtro de recursos linkeados. */
+  S.players.forEach(function(qn){qn.resources.forEach(function(rn){
+    if(rn.linkedTo===targetUid){var cnD=card(rn.cardId);if(cnD&&cnD.effect&&cnD.effect.kind==='necro_link'){rn.linkedTo=null;log('Necronomicon: se deslinkea (el libro sobrevive)');}}
+  });});
+
   /* linked resources destroyed */
   S.players[owner].resources=S.players[owner].resources.filter(function(r){
     if(r.linkedTo===targetUid){S.groupDiscard.push(r.cardId);log('Recurso linkeado destruido');return false;}
@@ -4790,8 +4892,7 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
      * la ventana pendingTurnStart, E.endTurn ya ha movido currentPid al rival que va a
      * empezar, asi que requireOwnMain(actor) lanzaria "No es tu turno" y la carta seria
      * INJUGABLE. El timing real lo valida su case (ventana abierta + forPid distinto del
-     * actor), no esta lista. L14.c razono al reves y por eso el bug solo se vio al medir. */
-  ||eff0.kind==='turn_control'||eff0.kind==='turn_start_block'||eff0.kind==='turn_start_lock'
+     * actor), no esta lista. L14.c razono al reves y por eso el bug solo se vio al medir. */||eff0.kind==='turn_control'||eff0.kind==='turn_start_block'||eff0.kind==='turn_start_lock'||eff0.kind==='stay_dead'||eff0.kind==='counterspell'||eff0.kind==='head_jar'
   /* L31: 366 Senate Investigating Committee comparte el timing de 405 (la
      ventana pendingTurnStart que abre E.endTurn); 300 Let's You and Him Fight
      imprime "Play this card at any time" y cobra la accion del ILUMINADO de
@@ -7984,7 +8085,80 @@ case 'bulk_power':{
       /* Computer Security: "It may be played at any time, as long as it used
          immediately after the other card is played". Misma via de reaccion. */
       throw new Error(c.name+': "'+'"It may be played at any time, as long as it used immediately after the other card is played."'+'" — no se juega desde la mano: solo como respuesta a una Plot recien jugada');
+    }    /* ===== L33 destruccion-proteccion ===== */
+    case 'stay_dead':{
+      /* 192 And Stay Dead!: tras la destruccion de un grupo, un grupo Magic
+       * paga la accion y la carta sale del juego PARA SIEMPRE (S.goneForever). */
+      var ciS=(opts&&opts.cardIdx)!=null?opts.cardIdx:null;
+      if(ciS==null)throw new Error(c.name+': elige el cardIdx del grupo destruido (opts.cardIdx)');
+      var deadS=false;
+      S.players.forEach(function(qs){if(!deadS&&(qs.destroyedByMe.indexOf(ciS)>=0||qs.assassinatedBy.indexOf(ciS)>=0))deadS=true;});
+      if(!deadS&&S.groupDiscard.indexOf(ciS)<0)throw new Error(c.name+': esa carta no ha sido destruida ni descartada');
+      var mgS=firstUsableAid(pid,function(cs,ns){return nodeAligns(ns,cs).indexOf('magic')>=0;});
+      if(!mgS)throw new Error(c.name+': requiere la accion de un grupo Magic');
+      spendGroupToken(pid,mgS.uid);
+      if(S.goneForever.indexOf(ciS)<0)S.goneForever.push(ciS);
+      log(c.name+': '+card(ciS).name+' ya no puede volver jamas');
+      lastResult={ok:true,card:c.name,kind:'stay_dead',sealed:card(ciS).name};
+      break;}
+    case 'counterspell':{
+      /* 228 Counterspell: reaccion INSTANTANEA a un ataque en curso contra ti
+       * que se apoya en un Resource Magic. Ese Resource se destruye. Coste:
+       * accion de un grupo Magic propio o la del Illuminati. opts.resourceUid. */
+      if(!S.attack||S.attack.resolved)throw new Error(c.name+': solo reacciona a un ataque en curso');
+      var aC=S.attack;
+      if(aC.pid===pid)throw new Error(c.name+': no puedes anular tu propio ataque');
+      var defC=findOwnerPid(aC.targetUid);
+      if(defC!==pid&&aC.targetPid!==pid)throw new Error(c.name+': el ataque no va contra ti');
+      var ruC=(opts&&opts.resourceUid)||null;
+      if(!ruC)throw new Error(c.name+': elige el Resource Magic a destruir (opts.resourceUid)');
+      var entryC=null;
+      S.players.forEach(function(qc){qc.resources.forEach(function(rc){if(!entryC&&rc.uid===ruC)entryC=rc;});});
+      if(!entryC)throw new Error(c.name+': ese Resource no esta en juego');
+      var ccC=card(entryC.cardId);
+      if(!(/magic/i.test(ccC.text||'')||attrList(ccC).indexOf('magic')>=0))throw new Error(ccC.name+' no es un Resource Magic');
+      var mgC=firstUsableAid(pid,function(cs2,ns2){return nodeAligns(ns2,cs2).indexOf('magic')>=0;});
+      if(mgC)spendGroupToken(pid,mgC.uid);
+      else{if(pl.illumTokens<1)throw new Error(c.name+': requiere la accion de un grupo Magic o la de tu Illuminati');pl.illumTokens--;}
+      removeResUid(ruC);
+      log(c.name+': '+ccC.name+' estalla — el ataque de '+S.players[aC.pid].name+' pierde su apoyo magico');
+      lastResult={ok:true,card:c.name,kind:'counterspell',destroyed:ccC.name};
+      break;}
+    case 'head_jar':{
+      /* 277 Head in a Jar: se juega DURANTE el ataque de destruccion que mata a
+       * una Personality PROPIA. Marca A.headJar; applyAttackResult intercepta la
+       * baja y el nodo sobrevive (+10 a futuras defensas). */
+      if(!S.attack||S.attack.resolved)throw new Error(c.name+': solo durante un ataque en curso');
+      var aJ=S.attack;
+      if(aJ.type!=='destroy')throw new Error(c.name+': solo contra un Attack to Destroy');
+      var tnJ=findNode(aJ.targetUid);
+      if(!tnJ||findOwnerPid(aJ.targetUid)!==pid)throw new Error(c.name+': la Personality debe ser tuya');
+      var tcJ=card(tnJ.cardId);
+      if(!tcJ||tcJ.subtype!=='personality')throw new Error((tcJ?tcJ.name:'Ese grupo')+' no es una Personality');
+      if(aJ.headJar)throw new Error(c.name+': ese ataque ya tiene un frasco');
+      aJ.headJar={pid:pid,nodeUid:aJ.targetUid};
+      pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:aJ.targetUid});
+      log(c.name+': '+tcJ.name+' se prepara para sobrevivir al golpe');
+      lastResult={ok:true,card:c.name,kind:'head_jar',pending:true};
+      break;}
+    case 'sucked_burst':{
+      /* 377 Sucked Dry (cierra el pendiente de L3b): cuadruplica el Poder de un
+       * grupo propio (no el Illuminati) para UNA accion. curPower ya lee
+       * node.burstMul; la baja llega por settle()/endTurn (no cuenta para metas). */
+      var guS=(opts&&opts.groupUid)||null;
+      if(!guS)throw new Error(c.name+': elige el grupo que vas a quemar (opts.groupUid)');
+      var ndS=findNode(guS);
+      if(!ndS||findOwnerPid(guS)!==pid)throw new Error(c.name+': ese grupo no es tuyo');
+      if(ndS.cardId===pl.illumId)throw new Error(c.name+': no puede apuntar al Illuminati');
+      ndS.burstMul={mul:4,stat:'power'};
+      log(c.name+': el Poder de '+card(ndS.cardId).name+' se x4 para una sola accion... y luego se apaga');
+      lastResult={ok:true,card:c.name,kind:'sucked_burst',group:card(ndS.cardId).name};
+      break;}
+    case 'plot_cache':{
+      /* 148 Texas es un GRUPO: su habilidad va por E.texasCache/E.texasUnstash. */
+      throw new Error(c.name+': es un grupo — usa Texas para esconder la Plot (E.texasCache)');
     }
+
     case 'plot_negate_steal':{
       /* 18 and a Half Minute Gap (L30): como Hoax, carta de REACCION; se juega
        * con E.resolvePendingNegation('negate', ...), que cobra TODAS las fichas
@@ -8342,7 +8516,58 @@ E.giveResourceTo=function(ownerPid,toPid,resUid){
 };
 
 /* ================= end of turn & victory ================= */
-E.endTurn=function(){
+
+
+/* L33 — 148 Texas: esconde una Plot (no Goal) bajo el grupo; sale del limite de
+   mano y no puede ser expuesta. Se puede canjear por otra en el turno propio.
+   Si Texas cae, la Plot se pierde (destroyGroup). "only for something involving
+   Texas" es de juicio del jugador: el motor no la restringe. */
+E.texasCache=function(pid,texasUid,plotHandIdx){
+  requireOwnMain(pid);
+  var plT=S.players[pid];
+  var ndT=findNode(texasUid);
+  if(!ndT||findOwnerPid(texasUid)!==pid)throw new Error('Texas no es tuyo');
+  var ccT=card(ndT.cardId);
+  if(!ccT||!ccT.effect||ccT.effect.kind!=='plot_cache')throw new Error('Ese grupo no esconde Plots');
+  if(ndT.cachedPlot!=null)throw new Error('Texas ya esconde una Plot (canjeala con E.texasUnstash)');
+  var pcT=card(plotHandIdx);
+  if(!pcT||pcT.type!=='plot')throw new Error('No es una Plot card');
+  if(pcT.subtype==='goal')throw new Error('No puedes esconder una Goal');
+  if(plT.hand.indexOf(plotHandIdx)<0)throw new Error('Esa Plot no esta en tu mano');
+  removeFromHand(plT,plotHandIdx);
+  ndT.cachedPlot=plotHandIdx;
+  log(plT.name+' esconde una Plot bajo '+ccT.name);
+  return publicState();
+};
+E.texasUnstash=function(pid,texasUid){
+  requireOwnMain(pid);
+  var plU=S.players[pid];
+  var ndU=findNode(texasUid);
+  if(!ndU||findOwnerPid(texasUid)!==pid)throw new Error('Texas no es tuyo');
+  if(ndU.cachedPlot==null)throw new Error('Texas no esconde ninguna Plot');
+  plU.hand.push(ndU.cachedPlot);
+  log(plU.name+' recupera la Plot escondida bajo Texas');
+  ndU.cachedPlot=null;
+  return publicState();
+};
+/* L33 — quita un Resource del juego (Counterspell). Limpia lo que dejo en el
+   nodo anfitrion: linkMul/burstMul y el bono de Hidden City. */
+function removeResUid(uid){
+  S.players.forEach(function(qr){
+    for(var ir=qr.resources.length-1;ir>=0;ir--){
+      if(qr.resources[ir].uid===uid){
+        var crD=card(qr.resources[ir].cardId);
+        var hostU=qr.resources[ir].linkedTo;
+        S.groupDiscard.push(qr.resources[ir].cardId);
+        qr.resources.splice(ir,1);
+        var hn=hostU?findNode(hostU):null;
+        if(hn){hn.linkMul=null;hn.burstMul=null;if(hn.powerMods)hn.powerMods=hn.powerMods.filter(function(pm){return pm.name!=='Hidden City';});}
+        log((crD?crD.name:'Recurso')+' sale del juego');
+        return;
+      }
+    }
+  });
+}E.endTurn=function(){
   if(S.phase==='gameover')return publicState();
   if(S.phase!=='main')throw new Error('No se puede terminar un turno fuera de la fase principal');
   if(S.turnCompleted)throw new Error('Este turno ya fue terminado');
@@ -8387,7 +8612,16 @@ E.endTurn=function(){
      turno para que nunca exista un estado imposible al empezar el siguiente. */
   var gDropped=enforceGoalHandLimit(pl,'Límite de Goal cards: ');
   if(gDropped>0)log(pl.name+' tenía '+gDropped+' Goal cards de más al final de su turno');
-  S.turnCompleted=true;
+  S.turnCompleted=true;  /* L33 — 377 Sucked Dry: la baja diferida tambien corre al cierre del turno
+     (accion gastada sin ataque que se resuelva: defensa, apoyo, etc). */
+  (function(){
+    S.players.forEach(function(qe,qi){
+      var gone=[];
+      walk(qe.structure,function(ne){if(ne.cardId!=null&&ne.destroyAfterAction)gone.push(ne.uid);});
+      gone.forEach(function(ue){var ne2=findNode(ue);if(ne2){ne2.destroyAfterAction=false;destroyGroup(qi,ue,{noCountAsDestroyed:true});}});
+    });
+  })();
+
   pl.turnsCompleted++;
   checkElimination();
   checkVictory();

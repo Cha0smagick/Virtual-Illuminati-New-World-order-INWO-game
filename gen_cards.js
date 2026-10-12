@@ -2842,6 +2842,49 @@ const L32_FX = {
 const L32_FXN = {};
 for (const k32 in L32_FX) { L32_FXN[norm(k32)] = L32_FX[k32]; }
 
+/* L33 — P1-164: familia destruccion-proteccion. Textos verbatim de
+ * research/scribd_inwo_cards_full.html. World War Three NO entra aqui: su kind
+ * 'goal' ya lo declara L15_FX y pisarlo rompe el censo de 12 Goal cards
+ * (test P1-010); su modificador de guerra se detecta via goalCardsExposed.
+ * Huecos de texto #9-#13 (arkofthecovenant, annualconvention, coverofdarkness,
+ * opportunityknocks, theholygrail) siguen sin FX. */
+const L33_FX = {
+  'Texas': {
+    kind: 'plot_cache',
+    t: 'You wouldnt believe whats hidden in the miles and miles of Texas plains. Theyre counting on that. You may place one Plot card (except a Goal) under Texas. It does not count against your limit, and cannot be exposed. You may use it at any time, but only for something involving Texas. You may switch it with another card, but only on your turn. If Texas is captured or destroyed, the Plot is lost.'
+  },
+  'And Stay Dead!': {
+    kind: 'stay_dead',
+    t: 'Play this card immediately after any Group has been destroyed or discarded by any player. It requires an action from a Magic group. The destroyed group is gone forever no card or special ability can revive it. Requires Magic Action'
+  },
+  'Counterspell': {
+    kind: 'counterspell',
+    t: 'Suddenly the candles flared brilliantly, and the servitors scattered. Too late! The altar exploded, and the roof began to sag Play this card when any Magic Resource is used to attack you or help an attack on you, in any way. You must use either the action of a Magic group or your Illuminati. That Resource is destroyed! Discard the card. Requires Magic or Illuminati Action'
+  },
+  'Head in a Jar': {
+    kind: 'head_jar',
+    t: 'Play this card when one of your Personalities is killed. It takes precedence over any enemy attempt to capture or permanently eliminate the destroyed card. Link this card to the Personality. It remains in play, but can never control any group that it didnt control before it went in the jar. It gets a +10 to defend against any further Assassinations. It can Attack to Destroy, or aid attacks with its Power, but its doing all its business by telephone'
+  },
+  'Cyborg Soldiers': {
+    kind: 'cyborg_link',
+    t: 'Link this card to any Violent group. The Power of that group is doubled. If that group is destroyed, the Cyborg Soldiers are also lost.'
+  },
+  'Hidden City': {
+    kind: 'hidden_city',
+    t: 'Control of the Hidden City gives your Illuminati +2 to their Power and Global Power. The Hidden City may be attacked using any Disaster card; it is not Huge or Coastal. It can be defended, in all ways, as though it were a Place with a Power of 10. It cannot be Devastated. If it is destroyed, another Hidden City may be played by any player.'
+  },
+  'Necronomicon': {
+    kind: 'necro_link',
+    t: 'Creepy old book. I thought it was just a story, but its realNO! It touched me!! Link this card to a Violent or Magic group. That groups Power is doubledbut if it ever rolls an 11 or 12 on any action, it is destroyed. The Necronomicon is not destroyed, just unlinkedThe destroyed group counts toward your victory conditions only if you are the Servants of Cthulhu!'
+  },
+  'Sucked Dry and Cast Aside!': {
+    kind: 'sucked_burst',
+    t: 'Multiply the Power of one of your groups, except the Illuminati, by 4for one action only. It is then considered destroyed, but does not count toward any Goal.'
+  }
+};
+const L33_FXN = {};
+for (const k33 in L33_FX) { L33_FXN[norm(k33)] = L33_FX[k33]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
@@ -3131,7 +3174,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias
