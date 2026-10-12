@@ -96,6 +96,7 @@ var handSort = 'table'; /* table | type | power */
    hasta que el jugador contesta. Empieza en 'bottom' porque devolverlas al fondo es lo
    que menos molesta al jugador que ya las ha visto. */
 var drawRest = 'bottom'; /* top | bottom */
+var cropPicks = []; /* L29 — Crop Circles: índices GLOBALES elegidos en el search del mazo */
 function maxKids(depthFromRoot) { return depthFromRoot === 1 ? 4 : 3; }
 function nodeDepth(structure, uid) {
   var d = 0, found = false;
@@ -556,6 +557,33 @@ function startCombo24(ix) {
     });
   });
 }
+/* L29 — 258 Fnord!: la repetición del rodadero se PAGA con la cima del mazo de
+ * Grupos (sin verla) o con DOS Grupos de la mano. Mismo encadenado de prompts
+ * que L24 (startCombo24). El motor valida el pago y lanza su error impreso si
+ * falta (mazo vacío, mano sin dos Grupos, etc.). */
+function startFnord258(ix) {
+  var fnG = [];
+  for (var f1 = 0; f1 < curState.me.hand.length; f1++) {
+    if (curState.me.hand[f1].type === 'group') fnG.push(f1);
+  }
+  var fnChoices = [{ label: '🎲 Pagar con la CIMA del mazo de Grupos (sin verla)', value: 'top' }];
+  if (fnG.length >= 2) {
+    for (var f2 = 0; f2 < fnG.length; f2++) {
+      fnChoices.push({ label: 'Grupo 1/2: ' + curState.me.hand[fnG[f2]].name, value: 'p' + fnG[f2] });
+    }
+  }
+  prompt('Fnord! · ¿Con qué PAGAS la repetición del rodadero?', fnChoices).then(function (va) {
+    if (!va) return;
+    if (va === 'top') { CB.onPlayRollCard(ix, { pay: { mode: 'top' } }); return; }
+    var p1 = parseInt(va.slice(1), 10);
+    var fnRest = fnG.filter(function (f3) { return f3 !== p1; })
+      .map(function (f4) { return { label: 'Grupo 2/2: ' + curState.me.hand[f4].name, value: String(f4) }; });
+    prompt('Fnord! 2/2 · Elige el SEGUNDO Grupo de tu mano:', fnRest).then(function (vb) {
+      if (!vb) return;
+      CB.onPlayRollCard(ix, { pay: { mode: 'hand', handIdx: [p1, parseInt(vb, 10)] } });
+    });
+  });
+}
 function nodeHtml(nd, st, pid, depth) {
   var isRoot = /-root$/.test('' + nd.uid);
   var kids = nd.children || [];
@@ -699,7 +727,17 @@ function attackPanel(st) {
   var DR = st.pendingDraw;
   if (DR) {
     var dh = '<b>🎴 ' + esc(DR.hook) + '</b> ';
-    if (DR.mode === 'choose3') {
+    /* L29 — mode 'search' (232 Crop Circles): el mazo entero está en pantalla,
+     * los índices SIGUEN dentro del mazo y se extraen por valor al resolver. La
+     * elección se lleva en `cropPicks` (máx DR.max) y el botón resuelve. */
+    if (DR.mode === 'search') {
+      dh += 'mira su mazo entero y elige hasta <b>' + (DR.max || 1) + '</b>: ' +
+        DR.cards.map(function (cd) {
+          var on = cropPicks.indexOf(cd.idx) >= 0;
+          return '<button data-act="cropPick" data-i="' + cd.idx + '" class="' + (on ? 'on' : '') + '" title="' + esc(cd.name) + '">' + esc(cd.name) + '</button>';
+        }).join(' ') +
+        ' <button data-act="cropResolve" class="primary">LLEVARSE la(s) elegida(s) y rebarajar ▶</button>';
+    } else if (DR.mode === 'choose3') {
       dh += 'mira las 3 primeras cartas de su mazo y <b>quedáte con una</b>; las otras dos van ' +
         '<b>' + (drawRest === 'top' ? 'ENCIMA' : 'DEBAJO') + '</b>' +
         (DR.exchanged ? ' · <i>(venía de un canje ★→Plot)</i>' : '') + '. ' +
@@ -1674,10 +1712,17 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
   var evPend = (curState && curState.pendingEvent) ? curState.pendingEvent : null;
   var canReactEvent = isEventCard && !!evPend;
   var ROLL_UI = ['bribery', 'computervirus', 'murphyslaw', 'timewarp',
-                 'mistakenidentity', 'mothersmarch'];
+                 'mistakenidentity', 'mothersmarch', 'fnord'];
   var isRollCard = c.type === 'plot' && c.effect && ROLL_UI.indexOf(c.effect.kind) >= 0;
   var rollPend = (curState && curState.pendingRoll) ? curState.pendingRoll : null;
   var canReact = isRollCard && rollPend && !rollPend.cancelled && !rollPend.reroll;
+  /* L29 — 258 Fnord! es de rodadero pero PAGA la repetición (cima del mazo de Grupos
+   * o dos Grupos de la mano): su reactRoll no llama a onPlayRollCard a secas, abre
+   * el flujo de pago startFnord258. 232 Crop Circles no reacciona a nada: se juega
+   * como acción para BUSCAR en un mazo (elegir Plot o Grupo) y su ventana de
+   * elección llega después por pendingDraw con mode 'search'. */
+  var isFnord = c.type === 'plot' && c.effect && c.effect.kind === 'fnord';
+  var isCrop = c.type === 'plot' && c.effect && c.effect.kind === 'cropcircles';
   /* L8a — 361/388/411: llevan su propio menu (showDeckMenu) porque piden una cantidad
    * y una lista de cartas. Se anaden aqui SUS botones de entrada, y se apaga el
    * "Jugar Plot ahora" generico: ese camino llama a onPlayPlot sin `opts`, que para
@@ -1740,6 +1785,12 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
   var reorgEntry = isReorg
     ? { label: '🔀 REORGANIZAR mi Power Structure (gasto 1 accion de mi Illuminati)', value: 'reorg' }
     : null;
+  /* L29 — 232 Crop Circles: acción de BUSCAR en un mazo. El motor cobra la ficha
+   * del primer grupo Magic usable (o el que se clicó, patrón disaster_defence) y
+   * valida el derecho de robo por mazo; aquí solo se elige CUÁL mazo. */
+  var cropEntry = isCrop
+    ? { label: '🍄 BUSCAR en un mazo (elige Plot o Grupo; gasta accion de un grupo Magic)', value: 'cropPlay' }
+    : null;
   var deckEntry = isDeck
     ? (c.effect.mode === 'draw'
       ? { label: '🃏 Gastar la acción de un grupo y ROBAR 3 Plot cards de mi mazo', value: 'deckDraw' }
@@ -1756,13 +1807,14 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
     isCancelCard && !canCancel ? { label: 'ℹ ¿Cuándo sirve esta carta?', value: 'infoCancel' } : null,
     deckEntry,
     reorgEntry,
+    cropEntry,
     upheavalEntry,
     comboEntry24,
     nwoOneEntry,
     scandalEntry,
     negateEntry22,
     negPassEntry22,
-    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck && !isTurnStart && !isReorg && !isUpheaval && !isCombo && !isNwoOne && !isScandal && !isNegator22) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
+    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck && !isTurnStart && !isReorg && !isUpheaval && !isCombo && !isNwoOne && !isScandal && !isNegator22 && !isCrop) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
     c.type === 'plot' ? { label: 'ℹ ¿Cuándo sirven los Plots?', value: 'info' } : null,
     c.type !== 'illuminati' ? { label: '🗑 Descartar', value: 'discard' } : null,
     { label: 'Cancelar', value: null }
@@ -1779,9 +1831,24 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
     }
     else if (v === 'reactRoll') {
       clearSel();
+      /* L29 — Fnord! (258) paga ANTES de repetir: cima del mazo de Grupos o dos
+       * Grupos de la mano. El motor rechaza sin opts.pay, así que no se llama a
+       * onPlayRollCard a secas. */
+      if (isFnord) { startFnord258(ix); return; }
       log('🎲 ' + c.name + ' reacciona al rodadero ' + rollPend.roll + ' de ' + rollPend.label + '.');
       log('🎲 Ojo: la ventana SIGUE ABIERTA; usa el botón de la barra morada para aplicar el efecto.');
       CB.onPlayRollCard(ix);
+    }
+    else if (v === 'cropPlay') {
+      clearSel();
+      prompt('🍄 Crop Circles · ¿En qué mazo buscas (30 segundos)?', [
+        { label: '🎴 Mazo de PLOT cards', value: 'plot' },
+        { label: '👥 Mazo de GROUP cards', value: 'group' }
+      ]).then(function (vd) {
+        if (!vd) return;
+        log('🍄 ' + c.name + ': abres el mazo de ' + (vd === 'plot' ? 'Plot' : 'Group') + ' cards.');
+        try { CB.onPlayCropCircles(ix, vd); } catch (e) { log('⚠ ' + e.message); }
+      });
     }
     else if (v === 'reactEvent') {
       log('⚡ ' + c.name + ' responde a ' + (evPend.label || 'un suceso') + '. La ventana sigue abierta: despues hay que aplicar el resultado.');
@@ -1991,7 +2058,10 @@ var KIND_ES = {
   plot_negate_prev: 'Negar la Plot recien jugada (Hoax / Secrets Man)',
   plot_negate_computer: 'Negar una Plot de Computers (Computer Security)',
   turn_start_block: 'Bloquear el inicio de turno', unverified: 'Mecanica sin mapear',
-  ability_unverified: 'Habilidad sin mapear', goal: 'Meta'
+  ability_unverified: 'Habilidad sin mapear',
+  fnord: 'Repetir una tirada propia (paga: cima del mazo de Grupos o 2 Grupos de la mano)',
+  cropcircles: 'Buscar en un mazo entero y llevarte lo que te toque (coste: accion de un grupo Magic)',
+  goal: 'Meta'
 };
 /* vEs: imprime cualquier valor del dataset en una sola linea legible. */
 function vEs(v) {
@@ -2116,6 +2186,7 @@ var FIELD_ES = [
   ['illumAction', 'coste', 'gasta la accion de tu Illuminati'],
   ['actionTokens', 'coste', '<b>%s</b> action tokens'],
   ['requireActionFromAttr', 'coste', 'la accion debe venir de un grupo con atributo <b>%s</b>'],
+  ['costTopGroupOr2', 'coste', 'la repeticion se paga descartando la <b>cima del mazo de Grupos</b> o <b>2 Grupos de la mano</b>'],
   ['requiresActionFrom', 'coste', 'la accion debe venir de <b>%s</b>'],
   ['needsAssassination', 'coste', 'ademas exige un Asesinato'],
   ['requiresPlotDiscard', 'coste', 'ademas exige descartar un Plot'],
@@ -2565,8 +2636,21 @@ function bindEvents() {
        NO resuelven, solo cambian lo que se enviará. */
     else if (act === 'drawresttop') { drawRest = 'top'; render(curState); }
     else if (act === 'drawrestbot') { drawRest = 'bottom'; render(curState); }
-    else if (act === 'drawpick') { clearSel(); CB.onResolveDraw({ pick: parseInt(btn.getAttribute('data-i'), 10), rest: drawRest }); }
-    else if (act === 'drawtake') { clearSel(); CB.onResolveDraw({ take: btn.getAttribute('data-v') }); }
+  else if (act === 'drawpick') { clearSel(); CB.onResolveDraw({ pick: parseInt(btn.getAttribute('data-i'), 10), rest: drawRest }); }
+  else if (act === 'drawtake') { clearSel(); CB.onResolveDraw({ take: btn.getAttribute('data-v') }); }
+  /* L29 — Crop Circles (search): toggle de elegidas y resolución. */
+  else if (act === 'cropPick') {
+    var cpI = parseInt(btn.getAttribute('data-i'), 10);
+    var cpAt = cropPicks.indexOf(cpI);
+    if (cpAt >= 0) cropPicks.splice(cpAt, 1);
+    else if (curState.pendingDraw && cropPicks.length < (curState.pendingDraw.max || 1)) cropPicks.push(cpI);
+    render(curState);
+  }
+  else if (act === 'cropResolve') {
+    clearSel();
+    CB.onResolveDraw({ picks: cropPicks.slice() });
+    cropPicks = [];
+  }
       /* L26 · respuesta de la ventana de ESPIONAJE. Cada boton ES la decision (P1-151), asi
        * que no hay un "resolver" aparte. `actorPid` no se pasa aqui: lo elige `app.js` en
        * `onResolvePeek`, porque en la etapa 1 del 266 decide el rival y no quien la abrio. */

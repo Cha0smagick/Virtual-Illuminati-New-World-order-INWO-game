@@ -600,8 +600,16 @@ function settleEventWindow(E) {
 function settleDrawWindow(E) {
   var st = E.getState();
   if (!st || !st.pendingDraw) return;
-  var DR = st.pendingDraw;
-  var act = DR.mode === 'choose3' ? { pick: 0, rest: 'bottom' } : { take: 'top' };
+   var DR = st.pendingDraw;
+   /* L29 — la ventana SEARCH de Crop Circles no es un robo: la carta ya se jugo
+      y el mazo entero sigue en el deck. Politica NEUTRA: coger la de cima
+      (picks:[0]) y rebarajar. Sin esta rama, el `take:'top'` de abajo lanzaria
+      y la ventana quedaria abierta bloqueando `E.endTurn`. */
+   if (DR.kind === 'cropcircles' || DR.mode === 'search') {
+     try { E.resolvePendingDraw({ picks: [0] }); } catch (e) { if (window.console) console.error('[INWO] AI: fallo al resolver la busqueda de Crop Circles: ' + (e && e.message ? e.message : e)); }
+     return;
+   }
+   var act = DR.mode === 'choose3' ? { pick: 0, rest: 'bottom' } : { take: 'top' };
   try { E.resolvePendingDraw(act); }
   catch (e) { if (window.console) console.error('[INWO] AI: fallo al resolver la eleccion de robo: ' + (e && e.message ? e.message : e)); }
 }

@@ -1339,3 +1339,55 @@ familia "cancelar una accion YA realizada" (`bigfoot`, `lochnessmonster`, `hallu
 `massmurder`, `arewehavingfunyet`) queda FUERA: no existe modelo de accion ejecutada
 (`tokensUsed`/`hasActed`/`actedThisTurn` = 0 coincidencias; los 9 `usedThisTurn` son de
 Resources y significan "esta capacidad ya se uso"), luego es un subsistema NUEVO.
+
+## 79. L29 — Fnord! (258) reroll pagado + Crop Circles (232) deck-search
+
+Las dos ULTIMAS cartas del backlog mecanico (**P1-157** Fnord! 258, **P1-158** Crop
+Circles 232). FASE 4 queda con 0 Plots sin mecanica clasificable pendiente de lote.
+
+- [x] L29.a AUDIT: 258 reacciona a UN RODADERO PROPIO ya tirado ("immediately after
+      any die roll you make") y PAGA la repeticion (cima del mazo de Grupos o 2
+      Grupos de la mano; "does not count as an action"). 232 se juega en la draw
+      phase ("when you are entitled to draw") para BUSCAR un mazo entero y llevarse
+      tantas cartas como el derecho de robo; coste = 1 accion de un grupo Magic;
+      "must reshuffle the deck afterward".
+- [x] L29.b DATOS: `ROLL_FX['fnord']` (`kind:'fnord'`, `costTopGroupOr2:true`, t
+      verbatim) + `L29_FX['Crop Circles']` (`kind:'cropcircles'`,
+      `requireActionFromAttr:'magic'`, t verbatim); `cropcircles` anadido a
+      `ACTION_COST_KINDS` (guard P1-055 del generador) y a
+      `ACTION_COST_KINDS_EXPECTED` del gate en `test_fase2_rules.js`.
+- [x] L29.c MOTOR: `fnord` en `ROLL_KINDS`; gate en `rollReactionAllowed`
+      (`pid!==P.pid` -> "solo reacciona a rodaderos que hiciste tu"); `case
+      'fnord'` en el switch de rodadero con el pago (POSICIONES de mano leidas
+      DURANTE el efecto: el splice de la carta jugada es al final, patron
+      P1-059; borrado por identidad con indexOf); `case 'cropcircles'` cobra la
+      accion Magic, valida el derecho de robo por mazo y abre `pendingDraw`
+      mode `'search'` con el mazo entero en pantalla; `resolvePendingDraw`
+      extrae por identidad, remezcla y consume la entitlement (`plotDrawn`/
+      `groupDrawn`).
+- [x] L29.d UI: `ROLL_UI` + `fnord`; `startFnord258` (prompts de pago encadenados,
+      patron `startCombo24`); boton `cropEntry` + ventana search (`cropPicks`,
+      acciones `cropPick`/`cropResolve`); `KIND_ES`: `fnord` + `cropcircles`
+      (guard de `test_hand_peek.js`); `FIELD_ES`: `costTopGroupOr2`
+      (`requireActionFromAttr` ya existia); `app.js`: `onPlayRollCard` pasa
+      `opts` (pago) y `onPlayCropCircles` nuevo; `ai.js`: `settleDrawWindow`
+      resuelve la ventana search con politica neutra (`picks:[0]`) para no
+      bloquear `E.endTurn`.
+- [x] L29.e REGRESION en `test_fase2_rules.js` (S9/S9b/S9c/S10/S10b): reroll real
+      con pago top (mazo -1, descarte +1, dados de la cola consumidos), rechazo
+      del rodadero ajeno, pago con 2 Grupos de la mano (identidades al descarte),
+      ventana search con max=1, entitlement consumida, replay del mismo turno
+      lanza, y sin grupo Magic lanza. LECCIONES DEL LOTE (P1-159): (1) la carta
+      de rodadero debe estar EN mano ANTES de tirar: la ventana P1-024 solo abre
+      con al menos un autor (contrato P1-016: sin autores la tirada se resuelve
+      EN EL ACTO) y el ataque de prueba necesita boost explicito porque `plant`
+      a profundidad 1 vale -10 (total<2 auto-falla SIN tirar); (2) el 2o arg de
+      `E.playPlot` es el indice de CATALOGO, no la posicion de mano.
+- [x] L29.f CIERRE: `npm test` = ALL TESTS PASSED (11 suites); `audit:mechanics`
+      sanidad limpia (0 NaN, 0 poder null, 0 errores de ejecucion, 0 familias no
+      manejadas; su exit 1 es el medidor del backlog: 205 unverified + 35
+      source-text-unmapped declarados); `?v=55`.
+
+**Lagunas DECLARADAS:** los "30 seconds" de Crop Circles no se simulan (no hay
+reloj en el motor). El remezclado tras la busqueda es uniforme (no se conserva el
+orden visto, que el impreso no exige).

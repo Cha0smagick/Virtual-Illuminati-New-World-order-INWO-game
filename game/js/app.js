@@ -162,9 +162,18 @@ var CB = {
      que ya salio, no a quien se ataca. Ojo con el doble paso: jugar la carta
      MODIFICA el rodadero pero la ventana sigue ABIERTA, porque varias cartas
      pueden encadenarse. El cierre es un boton aparte (onResolvePendingRoll). */
-  onPlayRollCard: function (handIdx) {
-    try { E.playPlot(E.getState().currentPid, handIdx); after('Carta de rodadero jugada'); }
+  onPlayRollCard: function (handIdx, opts) {
+    /* L29 — `opts` es el pago de 258 Fnord!: {pay:{mode:'top'}} o
+       {pay:{mode:'hand',handIdx:[a,b]}}. Las demás cartas de rodadero no lo usan. */
+    try { E.playPlot(E.getState().currentPid, handIdx, null, opts || {}); after('Carta de rodadero jugada'); }
     catch (e) { log('⚠ ' + e.message); }
+  },
+  /* L29 — 232 Crop Circles: acción de búsqueda. `deck` es 'plot'|'group'; el motor
+     cobra la ficha de un grupo Magic, valida el derecho de robo y abre la ventana
+     de búsqueda (pendingDraw mode 'search') que se resuelve con onResolveDraw. */
+  onPlayCropCircles: function (handIdx, deck) {
+    try { E.playPlot(E.getState().currentPid, handIdx, null, { deck: deck }); after('🍄 Crop Circles: mazo abierto, elige tus cartas'); }
+    catch (e) { log('! ' + e.message); }
   },
   onResolvePendingRoll: function () {
     var st = E.resolvePendingRoll();

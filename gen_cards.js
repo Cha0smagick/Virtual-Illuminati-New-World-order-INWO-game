@@ -708,6 +708,13 @@ const ROLL_FX = {
        'the roll again immediately, at a −4 penalty. No player may do anything else ' +
        'to change the strength of the re-rolled attack. Requires an action by any ' +
        'group with Power ≥ 3.'
+  },
+  'fnord': {
+    kind: 'fnord',
+    costTopGroupOr2: true,
+    t: 'Play this card immediately after any die roll you make. You may discard ' +
+       'that roll and try again. This does not count as an action, but you must ' +
+       'discard your top Group card, or any two Group cards from your hand.'
   }
 };
 const ROLL_FXN = {}; for (const k in ROLL_FX) { ROLL_FXN[norm(k)] = ROLL_FX[k]; }
@@ -2722,7 +2729,23 @@ const L26_FX = {
 const L26_FXN = {};
 for (const k26 in L26_FX) { L26_FXN[norm(k26)] = L26_FX[k26]; }
 
-const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence'];
+/* L29 — P1-157/P1-158: las dos ultimas cartas del backlog mecanico.
+ * Crop Circles (232): busqueda de mazo en draw phase, coste de accion de un
+ * grupo Magic. Fnord (258) va en ROLL_FX (reacciona a rodaderos propios). */
+const L29_FX = {
+  'Crop Circles': {
+    kind: 'cropcircles',
+    requireActionFromAttr: 'magic',
+    t: 'Play this card when you are entitled to draw either Plot or Group cards. ' +
+       'You have 30 seconds to look through one deck and choose as many cards as ' +
+       'you are currently entitled to draw. You must reshuffle the deck afterward. ' +
+       'This costs an action from a Magic group. [Requires Magic Action]'
+  }
+};
+const L29_FXN = {};
+for (const k29 in L29_FX) { L29_FXN[norm(k29)] = L29_FX[k29]; }
+
+const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
 function plotSub(name) {
@@ -3011,7 +3034,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

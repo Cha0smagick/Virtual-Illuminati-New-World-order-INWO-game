@@ -1187,7 +1187,8 @@ function publicState(){
   * jugador debe verlos. El hook ya sabe que las cartas son las que el mira. */
  pendingDraw:S.pendingDraw?(S.pendingDraw.byPid===S.currentPid?{
    kind:S.pendingDraw.kind,hook:S.pendingDraw.hookCard,hookUid:S.pendingDraw.hookUid,
-   mode:S.pendingDraw.pick>1?'choose3':'choose1',exchanged:!!S.pendingDraw.exchanged,
+    mode:S.pendingDraw.kind==='cropcircles'?'search':(S.pendingDraw.pick>1?'choose3':'choose1'),
+    exchanged:!!S.pendingDraw.exchanged,max:S.pendingDraw.max||null,
    cards:S.pendingDraw.pool.map(function(ix){return {idx:ix,name:card(ix).name};})
  }:null):null,
     /* L8c — 405: la ventana de comienzo de turno se proyecta SIN la mano de nadie:
@@ -2036,6 +2037,38 @@ E.resolvePendingDraw=function(act){
   var deck=P.kind==='plot'?S.plotDeck:S.groupDeck;
   var chosen=null;
   act=act||{};
+  /* L29 — 232 Crop Circles: el pool es una COPIA del mazo elegido (las cartas
+     siguen fisicamente en el mazo hasta decidir). picks son indices de carta
+     presentes en S[P.deckName]. Misma convencion L8b: validar ANTES de cerrar. */
+  if(P.kind==='cropcircles'){
+    var picks=act.picks;
+    if(!Array.isArray(picks)||picks.length<1||picks.length>P.max)
+      throw new Error('Elige entre 1 y '+P.max+' cartas del mazo');
+    var seen={};
+    for(var wi=0;wi<picks.length;wi++){
+      if(typeof picks[wi]!=='number')throw new Error('Eleccion invalida');
+      var dkV=P.deckName==='group'?S.groupDeck:S.plotDeck;
+      if(dkV.indexOf(picks[wi])<0)
+        throw new Error('Eleccion invalida: esa carta no esta en el mazo');
+      if(seen[picks[wi]])throw new Error('Carta repetida en la eleccion');
+      seen[picks[wi]]=true;
+    }
+    S.pendingDraw=null;
+    for(var wi2=0;wi2<picks.length;wi2++){
+      dkV.splice(dkV.indexOf(picks[wi2]),1);
+      pl.hand.push(picks[wi2]);
+    }
+    shuffle(dkV);
+    if(P.deckName==='plot'){
+      pl.flags.plotDrawn=true;
+      openEventWindow({kind:'plotDrawn',byPid:P.byPid,label:pl.name+' roba una Plot card ('+card(picks[0]).name+')',
+                       data:{cardIdx:picks[0],byName:pl.name}});
+    }else{
+      pl.flags.groupDrawn=true;
+    }
+    log('Crop Circles: '+pl.name+' toma '+picks.length+' carta(s) y el mazo se remezcla');
+    return publicState();
+  }
   /* L8b — VALIDAR ANTES de cerrar. Cerrar primero era un fallo real: una eleccion
      invalida destruia la ventana Y las cartas del `pool`, que ya no estan ni en el
      mazo ni en la mano ni en el descarte, asi que se perdian para siempre y el
@@ -3240,7 +3273,7 @@ function computeStrength(resolveMode){
    re-rolled attack", asi que durante la repeticion no se admite nada mas.
    ========================================================================== */
 var ROLL_CTX=null;
-var ROLL_KINDS=['bribery','computervirus','murphyslaw','timewarp','mistakenidentity','mothersmarch'];
+var ROLL_KINDS=['bribery','computervirus','murphyslaw','timewarp','mistakenidentity','mothersmarch','fnord'];
 
 /* Que etiqueta tiene el rodadero pendiente. Para la UI. */
 function attackTargetName(A){
@@ -3268,6 +3301,8 @@ function rollReactionAllowed(eff,pid,P){
     return{ok:false,why:'solo tras una tirada exitosa de otro jugador'};
   if(eff.kind==='mothersmarch'&&!(P.success&&P.klass==='destroy'))
     return{ok:false,why:'solo tras un ataque a destruir exitoso'};
+  if(eff.kind==='fnord'&&pid!==P.pid)
+    return{ok:false,why:'solo reacciona a rodaderos que hiciste tu'};
   return{ok:true};
 }
 
@@ -3283,7 +3318,8 @@ function openRollWindow(rd){
           * campo a campo y lo ignora. */
          attack:rd.attack||null};
   /* Se listan los autores posibles (para que la UI sepa a quien preguntar), pero
-     la ventana solo se abre si hay al menos uno. */
+     la ventana solo se abre si hay al menos uno (contrato P1-016: sin nadie que
+     pueda reaccionar, la tirada se resuelve EN EL ACTO). */
   for(var p=0;p<S.players.length;p++){
     var h=S.players[p].hand;
     for(var i=0;i<h.length;i++){
@@ -5290,21 +5326,51 @@ case 'force_align':{
       });
       pl.exposedPlots.push(handIdx);
       log('NWO en juego: '+c.name+' ('+(eff.color||'?')+')');break;}
+    case 'cropcircles':{
+      /* L29 — 232 Crop Circles: "Play this card when you are entitled to draw
+         either Plot or Group cards. You have 30 seconds to look through one deck
+         and choose as many cards as you are currently entitled to draw. You must
+         reshuffle the deck afterward. This costs an action from a Magic group."
+         Busqueda de mazo en fase de robo: max = derecho de robo VIGENTE sobre el
+         mazo elegido (1 si no se ha robado de el este turno, 0 si ya). El pool
+         es una copia; las cartas siguen en el mazo hasta resolvePendingDraw. */
+      if(pl.flags.noDrawTurn)
+        throw new Error(c.name+': no puedes robar este turno');
+      if(S.pendingDraw)
+        throw new Error('Primero resuelve la eleccion de robo pendiente');
+      var ccDeck=opts.deck==='group'?'group':'plot';
+      var ccEnt=ccDeck==='group'?!pl.flags.groupDrawn:(!pl.flags.plotDrawn&&!plotDrawBlocked(pid));
+      if(!ccEnt)
+        throw new Error(c.name+': no tienes derecho a robar del mazo de '+ccDeck+' este turno');
+      var ccDk=ccDeck==='group'?S.groupDeck:S.plotDeck;
+      if(!ccDk.length)throw new Error('El mazo de '+ccDeck+' esta vacio');
+      var aaC=opts.aidUid?findNode(opts.aidUid):null;
+      if(opts.aidUid&&(!aaC||findOwnerPid(opts.aidUid)!==pid))
+        throw new Error('El grupo que aporta la accion debe ser tuyo');
+      if(!aaC)aaC=firstUsableAid(pid,function(cq,nq){return hasAttr(cq,'magic',nq);});
+      if(!aaC)throw new Error(c.name+' requiere una accion de un grupo Magic');
+      spendGroupToken(pid,aaC.uid);
+      S.pendingDraw={kind:'cropcircles',byPid:pid,deckName:ccDeck,max:1,
+                     pool:ccDk.slice(),hookCard:c.name,hookUid:null};
+      log(c.name+': '+S.players[pid].name+' busca en el mazo de '+ccDeck+' y lo remezclara');
+      break;}
     case 'bribery':
     case 'computervirus':
     case 'murphyslaw':
     case 'timewarp':
     case 'mistakenidentity':
+    case 'fnord':
     case 'mothersmarch':{
       /* P1-024 — CARTAS DE RODADERO. A diferencia de P1-016 (que reaccionan a un
          ataque ANUNCIADO, antes de los dados), estas seis reaccionan a un
-         RODADERO ya tirado y todavia sin aplicar: "Play immediately after any
-         die roll". Por eso exigen S.pendingRoll abierto. La condicion impresa
-         ("despues de un exito", "solo contra un Assassination", "por otro
-         jugador") YA esta comprobada en rollReactionAllowed(), que openRollWindow
-         usaba para construir P.responders; aqui solo corresponde el COSTE y la
-         MUTACION del rodadero. El objetivo no se elige: es la carta la que
-         modifica el numero, no a quien se ataca. */
+          RODADERO ya tirado y todavia sin aplicar: "Play immediately after any
+          die roll". Por eso exigen S.pendingRoll abierto. La condicion impresa
+          ("despues de un exito", "solo contra un Assassination", "por otro
+          jugador", "que la tirada sea tuya") YA esta comprobada en
+          rollReactionAllowed(), que openRollWindow
+          usaba para construir P.responders; aqui solo corresponde el COSTE y la
+          MUTACION del rodadero. El objetivo no se elige: es la carta la que
+          modifica el numero, no a quien se ataca. */
       if(!S.pendingRoll)
         throw new Error(c.name+': no hay ningun rodadero que reaccionar');
       var pR=S.pendingRoll;
@@ -5332,6 +5398,34 @@ case 'force_align':{
         if(!aP)aP=firstUsableAid(pid,function(cc){return (cc.power||0)>=eff.minPower;});
         if(!aP)throw new Error(c.name+' necesita una accion de un grupo con Poder >= '+eff.minPower);
         spendGroupToken(pid,aP.uid);
+      }else if(eff.costTopGroupOr2){
+        /* L29 — Fnord! (258): "you must discard your top Group card, or any two
+           Group cards from your hand". "This does not count as an action": no
+           gasta ficha. Pago por IDENTIDAD (patron P1-059): se sacan los indices
+           de catalogo de las posiciones de mano y se borran con indexOf. */
+        var payF=opts.pay||{};
+        if(payF.mode==='top'){
+          if(!S.groupDeck.length)
+            throw new Error(c.name+': el mazo de Grupos esta vacio; paga con dos Grupos de tu mano');
+          var topF=S.groupDeck.pop();
+          S.groupDiscard.push(topF);
+          log(c.name+': '+S.players[pid].name+' descarta la carta de Grupo superior ('+card(topF).name+')');
+        }else if(payF.mode==='hand'&&Array.isArray(payF.handIdx)&&payF.handIdx.length===2){
+          var h1F=payF.handIdx[0],h2F=payF.handIdx[1];
+          if(h1F===h2F)throw new Error('Las dos cartas a descartar deben ser distintas');
+          var g1F=pl.hand[h1F],g2F=pl.hand[h2F];
+          if(g1F===undefined||g2F===undefined)throw new Error('Posicion de mano invalida');
+          if(C.cards[g1F].type!=='group'||C.cards[g2F].type!=='group')
+            throw new Error(c.name+': las dos cartas de la mano deben ser Grupos');
+          [g1F,g2F].forEach(function(giF){
+            var qF=pl.hand.indexOf(giF);
+            if(qF>=0)pl.hand.splice(qF,1);
+            S.groupDiscard.push(giF);
+          });
+          log(c.name+': '+S.players[pid].name+' descarta dos Grupos de su mano');
+        }else{
+          throw new Error(c.name+' requiere pagar: la carta de Grupo de la cima del mazo, o dos Grupos de tu mano');
+        }
       }
       if(eff.kind==='mistakenidentity'){
         pR.cancelled={pid:pid,name:S.players[pid].name,cardName:c.name};
@@ -5339,7 +5433,7 @@ case 'force_align':{
         lastResult={ok:false,cancelled:true,reason:'cancelado por '+c.name,plot:c.name,
                     target:pR.target,roll:null,margin:null,destroyed:false,
                     notes:['Automatic failure por '+c.name]};
-      }else if(eff.kind==='timewarp'||eff.kind==='mothersmarch'){
+      }else if(eff.kind==='timewarp'||eff.kind==='mothersmarch'||eff.kind==='fnord'){
         pR.reroll={pid:pid,cardName:c.name,penalty:(eff.kind==='mothersmarch'?-4:0)};
         log(c.name+': '+S.players[pR.pid].name+' debe repetir el rodadero'+
             (eff.kind==='mothersmarch'?' con una penalizacion de -4':'')+

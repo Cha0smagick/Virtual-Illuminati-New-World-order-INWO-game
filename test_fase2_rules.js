@@ -5814,7 +5814,7 @@ function sealedInstantAttack(pid, power, targetUid, opts) {
  * P1-054. Este bloque es el ESPEJO EN TEST del guard estructural del generador, y es
  * GENERICO: recorre el catalogo real, no lista ids, asi que sigue valiendo cuando
  * entren cartas nuevas. */
-var ACTION_COST_KINDS_EXPECTED = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence'];
+  var ACTION_COST_KINDS_EXPECTED = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 var actionCostCards = [];
 var aliasUsers = [];
 C.cards.forEach(function(card) {
@@ -9377,6 +9377,137 @@ function err26(fn) { return throwMsgL14(fn); }
   esc('S8c l18extra limpio tras destruir (' + JSON.stringify(extra2) + ')',
       !extra2 || !('g8' in extra2));
   S.forEach(function (p) { ok(p[1], 'L28 S8: ' + p[0]); });
+})();
+
+/* ================= L29 — Fnord! (258) reroll + Crop Circles (232) deck-search ================= */
+(function () {
+  var S = [];
+  function ok(cond, msg) { S.push([msg, !!cond]); if (!cond) { console.log('   FAIL: ' + msg); } }
+  function esc(txt, cond) { S.push([txt, !!cond]); if (!cond) { console.log('   FAIL: ' + txt); } }
+  function tMsg(fn) { try { fn(); } catch (e29) { return String((e29 && e29.message) || e29); } return ''; }
+  var MAGIC_IDS = { druids: 1, ninjas: 1, reformedchurchofsatan: 1, rosicrucians: 1, stonehenge: 1, templars: 1, vampires: 1, voudonistas: 1, witch: 1 };
+
+  /* ---- S9: Fnord! 258 — re-tirada real con pago (cima del mazo de Grupos) ---- */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var FN = idxOfId('fnord'); esc('S9a fnord emitido', FN !== null);
+    readyToAttack(0);
+    if (!E._raw().players[0].structure.children.some(function (n) { return n.uid === 'a9'; })) plant(0, 'a9', anyGroupIdx(), 1);
+    if (!E._raw().players[1].structure.children.some(function (n) { return n.uid === 'd9'; })) plant(1, 'd9', anyGroupIdx() + 1, 0);
+    hand22(0, FN); /* la carta de rodadero debe estar EN mano ANTES de tirar: sin autores, la ventana P1-024 no abre */
+    E.declareAttack(0, 'destroy', { attackerUid: 'a9', uid: 'd9' });
+    var A9 = E._raw().attack; if (A9) A9.boosts.push({ name: 'L29 fuerza', v: 30 }); /* plant a profundidad 1 vale -10: sin boost total<2 auto-falla SIN tirar */
+    /* resolveAttack tira los dados y deja S.pendingRoll ABIERTA (patrón P1-024);
+       pin de dados: tirada inicial [0,0]=2, re-tirada de Fnord [0.99,0.99]=12 */
+    var q = [0, 0, 0.99, 0.99];
+    var realRandom = Math.random;
+    Math.random = function () { return q.length ? q.shift() : 0.5; };
+    try { E.resolveAttack(); } finally { Math.random = realRandom; }
+    var pR = E._raw().pendingRoll; esc('S9b rodadero pendiente tras resolveAttack', !!pR);
+    hand22(0, FN);
+    var gd0 = E._raw().groupDeck.length, gs0 = E._raw().groupDiscard.length;
+    Math.random = function () { return q.length ? q.shift() : 0.5; };
+    try {
+      E.playPlot(0, FN, null, { pay: { mode: 'top' } });
+    } finally { Math.random = realRandom; }
+    ok(E._raw().groupDeck.length === gd0 - 1, 'S9c pago top: groupDeck -1');
+    ok(E._raw().groupDiscard.length === gs0 + 1, 'S9d pago top: groupDiscard +1');
+    ok(!!E._raw().pendingRoll && !!E._raw().pendingRoll.reroll && E._raw().pendingRoll.reroll.cardName === 'Fnord!', 'S9e reroll registrado');
+    Math.random = function () { return q.length ? q.shift() : 0.5; };
+    try { if (E._raw().pendingRoll) E.resolvePendingRoll(); } finally { Math.random = realRandom; }
+    ok(E._raw().pendingRoll === null, 'S9f ventana cerrada');
+    ok(q.length === 0, 'S9g re-tirada real ejecutada (dados de la cola consumidos)');
+  })();
+
+  /* ---- S9b: Fnord! rechaza rodaderos ajenos (pid !== P.pid) ---- */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var FN = idxOfId('fnord');
+    readyToAttack(0);
+    if (!E._raw().players[0].structure.children.some(function (n) { return n.uid === 'a9'; })) plant(0, 'a9', anyGroupIdx(), 1);
+    if (!E._raw().players[1].structure.children.some(function (n) { return n.uid === 'd9'; })) plant(1, 'd9', anyGroupIdx() + 1, 0);
+    hand22(0, FN); /* la carta de rodadero debe estar EN mano ANTES de tirar: sin autores, la ventana P1-024 no abre */
+    E.declareAttack(0, 'destroy', { attackerUid: 'a9', uid: 'd9' });
+    var A9 = E._raw().attack; if (A9) A9.boosts.push({ name: 'L29 fuerza', v: 30 }); /* plant a profundidad 1 vale -10: sin boost total<2 auto-falla SIN tirar */
+    var q = [0, 0];
+    var realRandom = Math.random;
+    Math.random = function () { return q.length ? q.shift() : 0.5; };
+    try { E.resolveAttack(); } finally { Math.random = realRandom; }
+    esc('S9b-i rodadero del jugador 0', !!E._raw().pendingRoll);
+    hand22(1, FN); /* Fnord en mano del jugador 1 (NO su tirada) */
+    E._raw().currentPid = 1; /* el gate de fnord es por pid del rodadero, no por turno */
+    var msg = tMsg(function () {
+      E.playPlot(1, FN, null, { pay: { mode: 'top' } });
+    });
+    E._raw().currentPid = 0;
+    ok(msg && msg.indexOf('rodaderos que hiciste tu') >= 0, 'S9b-ii rechazo rodadero ajeno: "' + msg + '"');
+  })();
+
+  /* ---- S9c: Fnord! pago con 2 Grupos de la mano ---- */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var FN = idxOfId('fnord');
+    readyToAttack(0);
+    if (!E._raw().players[0].structure.children.some(function (n) { return n.uid === 'a9'; })) plant(0, 'a9', anyGroupIdx(), 1);
+    if (!E._raw().players[1].structure.children.some(function (n) { return n.uid === 'd9'; })) plant(1, 'd9', anyGroupIdx() + 1, 0);
+    hand22(0, FN); /* la carta de rodadero debe estar EN mano ANTES de tirar: sin autores, la ventana P1-024 no abre */
+    E.declareAttack(0, 'destroy', { attackerUid: 'a9', uid: 'd9' });
+    var A9 = E._raw().attack; if (A9) A9.boosts.push({ name: 'L29 fuerza', v: 30 }); /* plant a profundidad 1 vale -10: sin boost total<2 auto-falla SIN tirar */
+    var q = [0, 0];
+    var realRandom = Math.random;
+    Math.random = function () { return q.length ? q.shift() : 0.5; };
+    try { E.resolveAttack(); } finally { Math.random = realRandom; }
+    hand22(0, FN);
+    /* meter 2 grupos DISTINTOS a la mano del pid 0 */
+    var g1 = anyGroupIdx(), g2 = g1 + 1;
+    while (!(C.cards[g2] && C.cards[g2].type === 'group')) g2++;
+    var hand = E._raw().players[0].hand; hand.push(g1); hand.push(g2);
+    E.playPlot(0, FN, null, { pay: { mode: 'hand', handIdx: [hand.indexOf(g1), hand.indexOf(g2)] } }); /* 2º arg = indice de CATALOGO (playPlot localiza en mano); handIdx = posiciones (FN sigue en mano durante el efecto: el splice es al final, P1-059) */
+    ok(hand.indexOf(g1) < 0 && hand.indexOf(g2) < 0, 'S9c-i grupos pagados fuera de la mano');
+    ok(!!E._raw().pendingRoll && !!E._raw().pendingRoll.reroll, 'S9c-ii reroll registrado (pago 2 grupos)');
+    ok(E._raw().groupDiscard.indexOf(g1) >= 0 && E._raw().groupDiscard.indexOf(g2) >= 0, 'S9c-iii grupos al descarte');
+  })();
+
+  /* ---- S10: Crop Circles 232 — deck-search con coste Magic ---- */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var CC = idxOfId('cropcircles'); esc('S10a cropcircles emitido', CC !== null);
+    var DRU = idxOfId('druids'); esc('S10b druids (Magic) disponible', DRU !== null);
+    plant(0, 'm1', DRU, 1); /* grupo Magic CON token de acción */
+    readyToAttack(0);
+    hand22(0, CC);
+    var pd0 = E._raw().plotDeck.slice();
+    E.playPlot(0, CC, null, { deck: 'plot' });
+    var PD = E._raw().pendingDraw;
+    esc('S10c ventana search abierta', !!PD && PD.kind === 'cropcircles' && PD.max === 1);
+    var pick = pd0[pd0.length - 1]; /* cima del pool = última del mazo */
+    E.resolvePendingDraw({ picks: [pick] });
+    ok(E._raw().pendingDraw === null, 'S10d ventana cerrada');
+    ok(E._raw().players[0].hand.indexOf(pick) >= 0, 'S10e carta elegida en mano');
+    ok(E._raw().plotDeck.indexOf(pick) < 0, 'S10f carta fuera del deck');
+    ok(E._raw().players[0].flags.plotDrawn === true, 'S10g entitlement consumida');
+    var msg2 = tMsg(function () { E.drawPlot(0); });
+    ok(msg2 && (msg2.indexOf('ya robaste') >= 0 || msg2.indexOf('Plot') >= 0), 'S10h drawPlot lanza tras Crop Circles: "' + msg2 + '"');
+    /* replay mismo turno → entitlement 0 → throw determinista */
+    E._raw().players[0].hand.push(CC);
+    var msg3 = tMsg(function () { E.playPlot(0, CC, null, { deck: 'plot' }); });
+    ok(msg3 && msg3.length > 0, 'S10i replay mismo turno lanza (entitlement 0): "' + msg3 + '"');
+  })();
+
+  /* ---- S10b: Crop Circles sin grupo Magic → throw (se purgan Magic de la estructura) ---- */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var CC = idxOfId('cropcircles');
+    var st0 = E._raw().players[0].structure;
+    st0.children = st0.children.filter(function (n) {
+      var cc = C.cards[n.cardId]; return !(cc && cc.id && MAGIC_IDS[cc.id]);
+    });
+    hand22(0, CC);
+    var msg = tMsg(function () { E.playPlot(0, CC, null, { deck: 'plot' }); });
+    ok(msg && msg.length > 0, 'S10b-i sin grupo Magic: "' + msg + '"');
+  })();
+
+  S.forEach(function (p) { ok(p[1], p[0]); });
 })();
 
 if (failures.length) {
