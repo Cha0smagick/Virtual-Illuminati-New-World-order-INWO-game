@@ -1,0 +1,124 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e3]:
+    - heading "INWO NEW WORLD ORDER" [level=1] [ref=f4e4]
+    - button "⏱ ×1" [ref=f4e5] [cursor=pointer]
+    - button "Cómo jugar (reglas rápidas)" [ref=f4e6] [cursor=pointer]: "?"
+  - generic "Diálogos y ayuda" [ref=f4e7]:
+    - dialog [ref=f4e8]:
+      - generic [ref=f4e9]:
+        - generic: TOP SECRETEYES ONLY
+        - generic [ref=f4e10]: 👁
+        - button "🌐 ES" [ref=f4e11] [cursor=pointer]
+        - heading "ILLUMINATI New World Order" [level=2] [ref=f4e12]:
+          - generic [ref=f4e13]: ILLUMINATI
+          - generic [ref=f4e14]: New World Order
+        - paragraph [ref=f4e15]: Elige vuestras sociedades secretas · One Big Deck · Cumple la meta que aparece en tu barra
+      - generic [ref=f4e16]:
+        - button "🤖 Humano vs IA" [ref=f4e17] [cursor=pointer]
+        - button "👥 Hot-seat (2 humanos)" [ref=f4e18] [cursor=pointer]
+        - button "🤖🤖 IA vs IA" [ref=f4e19] [cursor=pointer]
+      - status
+      - generic [ref=f4e20]:
+        - generic [ref=f4e21]:
+          - heading [level=3] [ref=f4e22]:
+            - button "👤 JUGADOR 1 ▼" [ref=f4e23] [cursor=pointer]
+            - emphasis
+          - generic [ref=f4e24]:
+            - button "Elegir Adepts of Hermes 1" [ref=f4e25] [cursor=pointer]:
+              - img "Adepts of Hermes 1" [ref=f4e26]
+              - generic [ref=f4e27]: Adepts of Hermes 1
+              - generic [ref=f4e28]: ⚡ Poder 8
+              - generic [ref=f4e29]: Conserva intentos fallidos sobre cartas en tu mano
+            - button "Elegir Bavarian Illuminati 1" [ref=f4e30] [cursor=pointer]:
+              - img "Bavarian Illuminati 1" [ref=f4e31]
+              - generic [ref=f4e32]: Bavarian Illuminati 1
+              - generic [ref=f4e33]: ⚡ Poder 10
+              - generic [ref=f4e34]: "1 vez/turno: ataque Privilegiado (nadie interfiere)"
+            - button "Elegir Bermuda Triangle 1" [ref=f4e35] [cursor=pointer]:
+              - img "Bermuda Triangle 1" [ref=f4e36]
+              - generic [ref=f4e37]: Bermuda Triangle 1
+              - generic [ref=f4e38]: ⚡ Poder 8
+              - generic [ref=f4e39]: Reorganiza tu estructura al final de cada turno
+            - button "Elegir Discordian Society 1" [ref=f4e40] [cursor=pointer]:
+              - img "Discordian Society 1" [ref=f4e41]
+              - generic [ref=f4e42]: Discordian Society 1
+              - generic [ref=f4e43]: ⚡ Poder 8
+              - generic [ref=f4e44]: Inmune a Straight/Government · Weird ×2 meta
+            - button "Elegir Gnomes of Zurich 1" [ref=f4e45] [cursor=pointer]:
+              - img "Gnomes of Zurich 1" [ref=f4e46]
+              - generic [ref=f4e47]: Gnomes of Zurich 1
+              - generic [ref=f4e48]: ⚡ Poder 8
+              - generic [ref=f4e49]: +4 contra Bank · Corporate ×2 meta
+            - button "Elegir Servants of Cthulhu 1" [ref=f4e50] [cursor=pointer]:
+              - img "Servants of Cthulhu 1" [ref=f4e51]
+              - generic [ref=f4e52]: Servants of Cthulhu 1
+              - generic [ref=f4e53]: ⚡ Poder 9
+              - generic [ref=f4e54]: "+4 al destruir · META: destruir 8 grupos"
+            - button "Elegir Shangri-La 1" [ref=f4e55] [cursor=pointer]:
+              - img "Shangri-La 1" [ref=f4e56]
+              - generic [ref=f4e57]: Shangri-La 1
+              - generic [ref=f4e58]: ⚡ Poder 8
+              - generic [ref=f4e59]: "+5 defensa vs Instant · META: 30 Power Peaceful"
+            - button "Elegir The Network 1" [ref=f4e60] [cursor=pointer]:
+              - img "The Network 1"
+              - generic [ref=f4e61]: The Network 1
+              - generic [ref=f4e62]: ⚡ Poder 8
+              - generic [ref=f4e63]: Roba 2 Plots/turno · Computer ×2 meta
+            - button "Elegir UFOs 1" [ref=f4e64] [cursor=pointer]:
+              - img "UFOs 1"
+              - generic [ref=f4e65]: UFOs 1
+              - generic [ref=f4e66]: ⚡ Poder 8
+              - generic [ref=f4e67]: "2 acciones Illuminati · META: controlar 3 secretos"
+        - generic [ref=f4e68]:
+          - heading [level=3] [ref=f4e69]:
+            - button "🤖 IA 2 ▼" [ref=f4e70] [cursor=pointer]
+            - emphasis
+          - generic [ref=f4e71]:
+            - button "Elegir Adepts of Hermes 1" [ref=f4e72] [cursor=pointer]:
+              - img "Adepts of Hermes 1" [ref=f4e73]
+              - generic [ref=f4e74]: Adepts of Hermes 1
+              - generic [ref=f4e75]: ⚡ Poder 8
+              - generic [ref=f4e76]: Conserva intentos fallidos sobre cartas en tu mano
+            - button "Elegir Bavarian Illuminati 1" [ref=f4e77] [cursor=pointer]:
+              - img "Bavarian Illuminati 1" [ref=f4e78]
+              - generic [ref=f4e79]: Bavarian Illuminati 1
+              - generic [ref=f4e80]: ⚡ Poder 10
+              - generic [ref=f4e81]: "1 vez/turno: ataque Privilegiado (nadie interfiere)"
+            - button "Elegir Bermuda Triangle 1" [ref=f4e82] [cursor=pointer]:
+              - img "Bermuda Triangle 1" [ref=f4e83]
+              - generic [ref=f4e84]: Bermuda Triangle 1
+              - generic [ref=f4e85]: ⚡ Poder 8
+              - generic [ref=f4e86]: Reorganiza tu estructura al final de cada turno
+            - button "Elegir Discordian Society 1" [ref=f4e87] [cursor=pointer]:
+              - img "Discordian Society 1" [ref=f4e88]
+              - generic [ref=f4e89]: Discordian Society 1
+              - generic [ref=f4e90]: ⚡ Poder 8
+              - generic [ref=f4e91]: Inmune a Straight/Government · Weird ×2 meta
+            - button "Elegir Gnomes of Zurich 1" [ref=f4e92] [cursor=pointer]:
+              - img "Gnomes of Zurich 1" [ref=f4e93]
+              - generic [ref=f4e94]: Gnomes of Zurich 1
+              - generic [ref=f4e95]: ⚡ Poder 8
+              - generic [ref=f4e96]: +4 contra Bank · Corporate ×2 meta
+            - button "Elegir Servants of Cthulhu 1" [ref=f4e97] [cursor=pointer]:
+              - img "Servants of Cthulhu 1" [ref=f4e98]
+              - generic [ref=f4e99]: Servants of Cthulhu 1
+              - generic [ref=f4e100]: ⚡ Poder 9
+              - generic [ref=f4e101]: "+4 al destruir · META: destruir 8 grupos"
+            - button "Elegir Shangri-La 1" [ref=f4e102] [cursor=pointer]:
+              - img "Shangri-La 1" [ref=f4e103]
+              - generic [ref=f4e104]: Shangri-La 1
+              - generic [ref=f4e105]: ⚡ Poder 8
+              - generic [ref=f4e106]: "+5 defensa vs Instant · META: 30 Power Peaceful"
+            - button "Elegir The Network 1" [ref=f4e107] [cursor=pointer]:
+              - img "The Network 1"
+              - generic [ref=f4e108]: The Network 1
+              - generic [ref=f4e109]: ⚡ Poder 8
+              - generic [ref=f4e110]: Roba 2 Plots/turno · Computer ×2 meta
+            - button "Elegir UFOs 1" [ref=f4e111] [cursor=pointer]:
+              - img "UFOs 1"
+              - generic [ref=f4e112]: UFOs 1
+              - generic [ref=f4e113]: ⚡ Poder 8
+              - generic [ref=f4e114]: "2 acciones Illuminati · META: controlar 3 secretos"
+      - generic [ref=f4e115]: 🖱 Pasa el ratón sobre una carta para ver su PODER especial, su META de victoria, ventajas y desventajas.
+      - paragraph [ref=f4e116]: 💡 Pasa el ratón por una carta para leer su poder especial. Cada sociedad tiene un poder y una meta de victoria distinta.
+      - button "Elige un Illuminati para cada jugador…" [disabled] [ref=f4e117]

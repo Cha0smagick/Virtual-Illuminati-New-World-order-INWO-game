@@ -1,0 +1,116 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - heading "INWO NEW WORLD ORDER" [level=1] [ref=e4]
+      - generic [ref=e116]:
+        - generic [ref=e117]: Turno 1
+        - generic [ref=e118]: MAIN
+        - generic [ref=e119]: ▶ Jugador 1
+      - button "⏱ ×1" [ref=e5] [cursor=pointer]
+      - button "Cómo jugar (reglas rápidas)" [ref=e6] [cursor=pointer]: "?"
+      - generic [ref=e121]:
+        - generic "Controlar 12 grupos; tus recursos Mágicos cuentan como grupos" [ref=e122]:
+          - generic [ref=e123]: Jugador 1
+          - generic [ref=e126]: 1/12 · recursos Mágicos 0
+        - generic "Poder total de tus grupos ≥ 50" [ref=e127]:
+          - generic [ref=e128]: IA
+          - generic [ref=e131]: 1/12 · Poder total 10/50
+    - main "Tablero y registro de la partida" [ref=e132]:
+      - generic [ref=e133]:
+        - generic [ref=e134]:
+          - generic [ref=e135]:
+            - text: EXPEDIENTE CLASIFICADO · NIVEL 5 OJOS UNICAMENTE
+            - img "Adepts of Hermes 1" [ref=e136]
+            - generic [ref=e137]: Jugador 1 Adepts of Hermes 1
+            - generic "Acciones Illuminati" [ref=e138]: ★ 1
+            - generic [ref=e139]: 1 grupos
+            - generic [ref=e140]: "mano: 3P/10G"
+          - 'button "Carta: Adepts of Hermes 1" [ref=e142]':
+            - img "Adepts of Hermes 1" [ref=e143]
+            - generic [ref=e144]: Adepts of Hermes 1
+            - text: P7/R-●1
+            - generic [ref=e145]: ILLUMINATI · 4 flechas libres
+        - heading "ÁREA NEUTRAL (0)" [level=4] [ref=e147]
+        - generic [ref=e148]:
+          - generic [ref=e149]:
+            - text: EXPEDIENTE CLASIFICADO · NIVEL 5 OJOS UNICAMENTE
+            - img "Bavarian Illuminati 1" [ref=e150]
+            - generic [ref=e151]: IA (IA)Bavarian Illuminati 1
+            - generic "Acciones Illuminati" [ref=e152]: ★ 0
+            - generic [ref=e153]: 1 grupos
+            - generic [ref=e154]: "mano: 3P/10G"
+          - 'button "Carta: Bavarian Illuminati 1" [ref=e156]':
+            - img "Bavarian Illuminati 1" [ref=e157]
+            - generic [ref=e158]: Bavarian Illuminati 1
+            - text: P10/R-
+            - generic [ref=e159]: ILLUMINATI · 4 flechas libres
+      - generic [ref=e160]:
+        - heading "Registro" [level=3] [ref=e161]
+        - generic "Registro de jugadas" [ref=e162]:
+          - generic [ref=e163]: "Partida iniciada: modo Humano vs IA"
+          - generic [ref=e164]: Nueva partida creada (2 jugadores, meta básica 12 grupos)
+          - generic [ref=e165]: Jugador 1 elige Adepts of Hermes 1
+          - generic [ref=e166]: IA elige Bavarian Illuminati 1
+          - generic [ref=e167]: "Tirada inicial: 10, 5 — empieza Jugador 1"
+          - generic [ref=e168]: — Turno de Jugador 1 (+1 acción Illuminati) —
+    - generic "Acciones y cartas de tu mano" [ref=e169]:
+      - generic [ref=e170]:
+        - generic [ref=e171]:
+          - text: ◆
+          - generic [ref=e172]: 1 · ROBAR
+          - button "🎴 Robar PLOT" [ref=e173] [cursor=pointer]
+          - button "🃏 Robar GRUPO" [ref=e174] [cursor=pointer]
+        - generic [ref=e175]:
+          - text: ◆
+          - generic [ref=e176]: 2 · COLOCAR GRATIS
+          - button "🔮 Takeover" [ref=e177] [cursor=pointer]
+        - generic [ref=e178]:
+          - text: ◆
+          - generic [ref=e179]: 3 · ACCIONES (gastan ●)
+          - button "⚔ CONTROLAR" [ref=e180] [cursor=pointer]
+          - button "☠ DESTRUIR" [ref=e181] [cursor=pointer]
+          - button "🔀 Mover" [ref=e182] [cursor=pointer]
+          - button "📦 Recurso" [ref=e183] [cursor=pointer]
+        - generic [ref=e184]:
+          - text: ◆
+          - generic [ref=e185]: 4 · EXTRAS (★)
+          - button "★→Plot" [ref=e186] [cursor=pointer]
+          - button "★→Grupo" [ref=e187] [cursor=pointer]
+        - generic [ref=e188]:
+          - text: ◆
+          - generic [ref=e189]:
+            - text: 🗂 MANO
+            - generic [ref=e190]: 🂠 13
+          - button "Ordenar la mano por Tablero" [ref=e191] [cursor=pointer]: 🗂
+          - button "Ordenar la mano por Tipo" [ref=e192] [cursor=pointer]: 🔤
+          - button "Ordenar la mano por Poder" [ref=e193] [cursor=pointer]: ⚡
+        - button "5 · Terminar turno ▶" [ref=e194] [cursor=pointer]
+      - generic [ref=e195]:
+        - button "The Stars are Right, plot, Poder desconocido, Resistencia desconocida" [ref=e196] [cursor=pointer]:
+          - img "The Stars are Right" [ref=e197]
+        - button "Gang War, plot, Poder desconocido, Resistencia desconocida" [ref=e198] [cursor=pointer]:
+          - img "Gang War" [ref=e199]
+        - button "Reach Out . . ., plot, Poder desconocido, Resistencia desconocida" [ref=e200] [cursor=pointer]:
+          - img "Reach Out . . ." [ref=e201]
+        - button "Religious Reich, group, Poder 3, Resistencia 5" [ref=e202] [cursor=pointer]:
+          - img "Religious Reich" [ref=e203]
+        - button "Warehouse 23, resource, Poder desconocido, Resistencia desconocida" [ref=e204] [cursor=pointer]:
+          - img "Warehouse 23" [ref=e205]
+        - button "Offshore Banks, group, Poder 2, Resistencia 2" [ref=e206] [cursor=pointer]:
+          - img "Offshore Banks" [ref=e207]
+        - button "Druids, group, Poder 3, Resistencia 4" [ref=e208] [cursor=pointer]:
+          - img "Druids" [ref=e209]
+        - button "Angel's Feather, resource, Poder desconocido, Resistencia desconocida" [ref=e210] [cursor=pointer]:
+          - img "Angel's Feather" [ref=e211]
+        - button "Eliza, resource, Poder desconocido, Resistencia desconocida" [ref=e212] [cursor=pointer]:
+          - img "Eliza" [ref=e213]
+        - button "The Frog God, resource, Poder desconocido, Resistencia desconocida" [ref=e214] [cursor=pointer]:
+          - img "The Frog God" [ref=e215]
+        - button "F.B.I., group, Poder 5, Resistencia 6" [ref=e216] [cursor=pointer]:
+          - img "F.B.I." [ref=e217]
+        - button "Moonies, group, Poder 2, Resistencia 4" [ref=e218] [cursor=pointer]:
+          - img "Moonies" [ref=e219]
+        - button "Nephews of God, group, Poder 1, Resistencia 1" [ref=e220] [cursor=pointer]:
+          - img "Nephews of God" [ref=e221]
+      - generic [ref=e222]: "ℹ 🎁 PASO CLAVE del turno: pulsa el botón Takeover (parpadea) → elige carta → colócala en un anillo verde. Es GRATIS y sin dados."
+  - generic "Diálogos y ayuda"

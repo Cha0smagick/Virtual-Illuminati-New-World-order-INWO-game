@@ -245,6 +245,17 @@ var CB = {
     try { E.resolvePendingTurnStart({ pass: true }); after('Los rivales dejan pasar el comienzo del turno'); }
     catch (e) { log('! ' + e.message); }
   },
+  /* L31 — LYHF y Fraternal Orders. LYHF la cierra el INSTIGADOR (byPid), que
+     durante la ventana no es currentPid, así que humanPid() y no currentPid.
+     Fraternal sí es acción del turno: currentPid. */
+  onResolveLyhf: function (pos) {
+    try { E.resolveLyhf(humanPid(), pos); after('La pelea se resuelve: una carta va al descarte, la otra vuelve a la mano del rival'); }
+    catch (e) { log('! ' + e.message); }
+  },
+  onFraternalDraw: function (uid) {
+    try { E.fraternalDraw(E.getState().currentPid, uid); after('Fraternal Orders: robas una carta de Grupo'); }
+    catch (e) { log('! ' + e.message); }
+  },
   /* L9 — 332 Orbital Mind Control Lasers. La ventana la abre E.useGadgetAction y
    * la cierra E.resolveAlignEdit. Aqui NO se elige grupo ni alineacion: eso ya lo
    * ha hecho la UI (pick + selects), asi que solo se reenvia la decision. Usamos

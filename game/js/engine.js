@@ -801,7 +801,7 @@ E.newGame=function(configs){
   S={
       phase:'setup',turn:0,round:1,currentPid:-1,turnCompleted:false,
     players:[],groupDeck:[],plotDeck:[],groupDiscard:[],plotDiscard:[],
-    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,pendingAlignEdit:null,pendingResDestroy:null,pendingNegation:null,returnTurnTo:null,alignRetro:{},l18extra:{},alignRule:null,log:[],uidCounter:100,winner:null,
+    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,pendingAlignEdit:null,pendingResDestroy:null,pendingLyhf:null,pendingNegation:null,returnTurnTo:null,alignRetro:{},l18extra:{},alignRule:null,log:[],uidCounter:100,winner:null,
     config:{goalCount:(configs.goalCount||12)},
     lastRoll:null
   };
@@ -832,6 +832,10 @@ E.newGame=function(configs){
          Aqui se guarda {uid,cardId,linkedTo} para que el cambio siga visible y
          para poder deshacer el efecto si el grupo linkeado sale de la mesa. */
       linkedPlots:[],
+      /* L31: 366 Senate Investigating Committee — "No player can be hit by more
+         than one Senate Investigating Committee in a single game". Contador
+         PERMANENTE (beginTurn no lo toca); 0 = nunca investigado. */
+      senateHits:0,
       turnsCompleted:0,immuneFrom:{},pickedSecrets:[],revealedBy:[],
       flags:{autoTakeover:false,autoTakeoverBlocked:false,privilegedUsed:0}
     });
@@ -1198,6 +1202,14 @@ function publicState(){
       discardable:!!S.pendingPeek.data.discardable,
       cancelledBy:S.pendingPeek.cancelledBy?{card:S.pendingPeek.cancelledBy.cardName,by:S.pendingPeek.cancelledBy.name}:null,
       responders:S.pendingPeek.responders?S.pendingPeek.responders.slice():[]}:null,
+    /* L31 — la ventana de la pelea instigada (300 Let's You and Him Fight). El
+     * dueno ve las dos cartas robadas al rival: son las que decide entre
+     * descartar y devolver. Las cartas YA NO estan en la mano del rival. */
+    pendingLyhf:S.pendingLyhf?{byPid:S.pendingLyhf.byPid,
+      byName:S.players[S.pendingLyhf.byPid]?S.players[S.pendingLyhf.byPid].name:'?',
+      rivalPid:S.pendingLyhf.rivalPid,
+      rivalName:S.players[S.pendingLyhf.rivalPid]?S.players[S.pendingLyhf.rivalPid].name:'?',
+      cards:S.pendingLyhf.cards.map(function(ixL){return {idx:ixL,name:card(ixL).name,type:card(ixL).type};})}:null,
  /* L8b: la ventana de robo es INTIMA del jugador que roba (233/367 eligen entre sus
   * propias cartas), al reves que pendingPeek que es de un rival. Se proyecta
   * entero solo para el dueno: los indices de carta son de SU mazo y ningun otro
@@ -1765,6 +1777,13 @@ function expireTurnFlags(){
       qpL8c.flags.noPlotUntilTurnEnd=0;
       log(qpL8c.name+' puede volver a robar Plot cards (Unlucky 13 caduca)');
     }
+    /* L31 — Senate Investigating Committee: el bloqueo cubre solo el turno en que
+     * se aplica ("at the beginning of any other player's turn"). Mismo patrón de
+     * caducidad que noPlotUntilTurnEnd. */
+    if(qpL8c.flags&&qpL8c.flags.senateLock&&S.turn>qpL8c.flags.senateLock){
+      qpL8c.flags.senateLock=0;
+      log(qpL8c.name+' sale del bloqueo del Senate Investigating Committee');
+    }
   }
 }
 E.beginTurn=function(pid,isFirst){
@@ -1851,6 +1870,33 @@ E.beginTurn=function(pid,isFirst){
     }
     if(got>0)log(pl.name+' roba '+got+' Plot cards al inicio del turno (The Network)');
   }
+  /* L31 — Pentagon: "Each Corporate group directly controlled by the Pentagon
+   * lets you draw one extra Plot card each turn." El contador se recalcula al
+   * comenzar el turno (los grupos corporativos pueden haber cambiado) y lo
+   * consume E.drawPlot. */
+  var pentExtra=0;
+  walk(pl.structure,function(ndPen){
+    if(ndPen.cardId==null)return;
+    if(!(card(ndPen.cardId).effect&&card(ndPen.cardId).effect.kind==='corporate_extra_draw'))return;
+    for(var cp=0;cp<ndPen.children.length;cp++){
+      var ch=ndPen.children[cp];
+      if(ch.cardId!=null&&nodeAligns(ch,card(ch.cardId)).indexOf('corporate')>=0)pentExtra++;
+    }
+  });
+  pl.flags.pentagonExtra=pentExtra;
+  /* L31 — Perpetual Motion Machine: "The group linked to this card device gets
+   * one extra Action token at the beginning of each turn." Solo el grupo dueño
+   * recibe la ficha extra; respeta noTokensFlag (418). */
+  pl.resources.forEach(function(rPM){
+    var cPM=card(rPM.cardId);
+    if(!(cPM&&cPM.effect&&cPM.effect.kind==='linked_token_source'))return;
+    var nPM=findNode(rPM.linkedTo);
+    if(!nPM||nPM.cardId==null)return;
+    if(findOwnerPid(nPM.uid)!==pid)return;
+    if(noTokensFlag(nPM))return;
+    nPM.tokens=(nPM.tokens||0)+1;
+    log('Perpetual Motion Machine: '+card(nPM.cardId).name+' recibe una Action token extra');
+  });
   log('— Turno de '+pl.name+' (+'+tokGain+' acción Illuminati) —');
   S.phase='main';
   return publicState();
@@ -1862,7 +1908,7 @@ function drawFrom(deck,discard,kind){
   return deck.pop();
 }
 E.drawPlot=function(pid){
-  requireOwnMain(pid);
+  requireOwnMain(pid,true);
   var pl=S.players[pid];
   /* L8c — 405 Unlucky 13: "He can draw no Plot cards, for any reason, until after
    * his current turn ends". Va delante del chequeo de plotDrawn: bloquear no es lo
@@ -1873,7 +1919,13 @@ E.drawPlot=function(pid){
    * turno), asi que aqui ya esta puesto. Va antes del chequeo de plotDrawn: "no puedes
    * robar" y "ya robaste" son cosas distintas y el mensaje debe decirlo. */
   if(pl.flags.noDrawTurn)throw new Error('Seize the Time!: no puedes robar Plot cards durante el turno especial');
-  if(pl.flags.plotDrawn)throw new Error('Ya robaste tu carta de Plot este turno');
+  if(pl.flags.plotDrawn){
+    /* L31 — Pentagon: cada grupo Corporate controlado directamente paga un robo
+     * extra de Plot ("lets you draw one extra Plot card each turn"). Se descuenta
+     * UNO por robo extra; el normal ya se gastó. */
+    if(pl.flags.pentagonExtra>0){pl.flags.pentagonExtra--;}
+    else throw new Error('Ya robaste tu carta de Plot este turno');
+  }
   if(S.pendingDraw)throw new Error('Primero resuelve la eleccion de robo pendiente');
   /* L8b: 233/367. El robo se APLAZA (las cartas ya estan en S.pendingDraw.pool) y el
    * turno NO consume la bandera: la consumira resolvePendingDraw al cerrar. */
@@ -1893,7 +1945,7 @@ E.drawPlot=function(pid){
   return {idx:ix,card:C.cards[ix]};
 };
 E.drawGroup=function(pid){
-  requireOwnMain(pid);
+  requireOwnMain(pid,true);
   var pl=S.players[pid];
   /* L14 — 364: mismo bloqueo para el robo de Grupo ("Plot or Group cards"). 405
    * (Unlucky 13) solo imprimia "no Plot cards", asi que este camino no lo tenia. */
@@ -2506,7 +2558,14 @@ E.resolveRewritingHistory=function(act){
   return publicState();
 };
 
-function requireOwnMain(pid){
+function requireOwnMain(pid,allowSenated){
+  /* L31 — Senate Investigating Committee: "He may draw cards and place Action
+   * tokens, but can do nothing else." El dueño del senateLock conserva solo el
+   * robo (drawPlot/drawGroup pasan allowSenated=true); canjear (exchangeForPlot)
+   * y el resto de acciones siguen bloqueadas. */
+  var sPl=S.players[pid];
+  if(!allowSenated&&sPl&&sPl.flags.senateLock&&S.turn>=sPl.flags.senateLock)
+    throw new Error('Senate Investigating Committee: solo puedes robar cartas y colocar Action tokens este turno');
   if(S.phase!=='main')throw new Error('Fuera de la fase principal');
   if(pid!==S.currentPid)throw new Error('No es tu turno');
 }
@@ -2755,6 +2814,17 @@ E.playResource=function(pid,handIdx,linkedToUid){
       var md23=String(c.effect.mode||'');
       if(md23!=='atk_type_bonus'&&md23!=='any_destroy'&&md23!=='target_attrs')
         throw new Error(c.name+': un Resource no puede llevar el modo '+md23+' (esa mecanica es de una Plot card)');
+      break;
+    }
+    case 'linked_token_source':{
+      /* L31 — 335 Perpetual Motion Machine. Colocar el device solo VALIDA el
+       * enlace: "The group linked to this card device gets one extra Action
+       * token at the beginning of each turn" — el token lo da beginTurn (L31),
+       * aqui solo se exige que el destino sea un grupo propio de la estructura
+       * (no la root Illuminati: findNode no la encuentra). */
+      if(!linkedToUid)throw new Error(c.name+': elige el grupo al que enlazas el device');
+      var ndPMM=findNode(linkedToUid);
+      if(!ndPMM||findOwnerPid(linkedToUid)!==pid)throw new Error(c.name+': solo puedes enlazarlo a un grupo de tu propia estructura');
       break;
     }
     default: throw new Error('El Resource "' + c.name + '" tiene una mecanica (' + resFx + ') que E.playResource todavia no ejecuta');
@@ -4588,11 +4658,15 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
      * empezar, asi que requireOwnMain(actor) lanzaria "No es tu turno" y la carta seria
      * INJUGABLE. El timing real lo valida su case (ventana abierta + forPid distinto del
      * actor), no esta lista. L14.c razono al reves y por eso el bug solo se vio al medir. */
-  ||eff0.kind==='turn_control'||eff0.kind==='turn_start_block'
+  ||eff0.kind==='turn_control'||eff0.kind==='turn_start_block'||eff0.kind==='turn_start_lock'
+  /* L31: 366 Senate Investigating Committee comparte el timing de 405 (la
+     ventana pendingTurnStart que abre E.endTurn); 300 Let's You and Him Fight
+     imprime "Play this card at any time" y cobra la accion del ILUMINADO de
+     quien la juega, asi que va en esta lista. */
   /* L20: 408 Upheaval! imprime "This card may be played at any time" - un "at any
    * time" DE VERDAD, sin "during your own turn". Entra en `instant` y por eso se
    * juega tambien en el turno del rival: el veto de turno propio NO se aplica. */
-  ||eff0.kind==='global_discard'||eff0.kind==='nwo_discard_one'||eff0.kind==='nwo_discard_all'||eff0.kind==='secret_expose'
+  ||eff0.kind==='global_discard'||eff0.kind==='nwo_discard_one'||eff0.kind==='nwo_discard_all'||eff0.kind==='secret_expose'||eff0.kind==='feud_pick'
   /* L21: las cartas New World Order "can be played at any time except during an
    * Instant or Privileged Attack" (inwo_rules_extracted.txt:767-769). Las 7 de
    * `bulk_power` ya estaban en `instant` desde L2 (engine.js:3970), pero 255 Fear and
@@ -4604,6 +4678,15 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
    * que dicen "at any time" (P1-015 distingue las que dicen EXCEPT during an attack,
    * como 362 Scandal, que brings su propio veto). */
   ||eff0.kind==='align_rule'||eff0.kind==='token_wither');
+  /* L31 Senate enforcement (2 de 3): "He may draw cards and place Action tokens,
+   * but can do nothing else." El bloqueo alcanza TAMBIEN las Plots instant del
+   * bloqueado en su propio turno (boost10 etc. no pasan por requireOwnMain). El
+   * robo ya queda exento via requireOwnMain(pid,true) y colocar tokens no pasa
+   * por aqui. Reacciones en turnos ajenos son imposibles: senateLock caduca
+   * (expireTurnFlags) en cuanto empieza cualquier otro turno. */
+  var spqS31=S.players[pid];
+  if(spqS31&&spqS31.flags&&spqS31.flags.senateLock&&S.turn>=spqS31.flags.senateLock)
+    throw new Error('Senate Investigating Committee: solo puedes robar cartas y colocar Action tokens este turno');
   if(instant){
     if(S.phase==='setup')throw new Error('No se pueden jugar Plot cards durante la preparación');
     if(S.phase==='gameover')throw new Error('La partida ha terminado');
@@ -6200,6 +6283,92 @@ case 'bulk_power':{
       lastResult={blocked:tgtTS.name,turn:tgtTS.flags.noPlotUntilTurnEnd};
       break;
     }
+    case 'turn_start_lock':{
+      /* L31 — 366 Senate Investigating Committee. Mismo timing que 405 (la
+       * ventana S.pendingTurnStart que abre E.endTurn): el actor es el rival de
+       * quien va a empezar el turno. Coste: "It requires the action of a
+       * Government group with a Power of at least 5" — government es ALINEACION
+       * (P1-018) y Power es curPower. "It cannot affect the Discordians!" se
+       * valida ANTES de pagar (P1-033). "No player can be hit by more than one
+       * Senate Investigating Committee in a single game. If someone tries a
+       * second time, the card has no effect and is discarded": senateHits es
+       * propiedad PERMANENTE del jugador (beginTurn no la toca); la carta
+       * jugada va al descarte por la cola de E.playPlot. */
+      var plSI=S.players[pid];
+      var W3=S.pendingTurnStart;
+      if(!W3)throw new Error(c.name+': solo es jugable al comienzo del turno de un rival (no hay ventana de reaccion abierta)');
+      if(W3.forPid===pid)throw new Error(c.name+': no puedes investigar el comienzo de tu propio turno');
+      var tgtSI=S.players[W3.forPid];
+      var icSI=illuCard(W3.forPid);
+      if(icSI&&icSI.effect&&icSI.effect.code==='discordian')
+        throw new Error(c.name+': no puede afectar a los Discordianos');
+      var aidSI=firstUsableAid(pid,function(cSI,nSI){
+        return nodeAligns(nSI,cSI).indexOf('government')>=0&&curPower(nSI)>=5;});
+      if(!aidSI)throw new Error(c.name+': Requires Government Action — se necesita la accion de un grupo tuyo con alineacion government y Power 5 o mas');
+      spendGroupToken(pid,aidSI.uid);
+      if(tgtSI.senateHits){
+        log(c.name+': '+tgtSI.name+' ya fue investigado esta partida — la carta no tiene efecto y se descarta');
+        lastResult={ok:true,fizzled:true,target:tgtSI.name};
+        break;
+      }
+      tgtSI.senateHits=1;
+      tgtSI.flags.senateLock=S.turn+1;
+      log(c.name+': '+plSI.name+' investiga a '+tgtSI.name+' — este turno solo puede robar cartas y colocar Action tokens');
+      S.pendingTurnStart=null;
+      S.phase='begin';
+      E.beginTurn(W3.forPid);
+      lastResult={ok:true,locked:tgtSI.name,turn:tgtSI.flags.senateLock};
+      break;
+    }
+    case 'feud_pick':{
+      /* L31 — 300 Let's You and Him Fight. "Pick a rival and draw two Groups
+       * randomly from his hand. Choose one for him to discard; the other is
+       * returned to his hand. (For purposes of this card, Resources count as
+       * Groups.) If your victim has only one Group card, he loses it."
+       * La eleccion del rival es el PRIMERO con cartas Group o Resource en mano
+       * (P1-034a: el objetivo es visible en pantalla, no un selector nuevo). */
+      var plLY=S.players[pid];
+      if((plLY.illumTokens||0)<1)throw new Error(c.name+': Requires Illuminati Action');
+      var rvLY=null;
+      for(var qLY=0;qLY<S.players.length;qLY++){
+        if(qLY===pid)continue;
+        var hasLY=S.players[qLY].hand.some(function(ixLY){
+          var tLY=C.cards[ixLY].type;return tLY==='group'||tLY==='resource';});
+        if(hasLY){rvLY=qLY;break;}
+      }
+      if(rvLY==null)throw new Error(c.name+': ningun rival tiene cartas de Group o Resource en la mano');
+      var poolLY=S.players[rvLY].hand.filter(function(ixLY){
+        var tLY=C.cards[ixLY].type;return tLY==='group'||tLY==='resource';});
+      plLY.illumTokens--;
+      if(poolLY.length===1){
+        var onlyLY=poolLY[0];
+        var kLY=S.players[rvLY].hand.indexOf(onlyLY);
+        S.players[rvLY].hand.splice(kLY,1);
+        S.groupDiscard.push(onlyLY);
+        log(c.name+': '+plLY.name+' instiga la pelea — '+S.players[rvLY].name+' pierde su unica carta de '+card(onlyLY).type);
+        lastResult={ok:true,card:c.name,victim:S.players[rvLY].name,lost:card(onlyLY).name};
+        break;
+      }
+      var copyLY=poolLY.slice(),pickLY=[];
+      for(var pLY=0;pLY<2;pLY++){
+        var jLY=Math.floor(Math.random()*copyLY.length);
+        pickLY.push(copyLY.splice(jLY,1)[0]);
+      }
+      pickLY.forEach(function(ixLY){
+        var k2LY=S.players[rvLY].hand.indexOf(ixLY);
+        if(k2LY>=0)S.players[rvLY].hand.splice(k2LY,1);
+      });
+      S.pendingLyhf={byPid:pid,rivalPid:rvLY,cards:pickLY};
+      log(c.name+': '+plLY.name+' instiga la pelea entre los agentes de '+S.players[rvLY].name+' — elige cual carta descarta');
+      lastResult={ok:true,pending:true,card:c.name,victim:S.players[rvLY].name};
+      break;
+    }
+    case 'fraternal_draw':
+      throw new Error(c.name+': no se juega desde la mano — gasta la accion del grupo con la botonera (Fraternal Orders)');
+    case 'corporate_extra_draw':
+      throw new Error(c.name+': habilidad pasiva — el robo extra de Plot se aplica solo al comenzar tu turno');
+    case 'linked_token_source':
+      throw new Error(c.name+': no se juega desde la mano — es un Resource y se coloca con su accion Illuminati');
     case 'deck_manip':{
       /* L8a — 361 Savings & Loan Scam / 388 The Big Sellout / 411 Voodoo Economics.
        * Las tres son una sola rama porque las tres manipulan MAZOS, pero cada una
@@ -7852,6 +8021,41 @@ E.discardCard=function(pid,handIdx){
   log(pl.name+' descarta '+c.name);
   return publicState();
 };
+/* L31 — LYHF: resolucion de la pelea instigada. El dueno elige 0|1: esa carta
+ * va al descarte de Groups, la otra vuelve a la mano del rival. */
+E.resolveLyhf=function(pid,pos){
+  if(!S.pendingLyhf)throw new Error('No hay ninguna pelea pendiente');
+  if(pid!==S.pendingLyhf.byPid)throw new Error('La pelea no es tuya');
+  if(pos!==0&&pos!==1)throw new Error('Elige una de las dos cartas');
+  var rvLY=S.players[S.pendingLyhf.rivalPid];
+  var dropLY=S.pendingLyhf.cards[pos],backLY=S.pendingLyhf.cards[1-pos];
+  S.groupDiscard.push(dropLY);
+  rvLY.hand.push(backLY);
+  log(S.players[pid].name+' resuelve la pelea: '+card(dropLY).name+' descartada, '+card(backLY).name+' vuelve a la mano de '+rvLY.name);
+  S.pendingLyhf=null;
+  return publicState();
+};
+/* L31 — 51 Fraternal Orders: "By spending this group's action, you may draw
+ * another Group card at any time." No pasa por requireOwnMain ("at any time")
+ * ni por flags.groupDrawn ("another"). */
+E.fraternalDraw=function(pid,uid){
+  var plF=S.players[pid];
+  var ndF=findNode(uid);
+  if(!ndF)throw new Error('No existe ese grupo');
+  if(findOwnerPid(uid)!==pid)throw new Error('Ese grupo no es tuyo');
+  var cF=card(ndF.cardId);
+  if(!(cF&&cF.effect&&cF.effect.kind==='fraternal_draw'))
+    throw new Error('Ese grupo no puede robar Groups extra');
+  if((ndF.tokens||0)<1)throw new Error('Sin Action token en '+cF.name);
+  if(!S.groupDeck.length&&!S.groupDiscard.length)
+    throw new Error('No quedan Groups que robar');
+  spendGroupToken(pid,uid);
+  var gF=drawFrom(S.groupDeck,S.groupDiscard,'grupos');
+  if(gF==null)throw new Error('No quedan Groups que robar');
+  plF.hand.push(gF);
+  log(cF.name+': '+plF.name+' roba una carta de Group extra');
+  return publicState();
+};
 
 /* P1-033 (L4) - El inverso de giveResourceTo: un Resource vuelve a la MANO
  * del rival que lo entrega, no a su lista de Resources. Lo necesita el modo
@@ -7894,6 +8098,9 @@ E.endTurn=function(){
    * rival, que no es el dueno. Se cierra antes que nada. */
   if(S.pendingAlignEdit)throw new Error('No se puede terminar el turno sin resolver la accion de tu Gadget');
   if(S.pendingResDestroy)throw new Error('No se puede terminar el turno sin resolver la accion de tu Resource');
+  /* L31 — LYHF: la pelea tiene las dos cartas YA SACADAS de la mano del rival.
+   * Terminar el turno aqui dejaria la eleccion colgada al siguiente jugador. */
+  if(S.pendingLyhf)throw new Error('No se puede terminar el turno sin resolver la pelea instigada');
   var pid=S.currentPid;
   var pl=S.players[pid];
   if(!pl)throw new Error('No hay jugador activo');
@@ -7970,7 +8177,7 @@ E.endTurn=function(){
   for(var tsq=0;tsq<S.players.length;tsq++){
     var tsp=S.players[tsq];
     if(!tsp.human||tsq===next)continue;
-    if(tsp.hand.some(function(tshx){var tsc=C.cards[tshx];return tsc&&(tsc.id==='unlucky13'||tsc.id==='seizethetime');})){tsHolder=tsq;break;}
+    if(tsp.hand.some(function(tshx){var tsc=C.cards[tshx];return tsc&&(tsc.id==='unlucky13'||tsc.id==='seizethetime'||tsc.id==='senateinvestigatingcommittee');})){tsHolder=tsq;break;}
   }
   if(tsHolder>=0){
     S.pendingTurnStart={forPid:next};

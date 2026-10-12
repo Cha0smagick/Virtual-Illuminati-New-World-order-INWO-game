@@ -2099,7 +2099,7 @@ function readyToAttack(pid) {
       E._raw().players[p].hand = E._raw().players[p].hand.filter(function (ix) {
         var k = (C.cards[ix] || {}).effect;
         return !(k && ['bodyguard','talisman','bribery','computervirus','murphyslaw',
-                       'timewarp','mistakenidentity','mothersmarch','stealing_the_plans','embezzlement'].indexOf(k.kind) >= 0);
+                       'timewarp','mistakenidentity','mothersmarch','stealing_the_plans','embezzlement','fnord'].indexOf(k.kind) >= 0);
       });
     }
   }
@@ -5513,6 +5513,10 @@ function readyToAttack(pid) {
       var st=E.getState();
       if(st.phase==='main'&&st.currentPid===0)return;
       E.endTurn();
+      /* L31: senateinvestigatingcommittee se unio a unlucky13/seizethetime como
+         disparador de la ventana; si P0 la tiene al azar en mano, hay que pasar
+         la ventana o el siguiente endTurn revienta (fase 'begin'). */
+      if(E.getState().pendingTurnStart)E.resolvePendingTurnStart({pass:true});
     }
     throw new Error('no se alcanzo el turno del humano');
   }
@@ -9576,7 +9580,10 @@ function err26(fn) { return throwMsgL14(fn); }
     /* meter 2 grupos DISTINTOS a la mano del pid 0 */
     var g1 = anyGroupIdx(), g2 = g1 + 1;
     while (!(C.cards[g2] && C.cards[g2].type === 'group')) g2++;
-    var hand = E._raw().players[0].hand; hand.push(g1); hand.push(g2);
+    var hand = E._raw().players[0].hand;
+    var i1x=hand.indexOf(g1); if(i1x>=0)hand.splice(i1x,1);
+    var i2x=hand.indexOf(g2); if(i2x>=0)hand.splice(i2x,1);
+    hand.push(g1); hand.push(g2);
     E.playPlot(0, FN, null, { pay: { mode: 'hand', handIdx: [hand.indexOf(g1), hand.indexOf(g2)] } }); /* 2º arg = indice de CATALOGO (playPlot localiza en mano); handIdx = posiciones (FN sigue en mano durante el efecto: el splice es al final, P1-059) */
     ok(hand.indexOf(g1) < 0 && hand.indexOf(g2) < 0, 'S9c-i grupos pagados fuera de la mano');
     ok(!!E._raw().pendingRoll && !!E._raw().pendingRoll.reroll, 'S9c-ii reroll registrado (pago 2 grupos)');
@@ -9620,6 +9627,190 @@ function err26(fn) { return throwMsgL14(fn); }
     hand22(0, CC);
     var msg = tMsg(function () { E.playPlot(0, CC, null, { deck: 'plot' }); });
     ok(msg && msg.length > 0, 'S10b-i sin grupo Magic: "' + msg + '"');
+  })();
+
+  S.forEach(function (p) { ok(p[1], p[0]); });
+})();
+
+/* ================= L31 — robo-extra: Fraternal Orders (51), Pentagon (107),
+   Perpetual Motion Machine (335), Let's You and Him Fight (300) y Senate
+   Investigating Committee (366). P1-161. Hitler's Brain queda como HUECO DE
+   TEXTO #6: su texto impreso no está en ninguna fuente local. ================ */
+(function () {
+  var S = [];
+  function ok(cond, msg) { S.push([msg, !!cond]); if (!cond) { console.log('   FAIL: ' + msg); } }
+  function esc(txt, cond) { S.push([txt, !!cond]); if (!cond) { console.log('   FAIL: ' + txt); } }
+  function tMsg(fn) { try { fn(); } catch (e31) { return String((e31 && e31.message) || e31); } return ''; }
+  function passTS() { if (E._raw().pendingTurnStart) E.resolvePendingTurnStart({ pass: true }); }
+  function firstPlainPlot(notIdx) {
+    /* ya no quedan plots sin kind (37 'unverified' incluidos): usar un boost10,
+       que se juega normal con {boostMode:'hold'} (patron L30 S3) */
+    var PX = null;
+    C.cards.forEach(function (c, ix) { if (PX === null && c.type === 'plot' && ix !== notIdx && c.effect && c.effect.kind === 'boost10') PX = ix; });
+    return PX;
+  }
+
+  /* ---- S1: Fraternal Orders — 2 robos con su accion, 3º rechazado ---- */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var FO = idxOfId('fraternalorders');
+    esc('S1-pre fraternalorders emitido', FO !== null);
+    plant(0, 'fro', FO, 2);
+    readyToAttack(0);
+    var n0 = E._raw().players[0].hand.length;
+    E.fraternalDraw(0, 'fro');
+    E.fraternalDraw(0, 'fro');
+    var handNow = E._raw().players[0].hand;
+    ok(handNow.length === n0 + 2, 'S1a dos robos: mano +2');
+    ok(handNow.slice(-2).every(function (ix) { return C.cards[ix] && (C.cards[ix].type === 'group' || C.cards[ix].type === 'resource'); }), 'S1b robados son Groups (el mazo de Group incluye Resources, modelo INWO real)');
+    var nFro = null;
+    E._raw().players[0].structure.children.forEach(function (n) { if (n.uid === 'fro') nFro = n; });
+    ok(nFro && (nFro.tokens || 0) === 0, 'S1c acciones del grupo consumidas');
+    var m3 = tMsg(function () { E.fraternalDraw(0, 'fro'); });
+    ok(m3.length > 0, 'S1d 3er robo rechazado: "' + m3 + '"');
+    ok(E._raw().players[0].hand.length === n0 + 2, 'S1d-bis sin robo extra');
+    E._raw().players[0].flags.groupDrawn = true; /* "another Group card": NO pasa por el robo de turno */
+    nFro.tokens = 1;
+    ok(tMsg(function () { E.fraternalDraw(0, 'fro'); }) === '', 'S1e roba aunque groupDrawn=true');
+    ok(nFro.tokens === 0, 'S1f ficha gastada');
+  })();
+
+  /* ---- S2: Pentagon — 1 robo extra de Plot por grupo Corporate controlado ---- */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var PL = idxOfId('pentagon');
+    var CG = null;
+    C.cards.forEach(function (c, ix) {
+      if (CG === null && c.type === 'group' && ix !== PL && (c.alignments || []).indexOf('corporate') >= 0) CG = ix;
+    });
+    esc('S2-pre grupo Corporate disponible', CG !== null);
+    if (CG !== null) {
+      plant(0, 'pen', PL, 1);
+      E._raw().players[0].structure.children.forEach(function (n) {
+        if (n.uid === 'pen') n.children.push({ uid: 'ncg', cardId: CG, children: [], tokens: 1 });
+      });
+      readyToAttack(0);
+      ok(E._raw().players[0].flags.pentagonExtra === 1, 'S2a pentagonExtra=1');
+      E.drawPlot(0);
+      E.drawPlot(0);
+      ok(tMsg(function () { E.drawPlot(0); }).indexOf('Ya robaste') >= 0, 'S2d 3er robo: "Ya robaste tu carta de Plot este turno"');
+    }
+  })();
+
+  /* ---- S3: PMM — ficha extra al grupo ligado al comienzo de cada turno ---- */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var PMM = idxOfId('perpetualmotionmachine');
+    var GRP = anyGroupIdx();
+    plant(0, 'g1', GRP, 0);
+    readyToAttack(0);
+    E.playResource(0, PMM, 'g1');
+    ok(E._raw().players[0].resources.some(function (r) { return r.cardId === PMM && r.linkedTo === 'g1'; }), 'S3a resource ligado a g1');
+    E.endTurn(); passTS();
+    E.endTurn(); passTS();
+    var tg1 = 0;
+    E._raw().players[0].structure.children.forEach(function (n) { if (n.uid === 'g1') tg1 = n.tokens || 0; });
+    ok(tg1 === 2, 'S3b fichas de g1 = 2 (reparto normal + PMM), hay ' + tg1);
+  })();
+
+  /* ---- S4: Let's You and Him Fight — pelea de 2 cartas ---- */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var LY = idxOfId('letsyouandhimfight');
+    var G1 = anyGroupIdx(), G2 = anyGroupIdx() + 1;
+    while (G2 === G1) G2++;
+    E._raw().players[1].hand = [];
+    hand22(0, LY); hand22(1, G1); hand22(1, G2);
+    readyToAttack(0);
+    if (E._raw().players[0].illumTokens < 1) E._raw().players[0].illumTokens = 1;
+    E.playPlot(0, LY);
+    var LF = E._raw().pendingLyhf;
+    esc('S4a ventana con 2 cartas', !!LF && LF.cards.length === 2);
+    if (LF) {
+      ok(LF.cards.every(function (c) { return E._raw().players[1].hand.indexOf(c) < 0; }), 'S4b las 2 salieron de la mano del rival');
+      E.resolveLyhf(0, 0);
+      ok(E._raw().groupDiscard.indexOf(LF.cards[0]) >= 0, 'S4c la elegida al descarte de Grupos');
+      ok(E._raw().players[1].hand.indexOf(LF.cards[1]) >= 0, 'S4d la otra vuelve a su mano');
+      ok(E._raw().pendingLyhf === null, 'S4e ventana cerrada');
+    }
+  })();
+  /* S4f: el rival tenia UNA sola carta → la pierde sin ventana ("he loses it") */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var LY = idxOfId('letsyouandhimfight');
+    var G3 = anyGroupIdx();
+    E._raw().players[1].hand = [];
+    hand22(0, LY); hand22(1, G3);
+    readyToAttack(0);
+    if (E._raw().players[0].illumTokens < 1) E._raw().players[0].illumTokens = 1;
+    E.playPlot(0, LY);
+    ok(E._raw().pendingLyhf === null, 'S4f una sola carta: sin ventana');
+    ok(E._raw().groupDiscard.indexOf(G3) >= 0, 'S4g "he loses it": al descarte');
+  })();
+  /* S4h: sin ninguna carta de Grupo/Resource en la mano del rival → throw */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var LY = idxOfId('letsyouandhimfight');
+    E._raw().players[1].hand = [];
+    hand22(0, LY);
+    readyToAttack(0);
+    if (E._raw().players[0].illumTokens < 1) E._raw().players[0].illumTokens = 1;
+    ok(tMsg(function () { E.playPlot(0, LY); }).length > 0, 'S4h sin objetivos: rechazo con mensaje');
+  })();
+
+  /* ---- S5: Senate Investigating Committee — bloqueo + fizzle en 2ª vez ---- */
+  (function () {
+    fresh('bavarianilluminati1', 'servantsofcthulhu1');
+    var SEN = idxOfId('senateinvestigatingcommittee');
+    var PL5 = idxOfId('pentagon'); /* Government, Power 6 */
+    plant(0, 'gov', PL5, 1);
+    hand22(0, SEN);
+    readyToAttack(0);
+    E._raw().players[0].human = true; /* la ventana de turno solo abre para holders HUMANOS (contrato L8c/P1-098) */
+    E.endTurn();
+    ok(!!E._raw().pendingTurnStart && E._raw().pendingTurnStart.forPid === 1, 'S5a ventana del comienzo del turno de 1');
+    E.playPlot(0, SEN);
+    ok(E._raw().pendingTurnStart === null, 'S5b ventana cerrada');
+    ok(E._raw().players[1].flags.senateLock === E._raw().turn, 'S5c senateLock activo');
+    ok(E._raw().players[1].senateHits === 1, 'S5d primer golpe registrado');
+    ok(E._raw().phase === 'main' && E._raw().currentPid === 1, 'S5e el turno de 1 comenzó');
+    var PX = firstPlainPlot(SEN);
+    esc('S5-pre plot simple disponible', PX !== null);
+    if (PX !== null) {
+      hand22(1, PX);
+      ok(tMsg(function () { E.playPlot(1, PX, null, { boostMode: 'hold' }); }).indexOf('Senate Investigating Committee') >= 0, 'S5f plot bloqueado bajo senateLock');
+      E.drawPlot(1);
+      ok(true, 'S5g drawPlot permitido bajo senateLock');
+    }
+    E.endTurn(); passTS(); /* turno de 0 */
+    var lockBefore = E._raw().players[1].flags.senateLock;
+    hand22(0, SEN); /* ANTES del endTurn: la ventana solo abre si un humano tiene la carta en mano */
+    E.endTurn(); /* ventana del turno de 1, SIN pasar: aqui se juega la 2ª Senate */
+    E.playPlot(0, SEN); /* 2ª vez: "the card has no effect and is discarded" */
+    ok(E._raw().players[1].senateHits === 1, 'S5h senateHits sigue 1');
+    ok(E._raw().players[1].flags.senateLock === lockBefore, 'S5i senateLock sin cambiar');
+    ok(E._raw().players[0].hand.indexOf(SEN) < 0, 'S5j la carta salio de la mano');
+    ok(E._raw().pendingTurnStart !== null, 'S5k ventana sigue abierta (no tuvo efecto)');
+    passTS();
+  })();
+  /* S5l: "It cannot affect the Discordians!" — throw ANTES de pagar el coste */
+  (function () {
+    var did = null;
+    E.availableIlluminati().forEach(function (c) { if (!did && /discord/i.test(c.id)) did = c.id; });
+    esc('S5l-pre Discordian disponible', !!did);
+    if (did) {
+      fresh('bavarianilluminati1', did);
+      var SEN = idxOfId('senateinvestigatingcommittee');
+      var PL5 = idxOfId('pentagon');
+      plant(0, 'gov2', PL5, 1);
+      hand22(0, SEN);
+      readyToAttack(0);
+      E._raw().players[0].human = true;
+      E.endTurn();
+      var msg = tMsg(function () { E.playPlot(0, SEN); });
+      ok(msg.indexOf('Discordian') >= 0, 'S5l Discordianos inmunes: "' + msg + '"');
+      ok(E._raw().players[1].senateHits === 0, 'S5m sin registrar golpe');
+    }
   })();
 
   S.forEach(function (p) { ok(p[1], p[0]); });

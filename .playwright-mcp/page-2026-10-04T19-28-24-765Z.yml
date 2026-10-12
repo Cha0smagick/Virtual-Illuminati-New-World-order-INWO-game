@@ -1,0 +1,140 @@
+- generic [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - banner [ref=f1e3]:
+      - heading "INWO NEW WORLD ORDER" [level=1] [ref=f1e4]
+      - generic [ref=f1e114]:
+        - generic [ref=f1e287]: Turno 2
+        - generic [ref=f1e288]: MAIN
+        - generic [ref=f1e289]: ▶ Jugador 1
+      - button "⏱ ×1" [ref=f1e5] [cursor=pointer]
+      - button "Cómo jugar (reglas rápidas)" [ref=f1e6] [cursor=pointer]: "?"
+      - generic [ref=f1e290]:
+        - generic "Controlar 12 grupos; tus recursos Mágicos cuentan como grupos" [ref=f1e291]:
+          - generic [ref=f1e292]: Jugador 1
+          - generic [ref=f1e295]: 1/12 · recursos Mágicos 0
+        - generic "Poder total de tus grupos ≥ 50" [ref=f1e296]:
+          - generic [ref=f1e297]: IA
+          - generic [ref=f1e300]: 2/12 · Poder total 16/50
+    - main "Tablero y registro de la partida" [ref=f1e130]:
+      - generic [ref=f1e131]:
+        - generic [ref=f1e301]:
+          - generic [ref=f1e302]:
+            - text: EXPEDIENTE CLASIFICADO · NIVEL 5 OJOS UNICAMENTE
+            - img "Adepts of Hermes 1" [ref=f1e303]
+            - generic [ref=f1e304]: Jugador 1 Adepts of Hermes 1
+            - generic "Acciones Illuminati" [ref=f1e305]: ★ 1
+            - generic [ref=f1e306]: 1 grupos
+            - generic [ref=f1e307]: "mano: 3P/10G"
+          - 'button "Carta: Adepts of Hermes 1" [ref=f1e309]':
+            - img "Adepts of Hermes 1" [ref=f1e310]
+            - generic [ref=f1e311]: Adepts of Hermes 1
+            - text: P7/R-●1
+            - generic [ref=f1e312]: ILLUMINATI · 4 flechas libres
+        - heading "ÁREA NEUTRAL (0)" [level=4] [ref=f1e314]
+        - generic [ref=f1e315]:
+          - generic [ref=f1e316]:
+            - text: EXPEDIENTE CLASIFICADO · NIVEL 5 OJOS UNICAMENTE
+            - img "Bavarian Illuminati 1" [ref=f1e317]
+            - generic [ref=f1e318]: IA (IA)Bavarian Illuminati 1
+            - generic "Acciones Illuminati" [ref=f1e319]: ★ 1
+            - generic [ref=f1e320]: 2 grupos
+            - generic [ref=f1e321]: "mano: 4P/10G"
+          - 'button "Carta: Bavarian Illuminati 1" [ref=f1e323]':
+            - img "Bavarian Illuminati 1" [ref=f1e324]
+            - generic [ref=f1e325]: Bavarian Illuminati 1
+            - text: P10/R-●1
+            - generic [ref=f1e326]: ILLUMINATI · 3 flechas libres
+            - 'button "Carta: Pentagon" [ref=f1e328]':
+              - img "Pentagon" [ref=f1e329]
+              - generic [ref=f1e330]: Pentagon
+              - text: P6/R6●1
+              - generic [ref=f1e331]: 3 flechas libres
+      - generic [ref=f1e158]:
+        - heading "Registro" [level=3] [ref=f1e159]
+        - generic "Registro de jugadas" [ref=f1e160]:
+          - generic [ref=f1e392]: "Partida iniciada: modo Humano vs IA"
+          - generic [ref=f1e393]: Nueva partida creada (2 jugadores, meta básica 12 grupos)
+          - generic [ref=f1e394]: Jugador 1 elige Adepts of Hermes 1
+          - generic [ref=f1e395]: IA elige Bavarian Illuminati 1
+          - generic [ref=f1e396]: "Tirada inicial: 6, 8 — empieza IA"
+          - generic [ref=f1e397]: — Turno de IA (+1 acción Illuminati) —
+          - generic [ref=f1e398]: IA toma posesión automática de Pentagon
+          - generic [ref=f1e399]: — Turno de Jugador 1 (+1 acción Illuminati) —
+          - generic [ref=f1e400]: 🎁 PASO 1/2 — Elige un GRUPO o RECURSO de tu mano (colocación GRATIS, sin dados).
+          - generic [ref=f1e401]: ⚠ Ese es un PLOT. Elige una carta de GRUPO o RECURSO para el takeover.
+    - generic "Acciones y cartas de tu mano" [ref=f1e167]:
+      - generic [ref=f1e168]:
+        - generic [ref=f1e341]:
+          - text: ◆
+          - generic [ref=f1e342]: 1 · ROBAR
+          - button "🎴 Robar PLOT" [ref=f1e343] [cursor=pointer]
+          - button "🃏 Robar GRUPO" [ref=f1e344] [cursor=pointer]
+        - generic [ref=f1e345]:
+          - text: ◆
+          - generic [ref=f1e346]: 2 · COLOCAR GRATIS
+          - button "🔮 Takeover" [ref=f1e347] [cursor=pointer]
+        - generic [ref=f1e348]:
+          - text: ◆
+          - generic [ref=f1e349]: 3 · ACCIONES (gastan ●)
+          - button "⚔ CONTROLAR" [ref=f1e350] [cursor=pointer]
+          - button "☠ DESTRUIR" [ref=f1e351] [cursor=pointer]
+          - button "🔀 Mover" [ref=f1e352] [cursor=pointer]
+          - button "📦 Recurso" [ref=f1e353] [cursor=pointer]
+        - generic [ref=f1e354]:
+          - text: ◆
+          - generic [ref=f1e355]: 4 · EXTRAS (★)
+          - button "★→Plot" [ref=f1e356] [cursor=pointer]
+          - button "★→Grupo" [ref=f1e357] [cursor=pointer]
+        - generic [ref=f1e358]:
+          - text: ◆
+          - generic [ref=f1e359]:
+            - text: 🗂 MANO
+            - generic [ref=f1e360]: 🂠 13
+          - button "Ordenar la mano por Tablero" [ref=f1e361] [cursor=pointer]: 🗂
+          - button "Ordenar la mano por Tipo" [ref=f1e362] [cursor=pointer]: 🔤
+          - button "Ordenar la mano por Poder" [ref=f1e363] [cursor=pointer]: ⚡
+        - button "5 · Terminar turno ▶" [ref=f1e364] [cursor=pointer]
+        - button "✕ Cancelar" [ref=f1e365] [cursor=pointer]
+      - generic [ref=f1e170]:
+        - button "Hex, plot, Poder desconocido, Resistencia desconocida" [ref=f1e366] [cursor=pointer]:
+          - img "Hex" [ref=f1e367]
+        - button "Gun Control, plot, Poder desconocido, Resistencia desconocida" [ref=f1e368] [cursor=pointer]:
+          - img "Gun Control" [ref=f1e369]
+        - button "Volcano, plot, Poder desconocido, Resistencia desconocida" [ref=f1e370] [cursor=pointer]:
+          - img "Volcano" [ref=f1e371]
+        - button "Wall Street, group, Poder 4, Resistencia 3" [active] [ref=f1e372] [cursor=pointer]:
+          - img "Wall Street" [ref=f1e373]
+        - button "EFF, group, Poder 2, Resistencia 3" [ref=f1e374] [cursor=pointer]:
+          - img "EFF" [ref=f1e375]
+        - button "F.B.I., group, Poder 5, Resistencia 6" [ref=f1e376] [cursor=pointer]:
+          - img "F.B.I." [ref=f1e377]
+        - button "KKK, group, Poder 2, Resistencia 5" [ref=f1e378] [cursor=pointer]:
+          - img "KKK" [ref=f1e379]
+        - button "Dentists, group, Poder 1, Resistencia 2" [ref=f1e380] [cursor=pointer]:
+          - img "Dentists" [ref=f1e381]
+        - button "Underground Newspapers, group, Poder 1, Resistencia 5" [ref=f1e382] [cursor=pointer]:
+          - img "Underground Newspapers" [ref=f1e383]
+        - button "Ross Perot, group, Poder 2, Resistencia 6" [ref=f1e384] [cursor=pointer]:
+          - img "Ross Perot" [ref=f1e385]
+        - button "Eliza, resource, Poder desconocido, Resistencia desconocida" [ref=f1e386] [cursor=pointer]:
+          - img "Eliza" [ref=f1e387]
+        - button "Savings and Loans, group, Poder 4, Resistencia 4" [ref=f1e388] [cursor=pointer]:
+          - img "Savings and Loans" [ref=f1e389]
+        - button "Voudonistas, group, Poder 1, Resistencia 6" [ref=f1e390] [cursor=pointer]:
+          - img "Voudonistas" [ref=f1e391]
+      - generic [ref=f1e172]: ℹ 👆 Ahora haz CLIC en una carta de GRUPO o RECURSO de tu mano (abajo). — ✕ Cancelar
+  - tooltip "Wall Street Wall Street Grupo · organization P 4 · R 3 · corporate Ahvays has the option to treat any Corporate NB group as though it was Government, or vice versa, when it makes or aids an attack. Corporate Gr hE Bank MECANICA · Mecanica sin mapear Que hace reason = plot-text-pending-mapping ⚠ Mecanica pendiente de mapear en el motor. Valores estimados a partir del OCR de la imagen, sin confirmar con la fuente oficial.":
+    - generic:
+      - img "Wall Street"
+      - generic:
+        - generic: Wall Street
+        - generic: Grupo · organization
+        - generic: P 4 · R 3 · corporate
+    - generic: Ahvays has the option to treat any Corporate NB group as though it was Government, or vice versa, when it makes or aids an attack. Corporate Gr hE Bank
+    - generic: MECANICA · Mecanica sin mapear
+    - generic:
+      - emphasis: Que hace
+      - text: reason = plot-text-pending-mapping
+    - generic: ⚠ Mecanica pendiente de mapear en el motor.
+    - generic: Valores estimados a partir del OCR de la imagen, sin confirmar con la fuente oficial.
+  - generic "Diálogos y ayuda"

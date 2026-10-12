@@ -1445,3 +1445,65 @@ original que el reactivo destruyo y conserva (`dupOriginalPlanL11`); no se
 exige que ese grupo siga en juego. Forgery descarta TODOS los ejemplares en
 juego de la carta duplicada, no solo el de un rival (con 2+ ejemplares el
 impreso no distingue y el motor no inventa).
+
+## 81. L31 - Familia robo-extra (Fraternal Orders, Pentagon, Perpetual
+Motion Machine, Let's You and Him Fight, Senate Investigating Committee)
+
+- [x] L31.a AUDIT: textos verbatim limpios de
+      `research/scribd_inwo_cards_full.html` para las 4 cartas con fuente
+      local; Hitler's Brain no aparece en el scribd (solo OCR truncado en
+      cards.js): HUECO DE TEXTO #6 declarado, sin efecto.
+- [x] L31.b DATOS (`gen_cards.js`): `L31_FX`/`L31_FXN` con kinds nuevos
+      `fraternal_draw` (51), `corporate_extra_draw` (107), `linked_token_source`
+      (335), `feud_pick` (300), `turn_start_lock` (366); cadena `pfx` extendida;
+      `npm run build:cards` regenera cards.js (421 cartas).
+- [x] L31.c MOTOR (`engine.js`): `E.fraternalDraw(pid,uid)` (no pasa por
+      requireOwnMain ni por flags.groupDrawn: "at any time"/"another");
+      Pentagon en `beginTurn` cuenta grupos Corporate directamente controlados
+      y `drawPlot` consume `flags.pentagonExtra` antes de lanzar "Ya robaste";
+      PMM da su ficha extra al grupo ligado en cada `beginTurn` (respeta
+      `noTokensFlag`); `feud_pick` cobra la accion del Illuminati, elige rival
+      con Group/Resource en mano, 1 carta = "he loses it" directo al descarte,
+      2+ = `S.pendingLyhf` + `E.resolveLyhf(pid,pos)`; `turn_start_lock` copia
+      el esqueleto de `turn_start_block` con check Discordian ANTES de pagar,
+      coste = grupo Government Power 5+ (alineacion, P1-018), fizzle en 2a vez
+      via `senateHits` permanente + senateLock = S.turn+1; enforcement del
+      bloqueo en `requireOwnMain(pid,allowSenated)` (robo exento) y en
+      `playPlot` para las Plots instant del bloqueado; la ventana
+      `pendingTurnStart` de `endTurn` ahora tambien dispara con
+      senateinvestigatingcommittee en mano de un humano.
+- [x] L31.d UI/AI: `KIND_ES` + los 5 kinds; tsCards + Senate (handler
+      generico `turnstartplay`); panel `pendingLyhf` con 2 botones
+      `lyhfpick`; boton Fraternal (zona AE) + dispatcher `lyhfpick`/
+      `fraternaldraw` + `CB.onResolveLyhf`/`CB.onFraternalDraw`; ai.js
+      `settleLyhfWindow` registrado primero en `settleWindows`.
+- [x] L31.e REGRESION (S1-S5 en `test_fase2_rules.js`): Fraternal roba 2 con
+      su accion y rechaza la 3a (y roba aunque groupDrawn=true); Pentagon da
+      1 robo extra por Corporate controlado y el 3er drawPlot lanza "Ya
+      robaste"; PMM deja el grupo ligado con 2 fichas tras un ciclo de turnos;
+      LYHF resuelve la pelea (descarte + vuelta a mano), 1 carta = sin
+      ventana, 0 cartas = rechazo; Senate bloquea la 1a jugada del rival
+      (plot instant incluido), permite drawPlot, y la 2a copia fizzle sin
+      cambiar senateHits ni senateLock; Discordianos inmunes sin pagar coste.
+      FIXES de flakes del harness: `noCancelWindow` tambien purga `fnord`
+      (L29 lo metio en ROLL_KINDS); `toHumanTurnL8c` resuelve la ventana de
+      comienzo de turno (Senate disparandola al azar); S9c purga duplicados
+      antes de empujar grupos; aserto S1b acepta Resource en el mazo de
+      Groups (modelo INWO real: los Resources se roban del mazo de Group);
+      `senateHits:0` inicializado en el estado de jugador. LECCION (P1-161):
+      la ventana de turn-start SOLO abre para holders HUMANOS (contrato
+      L8c/P1-098) - los fixtures deben marcar `players[0].human=true` antes
+      de `endTurn`.
+- [x] L31.f CIERRE: `npm test` = ALL TESTS PASSED (11 suites, 5 corridas
+      seguidas sin FAIL); `audit:mechanics` sanidad limpia (0 NaN, 0 errores,
+      0 familias no manejadas; implemented-pending-engine 165 -> 170);
+      `?v=57`.
+
+**Lagunas DECLARADAS:** Hitler's Brain = hueco de texto #6 (sin fuente
+local, sin efecto). El token que el reparto generico de `beginTurn` da a la
+propia PMM (su texto contiene "Action token") es spurious pero inerte. LYHF
+elige al PRIMER rival con cartas (la UI no tiene selector de rival). El
+enforcement de Senate cubre los entry points que pasan por requireOwnMain y
+playPlot; colocar tokens no pasa por ninguno de los dos (permitido por el
+impreso). El fizzle de la 2a Senate gasta el coste antes de fallar (el
+impreso no aclara el orden y el motor paga por la ventana de reaccion).

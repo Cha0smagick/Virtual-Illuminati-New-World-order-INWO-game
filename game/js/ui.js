@@ -857,7 +857,11 @@ function attackPanel(st) {
      * propio con data-i (indice) y data-c (id), y el motor es quien valida si el
      * jugador que la juega es el dueno y si la carta es legal en la ventana. */
     var tsCards = [{ id: 'unlucky13', label: 'Unlucky 13', tip: 'Requiere la accion de un grupo Magic' },
-                   { id: 'seizethetime', label: 'Seize the Time!', tip: 'Roba el turno de ' + esc(TS.forName) + ' hasta que termine' }];
+                   { id: 'seizethetime', label: 'Seize the Time!', tip: 'Roba el turno de ' + esc(TS.forName) + ' hasta que termine' },
+                   /* L31 — 366 Senate Investigating Committee comparte el mismo timing
+                      ("Play this card at the beginning of any other player's turn");
+                      el motor valida el grupo Government P5+ y el caso Discordian. */
+                   { id: 'senateinvestigatingcommittee', label: 'Senate Investigating Committee', tip: 'Requiere la accion de un grupo Government con Poder 5+: el rival solo puede robar cartas y colocar Action tokens este turno' }];
     var tsHtml = '<b>⏳ Comienzo del turno de ' + esc(TS.forName) + '</b>: los rivales pueden reaccionar. ';
     for (var tsC = 0; tsC < tsCards.length; tsC++) {
       for (var tsQ = 0; tsQ < st.players.length; tsQ++) {
@@ -928,6 +932,40 @@ function attackPanel(st) {
     }
     aeHtml += '<button data-act="aligneditpass" title="No usar la acción del Gadget">Pasar</button>';
     $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar">' + aeHtml + '</div>');
+  }
+
+  /* L31 — Let's You and Him Fight. La ventana queda abierta hasta que el
+   * instigador elige qué carta pierde el rival. Se muestra si el instigador es
+   * humano ("Play this card at any time": sin gate currentPid, igual que la de
+   * espionaje). Cada botón ES la decisión completa, sin paso 2. */
+  var LF = st.pendingLyhf;
+  if (LF && st.players[LF.byPid] && st.players[LF.byPid].human) {
+    var lfHtml = '<b>⚔ Let\'s You and Him Fight</b>: ' + esc(LF.rivalName || 'el rival') +
+      ' pierde una carta; la otra vuelve a su mano. ';
+    (LF.cards || []).forEach(function (cd, q) {
+      lfHtml += '<button data-act="lyhfpick" data-v="' + q + '" title="El rival descarta esta">' +
+        esc(cd.name) + ' (' + esc(cd.type) + ')</button> ';
+    });
+    $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar">' + lfHtml + '</div>');
+  }
+
+  /* L31 — Fraternal Orders. "By spending this group's action, you may draw
+   * another Group card at any time": primera acción de grupo con botonera
+   * propia. Se ofrece cuando el jugador del turno es humano y el nodo tiene
+   * fichas; el motor valida el resto (nodo propio, kind, mazos). */
+  var frO = st.players[st.currentPid];
+  if (frO && frO.human) {
+    (function frWalk(n) {
+      var cfr = C.cards[n.cardId];
+      if (cfr && cfr.effect && cfr.effect.kind === 'fraternal_draw' &&
+          (n.tokens || 0) >= 1 && !n.devastated) {
+        $('actionBtns').insertAdjacentHTML('afterbegin',
+          '<div class="pendbar"><button data-act="fraternaldraw" data-uid="' + n.uid +
+          '" title="Gasta la acción del grupo y roba una carta de Grupo">' +
+          esc(cfr.name) + ': robar Grupo (' + n.tokens + ' ficha' + (n.tokens === 1 ? '' : 's') + ')</button></div>');
+      }
+      (n.children || []).forEach(frWalk);
+    })(frO.structure);
   }
 
   /* L12 / P1-083 - 378 Suicide Squad. El jugador elige el Resource del rival que
@@ -2032,6 +2070,12 @@ var KIND_ES = {
   dup_enabler: 'Habilita jugar un duplicado', embezzlement: 'Malversacion',
   dup_payoff: 'Anula el duplicado de un rival', resource_forge: 'Duplicar un recurso unico',
   plot_negate_steal: 'Anula la Plot y te la quedas',
+  /* L31 — familia robo-extra: Fraternal Orders, Pentagon, PMM, LYHF y Senate. */
+  fraternal_draw: 'Roba un Grupo gastando la accion del grupo',
+  corporate_extra_draw: 'Robo extra de Plot por grupo Corporate',
+  linked_token_source: 'Da una ficha extra al grupo ligado',
+  feud_pick: 'Pelea: el rival descarta una de dos',
+  turn_start_lock: 'Bloquea el turno del rival',
   force_align: 'Forzar Alineamiento', force_discard_exposed: 'Descartar carta expuesta',
   group_boost_timed: 'Refuerzo de grupo temporal', link_effect: 'Efecto ligado a una carta',
   messiah: 'El Mesias', mistakenidentity: 'Identidad equivocada',
@@ -2667,6 +2711,10 @@ function bindEvents() {
       else if (act === 'peeknone') { clearSel(); CB.onResolvePeek(null); }
     else if (act === 'turnstartplay') { clearSel(); CB.onTurnStartPlay(parseInt(btn.getAttribute('data-i'), 10), btn.getAttribute('data-c')); }
     else if (act === 'turnstartpass') { clearSel(); CB.onTurnStartPass(); }
+    /* L31 — LYHF (el instigador elige la carta que pierde el rival) y
+       Fraternal Orders (gasta la acción del grupo y roba un Grupo). */
+    else if (act === 'lyhfpick') { clearSel(); CB.onResolveLyhf(parseInt(btn.getAttribute('data-v'), 10)); }
+    else if (act === 'fraternaldraw') { clearSel(); CB.onFraternalDraw(btn.getAttribute('data-uid')); }
     /* L9 — 332 Orbital Mind Control Lasers. `pick` es el paso 1 (elegir grupo): no
      * toca el motor, solo guarda el objetivo en `sel` como hace el resto de menus de
      * dos pasos (ver pickMover/attacker). `apply` y `pass` son el paso 2 y si

@@ -640,7 +640,22 @@ function settleAlignEditWindow(E) {
   try { E.resolveAlignEdit({ pass: true }); }
   catch (e) { if (window.console) console.error('[INWO] AI: fallo al cerrar la accion de Gadget: ' + (e && e.message ? e.message : e)); }
 }
+/* L31 — la ventana de PELEA (Let's You and Him Fight). La abre E.playPlot del
+   instigador y la cierra E.resolveLyhf; E.endTurn RECHAZA el turno mientras
+   siga abierta, igual que las otras ventanas. La IA no la abre hoy (no juega
+   LYHF todavia), pero si un humano la abre y el turno pasa a la IA, sin este
+   settle el atasco seria silencioso. Politica NEUTRA: elegir la primera. */
+function settleLyhfWindow(E) {
+  var st = E.getState();
+  if (!st || !st.pendingLyhf) return;
+  var owner = st.pendingLyhf.byPid;
+  var pl = (st.players || [])[owner];
+  if (pl && pl.human) return;
+  try { E.resolveLyhf(owner, 0); }
+  catch (e) { if (window.console) console.error('[INWO] AI: fallo al resolver la pelea instigada: ' + (e && e.message ? e.message : e)); }
+}
 function settleWindows(E) {
+  settleLyhfWindow(E);
   settleAlignEditWindow(E);
   settleDrawWindow(E);
   settleEventWindow(E);

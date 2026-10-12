@@ -1,0 +1,132 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e2]:
+    - banner [ref=f2e3]:
+      - heading "INWO NEW WORLD ORDER" [level=1] [ref=f2e4]
+      - generic [ref=f2e122]:
+        - generic [ref=f2e242]: Turno 2
+        - generic [ref=f2e243]: MAIN
+        - generic [ref=f2e244]: ▶ Jugador 1
+      - button "⏱ ×1" [ref=f2e5] [cursor=pointer]
+      - button "Cómo jugar (reglas rápidas)" [ref=f2e6] [cursor=pointer]: "?"
+      - generic [ref=f2e245]:
+        - generic "Controlar 12 grupos; tus recursos Mágicos cuentan como grupos" [ref=f2e246]:
+          - generic [ref=f2e247]: Jugador 1
+          - generic [ref=f2e250]: 1/12 · recursos Mágicos 0
+        - generic "Poder total de tus grupos ≥ 50" [ref=f2e251]:
+          - generic [ref=f2e252]: IA
+          - generic [ref=f2e255]: 2/12 · Poder total 16/50
+    - main "Tablero y registro de la partida" [ref=f2e138]:
+      - generic [ref=f2e139]:
+        - generic [ref=f2e256]:
+          - generic [ref=f2e257]:
+            - text: EXPEDIENTE CLASIFICADO · NIVEL 5 OJOS UNICAMENTE
+            - img "Adepts of Hermes 1" [ref=f2e258]
+            - generic [ref=f2e259]: Jugador 1 Adepts of Hermes 1
+            - generic "Acciones Illuminati" [ref=f2e260]: ★ 1
+            - generic [ref=f2e261]: 1 grupos
+            - generic [ref=f2e262]: "mano: 3P/10G"
+          - 'button "Carta: Adepts of Hermes 1" [ref=f2e264] [cursor=pointer]':
+            - img "Adepts of Hermes 1" [ref=f2e265]
+            - generic [ref=f2e266]: Adepts of Hermes 1
+            - text: P7/R-●1
+            - generic [ref=f2e267]: ⬇ SUELTA AQUÍ
+            - generic [ref=f2e268]: ILLUMINATI · 4 flechas libres
+            - button "Colocar aquí bajo Adepts of Hermes 1" [ref=f2e269]: ＋ flecha libre — CLIC o ENTER para colocar aquí
+        - heading "ÁREA NEUTRAL (0)" [level=4] [ref=f2e271]
+        - generic [ref=f2e272]:
+          - generic [ref=f2e273]:
+            - text: EXPEDIENTE CLASIFICADO · NIVEL 5 OJOS UNICAMENTE
+            - img "Bavarian Illuminati 1" [ref=f2e274]
+            - generic [ref=f2e275]: IA (IA)Bavarian Illuminati 1
+            - generic "Acciones Illuminati" [ref=f2e276]: ★ 1
+            - generic [ref=f2e277]: 2 grupos
+            - generic [ref=f2e278]: "mano: 4P/10G"
+          - 'button "Carta: Bavarian Illuminati 1" [ref=f2e280] [cursor=pointer]':
+            - img "Bavarian Illuminati 1" [ref=f2e281]
+            - generic [ref=f2e282]: Bavarian Illuminati 1
+            - text: P10/R-●1
+            - generic [ref=f2e283]: ⬇ SUELTA AQUÍ
+            - generic [ref=f2e284]: ILLUMINATI · 3 flechas libres
+            - 'button "Carta: Silicon Valley" [ref=f2e286]':
+              - img "Silicon Valley" [ref=f2e287]
+              - generic [ref=f2e288]: Silicon Valley
+              - text: P6/R3●1
+              - generic [ref=f2e289]: ⬇ SUELTA AQUÍ
+              - generic [ref=f2e290]: 3 flechas libres
+              - button "Colocar aquí bajo Silicon Valley" [ref=f2e291]: ＋ flecha libre — CLIC o ENTER para colocar aquí
+            - button "Colocar aquí bajo Bavarian Illuminati 1" [ref=f2e292]: ＋ flecha libre — CLIC o ENTER para colocar aquí
+      - generic [ref=f2e171]:
+        - heading "Registro" [level=3] [ref=f2e172]
+        - generic "Registro de jugadas" [ref=f2e173]:
+          - generic [ref=f2e293]: "Partida iniciada: modo Humano vs IA"
+          - generic [ref=f2e294]: Nueva partida creada (2 jugadores, meta básica 12 grupos)
+          - generic [ref=f2e295]: Jugador 1 elige Adepts of Hermes 1
+          - generic [ref=f2e296]: IA elige Bavarian Illuminati 1
+          - generic [ref=f2e297]: "Tirada inicial: 2, 9 — empieza IA"
+          - generic [ref=f2e298]: — Turno de IA (+1 acción Illuminati) —
+          - generic [ref=f2e299]: IA toma posesión automática de Silicon Valley
+          - generic [ref=f2e300]: — Turno de Jugador 1 (+1 acción Illuminati) —
+    - generic "Acciones y cartas de tu mano" [ref=f2e182]:
+      - generic [ref=f2e183]:
+        - generic [ref=f2e301]:
+          - text: ◆
+          - generic [ref=f2e302]: 1 · ROBAR
+          - button "🎴 Robar PLOT" [ref=f2e303] [cursor=pointer]
+          - button "🃏 Robar GRUPO" [ref=f2e304] [cursor=pointer]
+        - generic [ref=f2e305]:
+          - text: ◆
+          - generic [ref=f2e306]: 2 · COLOCAR GRATIS
+          - button "🔮 Takeover" [ref=f2e307] [cursor=pointer]
+        - generic [ref=f2e308]:
+          - text: ◆
+          - generic [ref=f2e309]: 3 · ACCIONES (gastan ●)
+          - button "⚔ CONTROLAR" [ref=f2e310] [cursor=pointer]
+          - button "☠ DESTRUIR" [ref=f2e311] [cursor=pointer]
+          - button "🔀 Mover" [ref=f2e312] [cursor=pointer]
+          - button "📦 Recurso" [ref=f2e313] [cursor=pointer]
+        - generic [ref=f2e314]:
+          - text: ◆
+          - generic [ref=f2e315]: 4 · EXTRAS (★)
+          - button "★→Plot" [ref=f2e316] [cursor=pointer]
+          - button "★→Grupo" [ref=f2e317] [cursor=pointer]
+        - generic [ref=f2e318]:
+          - text: ◆
+          - generic [ref=f2e319]:
+            - text: 🗂 MANO
+            - generic [ref=f2e320]: 🂠 13
+          - button "Ordenar la mano por Tablero" [ref=f2e321] [cursor=pointer]: 🗂
+          - button "Ordenar la mano por Tipo" [ref=f2e322] [cursor=pointer]: 🔤
+          - button "Ordenar la mano por Poder" [ref=f2e323] [cursor=pointer]: ⚡
+        - button "5 · Terminar turno ▶" [ref=f2e324] [cursor=pointer]
+        - button "✕ Cancelar" [ref=f2e325] [cursor=pointer]
+      - generic [ref=f2e208]:
+        - button "18 and a Half Minute Gap, plot, Poder desconocido, Resistencia desconocida" [ref=f2e326] [cursor=pointer]:
+          - img "18 and a Half Minute Gap" [ref=f2e327]
+        - button "Blitzkrieg, plot, Poder desconocido, Resistencia desconocida" [ref=f2e328] [cursor=pointer]:
+          - img "Blitzkrieg" [ref=f2e329]
+        - button "Reach Out . . ., plot, Poder desconocido, Resistencia desconocida" [ref=f2e330] [cursor=pointer]:
+          - img "Reach Out . . ." [ref=f2e331]
+        - button "Hallucinations, resource, Poder desconocido, Resistencia desconocida" [ref=f2e332] [cursor=pointer]:
+          - img "Hallucinations" [ref=f2e333]
+        - button "Phone Phreaks, group, Poder 1, Resistencia 1" [ref=f2e334] [cursor=pointer]:
+          - img "Phone Phreaks" [ref=f2e335]
+        - button "Moral Minority, group, Poder 2, Resistencia 1" [ref=f2e336] [cursor=pointer]:
+          - img "Moral Minority" [ref=f2e337]
+        - button "Comic Books, group, Poder 1, Resistencia 1" [pressed] [ref=f2e338] [cursor=pointer]:
+          - img "Comic Books" [ref=f2e339]
+        - button "International Communist Conspiracy, group, Poder 3, Resistencia 3" [ref=f2e340] [cursor=pointer]:
+          - img "International Communist Conspiracy" [ref=f2e341]
+        - button "Subliminals, group, Poder 2, Resistencia 4" [ref=f2e342] [cursor=pointer]:
+          - img "Subliminals" [ref=f2e343]
+        - button "Trading Card Games, group, Poder 2, Resistencia 2" [ref=f2e344] [cursor=pointer]:
+          - img "Trading Card Games" [ref=f2e345]
+        - button "Cycle Gangs, group, Poder 1, Resistencia 4" [ref=f2e346] [cursor=pointer]:
+          - img "Cycle Gangs" [ref=f2e347]
+        - button "Trekkies, group, Poder 1, Resistencia 4" [ref=f2e348] [cursor=pointer]:
+          - img "Trekkies" [ref=f2e349]
+        - button "Gun Lobby, group, Poder 1, Resistencia 3" [ref=f2e350] [cursor=pointer]:
+          - img "Gun Lobby" [ref=f2e351]
+      - generic [ref=f2e235]:
+        - text: ℹ 🎯 Haz CLIC en un grupo con borde VERDE, en tu ILLUMINATI, o en el recuadro «＋ flecha libre» para colocar tu carta ahí. — ✕ Cancelar
+        - generic [ref=f2e352]: 🔵 tu atacante🔴 objetivo ataque🟢 colocar/capturar🟡 ayudar/oponerse
+  - generic "Diálogos y ayuda"

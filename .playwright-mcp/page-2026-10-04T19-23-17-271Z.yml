@@ -1,0 +1,71 @@
+- generic [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - banner [ref=f1e3]:
+      - heading "INWO NEW WORLD ORDER" [level=1] [ref=f1e4]
+      - generic [ref=f1e114]:
+        - generic [ref=f1e115]: Turno 1
+        - generic [ref=f1e116]: MAIN
+        - generic [ref=f1e117]: ▶ IA
+      - button "⏱ ×1" [ref=f1e5] [cursor=pointer]
+      - button "Cómo jugar (reglas rápidas)" [ref=f1e6] [cursor=pointer]: "?"
+      - generic [ref=f1e119]:
+        - generic "Controlar 12 grupos; tus recursos Mágicos cuentan como grupos" [ref=f1e120]:
+          - generic [ref=f1e121]: Jugador 1
+          - generic [ref=f1e124]: 1/12 · recursos Mágicos 0
+        - generic "Poder total de tus grupos ≥ 50" [ref=f1e125]:
+          - generic [ref=f1e126]: IA
+          - generic [ref=f1e129]: 1/12 · Poder total 10/50
+    - main "Tablero y registro de la partida" [ref=f1e130]:
+      - generic [ref=f1e131]:
+        - generic [ref=f1e132]:
+          - generic [ref=f1e133]:
+            - text: EXPEDIENTE CLASIFICADO · NIVEL 5 OJOS UNICAMENTE
+            - img "Adepts of Hermes 1" [ref=f1e134]
+            - generic [ref=f1e135]: Jugador 1 Adepts of Hermes 1
+            - generic "Acciones Illuminati" [ref=f1e136]: ★ 0
+            - generic [ref=f1e137]: 1 grupos
+            - generic [ref=f1e138]: "mano: 3P/10G"
+          - 'button "Carta: Adepts of Hermes 1" [ref=f1e140]':
+            - img "Adepts of Hermes 1" [ref=f1e141]
+            - generic [ref=f1e142]: Adepts of Hermes 1
+            - text: P7/R-
+            - generic [ref=f1e143]: ILLUMINATI · 4 flechas libres
+        - heading "ÁREA NEUTRAL (0)" [level=4] [ref=f1e145]
+        - generic [ref=f1e146]:
+          - generic [ref=f1e147]:
+            - text: EXPEDIENTE CLASIFICADO · NIVEL 5 OJOS UNICAMENTE
+            - img "Bavarian Illuminati 1" [ref=f1e148]
+            - generic [ref=f1e149]: IA (IA)Bavarian Illuminati 1
+            - generic "Acciones Illuminati" [ref=f1e150]: ★ 1
+            - generic [ref=f1e151]: 1 grupos
+            - generic [ref=f1e152]: "mano: 3P/10G"
+          - 'button "Carta: Bavarian Illuminati 1" [ref=f1e154]':
+            - img "Bavarian Illuminati 1" [ref=f1e155]
+            - generic [ref=f1e156]: Bavarian Illuminati 1
+            - text: P10/R-●1
+            - generic [ref=f1e157]: ILLUMINATI · 4 flechas libres
+      - generic [ref=f1e158]:
+        - heading "Registro" [level=3] [ref=f1e159]
+        - generic "Registro de jugadas" [ref=f1e160]:
+          - generic [ref=f1e161]: "Partida iniciada: modo Humano vs IA"
+          - generic [ref=f1e162]: Nueva partida creada (2 jugadores, meta básica 12 grupos)
+          - generic [ref=f1e163]: Jugador 1 elige Adepts of Hermes 1
+          - generic [ref=f1e164]: IA elige Bavarian Illuminati 1
+          - generic [ref=f1e165]: "Tirada inicial: 6, 8 — empieza IA"
+          - generic [ref=f1e166]: — Turno de IA (+1 acción Illuminati) —
+    - generic "Acciones y cartas de tu mano" [ref=f1e167]:
+      - generic [ref=f1e168]: ⏳ TURNO DE LA IA... esta tramando. Observa el registro
+      - generic [ref=f1e170]: Turno de la IA…
+      - generic [ref=f1e172]: ℹ ⏳ La IA está jugando su turno…
+  - generic "Diálogos y ayuda":
+    - dialog [ref=f1e173]:
+      - generic [ref=f1e174]:
+        - heading "🎮 CÓMO JUGAR — 4 PASOS y ya sabes jugar" [level=2] [ref=f1e175]
+        - list [ref=f1e176]:
+          - listitem [ref=f1e177]: 🎴 ROBAR — Pulsa «Robar PLOT» y «Robar GRUPO». Son tus cartas nuevas.
+          - listitem [ref=f1e178]: 🎁 TAKEOVER AUTOMÁTICO — El botón verde que PARPADEA. Coloca un grupo de tu mano en tu estructura gratis y sin dados. Es tu movimiento más importante.
+          - listitem [ref=f1e179]: "⚔ ATACAR (opcional) — «Controlar» roba el grupo enemigo con todos sus títeres. «Destruir» lo elimina. El juego te guía: clic en tu atacante → clic en el objetivo verde → RESOLVER ▶ tira los dados."
+          - listitem [ref=f1e180]: ✔ TERMINAR TURNO — Cuando no quieras hacer más, pulsa el botón azul.
+        - paragraph [ref=f1e181]: 🏆 GANAS cumpliendo la meta de tu sociedad (la tuya cuenta). Mira tu barra de progreso arriba en todo momento.
+        - paragraph [ref=f1e182]: 💡 Pasa el ratón por CUALQUIER carta para verla grande. El texto ℹ de abajo SIEMPRE te dice qué hacer ahora. La ? del menú tiene todas las reglas.
+        - button "¡ENTENDIDO, A JUGAR! ▶" [active] [ref=f1e183] [cursor=pointer]

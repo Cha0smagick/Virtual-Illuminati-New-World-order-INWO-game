@@ -2767,6 +2767,37 @@ const L30_FX = {
 const L30_FXN = {};
 for (const k30 in L30_FX) { L30_FXN[norm(k30)] = L30_FX[k30]; }
 
+/* L31 — P1-161: familia robo-extra + PMM. Textos verbatim de
+ * research/scribd_inwo_cards_full.html. Fraternal Orders y Pentagon son Groups
+ * con habilidad; Perpetual Motion Machine es Resource ligada; Let's You and Him
+ * Fight y Senate Investigating Committee son Plots (Lyhf en cualquier momento,
+ * Senate al comienzo del turno del rival). Hitler's Brain sigue como HUECO DE
+ * TEXTO (no aparece en el scribd). */
+const L31_FX = {
+  'Fraternal Orders': {
+    kind: 'fraternal_draw',
+    t: "You think they look silly with their hats and their motor scooters. If you knew what those hats really meant, you'd never laugh at anything, ever again. By spending this group's action, you may draw another Group card at any time."
+  },
+  'Pentagon': {
+    kind: 'corporate_extra_draw',
+    t: 'Each Corporate group directly controlled by the Pentagon lets you draw one extra Plot card each turn.'
+  },
+  'Perpetual Motion Machine': {
+    kind: 'linked_token_source',
+    t: 'It works. It really works. And 27 scientists have gone mad, so far, trying to build another one. The group linked to this card device gets one extra Action token at the beginning of each turn.'
+  },
+  "Let's You and Him Fight": {
+    kind: 'feud_pick',
+    t: "You instigate a feud among the agents of the enemy, and they obligingly eliminate each other. Pick a rival and draw two Groups randomly from his hand. Choose one for him to discard; the other is returned to his hand. (For purposes of this card, Resources count as Groups.) If your victim has only one Group card, he loses it. Play this card at any time. It requires an action by your Illuminati. Requires Illuminati Action"
+  },
+  'Senate Investigating Committee': {
+    kind: 'turn_start_lock',
+    t: "Play this card at the beginning of any other player's turn. He may draw cards and place Action tokens, but can do nothing else. This card requires the action of a Government group with a Power of at least 5. It cannot affect the Discordians! No player can be hit by more than one Senate Investigating Committee in a single game. If someone tries a second time, the card has no effect and is discarded. Requires Government Action"
+  }
+};
+const L31_FXN = {};
+for (const k31 in L31_FX) { L31_FXN[norm(k31)] = L31_FX[k31]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
@@ -3056,7 +3087,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

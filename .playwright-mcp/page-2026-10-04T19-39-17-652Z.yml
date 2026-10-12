@@ -1,0 +1,116 @@
+- generic [active] [ref=f3e1]:
+  - generic [ref=f3e2]:
+    - banner [ref=f3e3]:
+      - heading "INWO NEW WORLD ORDER" [level=1] [ref=f3e4]
+      - generic [ref=f3e122]:
+        - generic [ref=f3e123]: Turno 1
+        - generic [ref=f3e124]: MAIN
+        - generic [ref=f3e125]: ▶ Jugador 1
+      - button "⏱ ×1" [ref=f3e5] [cursor=pointer]
+      - button "Cómo jugar (reglas rápidas)" [ref=f3e6] [cursor=pointer]: "?"
+      - generic [ref=f3e127]:
+        - generic "Controlar 12 grupos; tus recursos Mágicos cuentan como grupos" [ref=f3e128]:
+          - generic [ref=f3e129]: Jugador 1
+          - generic [ref=f3e132]: 1/12 · recursos Mágicos 0
+        - generic "Poder total de tus grupos ≥ 50" [ref=f3e133]:
+          - generic [ref=f3e134]: IA
+          - generic [ref=f3e137]: 1/12 · Poder total 10/50
+    - main "Tablero y registro de la partida" [ref=f3e138]:
+      - generic [ref=f3e139]:
+        - generic [ref=f3e140]:
+          - generic [ref=f3e141]:
+            - text: EXPEDIENTE CLASIFICADO · NIVEL 5 OJOS UNICAMENTE
+            - img "Adepts of Hermes 1" [ref=f3e142]
+            - generic [ref=f3e143]: Jugador 1 Adepts of Hermes 1
+            - generic "Acciones Illuminati" [ref=f3e144]: ★ 1
+            - generic [ref=f3e145]: 1 grupos
+            - generic [ref=f3e146]: "mano: 3P/10G"
+          - 'button "Carta: Adepts of Hermes 1" [ref=f3e148]':
+            - img "Adepts of Hermes 1" [ref=f3e149]
+            - generic [ref=f3e150]: Adepts of Hermes 1
+            - text: P7/R-●1
+            - generic [ref=f3e151]: ILLUMINATI · 4 flechas libres
+        - heading "ÁREA NEUTRAL (0)" [level=4] [ref=f3e153]
+        - generic [ref=f3e154]:
+          - generic [ref=f3e155]:
+            - text: EXPEDIENTE CLASIFICADO · NIVEL 5 OJOS UNICAMENTE
+            - img "Bavarian Illuminati 1" [ref=f3e156]
+            - generic [ref=f3e157]: IA (IA)Bavarian Illuminati 1
+            - generic "Acciones Illuminati" [ref=f3e158]: ★ 0
+            - generic [ref=f3e159]: 1 grupos
+            - generic [ref=f3e160]: "mano: 3P/10G"
+          - 'button "Carta: Bavarian Illuminati 1" [ref=f3e162]':
+            - img "Bavarian Illuminati 1" [ref=f3e163]
+            - generic [ref=f3e164]: Bavarian Illuminati 1
+            - text: P10/R-
+            - generic [ref=f3e165]: ILLUMINATI · 4 flechas libres
+      - generic [ref=f3e166]:
+        - heading "Registro" [level=3] [ref=f3e167]
+        - generic "Registro de jugadas" [ref=f3e168]:
+          - generic [ref=f3e169]: "Partida iniciada: modo Humano vs IA"
+          - generic [ref=f3e170]: Nueva partida creada (2 jugadores, meta básica 12 grupos)
+          - generic [ref=f3e171]: Jugador 1 elige Adepts of Hermes 1
+          - generic [ref=f3e172]: IA elige Bavarian Illuminati 1
+          - generic [ref=f3e173]: "Tirada inicial: 9, 3 — empieza Jugador 1"
+          - generic [ref=f3e174]: — Turno de Jugador 1 (+1 acción Illuminati) —
+    - generic "Acciones y cartas de tu mano" [ref=f3e175]:
+      - generic [ref=f3e176]:
+        - generic [ref=f3e177]:
+          - text: ◆
+          - generic [ref=f3e178]: 1 · ROBAR
+          - button "🎴 Robar PLOT" [ref=f3e179] [cursor=pointer]
+          - button "🃏 Robar GRUPO" [ref=f3e180] [cursor=pointer]
+        - generic [ref=f3e181]:
+          - text: ◆
+          - generic [ref=f3e182]: 2 · COLOCAR GRATIS
+          - button "🔮 Takeover" [ref=f3e183] [cursor=pointer]
+        - generic [ref=f3e184]:
+          - text: ◆
+          - generic [ref=f3e185]: 3 · ACCIONES (gastan ●)
+          - button "⚔ CONTROLAR" [ref=f3e186] [cursor=pointer]
+          - button "☠ DESTRUIR" [ref=f3e187] [cursor=pointer]
+          - button "🔀 Mover" [ref=f3e188] [cursor=pointer]
+          - button "📦 Recurso" [ref=f3e189] [cursor=pointer]
+        - generic [ref=f3e190]:
+          - text: ◆
+          - generic [ref=f3e191]: 4 · EXTRAS (★)
+          - button "★→Plot" [ref=f3e192] [cursor=pointer]
+          - button "★→Grupo" [ref=f3e193] [cursor=pointer]
+        - generic [ref=f3e194]:
+          - text: ◆
+          - generic [ref=f3e195]:
+            - text: 🗂 MANO
+            - generic [ref=f3e196]: 🂠 13
+          - button "Ordenar la mano por Tablero" [ref=f3e197] [cursor=pointer]: 🗂
+          - button "Ordenar la mano por Tipo" [ref=f3e198] [cursor=pointer]: 🔤
+          - button "Ordenar la mano por Poder" [ref=f3e199] [cursor=pointer]: ⚡
+        - button "5 · Terminar turno ▶" [ref=f3e200] [cursor=pointer]
+      - generic [ref=f3e201]:
+        - button "Stealing the Plans, plot, Poder desconocido, Resistencia desconocida" [ref=f3e202] [cursor=pointer]:
+          - img "Stealing the Plans" [ref=f3e203]
+        - button "Backlash, plot, Poder desconocido, Resistencia desconocida" [ref=f3e204] [cursor=pointer]:
+          - img "Backlash" [ref=f3e205]
+        - button "World Cup Victory, plot, Poder desconocido, Resistencia desconocida" [ref=f3e206] [cursor=pointer]:
+          - img "World Cup Victory" [ref=f3e207]
+        - button "George Bush, group, Poder 2, Resistencia 3" [ref=f3e208] [cursor=pointer]:
+          - img "George Bush" [ref=f3e209]
+        - button "Phone Phreaks, group, Poder 1, Resistencia 1" [ref=f3e210] [cursor=pointer]:
+          - img "Phone Phreaks" [ref=f3e211]
+        - button "Moral Minority, group, Poder 2, Resistencia 1" [ref=f3e212] [cursor=pointer]:
+          - img "Moral Minority" [ref=f3e213]
+        - button "Weather Satellite, resource, Poder desconocido, Resistencia desconocida" [ref=f3e214] [cursor=pointer]:
+          - img "Weather Satellite" [ref=f3e215]
+        - button "F.B.I., group, Poder 5, Resistencia 6" [ref=f3e216] [cursor=pointer]:
+          - img "F.B.I." [ref=f3e217]
+        - button "KKK, group, Poder 2, Resistencia 5" [ref=f3e218] [cursor=pointer]:
+          - img "KKK" [ref=f3e219]
+        - button "Flying Saucer, resource, Poder desconocido, Resistencia desconocida" [ref=f3e220] [cursor=pointer]:
+          - img "Flying Saucer" [ref=f3e221]
+        - button "South American Nazis, group, Poder 3, Resistencia 6" [ref=f3e222] [cursor=pointer]:
+          - img "South American Nazis" [ref=f3e223]
+        - button "Principia Discordia, resource, Poder desconocido, Resistencia desconocida" [ref=f3e224] [cursor=pointer]:
+          - img "Principia Discordia" [ref=f3e225]
+        - button "Media Sensation, group, Poder 1, Resistencia 1" [ref=f3e226] [cursor=pointer]:
+          - img "Media Sensation" [ref=f3e227]
+      - generic [ref=f3e228]: "ℹ 🎁 PASO CLAVE del turno: pulsa el botón Takeover (parpadea) → elige carta → colócala en un anillo verde. Es GRATIS y sin dados."
+  - generic "Diálogos y ayuda"
