@@ -2798,6 +2798,50 @@ const L31_FX = {
 const L31_FXN = {};
 for (const k31 in L31_FX) { L31_FXN[norm(k31)] = L31_FX[k31]; }
 
+/* L32 — P1-162: familia tokens-acciones (Brazil, England, Hawaii, Russia,
+ * Center for Weird Studies, Market Manipulation, Power Grab, Weather
+ * Satellite). Textos verbatim de research/scribd_inwo_cards_full.html.
+ * Germany y Blitzkrieg quedan como HUECOS DE TEXTO (#7 y #8): el scribd no
+ * los trae y el OCR de cards.js esta truncado a mitad de frase. */
+const L32_FX = {
+  'Brazil': {
+    kind: 'controller_token_if',
+    controllerAlign: 'corporate',
+    t: 'The natural resources of Brazil give one extra Action token to the group that controls it, if that group is Corporate.'
+  },
+  'Hawaii': {
+    kind: 'controller_token_if',
+    controllerAlign: 'corporate',
+    t: 'The traditional vacation spot for the worlds middle class, Hawaii gives one extra Action token to the group that controls it, if that group is Corporate.'
+  },
+  'England': {
+    kind: 'self_tokens_double',
+    t: 'Though Englands power is reduced today, her influence is still felt everywhere. England gets two action tokens every turn.'
+  },
+  'Russia': {
+    kind: 'communist_bonuses',
+    t: 'Russia has +4 for direct control of any Communist group, and a +2 for any attempt to control or destroy a Communist group. However, any Communist group gets a +4 for direct control of Russia!'
+  },
+  'Center for Weird Studies': {
+    kind: 'weird_refuel',
+    t: 'Home of the High Energy Cheese lab, the Bozon Control Project, and other things they dont teach in Physics class. Once per turn, on your turn, you may discard any Plot card and add an extra Action token to any of your Groups or Resources which has already used its action. This does not let a group use its Power twice in the same attack.'
+  },
+  'Market Manipulation': {
+    kind: 'market_strip',
+    t: 'This card may be used at any time. Remove the Action tokens from any Corporative group (if you choose) and any or all Bank groups. This does not count as an action.'
+  },
+  'Power Grab': {
+    kind: 'extra_takeover',
+    t: 'Play this card on your turn, immediately after your automatic takeover. You may make another automatic takeover of any Group or Resource. You turn ends immediately; you get new Action tokens, but you may do nothing else. Ends Turn'
+  },
+  'Weather Satellite': {
+    kind: 'disaster_mod',
+    t: 'Real weather satellites dont just report the weather. They change it. You may increase by 8, or decrease by 4, the power of any Hurricane, Tidal Wave, or Tornado. You may increase by 4, or decrease by 2, the power of any other Attack to Destroy (including Disasters) against any Place except Space ones. The Satellite gets two Action tokens, but may not use them in the same attack.'
+  }
+};
+const L32_FXN = {};
+for (const k32 in L32_FX) { L32_FXN[norm(k32)] = L32_FX[k32]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
@@ -3087,7 +3131,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias
@@ -3098,7 +3142,12 @@ for (const m of manifest) {
     if (pfx.requireActionFromAttr && ACTION_COST_KINDS.indexOf(pfx.kind) < 0)
       throw new Error('gen_cards: "'+key+'" (kind '+pfx.kind+') declara requireActionFromAttr pero ningun gate de ese kind lo cobra; añade el kind a ACTION_COST_KINDS y su gate en engine.js');
     rec.effect = pfx;
-    rec.subtype = pfx.kind;
+    /* P1-162: el kind SOLO es el subtype cuando la carta no tiene uno propio.
+     * Pisar el subtype de datos rompia Places reales: Brazil/England/Hawaii/
+     * Russia son subtype 'place' (L20 juega Disasters contra ellos y el case
+     * disaster valida subtype==='place'). Plots sin subtype siguen llevando el
+     * kind, igual que toda la vida. */
+    if (!rec.subtype) rec.subtype = pfx.kind;
     rec.verifiedMechanic = true;
     if (pfx.t) rec.text = pfx.t;
   }

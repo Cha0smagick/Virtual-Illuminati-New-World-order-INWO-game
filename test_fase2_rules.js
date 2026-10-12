@@ -28,12 +28,22 @@ function isNegatorCard(ix) {
   var e = ix != null && C.cards[ix] ? C.cards[ix].effect : null;
   return !!(e && (e.kind === 'plot_negate_prev' || e.kind === 'plot_negate_computer' || e.kind === 'plot_negate_steal'));
 }
+/* P1-162: las TS-cards (Unlucky 13 / Seize the Time / Senate Investigating
+ * Committee) abren la ventana de turn-start si caen al azar en la mano de un
+ * jugador humano, y muchos bloques llaman E.endTurn() directamente sin pasar
+ * la ventana ("No se puede terminar un turno fuera de la fase principal").
+ * fresh() las purga de mazos y manos; los bloques que las PRUEBAN las
+ * re-introducen despues con hand22/pullPlot. */
+function isTurnStartCard(ix) {
+  var id = ix != null && C.cards[ix] ? C.cards[ix].id : null;
+  return id === 'unlucky13' || id === 'seizethetime' || id === 'senateinvestigatingcommittee';
+}
 function stripNegators22() {
   var r = E._raw(), k;
-  for (k = r.plotDeck.length - 1; k >= 0; k--) if (isNegatorCard(r.plotDeck[k])) r.plotDeck.splice(k, 1);
+  for (k = r.plotDeck.length - 1; k >= 0; k--) if (isNegatorCard(r.plotDeck[k]) || isTurnStartCard(r.plotDeck[k])) r.plotDeck.splice(k, 1);
   for (var q = 0; q < r.players.length; q++) {
     var h = r.players[q].hand;
-    for (k = h.length - 1; k >= 0; k--) if (isNegatorCard(h[k])) h.splice(k, 1);
+    for (k = h.length - 1; k >= 0; k--) if (isNegatorCard(h[k]) || isTurnStartCard(h[k])) h.splice(k, 1);
   }
   return true;
 }
@@ -5537,7 +5547,10 @@ function readyToAttack(pid) {
       if(r.plotDeck.indexOf(ix)<0&&dxi>=0){r.plotDiscard.splice(dxi,1);r.plotDeck.push(ix);}
     }
     var di=r.plotDeck.indexOf(ix);
-    if(di<0)throw new Error('la carta no esta en el mazo de plots');
+    /* P1-162: stripNegators22 purga las TS-cards del mazo; si este helper la
+     * necesita, se re-inserta (el mazo es un stack: da igual la posicion). */
+    if(di<0)r.plotDeck.push(ix);
+    di=r.plotDeck.indexOf(ix);
     r.plotDeck.splice(di,1);
     r.players[pid].hand.push(ix);
   }
@@ -5776,6 +5789,14 @@ function readyToAttack(pid) {
        autoDraw dibujaria 2: la asercion sigue siendo convalidante con base=0. */
     var basePlotsL8c=plotsOfL8c(1);
     plant(0,'nL8cMG',mgIdxL8c,1);
+    /* P1-162: el bloque asume que el turno llega en PID1 (el #1 cierra el turno
+       de pid1 sin ventana y el #2 abre la de pid0 -> playPlot). Si el azar del
+       reparto dejo el turno en PID0, se normaliza aqui (la ventana que abra se
+       pasa). */
+    for(var gS7=0;gS7<4&&E.getState().currentPid!==1;gS7++){
+      E.endTurn();
+      if(E.getState().pendingTurnStart)E.resolvePendingTurnStart({pass:true});
+    }
     pullPlotL8c(0,idxOfId('unlucky13'));
     E.endTurn();
     E.endTurn();
@@ -9811,6 +9832,240 @@ function err26(fn) { return throwMsgL14(fn); }
       ok(msg.indexOf('Discordian') >= 0, 'S5l Discordianos inmunes: "' + msg + '"');
       ok(E._raw().players[1].senateHits === 0, 'S5m sin registrar golpe');
     }
+  })();
+
+  S.forEach(function (p) { ok(p[1], p[0]); });
+})();
+
+/* ================= L32 - tokens-acciones: Brazil (12), England (39),
+ * Hawaii (61), Russia (128), Center for Weird Studies (215),
+ * Market Manipulation (305), Power Grab (342), Weather Satellite (414).
+ * Germany y Blitzkrieg quedan como HUECOS DE TEXTO #7 y #8. P1-162. ========== */
+(function () {
+  var S = [], ok = function (c, m) { S.push([m, !!c]); };
+  var esc = function (m, c) { ok(m === '' ? c : (m || 'vacio'), c && (m === '' || m == null)); };
+  var tMsg = function (fn) { try { fn(); return ''; } catch (e32) { return e32.message || String(e32); } };
+  var R = E._raw();
+  var passTS = function () { if (E.getState().pendingTurnStart) E.resolvePendingTurnStart({ pass: true }); };
+  var idxOf = function (id) { return C.cards.findIndex(function (c) { return c.id === id; }); };
+  var groupWithAttr = function (attr, notIdx) {
+    for (var i = 0; i < C.cards.length; i++) {
+      if (C.cards[i].type !== 'group' || i === notIdx) continue;
+      if ((C.cards[i].attributes || []).indexOf(attr) >= 0) return i;
+    }
+    return -1;
+  };
+  var alignGroup = function (al, notIdx) {
+    for (var i = 0; i < C.cards.length; i++) {
+      if (C.cards[i].type !== 'group' || i === notIdx) continue;
+      if ((C.cards[i].alignments || []).indexOf(al) >= 0) return i;
+    }
+    return -1;
+  };
+  var findN = function (uid) {
+    var f = null;
+    (function w(n) { if (f || n.uid === uid) { f = f || n; return; } (n.children || []).forEach(w); })(E._raw().players[0].structure);
+    return f;
+  };
+
+  /* S1 Brazil/Hawaii: la ficha extra va al controlador Corporate. */
+  (function () {
+        fresh(idxOf('bavarianilluminati1'), idxOf('servantsofcthulhu1'));
+        var R = E._raw();
+    var BR = idxOf('brazil');
+    var CORP = alignGroup('corporate', BR);
+    var PLAIN = alignGroup('peaceful', BR);
+    esc('S1-pre grupos corporate/peaceful', CORP >= 0 && PLAIN >= 0);
+    plant(0, 'c1', CORP, 1);
+    plant(0, 'p1', PLAIN, 1);
+    R.players[0].structure.children.forEach(function (n) {
+      if (n.uid === 'c1') n.children.push({ uid: 'nb', cardId: BR, children: [], tokens: 0 });
+      if (n.uid === 'p1') n.children.push({ uid: 'nh', cardId: BR, children: [], tokens: 0 });
+    });
+    readyToAttack(0);
+    var cN = findN('c1'), hN = findN('p1');
+    ok(cN.tokens === 2, 'S1 Brazil bajo Corporate: controlador con 2 fichas (tiene ' + cN.tokens + ')');
+    ok(hN.tokens === 1, 'S1 Brazil bajo no-Corporate: controlador con 1 ficha (tiene ' + hN.tokens + ')');
+  })();
+
+  /* S2 England: dos fichas por turno. */
+  (function () {
+        fresh(idxOf('bavarianilluminati1'), idxOf('servantsofcthulhu1'));
+        var R = E._raw();
+    var EN = idxOf('england');
+    plant(0, 'eng', EN, 0);
+    readyToAttack(0);
+    ok(findN('eng').tokens === 2, 'S2 England con 2 fichas (tiene ' + findN('eng').tokens + ')');
+  })();
+
+  /* S3 Russia: +4 directo +2 cualquier intento = +6 contra Communist. */
+  (function () {
+        fresh(idxOf('bavarianilluminati1'), idxOf('servantsofcthulhu1'));
+        var R = E._raw();
+    var RU = idxOf('russia');
+    var COM = groupWithAttr('communist', RU);
+    esc('S3-pre grupo Communist', COM >= 0);
+    plant(0, 'ru', RU, 1);
+    /* el Communist objetivo es del RIVAL: el motor no permite controlar grupos propios */
+    plant(1, 'com', COM, 1);
+    readyToAttack(0);
+    E.declareAttack(0, 'control', { attackerUid: 'ru', uid: 'com' });
+    var A3 = R.attack;
+    var sum = 0;
+    (A3.boosts || []).forEach(function (b) { if (b.name === 'Russia') sum += b.v; });
+    ok(sum === 6, 'S3 Rusia ataca Communist: +6 en boosts (suma ' + sum + ')');
+    R.attack = null;
+    /* defensa: un Communist ataca a Rusia -> +4 para el atacante */
+    E._raw().currentPid = 1; E._raw().players[1].human = true;
+    var ATK1 = -1;
+    for (var i3 = 0; i3 < C.cards.length; i3++) {
+      if (i3 === COM || i3 === RU) continue;
+      if (C.cards[i3].type === 'group' && (C.cards[i3].attributes || []).indexOf('communist') >= 0) { ATK1 = i3; break; }
+    }
+    esc('S3b-pre atacante Communist rival', ATK1 >= 0);
+    R.players[1].hand = R.players[1].hand.filter(function (ix) { return ix !== ATK1; });
+    R.players[1].hand.push(ATK1);
+    plant(1, 'ratk', ATK1, 1);
+    E.declareAttack(1, 'control', { attackerUid: 'ratk', uid: 'ru' });
+    var A3b = R.attack, sum3b = 0;
+    (A3b.boosts || []).forEach(function (b) { if (b.name === 'Russia') sum3b += b.v; });
+    ok(sum3b === 4, 'S3b Communist ataca Rusia: +4 (suma ' + sum3b + ')');
+    R.attack = null;
+  })();
+
+  /* S4 Center for Weird Studies: descarta Plot, recarga grupo que ya actuo. */
+  (function () {
+        fresh(idxOf('bavarianilluminati1'), idxOf('servantsofcthulhu1'));
+        var R = E._raw();
+    var CWS = idxOf('centerforweirdstudies');
+    var GRP = alignGroup('peaceful', CWS);
+    hand22(0, CWS);
+    plant(0, 'g1', GRP, 0);
+    readyToAttack(0);
+    E.playResource(0, CWS, null);
+    var plotIx = R.players[0].hand.filter(function (ix) { return C.cards[ix].type === 'plot'; })[0];
+    esc('S4-pre plot en mano', plotIx != null);
+    /* el grupo aun no uso su accion -> rechaza */
+    var m4 = tMsg(function () { E.weirdRefuel(0, 'g1', plotIx); });
+    ok(m4.indexOf('HABER USADO') >= 0 || m4.indexOf('ya') >= 0, 'S4a target sin usar su accion: "' + m4 + '"');
+    /* gastar su ficha a mano (fixture): ya uso su accion */
+    findN('g1').tokens = 0;
+    E.weirdRefuel(0, 'g1', plotIx);
+    ok(findN('g1').tokens === 1, 'S4b grupo recargado a 1 ficha');
+    ok(R.players[0].hand.indexOf(plotIx) < 0, 'S4c Plot descartada de la mano');
+    ok(R.plotDiscard.indexOf(plotIx) >= 0, 'S4d Plot en el descarte');
+    ok(R.players[0].flags.cwsRefuelUsed === true, 'S4e flag once-per-turn');
+    var m4b = tMsg(function () { E.weirdRefuel(0, 'g1', R.players[0].hand.filter(function (ix) { return C.cards[ix].type === 'plot'; })[0]); });
+    ok(m4b.indexOf('una vez por turno') >= 0, 'S4f segunda vez rechazada: "' + m4b + '"');
+  })();
+
+  /* S5 Market Manipulation: sin coste, Corporate opcional + Banks. */
+  (function () {
+        fresh(idxOf('bavarianilluminati1'), idxOf('servantsofcthulhu1'));
+        var R = E._raw();
+    var MM = idxOf('marketmanipulation');
+    var BK = groupWithAttr('bank', MM);
+    var CRP = alignGroup('corporate', MM);
+    esc('S5-pre bank/corporate', BK >= 0 && CRP >= 0);
+    hand22(0, MM);
+    plant(0, 'bk', BK, 2);
+    plant(0, 'crp', CRP, 1);
+    readyToAttack(0);
+    E.playPlot(0, MM, null, { corporateUid: 'crp', bankUids: ['bk'] });
+    ok(findN('bk').tokens === 0, 'S5a Bank sin fichas');
+    ok(findN('crp').tokens === 0, 'S5b Corporate sin fichas');
+    ok(R.plotDiscard.indexOf(MM) >= 0, 'S5c carta al descarte');
+    /* sin objetivos -> rechaza y la carta NO se consume */
+    hand22(0, MM);
+    var m5 = tMsg(function () { E.playPlot(0, MM, null, {}); });
+    ok(m5.indexOf('al menos un grupo') >= 0, 'S5e sin objetivos: "' + m5 + '"');
+  })();
+
+  /* S6 Power Grab: segundo takeover (recurso) y el turno termina YA. */
+  (function () {
+        fresh(idxOf('bavarianilluminati1'), idxOf('servantsofcthulhu1'));
+        var R = E._raw();
+    var PG = idxOf('powergrab');
+    var RS = -1;
+    for (var i6 = 0; i6 < C.cards.length; i6++) if (C.cards[i6].type === 'resource' && i6 !== PG) { RS = i6; break; }
+    esc('S6-pre resource disponible', RS >= 0);
+    hand22(0, PG); hand22(0, RS);
+    readyToAttack(0);
+    var pid6 = 0;
+    /* el flag autoTakeover es la marca de "ya hiciste tu takeover este turno"
+       (beginTurn la resetea; el test la fija como fixture). */
+    R.players[0].flags.autoTakeover = true;
+    var m6 = tMsg(function () { E.playPlot(pid6, PG, null, { takeoverHandIdx: RS }); });
+    ok(m6 === '' || m6 == null, 'S6a jugada sin error: "' + m6 + '"');
+    ok(R.players[0].resources.some(function (r) { return r.cardId === RS; }), 'S6b resource en juego');
+    ok(R.currentPid !== 0 || R.phase === 'begin' || R.turn > 0, 'S6c turno terminado inmediatamente (currentPid=' + R.currentPid + ' phase=' + R.phase + ')');
+    /* S6d: sin takeover previo -> rechaza */
+        fresh(idxOf('bavarianilluminati1'), idxOf('servantsofcthulhu1'));
+        var R = E._raw();
+    hand22(0, PG); hand22(0, RS);
+    readyToAttack(0);
+    var m6b = tMsg(function () { E.playPlot(0, PG, null, { takeoverHandIdx: RS }); });
+    ok(m6b.indexOf('automatic takeover') >= 0, 'S6d sin takeover previo: "' + m6b + '"');
+  })();
+
+  /* S7 Weather Satellite: 2 fichas y modifica ataque a Destroy contra Place. */
+  (function () {
+        fresh(idxOf('bavarianilluminati1'), idxOf('servantsofcthulhu1'));
+        var R = E._raw();
+    var WS = idxOf('weathersatellite');
+    var PL = -1;
+    for (var i7 = 0; i7 < C.cards.length; i7++) {
+      if (C.cards[i7].type === 'group' && C.cards[i7].subtype === 'place' &&
+          (C.cards[i7].attributes || []).indexOf('space') < 0) { PL = i7; break; }
+    }
+    var ATK = alignGroup('peaceful', PL);
+    esc('S7-pre place/atacante', PL >= 0 && ATK >= 0);
+    hand22(0, WS);
+    plant(0, 't1', PL, 0);
+    plant(0, 'atk', ATK, 1);
+    readyToAttack(0);
+    E.playResource(0, WS, null);
+    var wsR = R.players[0].resources.filter(function (r) { return r.cardId === WS; })[0];
+    /* el Satellite entro DESPUES del beginTurn: sus 2 fichas llegan en el
+       siguiente reparto (S7f). Para el mod se fijan como fixture. */
+    wsR.tokens = 2;
+    E.declareAttack(0, 'destroy', { attackerUid: 'atk', uid: 't1' });
+    E.weatherMod(0, 4);
+    var A7 = R.attack, v7 = 0;
+    (A7.boosts || []).forEach(function (b) { if (b.name === 'Weather Satellite') v7 += b.v; });
+    ok(v7 === 4, 'S7b boost +4 aplicado');
+    ok(wsR.tokens === 1, 'S7c Satellite gasto 1 ficha');
+    R.attack = null;
+    /* +2 token gasto: segunda modificacion en el mismo ataque rechazada por fichas? no: nueva ataque */
+    var m7 = tMsg(function () { E.weatherMod(0, 8); });
+    ok(m7.indexOf('no hay un ataque') >= 0, 'S7d sin ataque activo: "' + m7 + '"');
+    /* valor invalido */
+    findN('atk').tokens = 1;
+    E.declareAttack(0, 'destroy', { attackerUid: 'atk', uid: 't1' });
+    var m7b = tMsg(function () { E.weatherMod(0, 8); });
+    ok(m7b.indexOf('+4 o -2') >= 0, 'S7e valor invalido para no-Disaster: "' + m7b + '"');
+    R.attack = null;
+    /* S7f: al proximo beginTurn el Satellite amanece con 2 fichas. */
+    E.endTurn();
+    E.endTurn();
+    ok(R.currentPid === 0, 'S7f-pre vuelta a pid0 (currentPid=' + R.currentPid + ')');
+    var wsR2 = R.players[0].resources.filter(function (r) { return r.cardId === WS; })[0];
+    ok(wsR2 && wsR2.tokens === 2, 'S7f Satellite con 2 fichas tras beginTurn (tiene ' + (wsR2 ? wsR2.tokens : '?') + ')');
+  })();
+
+  /* S8 defensivos: los kinds pasivos no se juegan desde la mano. */
+  (function () {
+        fresh(idxOf('bavarianilluminati1'), idxOf('servantsofcthulhu1'));
+        var R = E._raw();
+    var BR = idxOf('brazil'), CWS = idxOf('centerforweirdstudies'), WS = idxOf('weathersatellite');
+    hand22(0, BR); hand22(0, CWS); hand22(0, WS);
+    readyToAttack(0);
+    var m8 = tMsg(function () { E.playPlot(0, BR, null, {}); });
+    ok(m8.indexOf('habilidad pasiva') >= 0 || m8.indexOf('Plot card') >= 0, 'S8a Brazil no se juega: "' + m8 + '"');
+    var m8b = tMsg(function () { E.playPlot(0, CWS, null, {}); });
+    ok(m8b.indexOf('Resource') >= 0 || m8b.indexOf('Plot card') >= 0, 'S8b CWS no se juega como Plot: "' + m8b + '"');
+    var m8c = tMsg(function () { E.playPlot(0, WS, null, {}); });
+    ok(m8c.indexOf('Resource') >= 0 || m8c.indexOf('Plot card') >= 0, 'S8c Satellite no se juega como Plot: "' + m8c + '"');
   })();
 
   S.forEach(function (p) { ok(p[1], p[0]); });

@@ -256,6 +256,38 @@ var CB = {
     try { E.fraternalDraw(E.getState().currentPid, uid); after('Fraternal Orders: robas una carta de Grupo'); }
     catch (e) { log('! ' + e.message); }
   },
+  /* L32 — Center for Weird Studies: "discard any Plot card and add an extra
+   * Action token to any of your Groups or Resources which has already used
+   * its action". La UI no tiene selector de doble eleccion: se recarga el
+   * PRIMER grupo/resource propio que ya gasto su ficha y se descarta el
+   * primer Plot de la mano; el motor valida el resto (laguna UI declarada en
+   * plan.md SS82: para elegir el objetivo concreto, usar la API del motor). */
+  onCwsRefuel: function () {
+    try {
+      var stE = E.getState();
+      var me = stE.players[stE.currentPid];
+      if (!me || !me.human) return;
+      var tgt = null;
+      var wk = function (n) {
+        if (tgt || n.cardId == null) return;
+        if (n.tokensAtTurnStart != null && (n.tokens || 0) < n.tokensAtTurnStart) { tgt = n.uid; return; }
+        (n.children || []).forEach(wk);
+      };
+      wk(me.structure);
+      if (!tgt) {
+        for (var r = 0; r < (me.resources || []).length; r++) {
+          var rr = me.resources[r];
+          if (rr.tokensAtTurnStart != null && (rr.tokens || 0) < rr.tokensAtTurnStart) { tgt = rr.uid; break; }
+        }
+      }
+      if (!tgt) { log('! CWS: ninguno de tus grupos ya ha usado su accion este turno'); return; }
+      var plot = null;
+      for (var h = 0; h < (me.hand || []).length; h++) { if (me.hand[h].type === 'plot') { plot = me.hand[h].idx; break; } }
+      if (plot == null) { log('! CWS: no tienes Plot cards que descartar'); return; }
+      E.weirdRefuel(stE.currentPid, tgt, plot);
+      after('Center for Weird Studies: accion recargada (Plot descartada)');
+    } catch (e) { log('! ' + e.message); }
+  },
   /* L9 — 332 Orbital Mind Control Lasers. La ventana la abre E.useGadgetAction y
    * la cierra E.resolveAlignEdit. Aqui NO se elige grupo ni alineacion: eso ya lo
    * ha hecho la UI (pick + selects), asi que solo se reenvia la decision. Usamos

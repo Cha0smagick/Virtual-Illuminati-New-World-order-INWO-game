@@ -1822,6 +1822,8 @@ E.beginTurn=function(pid,isFirst){
    * lo que el propio `case` quiere: el turno especial termina con el turno). */
   pl.flags.noDrawTurn=false;
   pl.usedExtraDrawThisTurn=false;
+  /* L32 — Center for Weird Studies: "Once per turn, on your turn". */
+  pl.flags.cwsRefuelUsed=false;
   /* clear stale immunities granted against this player last turn */
   for(var q=0;q<S.players.length;q++){
     if(q!==pid&&S.players[q].immuneFrom[pid])delete S.players[q].immuneFrom[pid];
@@ -1845,6 +1847,60 @@ E.beginTurn=function(pid,isFirst){
   pl.resources.forEach(function(r){
     var c=card(r.cardId);
     if(c&&/\baction\b/i.test(c.text||'')&&((r.tokens||0)<1))r.tokens=1;
+  });
+  /* L32 — baseline de tokens al empezar a actuar: "which has already used its
+     action" (Center for Weird Studies) se valida contra esta marca. */
+  
+  /* L32 — Brazil/Hawaii: "give one extra Action token to the group that
+     controls it, if that group is Corporate." El controlador es el PADRE del
+     nodo en la estructura; el Illuminati no es un group, asi que un Place
+     colgado directamente de la raiz no concede el extra. */
+  walk(pl.structure,function(ndB32){
+    if(ndB32.cardId==null)return;
+    var cB32=card(ndB32.cardId);
+    if(!cB32||!cB32.effect||cB32.effect.kind!=='controller_token_if')return;
+    var parB32=null;
+    (function fpB32(nB32,pB32){
+      if(parB32)return;
+      if(nB32===ndB32){parB32=pB32;return;}
+      for(var iB32=0;iB32<(nB32.children||[]).length;iB32++)fpB32(nB32.children[iB32],nB32);
+    })(pl.structure,null);
+    if(!parB32||parB32.cardId==null)return;
+    var pcB32=card(parB32.cardId);
+    if(!pcB32)return;
+    if(nodeAligns(parB32,pcB32).indexOf(cB32.effect.controllerAlign||'corporate')<0)return;
+    if(noTokensFlag(parB32))return;
+    /* sin filtro de curPower aqui: el impreso no condiciona por Poder y hay
+       corporates con power null (Cable TV) que igualmente controlan Places. */
+    if(parB32.tokens==null)parB32.tokens=0;
+    parB32.tokens++;
+    log(pcB32.name+' recibe una ficha de accion extra por controlar '+cB32.name);
+  });
+  /* L32 — England (grupo): "England gets two action tokens every turn." */
+  walk(pl.structure,function(ndE32){
+    if(ndE32.cardId==null)return;
+    var cE32=card(ndE32.cardId);
+    if(!cE32||!cE32.effect||cE32.effect.kind!=='self_tokens_double')return;
+    if(noTokensFlag(ndE32))return;
+    if(curPower(ndE32)===0&&!(cE32.power===0))return;
+    if(ndE32.tokens==null)ndE32.tokens=0;
+    ndE32.tokens++;
+    log(cE32.name+' actua con dos fichas de accion este turno');
+  });
+  /* L32 — Weather Satellite (resource): "The Satellite gets two Action
+     tokens." El reparto generico de arriba ya le dio una (su texto menciona
+     Action); esta es la segunda. */
+  walk(pl.structure,function(ndT32){
+    if(ndT32.cardId==null)return;
+    ndT32.tokensAtTurnStart=(ndT32.tokens||0);
+  });
+  pl.resources.forEach(function(rT32){rT32.tokensAtTurnStart=(rT32.tokens||0);});
+  pl.resources.forEach(function(rS32){
+    var cS32=card(rS32.cardId);
+    if(!cS32||!cS32.effect||cS32.effect.kind!=='disaster_mod')return;
+    if(rS32.tokens==null)rS32.tokens=0;
+    rS32.tokens++;
+    log(cS32.name+' actua con dos fichas de accion este turno');
   });
   /* P1-009: The Network — "You start your turn by drawing two Plot cards,
      rather than one." Se hace aquí (no como acción del jugador) porque es
@@ -2827,6 +2883,17 @@ E.playResource=function(pid,handIdx,linkedToUid){
       if(!ndPMM||findOwnerPid(linkedToUid)!==pid)throw new Error(c.name+': solo puedes enlazarlo a un grupo de tu propia estructura');
       break;
     }
+    case 'weird_refuel':{
+      /* L32 — 215 Center for Weird Studies: colocar el Resource no ejecuta
+       * nada; la habilidad activable vive en E.weirdRefuel. */
+      break;
+    }
+    case 'disaster_mod':{
+      /* L32 — 414 Weather Satellite: colocar el Resource no ejecuta nada; el
+       * +1 token extra lo da beginTurn (L32) y el modificador de ataques es
+       * E.weatherMod. */
+      break;
+    }
     default: throw new Error('El Resource "' + c.name + '" tiene una mecanica (' + resFx + ') que E.playResource todavia no ejecuta');
   }
   pl.illumTokens--;pl.usedResourceThisTurn=true;
@@ -2999,6 +3066,40 @@ E.declareAttack=function(pid,type,target){
   if(type==='control'&&!A.handTarget&&openArrows(pid).length<1)
     throw new Error('Necesitas al menos una flecha libre para atacar a controlar');
 
+  /* L32 — Russia: "Russia has +4 for direct control of any Communist group,
+     and a +2 for any attempt to control or destroy a Communist group.
+     However, any Communist group gets a +4 for direct control of Russia!"
+     Communist es ATRIBUTO (hasAttr), no alineacion (P1-018). Los bonos viven
+     en A.boosts y computeStrength los suma; el +2 del dueno se aplica a sus
+     ataques (el atacante pertenece a quien controla la Russia), no a los de
+     aiding de terceros (laguna declarada en plan.md SS82). */
+  var rusHas32=false;
+  walk(pl.structure,function(nR32){
+    if(rusHas32||nR32.cardId==null)return;
+    var cR32=card(nR32.cardId);
+    if(cR32&&cR32.effect&&cR32.effect.kind==='communist_bonuses')rusHas32=true;
+  });
+  var rusT32=null,tcr32=null;
+  if(A.targetUid){
+    rusT32=findNode(A.targetUid);
+    tcr32=rusT32?card(rusT32.cardId):null;
+  }
+  var rusTgtCom32=(tcr32&&hasAttr(tcr32,'communist',rusT32))||false;
+  var rusAttCom32=hasAttr(attCard,'communist',att);
+  if(A.type==='control'&&tcr32&&tcr32.effect&&tcr32.effect.kind==='communist_bonuses'&&rusAttCom32){
+    A.boosts.push({name:'Russia',v:4});
+    log('Russia: +4 por el control directo de un grupo Communist');
+  }
+  if((A.type==='control'||A.type==='destroy')&&rusHas32&&rusTgtCom32){
+    A.boosts.push({name:'Russia',v:2});
+    log('Russia: +2 al intento contra un grupo Communist');
+  }
+  if(A.type==='control'&&rusT32&&tcr32&&tcr32.effect&&tcr32.effect.kind==='communist_bonuses'&&rusAttCom32){
+    /* objetivo ES Russia y el atacante es Communist: "any Communist group
+       gets a +4 for direct control of Russia" */
+    A.boosts.push({name:'Russia',v:4});
+    log('Russia: +4 para el grupo Communist que la controla directamente');
+  }
   /* Only spend the attacker token after every target validation has passed. */
   /* P1-022: la raiz Illuminati SI puede atacar (regla oficial
      inwo_rules_extracted.txt:405, "Illuminati Groups can attack, but cannot be
@@ -3037,6 +3138,38 @@ E.togglePrivilege=function(){
   pl.flags.privilegedUsed=(pl.flags.privilegedUsed||0)+1;
   A.privilege=true;
   log(S.players[A.pid].name+' declara el ataque PRIVILEGIADO: nadie más que atacante y defensor puede participar');
+  return publicState();
+};
+
+/* L32 — Weather Satellite: "You may increase by 4, or decrease by 2, the
+ * power of any other Attack to Destroy (including Disasters) against any
+ * Place except Space ones. The Satellite gets two Action tokens, but may not
+ * use them in the same attack." Accion activable sobre el ataque a destroy
+ * ABIERTO de su dueno (patron togglePrivilege). La mitad de Hurricanes/Tidal
+ * Wave/Tornado (+8/-4) queda declarada: las Disasters son instant attacks de
+ * E.playPlot y no crean S.attack (plan.md SS82). */
+E.weatherMod=function(pid,v){
+  if(!S.attack||S.attack.resolved)throw new Error('Weather Satellite: no hay un ataque en curso');
+  var A=S.attack;
+  if(A.pid!==pid)throw new Error('Weather Satellite: solo modifica tus ataques');
+  if(A.type!=='destroy')throw new Error('Weather Satellite: solo modifica ataques a Destroy');
+  var pl=S.players[pid];
+  var nd=findNode(A.targetUid);
+  var tc=nd?card(nd.cardId):null;
+  if(!tc||tc.subtype!=='place')throw new Error('Weather Satellite: solo modifica ataques contra un Place');
+  if(hasAttr(tc,'space',nd))throw new Error('Weather Satellite: "against any Place except Space ones"');
+  v=Number(v);
+  if(v!==4&&v!==-2)throw new Error('Weather Satellite: elige +4 o -2');
+  var sat=null;
+  for(var q=0;q<pl.resources.length;q++){
+    var rc=card(pl.resources[q].cardId);
+    if(rc&&rc.effect&&rc.effect.kind==='disaster_mod'){sat=pl.resources[q];break;}
+  }
+  if(!sat)throw new Error('Weather Satellite: no tienes el Satellite en juego');
+  if((sat.tokens||0)<1)throw new Error('Weather Satellite: sin Action tokens');
+  sat.tokens--;
+  A.boosts.push({name:'Weather Satellite',v:v});
+  log('Weather Satellite modifica el ataque ('+(v>0?'+':'')+v+') — gasta 1 ficha');
   return publicState();
 };
 
@@ -6369,6 +6502,78 @@ case 'bulk_power':{
       throw new Error(c.name+': habilidad pasiva — el robo extra de Plot se aplica solo al comenzar tu turno');
     case 'linked_token_source':
       throw new Error(c.name+': no se juega desde la mano — es un Resource y se coloca con su accion Illuminati');
+    case 'controller_token_if':
+      throw new Error(c.name+': habilidad pasiva — la ficha extra del controlador se aplica solo al comenzar el turno');
+    case 'self_tokens_double':
+      throw new Error(c.name+': habilidad pasiva — sus dos fichas de accion se reparten al comenzar el turno');
+    case 'communist_bonuses':
+      throw new Error(c.name+': habilidad pasiva — los bonos Communist se aplican al declarar ataques');
+    case 'weird_refuel':
+      throw new Error(c.name+': no se juega desde la mano — es un Resource y se coloca con su accion Illuminati');
+    case 'disaster_mod':
+      throw new Error(c.name+': no se juega desde la mano — es un Resource y se coloca con su accion Illuminati');
+    case 'market_strip':{
+      /* L32 — 305 Market Manipulation: "This card may be used at any time.
+       * Remove the Action tokens from any Corporative group (if you choose)
+       * and any or all Bank groups. This does not count as an action." Sin
+       * coste (no paga accion); al menos un objetivo para que no sea no-op. */
+      var msc32=[];
+      var mco32=opts.corporateUid;
+      if(mco32!=null){
+        var mn32=findNode(mco32);
+        var mc32=mn32?card(mn32.cardId):null;
+        if(!mn32||findOwnerPid(mco32)<0)throw new Error(c.name+': el grupo Corporate no esta en juego');
+        if(!mc32||nodeAligns(mn32,mc32).indexOf('corporate')<0)throw new Error(c.name+': '+mc32.name+' no es un grupo Corporate');
+        msc32.push({uid:mco32,name:mc32.name});
+      }
+      var mbks32=(opts&&opts.bankUids)||[];
+      if(!Array.isArray(mbks32))throw new Error(c.name+': bankUids tiene que ser una lista');
+      for(var iM32=0;iM32<mbks32.length;iM32++){
+        var bn32=findNode(mbks32[iM32]);
+        var bc32=bn32?card(bn32.cardId):null;
+        if(!bn32)throw new Error(c.name+': el grupo Bank no esta en juego');
+        if(!bc32||!hasAttr(bc32,'bank',bn32))throw new Error(c.name+': '+bc32.name+' no es un grupo Bank');
+        msc32.push({uid:mbks32[iM32],name:bc32.name});
+      }
+      if(msc32.length<1)throw new Error(c.name+': elige al menos un grupo Corporate o Bank');
+      msc32.forEach(function(tM32){
+        var tnM32=findNode(tM32.uid);
+        tnM32.tokens=0;
+      });
+      log(c.name+': se retiran las fichas de accion de '+msc32.map(function(tM32){return tM32.name;}).join(', ')+' (no cuenta como accion)');
+      lastResult={ok:true,card:c.name,kind:'market_strip',stripped:msc32.map(function(tM32){return tM32.name;})};
+      break;
+    }
+    case 'extra_takeover':{
+      /* L32 — 342 Power Grab: "Play this card on your turn, immediately after
+       * your automatic takeover. You may make another automatic takeover of
+       * any Group or Resource. You turn ends immediately; you get new Action
+       * tokens, but you may do nothing else." El flag autoTakeover es "ya
+       * usaste TU takeover este turno" (beginTurn lo resetea). El turno
+       * termina en el gancho del final de playPlot, cuando la carta ya salio
+       * de la mano. */
+      if(pl.flags.autoTakeoverBlocked)throw new Error(c.name+': un rival bloqueo tus takeovers automaticos este turno');
+      if(!pl.flags.autoTakeover)throw new Error(c.name+': "immediately after your automatic takeover" — aun no hiciste tu takeover automatico este turno');
+      var tkH32=opts.takeoverHandIdx;
+      if(tkH32==null)throw new Error(c.name+': elige la carta (Group o Resource) de tu mano para el segundo takeover');
+      var tkC32=card(tkH32);
+      if(!tkC32||(tkC32.type!=='group'&&tkC32.type!=='resource'))throw new Error(c.name+': "any Group or Resource" — "'+(tkC32?tkC32.name:'?')+'" no lo es');
+      if(pl.hand.indexOf(tkH32)<0)throw new Error(c.name+': esa carta no esta en tu mano');
+      if(tkC32.type==='resource'){
+        removeFromHand(pl,tkH32);
+        pl.resources.push({uid:'r'+(S.uidCounter++),cardId:tkH32,linkedTo:(opts&&opts.parentUid)||pl.illumId,tokens:0});
+        log(c.name+': segundo takeover automatico — '+pl.name+' coloca el recurso '+tkC32.name);
+      }else{
+        var ndT32=placeUnder(pid,tkH32,opts.parentUid);
+        log(c.name+': segundo takeover automatico — '+pl.name+' toma posesion de '+tkC32.name);
+        openEventWindow({kind:'autoTakeover',byPid:pid,label:'takeover automatico (Power Grab) de '+tkC32.name,
+          data:{nodeUid:ndT32.uid,cardIdx:tkH32,aligns:nodeAligns(ndT32,tkC32).slice(),
+                returnedBy:null,blocked:null}});
+      }
+      pl.flags.turnEndsAfterPlot=true;
+      lastResult={ok:true,card:c.name,kind:'extra_takeover',took:tkC32.name,turnEnded:true};
+      break;
+    }
     case 'deck_manip':{
       /* L8a — 361 Savings & Loan Scam / 388 The Big Sellout / 411 Voodoo Economics.
        * Las tres son una sola rama porque las tres manipulan MAZOS, pero cada una
@@ -7935,6 +8140,10 @@ case 'bulk_power':{
   }
   var linkedHere=pl.linkedPlots.some(function(lp){return lp.cardId===handIdx;});
   if(pl.exposedPlots.indexOf(handIdx)<0&&!linkedHere)discardPlot(handIdx,pid);
+  /* L32 — Power Grab: "Your turn ends immediately; you get new Action
+     tokens". El cierre corre aqui, cuando la carta ya salio de la mano, para
+     que los limites de mano de endTurn vean la mano real. */
+  if(pl.flags.turnEndsAfterPlot){pl.flags.turnEndsAfterPlot=false;E.endTurn();}
   var out=publicState();
   if(lastResult)out.lastPlotResult=lastResult;
   return out;
@@ -8054,6 +8263,56 @@ E.fraternalDraw=function(pid,uid){
   if(gF==null)throw new Error('No quedan Groups que robar');
   plF.hand.push(gF);
   log(cF.name+': '+plF.name+' roba una carta de Group extra');
+  return publicState();
+};
+
+/* L32 — Center for Weird Studies: "Once per turn, on your turn, you may
+ * discard any Plot card and add an extra Action token to any of your Groups
+ * or Resources which has already used its action." "Ya uso su accion" =
+ * tiene MENOS tokens que al empezar a actuar (tokensAtTurnStart, L32 en
+ * beginTurn). El coste es descartar 1 Plot card de la mano; no gasta accion
+ * (el impreso no lo exige) y es 1 vez por turno por jugador. */
+E.weirdRefuel=function(pid,targetUid,plotHandIdx){
+  requireOwnMain(pid);
+  var pl=S.players[pid];
+  if(pl.flags.cwsRefuelUsed)throw new Error('Center for Weird Studies: solo una vez por turno');
+  var cws=null;
+  walk(pl.structure,function(nW){
+    if(cws||nW.cardId==null)return;
+    var cW=card(nW.cardId);
+    if(cW&&cW.effect&&cW.effect.kind==='weird_refuel')cws=nW;
+  });
+  if(!cws){
+    for(var qW=0;qW<pl.resources.length;qW++){
+      var cW2=card(pl.resources[qW].cardId);
+      if(cW2&&cW2.effect&&cW2.effect.kind==='weird_refuel'){cws=pl.resources[qW];break;}
+    }
+  }
+  if(!cws)throw new Error('Center for Weird Studies: no la tienes en juego');
+  var resIdxW=-1;
+  var ndW=targetUid?findNode(targetUid):null;
+  var tgtW=null,tcW=null;
+  if(ndW){
+    if(findOwnerPid(targetUid)!==pid)throw new Error('Center for Weird Studies: el grupo no es tuyo');
+    tgtW=ndW;tcW=card(ndW.cardId);
+  }else{
+    for(var rW=0;rW<pl.resources.length;rW++){
+      if(pl.resources[rW].uid===targetUid){resIdxW=rW;tgtW=pl.resources[rW];tcW=card(tgtW.cardId);break;}
+    }
+    if(!tgtW)throw new Error('Center for Weird Studies: elige uno de tus Groups o Resources');
+  }
+  if(!tcW)throw new Error('Center for Weird Studies: el objetivo no tiene carta valida');
+  if(tgtW.tokensAtTurnStart==null||(tgtW.tokens||0)>=tgtW.tokensAtTurnStart)
+    throw new Error('Center for Weird Studies: el objetivo tiene que HABER USADO ya su accion este turno');
+  if(typeof plotHandIdx!=='number'||pl.hand.indexOf(plotHandIdx)<0)
+    throw new Error('Center for Weird Studies: elige la Plot card de tu mano que vas a descartar');
+  var pcW=card(plotHandIdx);
+  if(!pcW||pcW.type!=='plot')
+    throw new Error('Center for Weird Studies: tienes que descartar una Plot card');
+  discardPlot(plotHandIdx,pid);
+  pl.flags.cwsRefuelUsed=true;
+  tgtW.tokens=(tgtW.tokens||0)+1;
+  log((cws.cardId!=null?card(cws.cardId).name:'Center for Weird Studies')+': '+pcW.name+' descartada — '+tcW.name+' recibe una ficha de accion extra');
   return publicState();
 };
 

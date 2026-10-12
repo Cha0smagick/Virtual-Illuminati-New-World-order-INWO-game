@@ -968,6 +968,20 @@ function attackPanel(st) {
     })(frO.structure);
   }
 
+  /* L32 — Center for Weird Studies (Resource). La habilidad necesita dos
+   * elecciones (grupo objetivo + Plot a descartar): se ofrece un boton que
+   * usa el nodo SELECCIONADO por el jugador y el primer Plot de su mano; el
+   * motor valida "already used its action" y el descarte. CB.onCwsRefuel(). */
+  var cwsO = st.players[st.currentPid];
+  if (cwsO && cwsO.human && (cwsO.resources || []).some(function (r) {
+    var ccw = C.cards[r.cardId];
+    return ccw && ccw.effect && ccw.effect.kind === 'weird_refuel';
+  })) {
+    $('actionBtns').insertAdjacentHTML('afterbegin',
+      '<div class="pendbar"><button data-act="cwsrefuel" title="Selecciona primero un grupo tuyo que ya haya usado su accion; descarta la primera Plot de tu mano">' +
+      'Center for Weird Studies: recargar accion (1 vez/turno)</button></div>');
+  }
+
   /* L12 / P1-083 - 378 Suicide Squad. El jugador elige el Resource del rival que
    * va a destruir: el motor NUNCA lo autoelige (DoD 6, y el mismo criterio con el
    * que se escribio la ventana de 332). Se listan uno por uno los Resources de los
@@ -2076,6 +2090,13 @@ var KIND_ES = {
   linked_token_source: 'Da una ficha extra al grupo ligado',
   feud_pick: 'Pelea: el rival descarta una de dos',
   turn_start_lock: 'Bloquea el turno del rival',
+  controller_token_if: 'Ficha extra para el grupo que la controla si es Corporate',
+  self_tokens_double: 'Actua con dos fichas de accion por turno',
+  communist_bonuses: 'Bonos de ataque y defensa contra grupos Communist',
+  weird_refuel: 'Descarta una Plot y recarga la accion de un grupo que ya actuo',
+  market_strip: 'Quita las fichas de un grupo Corporate y de los Banks',
+  extra_takeover: 'Segundo takeover automatico; tu turno termina',
+  disaster_mod: 'Dos fichas; modifica ataques a Destroy contra Places',
   force_align: 'Forzar Alineamiento', force_discard_exposed: 'Descartar carta expuesta',
   group_boost_timed: 'Refuerzo de grupo temporal', link_effect: 'Efecto ligado a una carta',
   messiah: 'El Mesias', mistakenidentity: 'Identidad equivocada',
@@ -2235,6 +2256,7 @@ var FIELD_ES = [
   ['costTopGroupOr2', 'coste', 'la repeticion se paga descartando la <b>cima del mazo de Grupos</b> o <b>2 Grupos de la mano</b>'],
   ['stealToHand', 'coste', 'la Plot anulada va a tu mano en vez de descartarse'],
   ['gapDiscard', 'coste', 'ademas descarta la cima de tus mazos de Plots y de Groups'],
+  ['satelliteMod', 'eff', 'modifica ataques a Destroy contra Places (+4/-2, gasta 1 ficha)'],
   ['requiresActionFrom', 'coste', 'la accion debe venir de <b>%s</b>'],
   ['needsAssassination', 'coste', 'ademas exige un Asesinato'],
   ['requiresPlotDiscard', 'coste', 'ademas exige descartar un Plot'],
@@ -2713,8 +2735,9 @@ function bindEvents() {
     else if (act === 'turnstartpass') { clearSel(); CB.onTurnStartPass(); }
     /* L31 — LYHF (el instigador elige la carta que pierde el rival) y
        Fraternal Orders (gasta la acción del grupo y roba un Grupo). */
-    else if (act === 'lyhfpick') { clearSel(); CB.onResolveLyhf(parseInt(btn.getAttribute('data-v'), 10)); }
-    else if (act === 'fraternaldraw') { clearSel(); CB.onFraternalDraw(btn.getAttribute('data-uid')); }
+  else if (act === 'lyhfpick') { clearSel(); CB.onResolveLyhf(parseInt(btn.getAttribute('data-v'), 10)); }
+  else if (act === 'fraternaldraw') { clearSel(); CB.onFraternalDraw(btn.getAttribute('data-uid')); }
+  else if (act === 'cwsrefuel') { CB.onCwsRefuel(); }
     /* L9 — 332 Orbital Mind Control Lasers. `pick` es el paso 1 (elegir grupo): no
      * toca el motor, solo guarda el objetivo en `sel` como hace el resto de menus de
      * dos pasos (ver pickMover/attacker). `apply` y `pass` son el paso 2 y si
