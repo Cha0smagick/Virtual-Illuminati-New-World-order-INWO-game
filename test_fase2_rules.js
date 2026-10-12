@@ -9346,6 +9346,39 @@ function err26(fn) { return throwMsgL14(fn); }
   S.forEach(function (p) { ok(p[1], 'L27 S7: ' + p[0]); });
 })();
 
+/* ===================== L28 S8 — P1-156: l18extra muere cuando el grupo SALE de la mesa ===================== */
+(function L28_S8() {
+  var S = [];
+  function esc(txt, cond) { S.push([txt, cond]); }
+  var THREE = idxOfId('letsgetreallyorganized');
+  fresh('bavarianilluminati1', 'servantsofcthulhu1');   /* bavarian concede privilegio (P1-026) */
+  endTurnOfL15(0);   /* patron L18: llegar al turno principal propio */
+  /* objetivo propio con UN hijo -> 2 flechas libres, rango valido de 299 (L18);
+   * Gordo Remora (Poder 1, Res 0) para que la destruccion posterior sea determinista */
+  make18(0, 'g8', idxOfId('gordoremora'), 1, KID18.slice(0, 1));
+  hand22(0, THREE);
+  E.playPlot(0, THREE, 'g8');
+  var extra = raw26().l18extra;
+  esc('S8a 299 registro flechas extra en g8 (' + JSON.stringify(extra) + ')',
+      extra && ('g8' in extra));
+  /* ataque de destruccion PRIVILEGIADO determinista: patron de casa Math.random=0
+   * (2 en 2d6). Atacante = violento de MAYOR poder para superar a Res 0 + roll. */
+  function gWith8(a){ var best=null; C.cards.forEach(function(c){ if(c.type==='group' && (c.alignments||[]).indexOf(a)>=0 && typeof c.power==='number' && (!best || c.power>best.power)) best=c; }); return best; }
+  plant(0, 'n8', gWith8('violent').idx, 1);
+  plant(1, 'r8', gWith8('peaceful').idx, 1);
+  readyToAttack(0);
+  E.declareAttack(0, 'destroy', { attackerUid: 'n8', uid: 'g8' });
+  E.togglePrivilege();
+  var realRandom = Math.random;
+  Math.random = function () { return 0; };
+  try { E.resolveAttack(); } finally { Math.random = realRandom; }
+  esc('S8b g8 ya no esta en la estructura', !node16(0, 'g8'));
+  var extra2 = raw26().l18extra;
+  esc('S8c l18extra limpio tras destruir (' + JSON.stringify(extra2) + ')',
+      !extra2 || !('g8' in extra2));
+  S.forEach(function (p) { ok(p[1], 'L28 S8: ' + p[0]); });
+})();
+
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });

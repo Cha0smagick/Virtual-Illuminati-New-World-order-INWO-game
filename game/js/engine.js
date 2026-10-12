@@ -33,6 +33,10 @@ function card(ref){
 }
 
 /* ---------------- tree helpers ---------------- */
+/* P1-156 (L28): cuando un grupo SALE DE LA MESA (destruido, o devuelto a la mano
+ * por Botched Contact/Sabotage), sus flechas extra (298/299) mueren con el.
+ * Un takeover o una reorganizacion MUEVEN el grupo sin matarlo: ahi se conservan. */
+function clearL18Extra(node){ if(!S||!S.l18extra)return; walk(node,function(n){ if(n.uid in S.l18extra) delete S.l18extra[n.uid]; }); }
 function walk(node,fn){fn(node);for(var i=0;i<node.children.length;i++)walk(node.children[i],fn);}
 function findInTree(node,uid){if(node.uid===uid)return node;for(var i=0;i<node.children.length;i++){var r=findInTree(node.children[i],uid);if(r)return r;}return null;}
 function findNodeThatHas(node,uid){for(var i=0;i<node.children.length;i++){if(node.children[i].uid===uid)return node;var r=findNodeThatHas(node.children[i],uid);if(r)return r;}return null;}
@@ -3538,7 +3542,7 @@ S.players[P.byPid].hand.push(ixQ);
     }else{
       var pcR=card(ndR.cardId);
       var parR=findNodeThatHas(S.players[P.byPid].structure,d.nodeUid);
-      detach(parR,d.nodeUid);
+      detach(parR,d.nodeUid);clearL18Extra(ndR);
       S.players[P.byPid].hand.push(ndR.cardId);
       if(d.blocked)S.players[P.byPid].flags.autoTakeoverBlocked=true;
       log((d.blocked?'SABOTAGE: ':'BOTCHED CONTACT: ')+pcR.name+' vuelve a la mano de '+
@@ -3687,7 +3691,7 @@ function destroyGroup(byPid,targetUid,opts){
     log('BLOQUEO Shangri-La: '+S.players[owner].name+' no puede destruir '+card(node.cardId).name+' (sólo grupos Violent y Illuminati rivales)');
     return false;
   }
-  node=detach(parent,targetUid);
+  node=detach(parent,targetUid);clearL18Extra(node);
   var c=card(node.cardId);
   if(!noCount)S.players[byPid].destroyedByMe.push(node.cardId);
   S.groupDiscard.push(node.cardId);

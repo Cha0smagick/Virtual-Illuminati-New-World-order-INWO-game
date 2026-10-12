@@ -8229,8 +8229,9 @@ Lo demas que escribio L21, sin id propio por ser la mecanica del lote:
   este lote.
 - **Backlog de L16**: la ventana de reaccion de 253 Exposed! ('Unless this card is immediately
   countered') declarada en sec. 71, con su conflicto de forma medido.
-- **Backlog de L18** (sec. 70): colocacion 'link' de 299 sin implementar, `E.arrowCount` sin
-  uso en la UI, `S.l18extra` sin limpiar.
+- **Backlog de L18** (sec. 70): cerrado por L28 (P1-156): `S.l18extra` se limpia
+  cuando el grupo sale de la mesa; 'link' de 299 = cosmetica documentada;
+  `E.arrowCount` ya tiene display (la UI lee `extraArrows` directamente).
 
 ## 73. L22 - VENTANA DE NEGACION DE UN PLOT INMEDIATAMENTE ANTERIOR
 
@@ -9062,13 +9063,9 @@ tienen EOL mixto en el arbol de trabajo.
   una accion y poder deshacerla), no una linea mas.
 - **`bimboateleven`** declaraada por falta de campo de genero en el dataset: hace
   falta anadir el genero a las Personalities del mazo antes de poder implementarla.
-- El veto oficial de las NWO ("except during an Instant or Privileged Attack")
-  sigue sin implementarse; en este motor `instant` significa "jugable con un ataque
-  abierto".
-- 299 (Let's Get REALLY Organized) solo se coloca DEBAJO, no linkeada; `E.arrowCount`
-  no se usa en la UI y `S.l18extra` no se limpia.
-- Sin indicador permanente de las NWO en vigor en el HUD
-  (`publicState.nwoInForce` se expone pero no se dibuja).
+- 299 (Let's Get REALLY Organized) solo se coloca DEBAJO, no linkeada: cosmetica
+  documentada (debajo cumple las reglas impresas). Limpieza y display cerrados
+  por L28 (P1-156, sec. 79).
 - `become` de Political Correctness es inalcanzable con este roster.
 - Los **72 pendientes** son cola larga multi-lote. Candidatos: las ~18 Plots de
   tiempo/negacion (`readmylips` y `coverup` = "the attack becomes a failure" sobre
@@ -9099,4 +9096,16 @@ tienen EOL mixto en el arbol de trabajo.
 
 **Tests**: test_fase2_rules S7a (NWO azul fearandloathing juega DURANTE ataque normal abierto; regla activa y ataque sigue abierto), S7b (con E.togglePrivilege, lanza el motivo impreso exacto, regla NO activada, carta sigue en mano), S7c (regresion: NWO en turno principal sin ataque sigue funcionando). Fixture determinista: grupos violent/peaceful calculados localmente (los VIOLENT/PEACEFUL del bloque P1-026 son IIFE-locales; leccion: helpers de seccion no traspasan IIFE).
 
-**Estado**: veto NWO + indicador HUD cerrados. Quedan en backlog: familia cancelar-accion (subsistema deshacer), readmylips/coverup "attack becomes failure", 299 solo-debajo, bimboateleven genero (requiere campo `gender` en gen_cards.js), undo-by-etiqueta (backlash).
+**Estado**: veto NWO + indicador HUD cerrados. Quedan en backlog: familia cancelar-accion (subsistema deshacer), readmylips/coverup "attack becomes failure", bimboateleven genero (requiere campo `gender` en gen_cards.js), undo-by-etiqueta (backlash).
+
+## 79. L28 - LIMPIEZA l18extra AL SALIR EL GRUPO DE LA MESA (P1-156)
+
+**Regla**: las flechas extra que 298/299 (L18, kind control_arrows) registran en `S.l18extra` pertenecen al GRUPO sobre la mesa. Cuando el grupo SALE de la mesa (destruido por destroyGroup; devuelto a la mano por 210 Botched Contact / 359 Sabotage), sus flechas extra mueren con el. Un takeover o una reorganizacion MUEVEN el grupo sin sacarlo de la mesa: ahi se conservan.
+
+**Motor**: helper `clearL18Extra(node)` (walk del subarbol borrando las claves de S.l18extra), llamado tras `detach` en destroyGroup (~3690) y en la devolucion a mano de Botched Contact/Sabotage (~3541). Sin tocar takeover (3636) ni reorganizacion (3785/3826).
+
+**P1-157 (flags del dataset) = no-op documentado**: `mechanicsStatus()` de gen_cards.js devuelve SIEMPRE 'implemented-pending-engine' para cartas con `verifiedMechanic:true` (linea 2939); es el estado TERMINAL de la casa para las 160 cartas transcritas consumidas por el motor (395 The Internet Worm y fearandloathing lo comparten). El "implemented:false" del backlog era un falso pendiente: no hay nada que voltear en gen_cards.js.
+
+**Tests**: test_fase2_rules S8 (determinista): 299 sobre Gordo Remora con 1 hijo (2 flechas libres, rango valido del impreso "one or two"), l18extra registra {"g8":2}; destruccion propia PRIVILEGIADA con patron de casa Math.random=0 (2 en 2d6) y atacante violento de MAYOR poder (Power impreso maximo); S8b el nodo sale de la estructura; S8c l18extra queda vacio. Lecciones de fixture: fresh necesita ids crudos ('bavarianilluminati1') para el privilegio (firstOf busca por kind de poder, no por id) y endTurnOfL15(0) para llegar al turno propio; el estado crudo S usa la clave `l18extra` (`extraArrows` es solo el nombre publico de publicState).
+
+**Estado**: backlog de 299 cerrado (queda solo la nota cosmetica 'link', cumple reglas). Backlog vivo: familia cancelar-accion (subsistema deshacer), readmylips/coverup "attack becomes failure", bimboateleven genero, undo-by-etiqueta (backlash), become de Political Correctness inalcanzable, 72 pendientes multi-lote.
