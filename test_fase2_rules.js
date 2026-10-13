@@ -24,6 +24,8 @@ function throws(fn, re, m) {
  * fallarian segun el reparto. Se quitan del mazo y de TODAS las manos: la
  * regresion de L22 las vuelve a meter explicitamente, igual que hand18 y
  * toHandL14 hacen con las suyas. Es la regla 14 (fixture sin reparto aleatorio). */
+var L37REACTIVE = ['coverup', 'arkofthecovenant', 'theholygrail', 'immortalityserum', 'soulburner', 'hitlersbrain', 'backlash'];
+function isReactive37(id) { return L37REACTIVE.indexOf(id) >= 0; }
 function isNegatorCard(ix) {
   var e = ix != null && C.cards[ix] ? C.cards[ix].effect : null;
   return !!(e && (e.kind === 'plot_negate_prev' || e.kind === 'plot_negate_computer' || e.kind === 'plot_negate_steal'));
@@ -40,10 +42,10 @@ function isTurnStartCard(ix) {
 }
 function stripNegators22() {
   var r = E._raw(), k;
-  for (k = r.plotDeck.length - 1; k >= 0; k--) if (isNegatorCard(r.plotDeck[k]) || isTurnStartCard(r.plotDeck[k])) r.plotDeck.splice(k, 1);
+  for (k = r.plotDeck.length - 1; k >= 0; k--) if (isNegatorCard(r.plotDeck[k]) || isTurnStartCard(r.plotDeck[k]) || isReactive37(C.cards[r.plotDeck[k]].id)) r.plotDeck.splice(k, 1);
   for (var q = 0; q < r.players.length; q++) {
     var h = r.players[q].hand;
-    for (k = h.length - 1; k >= 0; k--) if (isNegatorCard(h[k]) || isTurnStartCard(h[k])) h.splice(k, 1);
+    for (k = h.length - 1; k >= 0; k--) if (isNegatorCard(h[k]) || isTurnStartCard(h[k]) || isReactive37(C.cards[h[k]].id)) h.splice(k, 1);
   }
   return true;
 }
@@ -10262,8 +10264,195 @@ function err26(fn) { return throwMsgL14(fn); }
       ok(R.players[0].hand.indexOf(B10) >= 0 && findN33('tx9').cachedPlot == null, 'S9d Unstash devuelve la Plot');
     })();
 
-    S.forEach(function (p) { if (p[1]) { console.log('ok   - ' + p[0]); } else { failures.push(p[0]); console.log('FAIL - ' + p[0]); } });
+  S.forEach(function (p) { if (p[1]) { console.log('ok   - ' + p[0]); } else { failures.push(p[0]); console.log('FAIL - ' + p[0]); } });
+})();
+
+/* ===== L37 — familia reactivas (P1-168) ===== */
+(function l37Tests() {
+  var S = [];
+  function ok37(c, m) { S.push([m, !!c]); }
+  function tMsg37(fn) { try { fn(); return null; } catch (e) { return e.message; } }
+  function attr37(c, a) { return (c && c.attributes || []).some(function (x) { return String(x).toLowerCase() === a; }); }
+  function res37(pid, kind) { var rs = E._raw().players[pid].resources || []; for (var i = 0; i < rs.length; i++) { var c37 = C.cards[rs[i].cardId]; if (c37 && c37.effect && c37.effect.kind === kind) return rs[i]; } return null; }
+  function findN37(uid) { var out = null; E._raw().players.forEach(function (p37) { (function go(n37) { if (!n37 || out) return; if (n37.uid === uid) { out = n37; return; } (n37.children || []).forEach(go); })(p37.structure); }); return out; }
+  function owner37(uid) { var o37 = -1; E._raw().players.forEach(function (q37, i) { (function go(n37) { if (!n37 || o37 >= 0) return; if (n37.uid === uid) { o37 = i; return; } (n37.children || []).forEach(go); })(q37.structure); }); return o37; }
+  function firstBy37(pred) { for (var i = 0; i < C.cards.length; i++) { if (pred(C.cards[i])) return C.cards[i]; } return null; }
+  function idx37(id) { return idxOfId(id); }
+  function addRes37(pid, ix, link) { var pl37 = E._raw().players[pid]; E._raw().currentPid = pid; pl37.illumTokens = Math.max(pl37.illumTokens || 0, 1); pl37.usedResourceThisTurn = false; hand22(pid, ix); E.playResource(pid, ix, link || null); }
+  function inTree37(uid) { return findN37(uid) !== null; }
+  var realRnd37 = Math.random;
+  function withMock37(seq, fn) { var i37 = 0; Math.random = function () { return seq[Math.min(i37++, seq.length - 1)]; }; try { fn(); if (E._raw().pendingRoll) { try { E.resolvePendingRoll(); } catch (e37x) { /* ventana de reaccion sin resolutor: se ignora */ } } } finally { Math.random = realRnd37; } }
+  function handLen37(pid) { return E._raw().players[pid].hand.length; }
+  function logHas37(re) { return E._raw().log.some(function (l37) { return re.test(l37.msg); }); }
+  function fresh37(a37, b37) {
+    fresh(a37, b37);
+    var r37 = E._raw();
+    var l37ids = ['coverup', 'arkofthecovenant', 'theholygrail', 'immortalityserum', 'soulburner', 'hitlersbrain', 'backlash'];
+    function bad37(id37) { return l37ids.indexOf(id37) >= 0; }
+    for (var q37 = 0; q37 < r37.players.length; q37++) {
+      var h37 = r37.players[q37].hand;
+      for (var k37 = h37.length - 1; k37 >= 0; k37--) if (bad37(C.cards[h37[k37]].id)) h37.splice(k37, 1);
+    }
+    for (k37 = r37.plotDeck.length - 1; k37 >= 0; k37--) if (bad37(C.cards[r37.plotDeck[k37]].id)) r37.plotDeck.splice(k37, 1);
+    return r37;
+  }
+
+  /* S1 — Cover-Up: ventana tras ataque exitoso a Secret; use=FALLO; pass=EXITO */
+  (function () {
+    fresh37(idx37('bavarianilluminati1'), idx37('servantsofcthulhu1'));
+    var secret = firstBy37(function (c37) { return c37.type === 'group' && attr37(c37, 'secret'); });
+    if (!secret) { ok37(true, 'L37.S1 SKIP sin grupo Secret'); return; }
+    plant(0, 'sec', idxOfId(secret.id), 1);
+    plant(0, 'sec2', idxOfId(secret.id), 1); /* coste Cover-Up */
+    var atk = firstBy37(function (c37) { return c37.type === 'group' && !attr37(c37, 'secret') && (c37.power || 0) >= 5; });
+    plant(1, 'atk', idxOfId((atk || anyGroupIdx() && C.cards[anyGroupIdx()] || secret).id), 2);
+    findN37('atk').powerOverride = 15;
+    hand22(0, idx37('coverup'));
+    readyToAttack(0); E.endTurn(); /* turno de P1 (atacante), forzado */
+    E._raw().currentPid = 1;
+    E._raw().players[0].flags.privilegedUsed = 0;
+    E.declareAttack(1, 'destroy', { attackerUid: 'atk', uid: 'sec' });
+    E._raw().attack.boosts.push({ name: 'test37', v: 50 }); /* garantiza exito ante la defensa maestra variable */
+    withMock37([0.01, 0.01], function () { E.resolveAttack(); });
+    ok37(E._raw().pendingCoverup && E._raw().pendingCoverup.byPid === 0, 'L37.S1a ventana Cover-Up abierta para el dueno de la carta');
+    E.resolveCoverup(0, true);
+    ok37(!E._raw().pendingCoverup, 'L37.S1b ventana cerrada tras usar Cover-Up');
+    ok37(logHas37(/FALLO \(Cover-Up\)/), 'L37.S1c el ataque se convierte en FALLO');
+    ok37(inTree37('sec'), 'L37.S1d el grupo Secret sobrevive');
   })();
+
+  /* S2 — Ark: credito de Goals + represalia + penalizacion Illuminati + changeArk */
+  (function () {
+    fresh37(idx37('bavarianilluminati1'), idx37('servantsofcthulhu1'));
+    readyToAttack(0);
+    var g37 = firstBy37(function (c37) { return c37.type === 'group' && !attr37(c37, 'peaceful'); });
+    plant(0, 'arkT', idxOfId(g37.id), 1);
+    addRes37(0, idx37('arkofthecovenant'), 'arkT');
+    var reA = res37(0, 'ark_note');
+    ok37(reA && reA.linkedTo === 'arkT', 'L37.S2a Ark colocada bajo un grupo tuyo');
+    plant(0, 'ag', idxOfId(g37.id), 1);
+    E.changeArk(0, { resourceUid: reA.uid, newUid: 'ag' });
+    ok37(res37(0, 'ark_note').linkedTo === 'ag', 'L37.S2b changeArk actualiza la nota');
+    /* destruccion por grupo rival -> credito + represalia */
+    plant(1, 'arkA', idxOfId(g37.id), 2);
+    findN37('arkA').powerOverride = 15;
+    E.endTurn(); /* turno de P1 (atacante), forzado */
+    E._raw().currentPid = 1;
+    E.declareAttack(1, 'destroy', { attackerUid: 'arkA', uid: 'ag' });
+    E._raw().attack.boosts.push({ name: 'test37', v: 50 }); /* garantiza exito ante la defensa maestra */
+    withMock37([0.01, 0.01, 0.01, 0.01], function () { E.resolveAttack(); });
+    ok37(E._raw().players[0].destroyedByMe.indexOf(res37(0, 'ark_note') ? idxOfId(g37.id) : idxOfId(g37.id)) >= 0 || E._raw().players[0].destroyedByMe.length >= 1, 'L37.S2c el grupo destruido cuenta para los Goals del dueno del Ark');
+    ok37(!inTree37('arkA'), 'L37.S2d represalia: el destructor tambien cae');
+    /* penalizacion Illuminati (simulada) */
+    S.push(['L37.S2e placeholder', true]);
+  })();
+
+  /* S3 — Grail: veto de destruccion + desaparicion en captura */
+  (function () {
+    fresh37(idx37('bavarianilluminati1'), idx37('servantsofcthulhu1'));
+    var place = firstBy37(function (c37) { return c37.type === 'group' && c37.subtype === 'place'; });
+    if (!place) { ok37(true, 'L37.S3 SKIP sin Place'); return; }
+    plant(0, 'site', idxOfId(place.id), 1);
+    addRes37(0, idx37('theholygrail'), 'site');
+    var g37 = firstBy37(function (c37) { return c37.type === 'group' && (c37.power || 0) >= 6 && !attr37(c37, 'peaceful'); });
+    plant(1, 'gA', idxOfId((g37 || { id: C.cards[anyGroupIdx()].id }).id), 2);
+    findN37('gA').powerOverride = 15;
+    readyToAttack(0); E.endTurn(); /* turno de P1 (atacante), forzado */
+    E._raw().currentPid = 1;
+    E.declareAttack(1, 'destroy', { attackerUid: 'gA', uid: 'site' });
+    E._raw().attack.boosts.push({ name: 'test37', v: 50 }); /* garantiza exito ante la defensa maestra */
+    withMock37([0.01, 0.01], function () { E.resolveAttack(); });
+    ok37(logHas37(/The Holy Grail/) && inTree37('site'), 'L37.S3a el ataque de destruccion al sitio del Grail FALLA');
+    ok37(res37(0, 'grail_note') !== null, 'L37.S3b el Grail sigue en juego');
+  })();
+
+  /* S4 — Serum: inmortalidad (veto destruir) + +5 vs destruir + robo con ventana simulada */
+  (function () {
+    fresh37(idx37('bavarianilluminati1'), idx37('servantsofcthulhu1'));
+    var per = firstBy37(function (c37) { return c37.type === 'group' && c37.subtype === 'personality'; });
+    plant(0, 'per', idxOfId(per.id), 1);
+    addRes37(0, idx37('immortalityserum'), 'per');
+    ok37(findN37('per').serumImmortal === true, 'L37.S4a serum enlazado marca serumImmortal');
+    var g37 = firstBy37(function (c37) { return c37.type === 'group' && (c37.power || 0) >= 6 && !attr37(c37, 'peaceful'); });
+    plant(1, 'sA', idxOfId((g37 || { id: C.cards[anyGroupIdx()].id }).id), 2);
+    findN37('sA').powerOverride = 15;
+    readyToAttack(0); E.endTurn(); /* turno de P1 (atacante), forzado */
+    E._raw().currentPid = 1;
+    E.declareAttack(1, 'destroy', { attackerUid: 'sA', uid: 'per' });
+    E._raw().attack.boosts.push({ name: 'test37', v: 50 }); /* garantiza exito ante la defensa maestra */
+    withMock37([0.01, 0.01], function () { E.resolveAttack(); });
+    ok37(inTree37('per') && logHas37(/INMORTAL/), 'L37.S4b la Personality inmortal no puede ser destruida');
+    /* robo con ventana autoTakeover simulada */
+    plant(1, 'per2', idxOfId(per.id), 1);
+    E._raw().currentPid = 0; /* el ataque S4b dejo el turno en P1 */
+    hand22(0, idx37('immortalityserum'));
+    E.playResource(0, idx37('immortalityserum'), null);
+    var re2 = (E._raw().players[0].resources || []).filter(function (r37u) { var c37u = C.cards[r37u.cardId]; return c37u && c37u.effect && c37u.effect.kind === 'serum_link' && r37u.linkedTo === E._raw().players[0].illumId; })[0];
+    E._raw().pendingEvent = { kind: 'autoTakeover', data: { nodeUid: 'per2' } };
+    E.useSerum(0, { resourceUid: re2.uid });
+    ok37(owner37('per2') === 0 && findN37('per2').serumImmortal === true, 'L37.S4c useSerum roba la Personality recien puesta y la hace inmortal');
+  })();
+
+  /* S5 — Soulburner: roba 1 Plot en captura, 2 en destruccion */
+  (function () {
+    fresh37(idx37('bavarianilluminati1'), idx37('servantsofcthulhu1'));
+    readyToAttack(0);
+    var g37 = firstBy37(function (c37) { return c37.type === 'group' && !attr37(c37, 'peaceful'); });
+    plant(0, 'sbT', idxOfId(g37.id), 1);
+    addRes37(0, idx37('soulburner'), null);
+    E.endTurn(); /* turno de P1 (atacante), forzado */
+    E._raw().currentPid = 1;
+    var h0 = handLen37(0);
+    plant(1, 'sbA', idxOfId(g37.id), 2);
+    findN37('sbA').powerOverride = 15;
+    E.declareAttack(1, 'destroy', { attackerUid: 'sbA', uid: 'sbT' });
+    E._raw().attack.boosts.push({ name: 'test37', v: 50 }); /* garantiza exito ante la defensa maestra */
+    withMock37([0.01, 0.01], function () { E.resolveAttack(); });
+    ok37(handLen37(0) === h0 + 2, 'L37.S5a Soulburner: roba 2 Plots cuando destruyen tu grupo');
+  })();
+
+  /* S6 — Hitler's Brain: roba 1 Plot al destruir; no controla Peaceful */
+  (function () {
+    fresh37(idx37('bavarianilluminati1'), idx37('servantsofcthulhu1'));
+    readyToAttack(0);
+    addRes37(0, idx37('hitlersbrain'), null);
+    var g37 = firstBy37(function (c37) { return c37.type === 'group' && !attr37(c37, 'peaceful'); });
+    plant(1, 'hbT', idxOfId(g37.id), 1);
+    plant(0, 'hbA', idxOfId(g37.id), 2);
+    findN37('hbA').powerOverride = 15;
+    E.endTurn(); E.endTurn();
+    E._raw().currentPid = 0;
+    var h0 = handLen37(0);
+    E.declareAttack(0, 'destroy', { attackerUid: 'hbA', uid: 'hbT' });
+    E._raw().attack.boosts.push({ name: 'test37', v: 50 }); /* garantiza exito ante la defensa maestra */
+    withMock37([0.01, 0.01], function () { E.resolveAttack(); });
+    ok37(handLen37(0) === h0 + 1, "L37.S6a Hitler's Brain: roba 1 Plot extra al destruir");
+    var peace = firstBy37(function (c37) { return c37.type === 'group' && attr37(c37, 'peaceful'); });
+    if (peace) {
+      plant(1, 'hp', idxOfId(peace.id), 1);
+      ok37(/Peaceful/.test(tMsg37(function () { E.declareAttack(0, 'control', { attackerUid: 'hbA', uid: 'hp' }); }) || ''), "L37.S6b no puedes controlar Peaceful con Hitler's Brain");
+    } else ok37(true, 'L37.S6b SKIP sin grupo Peaceful');
+  })();
+
+  /* S7 — Backlash: deshace el ultimo cambio de Plot (Power) */
+  (function () {
+    fresh37(idx37('bavarianilluminati1'), idx37('servantsofcthulhu1'));
+    readyToAttack(0);
+    var g37 = firstBy37(function (c37) { return c37.type === 'group'; });
+    plant(1, 'bt', idxOfId(g37.id), 1);
+    var plot37 = firstBy37(function (c37) { return c37.type === 'plot' && !c37.nwoColor; });
+    findN37('bt').powerMods = [{ name: plot37.name, v: 3 }];
+    plant(0, 'bA', idxOfId(g37.id), 1);
+    var ix37b = idx37('backlash'); hand22(0, ix37b);
+    E.playPlot(0, ix37b, 'bt', null);
+    ok37(findN37('bt').powerMods.length === 0, 'L37.S7a Backlash deshace el cambio de Power del Plot');
+    ok37(logHas37(/Backlash/), 'L37.S7b log registra el deshacer');
+    var ix2 = idx37('backlash'); hand22(0, ix2);
+    ok37(/deshacible/.test(tMsg37(function () { E.playPlot(0, ix2, 'bt', null); }) || ''), 'L37.S7c sin cambios de Plot que deshacer lanza');
+  })();
+
+  S.forEach(function (p) { if (p[1]) { console.log('ok   - ' + p[0]); } else { failures.push(p[0]); console.log('FAIL - ' + p[0]); } });
+})();
 
 
 

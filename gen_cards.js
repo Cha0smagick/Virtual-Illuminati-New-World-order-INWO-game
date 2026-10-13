@@ -3014,6 +3014,41 @@ const L36_FX = {
 const L36_FXN = {};
 for (const k36 in L36_FX) { L36_FXN[norm(k36)] = L36_FX[k36]; }
 
+/* L37 — familia reactivas (P1-168). Cover-Up reactivo, notas Ark/Grail, Serum,
+ * Soulburner, Hitler's Brain y Backlash. Textos verbatim de cards.js. */
+const L37_FX = {
+  'Cover-Up': {
+    kind: 'coverup_react',
+    t: "Play this card at any time a Secret group has been successfully attacked. That attack becomes a failure It requires an action from another Secret group or Alternatively, you can use this card to nuliify an Exposed! card, pulling the group back into hiding, if it 1s played immediately. This is a free action. May Require Secret or Illuminati Action"
+  },
+  'Ark of the Covenant': {
+    kind: 'ark_note',
+    t: "White down the name of one of your groups and put it under this card. If that group is destroyed, 3 reveal the note. The group that destroyed it is also destroyed, unless it was an Illuminati. In that case, its oamer must choose one group to lose. The destroyed enemy group counts for your Goals, and you may put the name of another group in the Ark. You may change the name in the Ark during your Unique Magic Artifact"
+  },
+  'The Holy Grail': {
+    kind: 'grail_note',
+    t: "Write down the name of a Place and put it under this card. This is the secret location of the Holy Grail. You may not change it, If the Grail's site is destroyed or Devastated by an attack, reveal the note. The attack becomes an automatic failure. The Grail continues to protect that Place If the Grail's site is coptured, the Grail vanishes"
+  },
+  'Immortality Serum': {
+    kind: 'serum_link',
+    t: "By the way. If you join us, you cen live forever. This card may be used for ane Personality, Keep it unlinked until it is used. The link remains if the Personality is captured from you. You may use it to take control of any just-played Personality, including one from another player's hand! No die roll is required. Link the card to that Personality. Now nothing can kill that Personality, including destruction of a Place he's linked to, He also has +5 against ordinary attacks to destroy. You may also link it to a Personality you control"
+  },
+  'Soulburner': {
+    kind: 'soulburner_hook',
+    t: "Whenever a rival captures one of your groups, you may immediately draw a Plot card from his deck, or expose all his hidden Plots, If a rival destroys one of your groups, you may take two Plot cards from his deck, or expose all his hidden Plots and force him to discard a Plot of your choice"
+  },
+  "Hitler's Brain": {
+    kind: 'brain_draw',
+    t: "Was he Illuminated himself? You're not cleared for that. But the evil brain lies plotting, twisting the souls around it Draw an extra Plot card, or hide all your exposed Plots, any time you destroy a group. You may not take control of any Peaceful group while you have"
+  },
+  'Backlash': {
+    kind: 'backlash_undo',
+    t: "This card may be played at any time. It requires an action by some group with at least one alignment in common with the target, other than Fanatic! Any one change in the target's alignment, Power, or Resistance due to a Plot card is undone and retums to its original value. Remove the link, and discard that Plot card. This does not affect changes made by"
+  }
+};
+const L37_FXN = {};
+for (const k37 in L37_FX) { L37_FXN[norm(k37)] = L37_FX[k37]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
@@ -3303,7 +3338,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

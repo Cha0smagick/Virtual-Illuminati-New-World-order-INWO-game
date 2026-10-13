@@ -9137,3 +9137,15 @@ tienen EOL mixto en el arbol de trabajo.
 **Tests (bloque L36 S1-S7, 25 checks)**: ficha textual por turno, cancelar Media/Personality/Coastal + rechazo no-Media, bonos +3/+3/+4/+4 (disaster simulado), Frog God (sin ataque / no privilegiado / usado+frogGodOpen+ficha), Mass Murder (fichas-0, log, no-Media), Diet (tripled, rival sin fichas, sin objetivos), Are We (instantanea fuera de turno, ficha devuelta, segundo uso). RESULTADO: npm test ALL TESTS PASSED (11 suites); FASE 4: 230 clasificadas, 26 pendientes (antes 33).
 
 **Estado**: deuda plot/resource 26 (20 reales + 6 bloqueadas). Backlog vivo: L37 reactivas (coverup/arkofthecovenant/holygrail/immortalityserum/soulburner/hitlersbrain/backlash), L38 ataques/takeovers (annualconvention/bimboateleven/blitzkrieg/thestarsareright/marchonwashington/factionfight), L39 resto (eliza/unmasked/niceideaitsminenow/corruption/coverofdarkness/opportunityknocks/vultures).
+
+## 82. L37 - FAMILIA REACTIVAS (P1-168)
+
+**Regla**: Cover-Up 404 (ataque exitoso a Secret ? fallo; cuesta accion de otro Secret propio), Ark 391 (nota bajo grupo; destruido ? cuenta para Goals + represalia/penalizacion), Holy Grail 398 (nota bajo Place; destruir el sitio = fallo automatico; capturado = desaparece), Immortality Serum 392 (roba Personality puesta en juego, inmortal, +5 vs destruir), Soulburner 393 (roba Plots al capturar/destruir tus grupos), Hitler's Brain 385 (roba Plot al destruir; no controla Peaceful), Backlash 072 (INSTANT: deshace un cambio de Plot).
+
+**Motor**: settle pendingCoverup (patron pendingLips); applyAttackResult veto grail + captura (grail desaparece, serum viaja); destroyGroup (serumImmortal veto + re-home, ark credit/represalia/arkPenalty, soulburner 2, brain 1); destroyDefenseBonus serum +5; declareAttack guard Peaceful; E.resolveCoverup/E.useSerum/E.changeArk/E.resolveArkPenalty; playResource 5 cases; playPlot coverup throw + backlash_undo + whitelist instant.
+
+**Robustez de la suite**: fresh37 + stripNegators22 extendido purgan las 7 reactivas de manos/mazo inicial (una Cover-Up aleatoria en mano abria ventanas que flakesaban L28 S8 y L35 S8c); withMock37 cierra pendingRoll residual (VENTANA DE REACCION P1-016 devolvia settle antes del bloque Cover-Up); ataques de prueba con boosts +50 y currentPid forzado (la tirada inicial de quien empieza es aleatoria). 8 corridas consecutivas verdes.
+
+**Tests**: bloque L37 S1-S7, 19 checks verdes. RESULTADO: npm test ALL TESTS PASSED (11 suites); FASE 4: 237 clasificadas, 19 pendientes (antes 26).
+
+**Estado**: deuda plot/resource 19 (13 reales + 6 bloqueadas). Backlog vivo: L38 ataques/takeovers (annualconvention/bimboateleven/blitzkrieg/thestarsareright/marchonwashington/factionfight), L39 resto (eliza/unmasked/niceideaitsminenow/corruption/coverofdarkness/opportunityknocks/vultures-bloqueada).

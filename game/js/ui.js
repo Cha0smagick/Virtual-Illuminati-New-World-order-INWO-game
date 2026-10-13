@@ -656,6 +656,9 @@ function chipAct(r) {
   if (kA36 === 'hallu_cancel') return 'halluse';
   if (kA36 === 'ness_cancel') return 'nessuse';
   if (kA36 === 'froggod_interfere') return 'froguse';
+  /* L37 — recursos reactivos con boton propia. */
+  if (kA36 === 'serum_link') return 'serumuse';
+  if (kA36 === 'ark_note') return 'arkuse';
   return null;
 }
 function chipCard(r) { return cardOf(r.cardId); }
@@ -972,6 +975,19 @@ function attackPanel(st) {
       (MK.side === 'att' ? '+' : '-') + (MK.pw || 0) + ' sobre el total ' + (MK.total || 0) + '). ' +
       '<button data-act="maskjoin" title="Gasta la accion del grupo Magic; si su Poder cambia el resultado, cambia">Unir grupo</button> ' +
       '<button data-act="maskpass" title="El resultado queda como estaba">No entrar</button></div>');
+  }
+  /* L37 — Cover-Up y Ark of the Covenant: ventanas de decision del dueno. */
+  var CV = st.pendingCoverup;
+  if (CV && st.players[CV.byPid] && st.players[CV.byPid].human) {
+    $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar"><b>🛡 Cover-Up</b>: el ataque de ' +
+      esc(CV.attackerName || 'el rival') + ' contra tu Secret ' + esc(CV.targetName || '') + ' fue exitoso. ' +
+      '<button data-act="coverupuse" title="That attack becomes a failure">Usar la carta</button> ' +
+      '<button data-act="coveruppass" title="El ataque se aplica">Dejar pasar</button></div>');
+  }
+  var AK = st.arkPenalty;
+  if (AK && st.players[AK.pid] && st.players[AK.pid].human) {
+    $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar"><b>📜 Ark of the Covenant</b>: tu Illuminati destruyo el grupo de la nota — elige un grupo TUYO para perder. ' +
+      '<button data-act="arkpen" title="Clic y luego el grupo a perder">Elegir grupo a perder</button></div>');
   }
 
   /* L31 — Fraternal Orders. "By spending this group's action, you may draw
@@ -1641,6 +1657,8 @@ function route(uid) {
     else if (m === 'resCancelPick') { clearSel(); CB.onUseL36Cancel(d.resUid, d.kind, uid); }
     else if (m === 'dietS') { sel = { mode: 'dietR', data: { handIdx: d.handIdx, scienceUid: uid } }; log('💊 PASO 2/2 — clic en el grupo RIVAL que se queda sin fichas.'); render(curState); }
     else if (m === 'dietR') { clearSel(); CB.onPlayDietPlan(d.handIdx, d.scienceUid, uid); }
+    else if (m === 'arkPick') { clearSel(); CB.onChangeArk(d.resUid, uid); }
+    else if (m === 'arkPenaltyPick') { clearSel(); CB.onResolveArkPenalty(uid); }
     else if (m === 'comboTarget') { clearSel(); CB.onPlayCombo(d.handIdx, uid, d.mainCardId, d.otherCardId); }
     /* L19 — 354 Reorganization. Dos clics por movimiento: primero el grupo que se
        mueve, despues su maeastre nuevo. Se acumulan en d.moves y se aplican
@@ -1885,6 +1903,12 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
   var dietEntry = isDiet
     ? { label: '💊 Triplicar un Science tuyo y dejar sin fichas a un rival', value: 'diet' }
     : null;
+  /* L37 — 404 Cover-Up: NO se juega por el boton de Plot; la consume E.resolveCoverup
+   * desde la barra pendiente tras un ataque exitoso contra un Secret. */
+  var isCoverup = c.type === 'plot' && c.effect && c.effect.kind === 'coverup_react';
+  var coverupEntry = isCoverup
+    ? { label: 'ℹ Cover-Up se usa desde la barra pendiente (tras un ataque exitoso contra un Secret)', value: 'infoCoverup' }
+    : null;
   /* L29 — 232 Crop Circles: acción de BUSCAR en un mazo. El motor cobra la ficha
    * del primer grupo Magic usable (o el que se clicó, patrón disaster_defence) y
    * valida el derecho de robo por mazo; aquí solo se elige CUÁL mazo. */
@@ -1909,6 +1933,7 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
     reorgEntry,
     spokesmanEntry,
     dietEntry,
+    coverupEntry,
     cropEntry,
     upheavalEntry,
     comboEntry24,
@@ -1916,7 +1941,7 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
     scandalEntry,
     negateEntry22,
     negPassEntry22,
-    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck && !isTurnStart && !isReorg && !isUpheaval && !isCombo && !isNwoOne && !isScandal && !isNegator22 && !isCrop && !isSpokesman && !isDiet) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
+    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck && !isTurnStart && !isReorg && !isUpheaval && !isCombo && !isNwoOne && !isScandal && !isNegator22 && !isCrop && !isSpokesman && !isDiet && !isCoverup) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
     c.type === 'plot' ? { label: 'ℹ ¿Cuándo sirven los Plots?', value: 'info' } : null,
     c.type !== 'illuminati' ? { label: '🗑 Descartar', value: 'discard' } : null,
     { label: 'Cancelar', value: null }
@@ -2021,6 +2046,9 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
       sel = { mode: 'dietS', data: { handIdx: ix } };
       log('💊 397 Miracle Diet Plan — PASO 1/2: clic en tu grupo SCIENCE (triplicara su Poder en su proxima accion).');
       render(curState);
+    }
+    else if (v === 'infoCoverup') {
+      log('ℹ 404 Cover-Up: se usa desde la BARRA PENDIENTE que aparece cuando un ataque exitoso golpea un grupo Secret tuyo (o de otro). Convierte ese ataque en fallo (cuesta la accion de otro grupo Secret tuyo) y la carta se descarta.');
     }
     else if (v === 'deckDraw') {
       clearSel();
@@ -2151,6 +2179,14 @@ var KIND_ES = {
   arewe_cancel: 'Cancela una accion/uso especial del objetivo (instantaneo)',
   massmurder_tokens: 'Deja sin fichas de accion a un grupo Media',
   miracledietplan: 'Triplica el Poder de la proxima accion de un Science tuyo y deja sin fichas a un grupo rival',
+  /* L37 — familia reactivas (P1-168). */
+  coverup_react: 'Convierte en FALLO el ataque exitoso contra un grupo Secret (ventana tras resolver)',
+  ark_note: 'Nota bajo un grupo tuyo: si lo destruyen, cuenta para tus Goals y el destructor cae (o pierde un grupo si es Illuminati)',
+  grail_note: 'Nota bajo un Place tuyo: ataques de destruir contra el sitio fallan automaticamente',
+  serum_link: 'Roba la Personality recien puesta en juego; queda inmortal y +5 vs destruir',
+  soulburner_hook: 'Roba Plots del mazo cuando un rival captura (1) o destruye (2) tus grupos',
+  brain_draw: 'Roba 1 Plot extra al destruir un grupo; no puedes controlar Peaceful',
+  backlash_undo: 'Deshace UN cambio de Power/Resistencia hecho por un Plot al objetivo (instantaneo)',
   attack_privilege: 'Modificar el privilegio de un ataque en curso',
   combo_attack: 'Combinar dos ataques del mismo tipo sobre el mismo objetivo',
   illu_special: 'Poder especial de Illuminati', align_edit: 'Editar alineamientos',
@@ -2840,6 +2876,10 @@ function bindEvents() {
     /* L34 — Read My Lips y Death Mask (decisiones tras los dados). */
   else if (act === 'lipsuse') { clearSel(); CB.onLipsUse(); }
   else if (act === 'lipspass') { clearSel(); CB.onLipsPass(); }
+  /* L37 — Cover-Up / Ark penalty. */
+  else if (act === 'coverupuse') { clearSel(); CB.onCoverupUse(); }
+  else if (act === 'coveruppass') { clearSel(); CB.onCoverupPass(); }
+  else if (act === 'arkpen') { clearSel(); sel = { mode: 'arkPenaltyPick', data: {} }; log('📜 PASO 2/2 — clic en el grupo TUYO que perderas por el Ark of the Covenant.'); render(curState); }
   else if (act === 'maskjoin') { clearSel(); CB.onMaskJoin(); }
   else if (act === 'maskpass') { clearSel(); CB.onMaskPass(); }
     /* L9 — 332 Orbital Mind Control Lasers. `pick` es el paso 1 (elegir grupo): no
@@ -2900,6 +2940,14 @@ function bindEvents() {
       });
     }
     else if (act === 'froguse') { var fgUid = btn.getAttribute('data-uid'); if (!fgUid) return; CB.onUseFrogGod(fgUid); }
+    /* L37 — serum/ark. */
+    else if (act === 'serumuse') { var seUid = btn.getAttribute('data-uid'); if (!seUid) return; CB.onUseSerum(seUid); }
+    else if (act === 'arkuse') {
+      var akUid = btn.getAttribute('data-uid'); if (!akUid) return;
+      sel = { mode: 'arkPick', data: { resUid: akUid } };
+      log('📜 PASO 2/2 — clic en el grupo TUYO cuyo nombre ira bajo el Ark of the Covenant.');
+      render(curState);
+    }
     else if (act === 'gadgetuse') { var guUid = btn.getAttribute('data-uid'); if (!guUid) return; CB.onUseGadgetAction(guUid); }
     else if (act === 'resdestroypick') { sel = { mode: 'resDestroy', data: { resUid: btn.getAttribute('data-uid') } }; log('🎯 Paso 2/2 — elige el Resource objetivo y luego TIRA EL DADO.'); render(curState); }
     else if (act === 'resdestroycancel') { clearSel(); render(curState); }

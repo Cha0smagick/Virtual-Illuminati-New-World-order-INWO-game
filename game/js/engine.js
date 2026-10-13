@@ -606,6 +606,16 @@ function destroyDefenseBonus(node,isAssassination){
       }
     }
   }
+  /* L37 — 392 Immortality Serum: "He also has +5 against ordinary attacks to destroy". */
+  if(node.uid){
+    for(var qSE=0;qSE<S.players.length;qSE++){
+      var rrSE=S.players[qSE].resources||[];
+      for(var iSE=0;iSE<rrSE.length;iSE++){
+        var rcSE=card(rrSE[iSE].cardId);
+        if(rcSE&&rcSE.effect&&rcSE.effect.kind==='serum_link'&&rrSE[iSE].linkedTo===node.uid)b+=5;
+      }
+    }
+  }
   return b;
 }
 /* L35 — primera entrada de recurso de pid cuyo kind coincida (o null). */
@@ -1255,6 +1265,9 @@ function publicState(){
       cards:S.pendingLyhf.cards.map(function(ixL){return {idx:ixL,name:card(ixL).name,type:card(ixL).type};})}:null,
 
     pendingLips:S.pendingLips?{byPid:S.pendingLips.byPid,byName:S.players[S.pendingLips.byPid].name,attackerName:S.pendingLips.attackerName,targetName:S.pendingLips.targetName}:null,
+    /* L37 — ventana de Cover-Up + penalizacion del Ark (para las barras de la UI). */
+    pendingCoverup:S.pendingCoverup?{byPid:S.pendingCoverup.byPid,byName:S.players[S.pendingCoverup.byPid].name,attackerName:S.pendingCoverup.attackerName,targetName:S.pendingCoverup.targetName}:null,
+    arkPenalty:S.arkPenalty?{pid:S.arkPenalty.pid,name:S.players[S.arkPenalty.pid].name}:null,
     pendingMask:S.pendingMask?{byPid:S.pendingMask.byPid,byName:S.players[S.pendingMask.byPid].name,side:S.pendingMask.side,pw:S.pendingMask.pw,total:S.pendingMask.total}:null, /* L8b: la ventana de robo es INTIMA del jugador que roba (233/367 eligen entre sus
   * propias cartas), al reves que pendingPeek que es de un rival. Se proyecta
   * entero solo para el dueno: los indices de carta son de SU mazo y ningun otro
@@ -3223,6 +3236,37 @@ E.playResource=function(pid,handIdx,linkedToUid){
       break;
     }
     default: throw new Error('El Resource "' + c.name + '" tiene una mecanica (' + resFx + ') que E.playResource todavia no ejecuta');
+    /* L37 — recursos reactivos (P1-168): colocacion con validacion de enlace. */
+    case 'ark_note': {
+      if (!linkedToUid || linkedToUid === pl.illumId || findOwnerPid(linkedToUid) !== pid) throw new Error(c.name + ': escribe el nombre de UNO de tus grupos y ponla bajo el (enlazala a un grupo tuyo)');
+      log(c.name + ': la nota cubre a ' + card(findNode(linkedToUid).cardId).name);
+      break;
+    }
+    case 'grail_note': {
+      if (!linkedToUid || linkedToUid === pl.illumId || findOwnerPid(linkedToUid) !== pid) throw new Error(c.name + ': enlazala a un Place tuyo');
+      var gnd37 = findNode(linkedToUid), gcc37 = gnd37 ? card(gnd37.cardId) : null;
+      if (!gcc37 || gcc37.subtype !== 'place') throw new Error(c.name + ': el sitio debe ser un Place tuyo');
+      log(c.name + ': el sitio secreto es ' + gcc37.name);
+      break;
+    }
+    case 'serum_link': {
+      if (linkedToUid && linkedToUid !== pl.illumId) {
+        if (findOwnerPid(linkedToUid) !== pid) throw new Error(c.name + ': enlazala a una Personality tuya');
+        var snd37 = findNode(linkedToUid), scc37 = snd37 ? card(snd37.cardId) : null;
+        if (!scc37 || scc37.subtype !== 'personality') throw new Error(c.name + ': el anfitrion debe ser una Personality');
+        snd37.serumImmortal = true;
+        log(c.name + ': ' + scc37.name + ' ya no puede morir (+5 vs destruir)');
+      } else log(c.name + ': guardada sin enlazar (podras usarla sobre una Personality recien jugada)');
+      break;
+    }
+    case 'soulburner_hook': {
+      log(c.name + ': se activa cuando un rival capture o destruya uno de tus grupos');
+      break;
+    }
+    case 'brain_draw': {
+      log(c.name + ': al destruir un grupo robaras 1 Plot extra; no podras controlar grupos Peaceful');
+      break;
+    }
   }
   pl.illumTokens--;pl.usedResourceThisTurn=true;
   removeFromHand(pl,handIdx);
@@ -3360,6 +3404,12 @@ E.declareAttack=function(pid,type,target){
      as neither action is an Attempt to Destroy". */
   var rK35=resEntryOf(pid,'kells_boost');
   if(rK35&&rK35.linkedTo===attackerUid&&type==='destroy')throw new Error('Book of Kells: el grupo Magic enlazado no puede realizar Intentos de Destruir');
+  /* L37 — 385 Hitler's Brain: "You may not take control of any Peaceful group
+     while you have it". */
+  if(type==='control'&&target.uid&&resEntryOf(pid,'brain_draw')){
+    var tH37=findNode(target.uid),tcH37=tH37?card(tH37.cardId):null;
+    if(tcH37&&hasAttr(tcH37,'peaceful',tH37))throw new Error("Hitler's Brain: no puedes tomar el control de grupos Peaceful");
+  }
 
   var A={id:'a'+(S.uidCounter++),pid:pid,type:type,
     attackerUid:attackerUid,aids:[],opposes:[],privilege:false,privilegeLocked:false,
@@ -4281,6 +4331,26 @@ E.resolveAttack=function(){
         }
       }
     }
+    /* L37 — 404 Cover-Up: "Play this card at any time a Secret group has been
+       successfully attacked. That attack becomes a failure." Ventana copiada del
+       patron pendingLips (P1-165). El Exposed!-nullify queda como laguna
+       declarada (la exposicion vive en attrsRemoved y L16 ya la declaro). */
+    if(result==='ÉXITO'&&!A.neutralTarget&&!A.handTarget&&A.targetUid){
+      var tnC37=findNode(A.targetUid),tcC37=tnC37?card(tnC37.cardId):null;
+      if(tnC37&&tcC37&&hasAttr(tcC37,'secret',tnC37)){
+        for(var wC37=0;wC37<S.players.length;wC37++){
+          if(wC37===A.pid)continue;
+          var hhC37=S.players[wC37].hand,cov37=false;
+          for(var zC37=0;zC37<hhC37.length;zC37++){var hcC37=card(hhC37[zC37]);if(hcC37&&hcC37.effect&&hcC37.effect.kind==='coverup_react'){cov37=true;break;}}
+          if(cov37){
+            var anC37=findNode(A.attackerUid);
+            S.pendingCoverup={byPid:wC37,det:det,attackerName:anC37?card(anC37.cardId).name:'?',targetName:tcC37.name};
+            log('Cover-Up: ventana abierta para '+S.players[wC37].name+' (E.resolveCoverup(pid,use))');
+            return publicState();
+          }
+        }
+      }
+    }
     /* L34 — Death Mask: el grupo Magic linkeado puede entrar tras los dados
      * ("if it could have entered normally"). Solo abre la decision si su Poder
      * podria CAMBIAR el resultado (simplificacion declarada en plan.md SS84). */
@@ -4365,6 +4435,23 @@ E.resolveAttack=function(){
 function applyAttackResult(A,det,resultText){
   var success=resultText.indexOf('ÉXITO')===0;
   var pid=A.pid;
+  /* L37 — 398 The Holy Grail: "If the Grail's site is destroyed or Devastated
+     by an attack, reveal the note. The attack becomes an automatic failure." */
+  if(success&&A.type==='destroy'&&A.targetUid){
+    for(var qGR=0;qGR<S.players.length;qGR++){
+      var rrGR=S.players[qGR].resources||[],hitGR=false;
+      for(var iGR=0;iGR<rrGR.length;iGR++){
+        var rcGR=card(rrGR[iGR].cardId);
+        if(rcGR&&rcGR.effect&&rcGR.effect.kind==='grail_note'&&rrGR[iGR].linkedTo===A.targetUid)hitGR=true;
+      }
+      if(hitGR){
+        var gnGR=findNode(A.targetUid);
+        success=false;resultText='FALLO (The Holy Grail)';
+        log('The Holy Grail: el ataque contra '+(gnGR?card(gnGR.cardId).name:'?')+' se convierte en FALLO automatico');
+        break;
+      }
+    }
+  }
   if(A.neutralTarget){
     var naI=S.neutralArea.findIndex(function(n){return n.uid===A.neutralTarget;});
     if(naI<0){S.attack=null;log('El objetivo en el ÁREA NEUTRAL ya no está disponible — ataque cancelado');return;}
@@ -4420,13 +4507,29 @@ function applyAttackResult(A,det,resultText){
         if(nSP.spokesmanOf===A.targetUid||nSP.uid===A.targetUid){delete nSP.powerFloor;delete nSP.spokesmanOf;}
       });
     });
+    /* L37 — Grail/serum/soulburner al capturar. */
+    S.players.forEach(function(qL37){
+      qL37.resources=qL37.resources.filter(function(rL37){
+        var rcL37=card(rL37.cardId);
+        if(rcL37&&rcL37.effect&&rL37.linkedTo===A.targetUid){
+          if(rcL37.effect.kind==='grail_note'){S.groupDiscard.push(rL37.cardId);log('The Holy Grail: su sitio fue capturado — el Grail desaparece');return false;}
+          if(rcL37.effect.kind==='serum_link'){S.players[pid].resources.push(rL37);log('Immortality Serum capturado junto con su Personality');return false;}
+        }
+        return true;
+      });
+    });
+    var hasSB37=S.players[A.targetPid].resources.some(function(rS37){var cS37=card(rS37.cardId);return cS37&&cS37.effect&&cS37.effect.kind==='soulburner_hook';});
+    if(hasSB37&&S.plotDeck.length){
+      S.players[A.targetPid].hand.push(S.plotDeck.pop());
+      log('Soulburner: '+S.players[A.targetPid].name+' roba 1 Plot tras la captura (mazo compartido, opcion robar automatica)');
+    }
     placeCapturedSubtree(pid,tNode);
     log('¡'+S.players[pid].name+' toma CONTROL de '+card(tNode.cardId).name+' y todo su títere!');
   }else if(success&&A.type==='destroy'){        var jnH=(A.headJar&&findNode(A.headJar.nodeUid))?findNode(A.headJar.nodeUid):null;
         if(jnH&&A.headJar.pid===A.pid){
           jnH.jarred=true;jnH.assassinationBonus=10;A.headJar.applied=true;
           log('Head in a Jar: '+card(jnH.cardId).name+' sobrevive al golpe (sigue en juego, actua por telefono)');
-        }else destroyGroup(A.pid,A.targetUid);
+        }else destroyGroup(A.pid,A.targetUid,{attackerUid:A.attackerUid});
   }else{
     log(resultText+' — ataque de '+S.players[pid].name+' falló');
     if(A.type==='control'){
@@ -4477,7 +4580,62 @@ function destroyGroup(byPid,targetUid,opts){
     log('BLOQUEO Shangri-La: '+S.players[owner].name+' no puede destruir '+card(node.cardId).name+' (sólo grupos Violent y Illuminati rivales)');
     return false;
   }
+  /* L37 — 392 Immortality Serum: "Now nothing can kill that Personality". */
+  if(node&&node.serumImmortal){
+    log(card(node.cardId).name+' es INMORTAL (Immortality Serum): la destruccion se anula');
+    return false;
+  }
+  /* L37 — serum en el subarbol: los Personalities immortal sobreviven y vuelven
+     a su dueno con todo su titere. */
+  (function rehomeSerum37(n37){
+    (n37.children||[]).slice().forEach(function(k37){
+      if(k37.serumImmortal){
+        var o37=findOwnerPid(k37.uid),par37=findNodeThatHas(S.players[o37].structure,k37.uid);
+        detach(par37,k37.uid);k37.tokens=1;placeCapturedSubtree(o37,k37);
+        log(card(k37.cardId).name+' sobrevive (Immortality Serum) y vuelve a su dueno');
+      } else rehomeSerum37(k37);
+    });
+  })(node);
   node=detach(parent,targetUid);clearL18Extra(node);
+  /* L37 — 396 Ark of the Covenant: "If that group is destroyed ... The group that
+     destroyed it is also destroyed, unless it was an Illuminati. In that case,
+     its owner must choose one group to lose. The destroyed enemy group counts
+     for your Goals." */
+  (function ark37(){
+    for(var qA37=0;qA37<S.players.length;qA37++){
+      var rrA37=S.players[qA37].resources||[];
+      for(var iA37=0;iA37<rrA37.length;iA37++){
+        var rcA37=card(rrA37[iA37].cardId);
+        if(rcA37&&rcA37.effect&&rcA37.effect.kind==='ark_note'&&rrA37[iA37].linkedTo===targetUid){
+          if(!noCount)S.players[qA37].destroyedByMe.push(node.cardId);
+          log('Ark of the Covenant: se revela la nota — '+card(node.cardId).name+' cuenta para los Goals de '+S.players[qA37].name);
+          var dstr37=(opts&&opts.attackerUid)?findNode(opts.attackerUid):null;
+          if(dstr37){
+            var dc37=card(dstr37.cardId);
+            if(dc37&&dc37.type==='illuminati'){
+              S.arkPenalty={pid:byPid,turn:S.turn};
+              log('Ark of the Covenant: '+dc37.name+' debe elegir un grupo suyo para perder (barra pendiente)');
+            }else if(!dstr37.serumImmortal){
+              log('Ark of the Covenant: '+dc37.name+' es destruido en represalia');
+              destroyGroup(byPid,dstr37.uid);
+            }
+          }
+          return;
+        }
+      }
+    }
+  })();
+  /* L37 — 406 Soulburner (destruccion) y 385 Hitler's Brain. */
+  var hasSBD37=(S.players[owner]&&S.players[owner].resources||[]).some(function(rD37){var cD37=card(rD37.cardId);return cD37&&cD37.effect&&cD37.effect.kind==='soulburner_hook';});
+  if(hasSBD37&&byPid!==owner&&S.plotDeck.length>=2){
+    S.players[owner].hand.push(S.plotDeck.pop(),S.plotDeck.pop());
+    log('Soulburner: '+S.players[owner].name+' roba 2 Plots tras la destruccion (mazo compartido, opcion robar automatica)');
+  }
+  var hasHB37=(byPid!=null&&S.players[byPid]&&S.players[byPid].resources||[]).some(function(rH37){var cH37=card(rH37.cardId);return cH37&&cH37.effect&&cH37.effect.kind==='brain_draw';});
+  if(hasHB37&&S.plotDeck.length){
+    S.players[byPid].hand.push(S.plotDeck.pop());
+    log("Hitler's Brain: "+S.players[byPid].name+' roba 1 Plot extra (opcion robar automatica)');
+  }
   var c=card(node.cardId);
   if(!noCount)S.players[byPid].destroyedByMe.push(node.cardId);
   S.groupDiscard.push(node.cardId);  /* L33 — 324 Necronomicon: al caer el grupo anfitrion, el libro SE DESLINKEA
@@ -5246,7 +5404,7 @@ E.playPlot=function(pid,handIdx,targetUid,opts){
     * (inwo_rules_extracted.txt:924-931). El veto se comprueba dentro de cada case. */
   /* P1-024: las 6 cartas de la ventana de RODADERO dicen "Play immediately after
    any die roll" / "Play this card when…": solo tienen sentido fuera de turno. */
-var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='boost10'||eff0.kind==='power_increase'||eff0.kind==='resistance_increase'||eff0.kind==='messiah'||eff0.kind==='angst'||eff0.kind==='bodyguard'||eff0.kind==='talisman'||ROLL_KINDS.indexOf(eff0.kind)>=0||eff0.kind==='arewe_cancel' /* L36 — 248 Are We Having Fun Yet?: "Play this card at any time" */
+var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='boost10'||eff0.kind==='power_increase'||eff0.kind==='resistance_increase'||eff0.kind==='messiah'||eff0.kind==='angst'||eff0.kind==='bodyguard'||eff0.kind==='talisman'||ROLL_KINDS.indexOf(eff0.kind)>=0||eff0.kind==='arewe_cancel' /* L36 — 248 Are We Having Fun Yet?: "Play this card at any time" */||eff0.kind==='backlash_undo' /* L37 — 072 Backlash: "may be played at any time" */
   /* P1-026: Privileged Attack (346) dice "when you make any attack", o sea justo
      DENTRO de un ataque ajeno. P1-024/§37 lo veto por su cuenta el caso 'boost10'
      cuando la partida ya no es de nadie; aqui hace falta lo mismo pero el motor
@@ -6448,6 +6606,55 @@ case 'bulk_power':{
         log(c.name+': '+tcA35.name+' no habia gastado fichas este turno (la carta se juega igual)');
       }
       lastResult={ok:true,card:c.name,canceled:tcA35.name};
+      break;}
+    case 'coverup_react':{
+      /* L37 — 404 Cover-Up NO se juega via playPlot: se consume desde la barra
+         pendiente (E.resolveCoverup) cuando un ataque exitoso toca un Secret. */
+      throw new Error(c.name+': se juega desde la barra pendiente tras un ataque exitoso contra un Secret (E.resolveCoverup)');}
+    case 'backlash_undo':{
+      /* L37 — 072 Backlash: deshacer UN cambio de Power/Resistance causado por
+         un Plot. Busca la ULTIMA entrada de powerMods/resistanceMods cuyo nombre
+         corresponda a una carta Plot (no NWO), la elimina y descarta el Plot
+         linkeado. La parte de alineamientos queda como laguna declarada. */
+      var tgtB37=findNode(targetUid);
+      if(!tgtB37)throw new Error(c.name+': objetivo inexistente');
+      var tcB37=card(tgtB37.cardId);
+      var undo37=null,list37=null,idx37=-1;
+      ['powerMods','resistanceMods'].forEach(function(arr37){
+        if(undo37)return;
+        var a37=tgtB37[arr37];if(!Array.isArray(a37))return;
+        for(var iB37=a37.length-1;iB37>=0;iB37--){
+          var nmB37=a37[iB37]&&a37[iB37].name;if(!nmB37)continue;
+          var srcB37=null;
+          for(var kB37=0;kB37<C.cards.length;kB37++){if(C.cards[kB37].name===nmB37){srcB37=C.cards[kB37];break;}}
+          if(srcB37&&srcB37.type==='plot'&&!srcB37.nwoColor){undo37=srcB37;list37=a37;idx37=iB37;return;}
+        }
+      });
+      if(!undo37)throw new Error(c.name+': no hay ningun cambio de Plot deshacible en '+tcB37.name);
+      list37.splice(idx37,1);
+      S.players.forEach(function(qB37){
+        qB37.linkedPlots=(qB37.linkedPlots||[]).filter(function(lpB37){
+          if(lpB37.cardId===undo37.idx&&lpB37.linkedTo===targetUid){S.plotDiscard.push(lpB37.cardId);log(c.name+': se descarta '+undo37.name);return false;}
+          return true;
+        });
+      });
+      var payB37=null;
+      var alB37=nodeAligns(tgtB37,tcB37);
+      walk(pl.structure,function(nB37){
+        if(payB37)return;
+        var ncB37=card(nB37.cardId);
+        if(ncB37&&(nB37.tokens||0)>=1){
+          var naB37=nodeAligns(nB37,ncB37);
+          for(var vB37=0;vB37<naB37.length;vB37++){
+            if(naB37[vB37]==='fanatic')continue;
+            if(alB37.indexOf(naB37[vB37])>=0){payB37=nB37;return;}
+          }
+        }
+      });
+      if(!payB37)throw new Error(c.name+': requiere la accion de un grupo tuyo con alineacion en comun con el objetivo (no Fanatic)');
+      spendGroupToken(pid,payB37.uid);
+      log(c.name+': se deshace el cambio de '+undo37.name+' sobre '+tcB37.name);
+      lastResult={ok:true,card:c.name,undone:undo37.name,target:tcB37.name};
       break;}
     case 'token_wither':{
       /* 418 World Hunger — DOS frases en una carta (interpretacion 6/7):
@@ -9353,6 +9560,83 @@ E.resolveLips=function(pid,use){
   var AL2=S.attack;
   if(AL2)applyAttackResult(AL2,L.det,'ÉXITO');
   return publicState();
+};
+/* L37 — 404 Cover-Up: resolucion de la ventana (patron resolveLips, P1-165). */
+E.resolveCoverup=function(pid,use){
+  var L=S.pendingCoverup;
+  if(!L)throw new Error('No hay ventana de Cover-Up abierta');
+  if(pid!==L.byPid)throw new Error('Cover-Up: la ventana es de '+S.players[L.byPid].name);
+  if(use){
+    var plC=S.players[pid],ciC=null;
+    for(var iC=0;iC<plC.hand.length;iC++){var hcC=card(plC.hand[iC]);if(hcC&&hcC.effect&&hcC.effect.kind==='coverup_react'){ciC=plC.hand[iC];break;}}
+    if(ciC===null)throw new Error('Cover-Up: ya no tienes la carta en la mano');
+    /* coste: accion de OTRO grupo Secret tuyo (auto-pick, declarado) */
+    var payC=null;
+    walk(plC.structure,function(nC37){
+      if(payC||nC37.uid===S.attack.targetUid)return;
+      var ncC37=card(nC37.cardId);
+      if(ncC37&&hasAttr(ncC37,'secret',nC37)&&(nC37.tokens||0)>=1)payC=nC37;
+    });
+    if(!payC)throw new Error('Cover-Up: requiere la accion de otro grupo Secret tuyo');
+    spendGroupToken(pid,payC.uid);
+    plC.hand.splice(plC.hand.indexOf(ciC),1);
+    S.plotDiscard.push(ciC);
+    log('Cover-Up: '+S.players[pid].name+' usa la carta (accion de '+card(payC.cardId).name+'): el ataque contra '+L.targetName+' se convierte en FALLO');
+    S.pendingCoverup=null;
+    return applyAttackResult(S.attack,L.det,'FALLO (Cover-Up)');
+  }
+  S.pendingCoverup=null;
+  log('Cover-Up: '+S.players[pid].name+' deja pasar el ataque');
+  return applyAttackResult(S.attack,L.det,'ÉXITO');
+};
+/* L37 — 392 Immortality Serum: robar una Personality recien jugada (ventana
+   autoTakeover de L32 Power Grab / takeovers automaticos). */
+E.useSerum=function(pid,opts){
+  opts=opts||{};
+  var R=findResourceEntry(opts.resourceUid);
+  if(!R||R.pid!==pid)throw new Error('Resource no encontrado o no es tuyo');
+  var re=R.entry,rc=card(re.cardId);
+  if(!rc||!rc.effect||rc.effect.kind!=='serum_link')throw new Error('Ese Resource no es Immortality Serum');
+  if(re.linkedTo!==S.players[pid].illumId)throw new Error('Immortality Serum: ya esta enlazada (solo una vez)');
+  if(!S.pendingEvent||S.pendingEvent.kind!=='autoTakeover'||!S.pendingEvent.data||!S.pendingEvent.data.nodeUid)throw new Error('Immortality Serum: solo sirve en la ventana de una Personality recien jugada');
+  var ndS=findNode(S.pendingEvent.data.nodeUid);
+  if(!ndS)throw new Error('Immortality Serum: la Personality ya no existe');
+  var cS=card(ndS.cardId);
+  if(!cS||cS.subtype!=='personality')throw new Error('Immortality Serum: el objetivo debe ser una Personality');
+  if(findOwnerPid(ndS.uid)===pid)throw new Error('Immortality Serum: no puedes robarte una Personality tuya');
+  var oS=findOwnerPid(ndS.uid);
+  var parS=findNodeThatHas(S.players[oS].structure,ndS.uid);
+  detach(parS,ndS.uid);
+  ndS.tokens=1;
+  placeCapturedSubtree(pid,ndS);
+  re.linkedTo=ndS.uid;
+  ndS.serumImmortal=true;
+  S.pendingEvent=null;
+  log('Immortality Serum: '+S.players[pid].name+' toma el control de '+cS.name+' sin tirar dados — ya no puede morir');
+  return {ok:true,stolen:cS.name};
+};
+/* L37 — 388 Ark of the Covenant: cambiar el nombre de la nota (tu turno). */
+E.changeArk=function(pid,opts){
+  opts=opts||{};
+  var R=findResourceEntry(opts.resourceUid);
+  if(!R||R.pid!==pid)throw new Error('Resource no encontrado o no es tuyo');
+  var re=R.entry,rc=card(re.cardId);
+  if(!rc||!rc.effect||rc.effect.kind!=='ark_note')throw new Error('Ese Resource no es Ark of the Covenant');
+  if(!opts.newUid||findOwnerPid(opts.newUid)!==pid)throw new Error('Ark of the Covenant: la nota debe cubrir un grupo tuyo');
+  var ndA=findNode(opts.newUid);
+  if(!ndA)throw new Error('Ark of the Covenant: grupo inexistente');
+  re.linkedTo=opts.newUid;
+  log('Ark of the Covenant: la nota ahora cubre a '+card(ndA.cardId).name);
+  return {ok:true};
+};
+/* L37 — 388 Ark of the Covenant: penalizacion al Illuminati destructor. */
+E.resolveArkPenalty=function(pid,uid){
+  if(!S.arkPenalty||S.arkPenalty.pid!==pid)throw new Error('No hay penalizacion del Ark pendiente para ti');
+  if(!uid||findOwnerPid(uid)!==pid)throw new Error('Ark of the Covenant: elige un grupo TUYO para perder');
+  if(uid===S.players[pid].illumId)throw new Error('Ark of the Covenant: no puedes perder tu Illuminati');
+  S.arkPenalty=null;
+  log('Ark of the Covenant: '+S.players[pid].name+' pierde '+card(findNode(uid).cardId).name);
+  return destroyGroup(pid,uid,{noCountAsDestroyed:true});
 };
 E.endTurn=function(){
   if(S.phase==='gameover')return publicState();

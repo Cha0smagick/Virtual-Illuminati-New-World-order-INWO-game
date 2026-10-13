@@ -406,6 +406,22 @@ var CB = {
       after('💊 Miracle Diet Plan aplicado');
     } catch (e) { log('! ' + e.message); }
   },
+  /* L37 — familia reactivas (P1-168). */
+  onCoverupUse: function () {
+    try { E.resolveCoverup(humanPid(), true); after('🛡 Cover-Up: el ataque se convierte en FALLO'); } catch (e) { log('! ' + e.message); }
+  },
+  onCoverupPass: function () {
+    try { E.resolveCoverup(humanPid(), false); after('🛡 Cover-Up: el ataque se aplica'); } catch (e) { log('! ' + e.message); }
+  },
+  onUseSerum: function (resUid) {
+    try { E.useSerum(E.getState().currentPid, { resourceUid: resUid }); after('💉 Immortality Serum: Personality robada e inmortal'); } catch (e) { log('! ' + e.message); }
+  },
+  onChangeArk: function (resUid, newUid) {
+    try { E.changeArk(E.getState().currentPid, { resourceUid: resUid, newUid: newUid }); after('📜 Ark of the Covenant: nombre actualizado'); } catch (e) { log('! ' + e.message); }
+  },
+  onResolveArkPenalty: function (uid) {
+    try { E.resolveArkPenalty(humanPid(), uid); after('📜 Ark of the Covenant: penalizacion aplicada'); } catch (e) { log('! ' + e.message); }
+  },
   onMoveGroup: function (uid, newParentUid) { E.moveGroup(E.getState().currentPid, uid, newParentUid); after('Grupo movido'); },
   onEndTurn: function () { endTurnFlow(); }
 };
