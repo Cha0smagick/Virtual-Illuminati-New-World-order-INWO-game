@@ -2934,6 +2934,49 @@ const L34_FX = {
 const L34_FXN = {};
 for (const k34 in L34_FX) { L34_FXN[norm(k34)] = L34_FX[k34]; }
 
+/* L35 (P1-166) — familia buffs estaticos y duales: 8 Plots/Resources sin mecanica.
+ * Transcripcion de research (card_catalog + scribd). Toda la familia es pasiva:
+ * los recursos colocan (no-op de colocacion con validacion de anfitrion) y sus
+ * efectos viven en ganchos del motor (curPower/nodeResistance/
+ * destroyDefenseBonus/computeStrength/countControlled/beginTurn). Solidarity,
+ * The Corporate Masters y A Thousand Points of Light son PLOTS de un solo uso. */
+const L35_FX = {
+  'Clipper Chip': {
+    kind: 'clipper_chip',
+    t: "All Government groups in your Power Structure gain the ability to listen in on phone conversations worldwide. Only for legitimate law enforcement, of course. Increase the Power of all your Government groups by 2. You are also totally immune to the Phone Phreaks. If you ever have no Government groups, you must discard this Resource."
+  },
+  'Midas Mill': {
+    kind: 'midas_mill',
+    t: "Gold! Gold from sea water! Gold to fuel the plots of the Illuminati! The Power and Global Power of your Illuminati are both increased by 2. Or link the Mill to any Coastal group, and give it Global Power equal to its regular Power. Unique Gadget Artifact"
+  },
+  'Book of Kells': {
+    kind: 'kells_boost',
+    t: "This powerful grimoire increases the regular and Global Power of the owning Illuminati by 1. Or, if linked to a Magic group, it allows that group to act twice per turn, as long as neither action is an Attempt to Destroy! Unique Magic Artifact"
+  },
+  'Celebrity Spokesman': {
+    kind: 'spokesman_link',
+    t: "Play this card any time except during an attack. Link any Personality you control to any Organization that is not Secret or Government, and has no opposed alignments. The Power of the Personality is increased to 4. The bonus is lost if either card is captured or destroyed."
+  },
+  'The Corporate Masters': {
+    kind: 'corporate_double',
+    t: "Any Corporate group with a Power of 4 or more counts double toward your total number of groups."
+  },
+  'A Thousand Points of Light': {
+    kind: 'light_no_opposed',
+    t: "Paranoia is reduced, and good feelings increase to a thoroughly unnatural extent. Opposed alignments now have no effect either on attempts to control or attempts to destroy."
+  },
+  'Solidarity': {
+    kind: 'solidarity_x2',
+    t: "Double the Resistance of all groups."
+  },
+  'Flying Saucer': {
+    kind: 'saucer_def',
+    t: "Linked to a Personality, the Flying Saucer gives him +10 against any Attack to Destroy or Assassination. It is captured or destroyed if he is. Left unlinked, as property of the Illuminati, the Flying Saucer lets you make an automatic takeover of one extra Resource card each turn, provided you discard your top undrawn Plot card in exchange. Unique Gadget Artifact"
+  }
+};
+const L35_FXN = {};
+for (const k35 in L35_FX) { L35_FXN[norm(k35)] = L35_FX[k35]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
@@ -3223,7 +3266,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

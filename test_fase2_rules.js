@@ -10647,6 +10647,258 @@ function err26(fn) { return throwMsgL14(fn); }
     S.forEach(function (p) { if (p[1]) { console.log('ok   - ' + p[0]); } else { failures.push(p[0]); console.log('FAIL - ' + p[0]); } });
   })();
 
+  /* ===== L35 — familia buffs estaticos y duales (P1-166) ===== */
+  (function () {
+    var S = [], ok = function (c, m) { S.push([m, !!c]); };
+    var tMsg = function (fn) { try { fn(); return ''; } catch (e35) { return String((e35 && e35.message) || e35); } };
+    var findN35 = function (uid) { var R = E._raw(); var f = null; for (var q = 0; q < R.players.length && !f; q++) (function w(n) { if (f) return; if (n.uid === uid) { f = n; return; } (n.children || []).forEach(w); })(R.players[q].structure); return f; };
+    var byAl35 = function (al, noAl) { var hit = -1; C.cards.forEach(function (cc, ii) { if (hit < 0 && cc.type === 'group' && ((cc.alignments || []).indexOf(al) >= 0 || (cc.attributes || []).indexOf(al) >= 0) && !(noAl || []).some(function (a) { return (cc.alignments || []).indexOf(a) >= 0 || (cc.attributes || []).indexOf(a) >= 0; })) hit = ii; }); return hit; };
+    var withMock35 = function (seq, fn) { var orig = Math.random, si = 0; Math.random = function () { var v = seq[Math.min(si, seq.length - 1)]; si++; return v; }; try { return fn(); } finally { Math.random = orig; } };
+    var rollTotal35 = function (seq, atkFn) {
+      var t = null;
+      withMock35(seq, function () {
+        atkFn();
+        try { E.resolveAttack(); } catch (e) {}
+        if (E._raw().pendingRoll) { t = E._raw().pendingRoll.total; E.resolvePendingRoll(); }
+        else {
+          /* sin ventana de reaccion el total vive en lastResultText:
+             '· tiraste X · necesitabas ≤Y' o 'auto-fail (fuerza Y < 2)' */
+          var tx = String(E.getState().lastResultText || '');
+          var mm = tx.match(/(?:necesitabas ≤|fuerza )(-?\d+)/);
+          if (mm) t = Number(mm[1]);
+        }
+      });
+      return t;
+    };
+    var go35 = function (pid) { for (var g = 0; g < 10; g++) { if (E._raw().currentPid === pid) return true; E.endTurn(); } return false; };
+    var I0 = idxOfId('bavarianilluminati1'), I1 = idxOfId('servantsofcthulhu1');
+
+    /* S1 Clipper Chip (379): entra; sin Government se descarta al beginTurn. */
+    (function () {
+      var CL = idxOfId('clipperchip'), GOV = byAl35('government');
+      ok(CL >= 0 && GOV >= 0, 'S1-pre cartas existen');
+      fresh(I0, I1); readyToAttack(0);
+      plant(0, 'gov1', GOV, 1);
+      hand22(0, CL);
+      E.playResource(0, CL, null);
+      ok(E._raw().players[0].resources.some(function (r) { return r.cardId === CL; }), 'S1a el chip entra en juego');
+      fresh(I0, I1); readyToAttack(0);
+      hand22(0, CL);
+      E.playResource(0, CL, null);
+      E.endTurn(); E.endTurn(); /* transicion real de turno: beginTurn directo es no-op en fase main */
+      ok(!E._raw().players[0].resources.some(function (r) { return r.cardId === CL; }), 'S1b sin Government groups se descarta');
+      ok(E._raw().groupDiscard.indexOf(CL) >= 0, 'S1c el chip va al descarte');
+    })();
+
+    /* S2 Midas Mill (385): link Coastal o Illuminati +2; anfitrion indebido rechaza. */
+    (function () {
+      var MM = idxOfId('midasmill'), COA = byAl35('coastal'), NOCO = byAl35('straight', ['coastal']);
+      ok(MM >= 0 && COA >= 0, 'S2-pre cartas existen');
+      fresh(I0, I1); readyToAttack(0);
+      plant(0, 'co2', COA, 1);
+      hand22(0, MM);
+      E.playResource(0, MM, 'co2');
+      var e2 = E._raw().players[0].resources.filter(function (r) { return r.cardId === MM; })[0];
+      ok(e2 && e2.linkedTo === 'co2', 'S2a enlazado al grupo Coastal');
+      fresh(I0, I1); readyToAttack(0);
+      hand22(0, MM);
+      E.playResource(0, MM, null);
+      var iu2 = null;
+      (function w(n) { if (iu2) return; if (n.cardId === E._raw().players[0].illumId) { iu2 = n; return; } (n.children || []).forEach(w); })(E._raw().players[0].structure);
+      ok(iu2 && (iu2.powerMods || []).some(function (p) { return p.name === 'Midas Mill' && p.v === 2; }), 'S2b modo Illuminati: powerMods +2');
+      if (NOCO >= 0) {
+        fresh(I0, I1); readyToAttack(0); /* S2b gasto la Resource del turno: estado limpio */
+        plant(0, 'nc2', NOCO, 1);
+        hand22(0, MM);
+        var m2 = tMsg(function () { E.playResource(0, MM, 'nc2'); });
+        ok(m2.indexOf('Coastal') >= 0, 'S2c anfitrion no Coastal rechazado');
+      }
+    })();
+
+    /* S3 Book of Kells (244): Illuminati +1, o Magic que actua 2 veces (sin destruir). */
+    (function () {
+      var BK = idxOfId('bookofkells'), MAG = byAl35('magic');
+      ok(BK >= 0 && MAG >= 0, 'S3-pre cartas existen');
+      fresh(I0, I1); readyToAttack(0);
+      hand22(0, BK);
+      E.playResource(0, BK, null);
+      var iu3 = null;
+      (function w(n) { if (iu3) return; if (n.cardId === E._raw().players[0].illumId) { iu3 = n; return; } (n.children || []).forEach(w); })(E._raw().players[0].structure);
+      ok(iu3 && (iu3.powerMods || []).some(function (p) { return p.name === 'Book of Kells' && p.v === 1; }), 'S3a modo Illuminati: powerMods +1');
+      fresh(I0, I1); readyToAttack(0);
+      plant(0, 'mg3', MAG, 1);
+      hand22(0, BK);
+      E.playResource(0, BK, 'mg3');
+      ok(E._raw().players[0].resources.some(function (r) { return r.cardId === BK && r.linkedTo === 'mg3'; }), 'S3b enlazado al grupo Magic');
+      E.endTurn(); E.endTurn(); /* transicion real de turno */
+      var nd3 = findN35('mg3');
+      ok(nd3.bonusAction && nd3.bonusAction.some(function (b) { return b.from === 'Book of Kells'; }), 'S3c ficha extra cada turno');
+      var T3 = byAl35('peaceful');
+      plant(1, 'tg3', T3, 1);
+      var m3 = tMsg(function () { E.declareAttack(0, 'destroy', { attackerUid: 'mg3', uid: 'tg3' }); });
+      ok(m3.indexOf('Book of Kells') >= 0 || m3.indexOf('Destruir') >= 0, 'S3d el anfitrion Magic no puede Intentar Destruir');
+    })();
+
+    /* S4 Celebrity Spokesman (051): floor de Poder 4; org indebido rechaza. */
+    (function () {
+      var SP = idxOfId('celebrityspokesman');
+      var PER = -1, ORG = -1;
+      var OPP = { peaceful: 'violent', violent: 'peaceful', liberal: 'conservative', conservative: 'liberal', weird: 'straight', straight: 'weird' };
+      C.cards.forEach(function (cc, ii) {
+        if (cc.type !== 'group') return;
+        if (cc.subtype === 'personality' && PER < 0) PER = ii;
+        if (cc.subtype === 'organization' && ORG < 0 && (cc.attributes || []).indexOf('secret') < 0 && (cc.attributes || []).indexOf('government') < 0) {
+          if (PER >= 0) {
+            var bad = false;
+            (C.cards[PER].alignments || []).forEach(function (a) { if ((cc.alignments || []).indexOf(OPP[a]) >= 0) bad = true; });
+            if (!bad) ORG = ii;
+          }
+        }
+      });
+      ok(SP >= 0 && PER >= 0 && ORG >= 0, 'S4-pre par Personality/Organization apto existe');
+      fresh(I0, I1); readyToAttack(0);
+      plant(0, 'per4', PER, 1);
+      plant(0, 'org4', ORG, 1);
+      hand22(0, SP);
+      E.playPlot(0, SP, null, { personalityUid: 'per4', orgUid: 'org4' });
+      var nd4 = findN35('per4');
+      ok(nd4.powerFloor === 4 && nd4.spokesmanOf === 'org4', 'S4a floor de Poder 4 anclado al org');
+      var lg4 = E._raw().log;
+      ok(lg4.slice(-3).some(function (l) { return String((l && l.msg) || l).indexOf('Poder sube a 4') >= 0; }), 'S4b log del floor aplicado');
+      var SEC = -1;
+      C.cards.forEach(function (cc, ii) { if (SEC < 0 && cc.type === 'group' && cc.subtype === 'organization' && ((cc.attributes || []).indexOf('secret') >= 0 || (cc.attributes || []).indexOf('government') >= 0)) SEC = ii; });
+      if (SEC >= 0) {
+        plant(0, 'sec4', SEC, 1);
+        hand22(0, SP);
+        var m4 = tMsg(function () { E.playPlot(0, SP, null, { personalityUid: 'per4', orgUid: 'sec4' }); });
+        ok(m4.indexOf('Secret') >= 0 || m4.indexOf('Government') >= 0, 'S4c org Secret/Government rechazado');
+      }
+    })();
+
+    /* S5 The Corporate Masters (286): flag + conteo doble en victoria. */
+    (function () {
+      var CM = idxOfId('thecorporatemasters');
+      var COR = -1;
+      C.cards.forEach(function (cc, ii) { if (COR < 0 && cc.type === 'group' && ((cc.alignments || []).indexOf('corporate') >= 0 || (cc.attributes || []).indexOf('corporate') >= 0) && (cc.power || 0) >= 4) COR = ii; });
+      ok(CM >= 0 && COR >= 0, 'S5-pre Corporate Power 4+ existe');
+      fresh(I0, I1); readyToAttack(0);
+      plant(0, 'cor5', COR, 1);
+      var before = String(E.getState().victoryStatus[0].progress.groups).split('/')[0];
+      hand22(0, CM);
+      E.playPlot(0, CM, null);
+      ok(E._raw().players[0].flags.corpMasters === true, 'S5a flag corpMasters activo');
+      var after = String(E.getState().victoryStatus[0].progress.groups).split('/')[0];
+      ok(Number(after) === Number(before) + 1, 'S5b el Corporate Power 4+ cuenta doble (' + before + ' -> ' + after + ')');
+    })();
+
+    /* S6 A Thousand Points of Light (331): la penalizacion por opuestos desaparece.
+       Atacante fuerte (texas P14 violent) vs objetivo debil (antiwaractivists R3
+       peaceful): sin el plot el total se lleva -4 por opuestos; con el plot, +4. */
+    (function () {
+      var LI = idxOfId('athousandpointsoflight');
+      var VIO = idxOfId('texas'); if (VIO == null) VIO = byAl35('violent');
+      var PEAC = idxOfId('antiwaractivists'); if (PEAC == null) PEAC = byAl35('peaceful');
+      ok(LI >= 0 && VIO >= 0 && PEAC >= 0, 'S6-pre par violento/pacifista existe');
+      fresh(I0, I1);
+      plant(0, 'vio6', VIO, 1);
+      plant(1, 'pea6', PEAC, 1);
+      readyToAttack(0);
+      var t1 = rollTotal35([0.01, 0.01], function () { E.declareAttack(0, 'control', { attackerUid: 'vio6', uid: 'pea6' }); });
+      fresh(I0, I1);
+      plant(0, 'vio6', VIO, 1);
+      plant(1, 'pea6', PEAC, 1);
+      readyToAttack(0);
+      hand22(0, LI);
+      E.playPlot(0, LI, null);
+      ok(E._raw().thousandLight === true, 'S6a flag global activo');
+      var t2 = rollTotal35([0.01, 0.01], function () { E.declareAttack(0, 'control', { attackerUid: 'vio6', uid: 'pea6' }); });
+      /* texas lleva VARIAS alineaciones: cada par opuesto aporta +/-4. El delta
+         esperado es 4 por CADA par opuesto entre atacante y objetivo. */
+      var OPP6 = { peaceful: 'violent', violent: 'peaceful', liberal: 'conservative', conservative: 'liberal', weird: 'straight', straight: 'weird' };
+      var opp6 = 0;
+      (C.cards[VIO].alignments || []).forEach(function (a) { if ((C.cards[PEAC].alignments || []).indexOf(OPP6[a]) >= 0) opp6++; });
+      ok(opp6 >= 1 && t1 != null && t2 != null && t2 === t1 + 4 * opp6, 'S6b sin penalizacion por opuestos (' + t1 + ' -> ' + t2 + ', ' + opp6 + ' pares opuestos)');
+    })();
+
+    /* S7 Solidarity (398): la Resistencia de todos se duplica. Mismo par fuerte/
+       debil que S6 para que ambas tiradas existan (total >= 1 en los dos mundos). */
+    (function () {
+      var SO = idxOfId('solidarity');
+      var VIO = idxOfId('texas'); if (VIO == null) VIO = byAl35('violent');
+      var PEAC = idxOfId('antiwaractivists'); if (PEAC == null) PEAC = -1;
+      if (PEAC < 0) { C.cards.forEach(function (cc, ii) { if (PEAC < 0 && cc.type === 'group' && (cc.alignments || []).indexOf('peaceful') >= 0 && typeof cc.resistance === 'number') PEAC = ii; }); }
+      ok(SO >= 0 && VIO >= 0 && PEAC >= 0, 'S7-pre existe');
+      var res7 = C.cards[PEAC].resistance;
+      fresh(I0, I1);
+      plant(0, 'vio7', VIO, 1);
+      plant(1, 'pea7', PEAC, 1);
+      readyToAttack(0);
+      var t1 = rollTotal35([0.01, 0.01], function () { E.declareAttack(0, 'control', { attackerUid: 'vio7', uid: 'pea7' }); });
+      fresh(I0, I1);
+      plant(0, 'vio7', VIO, 1);
+      plant(1, 'pea7', PEAC, 1);
+      readyToAttack(0);
+      hand22(0, SO);
+      E.playPlot(0, SO, null);
+      var nd7 = findN35('pea7');
+      ok(nd7.solidarityX2 === true, 'S7a flag en el nodo objetivo');
+      var t2 = rollTotal35([0.01, 0.01], function () { E.declareAttack(0, 'control', { attackerUid: 'vio7', uid: 'pea7' }); });
+      ok(t1 != null && t2 != null && t2 === t1 - res7, 'S7b Resistencia x2 en el ataque (' + t1 + ' -> ' + t2 + ', res=' + res7 + ')');
+    })();
+
+    /* S8 Flying Saucer (402): +10 defensivo linkeado; captura viaja; takeover extra sin link.
+       Atacante texas (P14 violent); Personality objetivo danquayle (P1/R1): en destroy
+       el objetivo defiende con Poder 1, asi que ambos mundos (13 y 3) tiran dados. */
+    (function () {
+      var FS = idxOfId('flyingsaucer');
+      var PER = idxOfId('danquayle'); if (PER == null) { C.cards.forEach(function (cc, ii) { if (PER == null && cc.type === 'group' && cc.subtype === 'personality') PER = ii; }); }
+      var ATQ = idxOfId('texas'); if (ATQ == null) ATQ = byAl35('violent');
+      ok(FS >= 0 && PER >= 0 && ATQ >= 0, 'S8-pre existe');
+      /* (a) differential +10 en defensa contra Intento de Destruir */
+      fresh(I0, I1);
+      plant(0, 'per8', PER, 1);
+      plant(1, 'at8', ATQ, 1);
+      readyToAttack(1);
+      var t1 = rollTotal35([0.01, 0.01], function () { E.declareAttack(1, 'destroy', { attackerUid: 'at8', uid: 'per8' }); });
+      fresh(I0, I1);
+      plant(0, 'per8', PER, 1);
+      plant(1, 'at8', ATQ, 1);
+      readyToAttack(0);
+      hand22(0, FS);
+      E.playResource(0, FS, 'per8');
+      ok(E._raw().players[0].resources.some(function (r) { return r.cardId === FS && r.linkedTo === 'per8'; }), 'S8a saucer enlazado a la Personality');
+      go35(1);
+      var t2 = rollTotal35([0.01, 0.01], function () { E.declareAttack(1, 'destroy', { attackerUid: 'at8', uid: 'per8' }); });
+      ok(t1 != null && t2 != null && t2 === t1 - 10, 'S8b +10 defensivo (' + t1 + ' -> ' + t2 + ')');
+      /* (b) captura: el saucer viaja con la Personality */
+      fresh(I0, I1);
+      plant(0, 'per8', PER, 1);
+      plant(1, 'at8', ATQ, 1);
+      readyToAttack(0);
+      hand22(0, FS);
+      E.playResource(0, FS, 'per8');
+      go35(1);
+      rollTotal35([0.01, 0.01], function () { E.declareAttack(1, 'control', { attackerUid: 'at8', uid: 'per8' }); });
+      ok(E._raw().players[1].resources.some(function (r) { return r.cardId === FS; }), 'S8c el saucer es capturado con su Personality');
+      /* (d) modo sin link: takeover extra de Resource pagando el Plot de cima */
+      fresh(I0, I1);
+      readyToAttack(0);
+      hand22(0, FS);
+      E.playResource(0, FS, null);
+      var RES = idxOfId('angelsfeather');
+      if (RES == null || RES < 0 || C.cards[RES].type !== 'resource') { RES = -1; C.cards.forEach(function (cc, ii) { if (RES < 0 && cc.type === 'resource') RES = ii; }); }
+      hand22(0, RES);
+      var pd0 = E._raw().plotDiscard.length;
+      E.saucerTakeover(0, RES, null);
+      ok(E._raw().players[0].resources.some(function (r) { return r.cardId === RES; }), 'S8d resource tomada sin dice');
+      ok(E._raw().plotDiscard.length === pd0 + 1, 'S8e el Plot de cima se paga al descarte');
+      var m8 = tMsg(function () { E.saucerTakeover(0, RES, null); });
+      ok(m8.indexOf('turno') >= 0 || m8.indexOf('extra') >= 0, 'S8f una vez por turno');
+    })();
+
+    S.forEach(function (p) { if (p[1]) { console.log('ok   - ' + p[0]); } else { failures.push(p[0]); console.log('FAIL - ' + p[0]); } });
+  })();
+
 
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');

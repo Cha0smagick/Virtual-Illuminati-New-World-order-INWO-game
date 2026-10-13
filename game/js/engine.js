@@ -451,6 +451,18 @@ function curPower(node){
      plan.md L3 para el poder en masa ("+2 a todos los Corporates"). */
   var pm=(node&&Array.isArray(node.powerMods))?node.powerMods:null;
   if(pm)for(var m=0;m<pm.length;m++){ if(typeof pm[m].v==='number') p+=pm[m].v; }
+  /* L35 — 394 Clipper Chip: "Increase the Power of all your Government groups
+     by 2". Escaneo dinamico de los recursos del DUENO del nodo: si el grupo es
+     Government y su dueno tiene el Clipper en juego, +2. 328 Celebrity
+     Spokesman: "The Power of the Personality is increased to 4" — piso
+     (solo sube, nunca baja). */
+  if(node&&node.uid){
+    var owCL=findOwnerPid(node.uid);
+    if(owCL>=0){var rsCL=S.players[owCL]?S.players[owCL].resources:null;
+      if(rsCL)for(var iCL=0;iCL<rsCL.length;iCL++){var ccCL=card(rsCL[iCL].cardId);
+        if(ccCL&&ccCL.effect&&ccCL.effect.kind==='clipper_chip'&&hasAttr(c,'government',node)){p+=2;break;}}}
+    if(node.powerFloor&&p<node.powerFloor)p=node.powerFloor;
+  }
   /* L3b — 234 Currency Speculation: "The Power ... of any one of your Bank
      groups is tripled for its next action or defense". El x3 va al NODO y se
      borra al gastar la ficha del grupo (su accion) o al defenderse de verdad.
@@ -542,6 +554,10 @@ function nodeResistance(node,cardObj){
      modo: atacar nunca usa la Resistencia, asi que sumarla siempre es correcto
      (interpretacion 2: el modo lo decide el contexto, no el jugador). */
   if(node&&node.timedBoost&&node.timedBoost.stat==='resistance'&&typeof node.timedBoost.v==='number')r+=node.timedBoost.v;
+  /* L35 — 393 Solidarity: "Double the Resistance of all groups." La marca vive
+     en el nodo (la fija el Plot al resolverse, para TODOS los grupos en juego)
+     y nodeResistance la multiplica mientras exista. */
+  if(node&&node.solidarityX2)r*=2;
   return r;
 }
 /* P1-015 — ¿Con qué Poder cuenta este nodo para una META?
@@ -576,7 +592,31 @@ function destroyDefenseBonus(node,isAssassination){
   var b=0;
   if(typeof node.destroyBonus==='number')b+=node.destroyBonus;
   if(isAssassination&&typeof node.assassinationBonus==='number')b+=node.assassinationBonus;
+  /* L35 — 411 Flying Saucer linkeado a una Personality: "+10 against any Attack
+     to Destroy or Assassination". Escaneo dinamico: el bonus vive mientras el
+     recurso siga enlazado al nodo; linkear, capturar o destruir no deja rastro
+     escrito en el nodo. Cubre las tres rutas de llamada (computeStrength,
+     instant assassination, ruta 8539). */
+  if(node.uid){
+    for(var qFS=0;qFS<S.players.length;qFS++){
+      var rrFS=S.players[qFS].resources||[];
+      for(var iFS=0;iFS<rrFS.length;iFS++){
+        var rcFS=card(rrFS[iFS].cardId);
+        if(rcFS&&rcFS.effect&&rcFS.effect.kind==='saucer_def'&&rrFS[iFS].linkedTo===node.uid)b+=10;
+      }
+    }
+  }
   return b;
+}
+/* L35 — primera entrada de recurso de pid cuyo kind coincida (o null). */
+function resEntryOf(pid,kind){
+  var rs=(pid>=0&&S.players[pid])?S.players[pid].resources:null;
+  if(!rs)return null;
+  for(var i=0;i<rs.length;i++){
+    var cc=card(rs[i].cardId);
+    if(cc&&cc.effect&&cc.effect.kind===kind)return rs[i];
+  }
+  return null;
 }
 function illuCard(pid){return card(S.players[pid].illumId);}
 function alignsOf(cardObj){return (cardObj&&cardObj.alignments)?cardObj.alignments:[];}
@@ -1276,7 +1316,22 @@ function publicState(){
   };
 }
 function countControlled(pl){
-  var n=0;walk(pl.structure,function(nd){if(countsForGoals(nd))n++;});return n;
+  var n=0;walk(pl.structure,function(nd){if(countsForGoals(nd))n++;});
+  /* L35 — 286 The Corporate Masters: "Any Corporate group with a Power of 4 or
+     more counts double toward your total number of groups". Recorrido segunda
+     pasada: los nodos calificados se cuentan OTRA vez (no toca eliminations ni
+     publicState distinto del progreso de victoria). */
+  if(pl.flags&&pl.flags.corpMasters){
+    walk(pl.structure,function(nd){
+      if(!countsForGoals(nd))return;
+      var cc=card(nd.cardId);
+      /* corporate puede venir como alineacion impresa o como atributo (hasAttr
+         solo mira atributos/nodos) */
+      var isCorp=hasAttr(cc,'corporate',nd)||((cc.alignments||[]).indexOf('corporate')>=0);
+      if(cc&&isCorp&&curPower(nd)>=4)n++;
+    });
+  }
+  return n;
 }
 function victoryStatus(){
   var out=[];
@@ -1906,6 +1961,24 @@ E.beginTurn=function(pid,isFirst){
     if(rS32.tokens==null)rS32.tokens=0;
     rS32.tokens++;
     log(cS32.name+' actua con dos fichas de accion este turno');
+  });
+  /* L35 — 379 Clipper Chip: "If you ever have no Government groups, you must
+     discard this Resource". Chequeo al inicio del turno del dueno. */
+  pl.resources=pl.resources.filter(function(rCP){
+    var cCP=card(rCP.cardId);
+    if(!cCP||!cCP.effect||cCP.effect.kind!=='clipper_chip')return true;
+    var hasGov=false;
+    walk(pl.structure,function(nd){if(countsForGoals(nd)){var nc=card(nd.cardId);if(nc&&hasAttr(nc,'government',nd))hasGov=true;}});
+    if(!hasGov){S.groupDiscard.push(rCP.cardId);log(cCP.name+': no te quedan Government groups — se descarta');return false;}
+    return true;
+  });
+  /* L35 — 244 Book of Kells: "if linked to a Magic group, it allows that group
+     to act twice per turn". Ficha extra al anfitrion cada turno (placeBonusAction
+     expira por turno, igual que las otras fuentes). */
+  pl.resources.forEach(function(rBK){
+    var cBK=card(rBK.cardId);
+    if(!cBK||!cBK.effect||cBK.effect.kind!=='kells_boost')return;
+    if(rBK.linkedTo&&findOwnerPid(rBK.linkedTo)===pid)placeBonusAction(pid,rBK.linkedTo,cBK.name);
   });
   /* P1-009: The Network — "You start your turn by drawing two Plot cards,
      rather than one." Se hace aquí (no como acción del jugador) porque es
@@ -2821,6 +2894,30 @@ function rejectUnverifiedCard(c){
   }
 }
 
+/* L35 — 402 Flying Saucer, modo sin link: "the Flying Saucer lets you make an
+   automatic takeover of one extra Resource card each turn, provided you discard
+   your top undrawn Plot card in exchange". Pagas el coste ANTES de colocar
+   (el motor nunca deja estado a medias). Una vez por turno. */
+E.saucerTakeover=function(pid,handIdx,parentUid){
+  requireOwnMain(pid);
+  twoPlayerGuard(pid);
+  var pl=S.players[pid];
+  if(pl.flags.saucerTaken===S.turn)throw new Error('Flying Saucer: ya hiciste el takeover extra de este turno');
+  if(pl.flags.autoTakeoverBlocked)throw new Error('El takeover automático está bloqueado este turno');
+  var rs=resEntryOf(pid,'saucer_def');
+  if(!rs)throw new Error('Flying Saucer: necesitas el Flying Saucer en juego');
+  if(rs.linkedTo&&rs.linkedTo!==pl.illumId)throw new Error('Flying Saucer: solo funciona sin link (enlazado defiende a su Personality)');
+  var c=card(handIdx);
+  if(!c||c.type!=='resource')throw new Error('Flying Saucer: solo puedes tomar una Resource de tu mano');
+  if(!S.plotDeck.length)throw new Error('Flying Saucer: el mazo de Plots esta vacio (no hay coste que pagar)');
+  S.plotDiscard.push(S.plotDeck.pop());
+  removeFromHand(pl,handIdx);
+  pl.resources.push({uid:'r'+(S.uidCounter++),cardId:handIdx,linkedTo:parentUid||pl.illumId,tokens:0});
+  pl.flags.saucerTaken=S.turn;
+  log('Flying Saucer: takeover automatico de '+c.name+' (pagaste el Plot de arriba del mazo)');
+  return true;
+};
+
 E.playResource=function(pid,handIdx,linkedToUid){
   requireOwnMain(pid);
   var pl=S.players[pid];
@@ -2971,6 +3068,72 @@ E.playResource=function(pid,handIdx,linkedToUid){
        * descarta: la carta permanece en la mano). */
       break;
     }
+    case 'clipper_chip':{
+      /* L35 — 379 Clipper Chip: colocacion no-op. Los hooks viven en curPower
+         (+2 a tus Government) y beginTurn (descarte si no queda ninguno). La
+         inmunidad a Phone Phreaks es vacua: Phone Phreaks no existe en este
+         motor (cero referencias) — declarado en el audit ##80. */
+      log(c.name+': tus Government groups ganan +2 de Poder');
+      break;
+    }
+    case 'midas_mill':{
+      /* L35 — 385 Midas Mill, modo A (sin link): "+2 de Power y Global Power de
+         tu Illuminati". Un solo powerMods en el nodo Illuminati alcanza porque
+         goalPower()==curPower() en este motor. Modo B (link a Coastal): el
+         "Global Power = regular Power" ya es la semantica estructural del motor
+         (P1-011), asi que el link solo se VALIDA. */
+      if(linkedToUid){
+        var ndMM=findNode(linkedToUid);
+        if(!ndMM)throw new Error(c.name+': el grupo anfitrion no existe');
+        var ccMM=card(ndMM.cardId);
+        if(!ccMM||!hasAttr(ccMM,'coastal',ndMM))throw new Error(c.name+': el anfitrion debe ser Coastal');
+        log(c.name+': enlazado a '+ccMM.name+' (su Poder Global ya es igual a su Poder regular en este motor)');
+      }else{
+        var iuMM=null;
+        walk(pl.structure,function(nMM){if(!iuMM&&nMM.cardId===pl.illumId)iuMM=nMM;});
+        if(!iuMM)throw new Error(c.name+': no encuentro tu nodo Illuminati');
+        iuMM.powerMods=iuMM.powerMods||[];
+        iuMM.powerMods.push({name:'Midas Mill',v:2});
+        log(c.name+': tu Illuminati gana +2 de Poder y Poder Global');
+      }
+      break;
+    }
+    case 'kells_boost':{
+      /* L35 — 244 Book of Kells, modo A (sin link): "+1 regular y Global del
+         Illuminati dueno". Modo B: enlazado a un grupo Magic TUYO — ficha extra
+         cada beginTurn y prohibicion de Intentos de Destruir (declareAttack). */
+      if(linkedToUid){
+        var ndBK=findNode(linkedToUid);
+        if(!ndBK||findOwnerPid(linkedToUid)!==pid)throw new Error(c.name+': enlazalo a un grupo tuyo');
+        var ccBK=card(ndBK.cardId);
+        if(!ccBK||!hasAttr(ccBK,'magic',ndBK))throw new Error(c.name+': el anfitrion debe ser Magic');
+        log(c.name+': enlazado a '+ccBK.name+' (actuara dos veces por turno)');
+      }else{
+        var iuBK=null;
+        walk(pl.structure,function(nBK){if(!iuBK&&nBK.cardId===pl.illumId)iuBK=nBK;});
+        if(!iuBK)throw new Error(c.name+': no encuentro tu nodo Illuminati');
+        iuBK.powerMods=iuBK.powerMods||[];
+        iuBK.powerMods.push({name:'Book of Kells',v:1});
+        log(c.name+': tu Illuminati gana +1 de Poder y Poder Global');
+      }
+      break;
+    }
+    case 'saucer_def':{
+      /* L35 — 402 Flying Saucer. Linkeado: +10 defensivo dinamico (hook en
+         destroyDefenseBonus) y viaja con la Personality capturada/dañada. Sin
+         link: habilita E.saucerTakeover (takeover extra de un Resource pagando
+         el Plot de arriba del mazo). */
+      if(linkedToUid){
+        var ndFS=findNode(linkedToUid);
+        if(!ndFS||findOwnerPid(linkedToUid)!==pid)throw new Error(c.name+': enlazalo a una Personality tuya');
+        var ccFS=card(ndFS.cardId);
+        if(!ccFS||ccFS.subtype!=='personality')throw new Error(c.name+': el anfitrion debe ser una Personality');
+        log(c.name+': enlazado a '+ccFS.name+' (+10 vs destruir/asesinar)');
+      }else{
+        log(c.name+': sin link — habilita un takeover extra de Resource por turno (paga el Plot de arriba del mazo)');
+      }
+      break;
+    }
     default: throw new Error('El Resource "' + c.name + '" tiene una mecanica (' + resFx + ') que E.playResource todavia no ejecuta');
   }
   pl.illumTokens--;pl.usedResourceThisTurn=true;
@@ -3099,6 +3262,10 @@ E.declareAttack=function(pid,type,target){
   if(att.paralyzed||att.zapped||att.devastated)throw new Error('Atacante no puede actuar');
   var attCard=card(att.cardId);
   if(!attCard)throw new Error('Atacante sin carta válida');
+  /* L35 — 244 Book of Kells: "allows that group to act twice per turn, as long
+     as neither action is an Attempt to Destroy". */
+  var rK35=resEntryOf(pid,'kells_boost');
+  if(rK35&&rK35.linkedTo===attackerUid&&type==='destroy')throw new Error('Book of Kells: el grupo Magic enlazado no puede realizar Intentos de Destruir');
 
   var A={id:'a'+(S.uidCounter++),pid:pid,type:type,
     attackerUid:attackerUid,aids:[],opposes:[],privilege:false,privilegeLocked:false,
@@ -3466,7 +3633,10 @@ function computeStrength(resolveMode){
     for(var i=0;i<attAligns.length;i++){ /* leader ±alignMag vs target aligns */
       if(tgtAligns.indexOf(attAligns[i])>=0)det.leaderMod+=alignMag;
       else{var isOpp=false;for(var j=0;j<tgtAligns.length;j++)if(isOpposite(attAligns[i],tgtAligns[j]))isOpp=true;
-        if(isOpp)det.leaderMod-=alignMag;}
+        /* L35 — 385 A Thousand Points of Light: "Opposed alignments now have no
+           effect either on attempts to control or attempts to destroy." El +4
+           por alineacion identica se conserva; solo se omite la penalizacion. */
+        if(isOpp&&!S.thousandLight)det.leaderMod-=alignMag;}
     }
     /* P1-009: bonus del Illuminati atacante (Discordian +4 a Weird, Gnomes +4 a
        Corporate/Bank, Adepts +6 a Magic). Se suma en leaderMod para no alterar la
@@ -3506,7 +3676,9 @@ function computeStrength(resolveMode){
     det.base=curPower(att);
     for(var k=0;k<attAligns.length;k++){
       if(tgtAligns.indexOf(attAligns[k])>=0)det.leaderMod-=alignMag;
-      else{for(var m=0;m<tgtAligns.length;m++)if(isOpposite(attAligns[k],tgtAligns[m]))det.leaderMod+=alignMag;}
+      /* L35 — 385: en destruir, el ajuste opuesto es un BONUS para el atacante;
+         A Thousand Points of Light tambien lo suprime. */
+      else{for(var m=0;m<tgtAligns.length;m++)if(isOpposite(attAligns[k],tgtAligns[m])&&!S.thousandLight)det.leaderMod+=alignMag;}
     }
     /* P1-011 (P0) — REGLA OFICIAL, inwo_rules_extracted.txt:561-580, "Attack to
        Destroy", punto (1): "Instead of rolling 'Power minus Resistance,' roll
@@ -4128,6 +4300,27 @@ function applyAttackResult(A,det,resultText){
     var parent=findNodeThatHas(S.players[owner].structure,A.targetUid);
     detach(parent,A.targetUid);
     tNode.tokens=1;
+    /* L35 — 402 Flying Saucer: "It is captured or destroyed if he is". El recurso
+       linkeado pasa al capturador junto con la Personality (antes de plantar el
+       subarbol, cuando `owner` todavia es el dueno original). */
+    S.players[owner].resources=S.players[owner].resources.filter(function(rFS){
+      var rcFS=card(rFS.cardId);
+      if(rcFS&&rcFS.effect&&rcFS.effect.kind==='saucer_def'&&rFS.linkedTo===A.targetUid){
+        S.players[pid].resources.push(rFS);
+        log('Flying Saucer capturado junto con su Personality');
+        return false;
+      }
+      return true;
+    });
+    /* L35 — 051 Celebrity Spokesman: "The bonus is lost if either card is
+       captured". Si la Personality capturada tenia floor del spokesman, se cae;
+       si el ORGANO objetivo era el spokesman de otra Personality mia, esa
+       Personality pierde el bonus tambien. */
+    S.players.forEach(function(qSP){
+      walk(qSP.structure,function(nSP){
+        if(nSP.spokesmanOf===A.targetUid||nSP.uid===A.targetUid){delete nSP.powerFloor;delete nSP.spokesmanOf;}
+      });
+    });
     placeCapturedSubtree(pid,tNode);
     log('¡'+S.players[pid].name+' toma CONTROL de '+card(tNode.cardId).name+' y todo su títere!');
   }else if(success&&A.type==='destroy'){        var jnH=(A.headJar&&findNode(A.headJar.nodeUid))?findNode(A.headJar.nodeUid):null;
@@ -4198,6 +4391,14 @@ function destroyGroup(byPid,targetUid,opts){
   S.players[owner].resources=S.players[owner].resources.filter(function(r){
     if(r.linkedTo===targetUid){S.groupDiscard.push(r.cardId);log('Recurso linkeado destruido');return false;}
     return true;
+  });
+  /* L35 — 051 Celebrity Spokesman: al destruirse cualquiera de los dos extremos
+     (la Personality o el Organization anfitrion del bonus), el floor de Poder
+     desaparece. Igual que en la captura: se limpia por nombre de anclaje. */
+  S.players.forEach(function(qSP2){
+    walk(qSP2.structure,function(nSP2){
+      if(nSP2.spokesmanOf===targetUid||nSP2.uid===targetUid){delete nSP2.powerFloor;delete nSP2.spokesmanOf;}
+    });
   });
   /* P1-013: un Plot linkeado a un grupo que sale de la mesa tambien se va, y
      el cambio que aplicaba desaparece con el grupo. Se recorre TODO el subarbol
@@ -6006,6 +6207,64 @@ case 'bulk_power':{
       log(c.name+': la defensa de tus '+hitT.length+' grupo(s) '+alT+' se triplica hasta el comienzo de tu proximo turno');
       lastResult={ok:true,defTriple:true,card:c.name,align:alT,mul:eff.mul||3,
                   untilTurn:untilT,groups:hitT};
+      break;}
+    case 'solidarity_x2':{
+      /* L35 — 398 Solidarity: "Double the Resistance of all groups". Efecto
+         global y PERMANENTE mientras la carta este en juego: se marca el nodo
+         (n.solidarityX2) y nodeResistance lo multiplica. */
+      var hitsS35=[];
+      S.players.forEach(function(qS35){
+        walk(qS35.structure,function(nS35){
+          if(!countsForGoals(nS35))return;
+          nS35.solidarityX2=true;hitsS35.push(card(nS35.cardId).name);
+        });
+      });
+      log(c.name+': la Resistencia de '+hitsS35.length+' grupo(s) se DUPLICA');
+      lastResult={ok:true,card:c.name,solidarity:true,groups:hitsS35};
+      break;}
+    case 'light_no_opposed':{
+      /* L35 — 331 A Thousand Points of Light: "Opposed alignments now have no
+         effect either on attempts to control or attempts to destroy". El flag
+         global lo consultan los DOS bucles de computeStrength (los +4 por
+         alineacion identica siguen). */
+      S.thousandLight=true;
+      log(c.name+': las alineaciones opuestas dejan de penalizar (control y destruir)');
+      lastResult={ok:true,card:c.name,thousandLight:true};
+      break;}
+    case 'corporate_double':{
+      /* L35 — 286 The Corporate Masters: "Any Corporate group with a Power of 4
+         or more counts double toward your total number of groups". Flag del
+         jugador; countControlled hace la segunda pasada. */
+      pl.flags.corpMasters=true;
+      log(c.name+': tus Corporate groups con Poder 4+ cuentan doble hacia tu total de grupos');
+      lastResult={ok:true,card:c.name,corpMasters:true};
+      break;}
+    case 'spokesman_link':{
+      /* L35 — 051 Celebrity Spokesman: DOS objetivos (Personality + Organization).
+         "The Power of the Personality is increased to 4" = floor, no override:
+         un Poder 6 se queda 6. "The bonus is lost if either card is captured or
+         destroyed" — limpieza en applyAttackResult (captura) y destroyGroup. */
+      var pUidS35=opts&&opts.personalityUid,oUidS35=opts&&opts.orgUid;
+      if(!pUidS35||!oUidS35)throw new Error(c.name+': faltan objetivos (personalityUid y orgUid)');
+      var ndP=findNode(pUidS35);
+      if(!ndP||findOwnerPid(pUidS35)!==pid)throw new Error(c.name+': la Personality debe ser tuya');
+      var ccP=card(ndP.cardId);
+      if(!ccP||ccP.subtype!=='personality')throw new Error(c.name+': el primer objetivo debe ser una Personality');
+      var ndO=findNode(oUidS35);
+      if(!ndO)throw new Error(c.name+': el Organization no existe');
+      var ccO=card(ndO.cardId);
+      if(!ccO||ccO.subtype!=='organization')throw new Error(c.name+': el segundo objetivo debe ser un Organization');
+      if(hasAttr(ccO,'secret',ndO))throw new Error(c.name+': el Organization no puede ser Secret');
+      if(hasAttr(ccO,'government',ndO))throw new Error(c.name+': el Organization no puede ser Government');
+      var alP=nodeAligns(ndP,ccP),alO=nodeAligns(ndO,ccO);
+      for(var iS35=0;iS35<alP.length;iS35++){
+        for(var jS35=0;jS35<alO.length;jS35++){
+          if(isOpposite(alP[iS35],alO[jS35]))throw new Error(c.name+': alineaciones opuestas entre '+ccP.name+' y '+ccO.name);
+        }
+      }
+      ndP.powerFloor=4;ndP.spokesmanOf=oUidS35;
+      log(c.name+': '+ccP.name+' queda enlazado a '+ccO.name+' (su Poder sube a 4 como minimo)');
+      lastResult={ok:true,card:c.name,personalityUid:pUidS35,orgUid:oUidS35};
       break;}
     case 'token_wither':{
       /* 418 World Hunger — DOS frases en una carta (interpretacion 6/7):

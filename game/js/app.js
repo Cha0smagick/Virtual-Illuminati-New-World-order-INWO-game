@@ -369,6 +369,13 @@ var CB = {
     try {
       E.playPlot(humanPid(), handIdx, targetUid, { mainCardId: mainCardId, otherCardId: otherCardId });
       after('⛓ Ataque combinado anunciado');
+    }     catch (e) { log('! ' + e.message); }
+  },
+  /* L35 — 051 Celebrity Spokesman: dos picks acumulados por route('spokesmanP'/'spokesmanO'). */
+  onPlaySpokesman: function (handIdx, personalityUid, orgUid) {
+    try {
+      E.playPlot(humanPid(), handIdx, null, { personalityUid: personalityUid, orgUid: orgUid });
+      after('🎤 Celebrity Spokesman enlazado');
     } catch (e) { log('! ' + e.message); }
   },
   onMoveGroup: function (uid, newParentUid) { E.moveGroup(E.getState().currentPid, uid, newParentUid); after('Grupo movido'); },

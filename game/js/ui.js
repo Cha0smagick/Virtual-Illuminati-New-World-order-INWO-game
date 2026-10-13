@@ -1298,7 +1298,12 @@ var NO_TARGET_KINDS = ['token_gift', 'attack_boost', 'deck_manip', 'turn_start_b
    * Plot es global) y el grupo que paga la accion lo elige `firstUsableAid` segun el
    * calificador impreso. Por eso van por "Jugar ya" igual que las de L25: si pidieran
    * objetivo, el jugador tendria que adivinar cual es. */
-  'peek_discard', 'peek_choice', 'deck_burn'];
+  'peek_discard', 'peek_choice', 'deck_burn',
+  /* L35 — 398 Solidarity (Resistencia global x2), 331 A Thousand Points of Light
+   * (quita la penalizacion por alineaciones opuestas) y 286 The Corporate Masters
+   * (flag del jugador en countControlled): los tres son efectos globales sin
+   * objetivo unico, mismo camino "Jugar ya". */
+  'solidarity_x2', 'light_no_opposed', 'corporate_double'];
 /* L8a — MENU DE MANIPULACION DE MAZO (361 Savings & Loan Scam, 388 The Big Sellout,
  * 411 Voodoo Economics).
  *
@@ -1624,6 +1629,8 @@ function route(uid) {
     else if (m === 'target') { clearSel(); CB.onDeclareAttack(d.type, d.attackerUid, { uid: uid }); }
     else if (m === 'moveTo') { clearSel(); CB.onMoveGroup(d.uid, uid); }
     else if (m === 'plotTarget') { clearSel(); CB.onPlayPlot(d.handIdx, uid); }
+    else if (m === 'spokesmanP') { sel = { mode: 'spokesmanO', data: { handIdx: d.handIdx, personalityUid: uid } }; log('🎤 PASO 2/2 — clic en el ORGANIZATION anfitrion (no Secret, no Government, sin alineaciones opuestas).'); render(curState); }
+    else if (m === 'spokesmanO') { clearSel(); CB.onPlaySpokesman(d.handIdx, d.personalityUid, uid); }
     else if (m === 'comboTarget') { clearSel(); CB.onPlayCombo(d.handIdx, uid, d.mainCardId, d.otherCardId); }
     /* L19 — 354 Reorganization. Dos clics por movimiento: primero el grupo que se
        mueve, despues su maeastre nuevo. Se acumulan en d.moves y se aplican
@@ -1855,6 +1862,13 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
   var reorgEntry = isReorg
     ? { label: '🔀 REORGANIZAR mi Power Structure (gasto 1 accion de mi Illuminati)', value: 'reorg' }
     : null;
+  /* L35 — 051 Celebrity Spokesman: DOS objetivos (Personality propia + Organization
+   * apto: no Secret, no Government, sin alineaciones opuestas). Dos pasos de
+   * seleccion via route('spokesmanP' → 'spokesmanO'). */
+  var isSpokesman = c.type === 'plot' && c.effect && c.effect.kind === 'spokesman_link';
+  var spokesmanEntry = isSpokesman
+    ? { label: '🎤 Enlazar una Personality a un Organization (Poder sube a 4)', value: 'spokesman' }
+    : null;
   /* L29 — 232 Crop Circles: acción de BUSCAR en un mazo. El motor cobra la ficha
    * del primer grupo Magic usable (o el que se clicó, patrón disaster_defence) y
    * valida el derecho de robo por mazo; aquí solo se elige CUÁL mazo. */
@@ -1877,6 +1891,7 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
     isCancelCard && !canCancel ? { label: 'ℹ ¿Cuándo sirve esta carta?', value: 'infoCancel' } : null,
     deckEntry,
     reorgEntry,
+    spokesmanEntry,
     cropEntry,
     upheavalEntry,
     comboEntry24,
@@ -1884,7 +1899,7 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
     scandalEntry,
     negateEntry22,
     negPassEntry22,
-    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck && !isTurnStart && !isReorg && !isUpheaval && !isCombo && !isNwoOne && !isScandal && !isNegator22 && !isCrop) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
+    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck && !isTurnStart && !isReorg && !isUpheaval && !isCombo && !isNwoOne && !isScandal && !isNegator22 && !isCrop && !isSpokesman) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
     c.type === 'plot' ? { label: 'ℹ ¿Cuándo sirven los Plots?', value: 'info' } : null,
     c.type !== 'illuminati' ? { label: '🗑 Descartar', value: 'discard' } : null,
     { label: 'Cancelar', value: null }
@@ -1976,6 +1991,12 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
       clearSel();
       sel = { mode: 'reorgFrom', data: { handIdx: ix, moves: [] } };
       log('🔀 354 Reorganization — PASO 1/2: clic en el grupo TUYO que quieres cambiar de maeastre. (0 movimientos = no se reorganiza nada, asi que hace falta al menos uno.)');
+      render(curState);
+    }
+    else if (v === 'spokesman') {
+      clearSel();
+      sel = { mode: 'spokesmanP', data: { handIdx: ix } };
+      log('🎤 051 Celebrity Spokesman — PASO 1/2: clic en la PERSONALITY TUYA que tendra un Poder minimo de 4.');
       render(curState);
     }
     else if (v === 'deckDraw') {
@@ -2090,6 +2111,15 @@ var EFF_SEC = {
 };
 /* Las 48 familias de mecanica que declara el dataset (45 mecánicas + 3 sinPseudo). */
 var KIND_ES = {
+  /* L35 — familia buffs estaticos/duales (P1-166). */
+  clipper_chip: '+2 de Poder a todos tus Government groups (descartado si no queda ninguno)',
+  midas_mill: 'Illuminati +2 de Poder y Poder Global, o enlazado a un grupo Coastal',
+  kells_boost: 'Illuminati +1, o enlazado a un grupo Magic que actuara dos veces por turno',
+  saucer_def: '+10 vs destruir/asesinar a su Personality, o takeover extra de Resource por turno',
+  spokesman_link: 'Enlaza tu Personality a un Organization apto: su Poder sube a 4',
+  corporate_double: 'Tus Corporate groups con Poder 4+ cuentan doble hacia tu total de grupos',
+  light_no_opposed: 'Las alineaciones opuestas dejan de afectar control y destruir',
+  solidarity_x2: 'Duplica la Resistencia de TODOS los grupos',
   attack_privilege: 'Modificar el privilegio de un ataque en curso',
   combo_attack: 'Combinar dos ataques del mismo tipo sobre el mismo objetivo',
   illu_special: 'Poder especial de Illuminati', align_edit: 'Editar alineamientos',
