@@ -2504,6 +2504,87 @@ E.alignsOfNode=function(uid){
  * ataque ABIERTO y sin resolver, que es exactamente lo que valida el guard.
  * Todo se valida ANTES de mutar (P1-033): si la carta no encaja, no se gasta la
  * accion ni se toca el ataque. */
+/* L36 — familia acciones de Resource (P1-167). Cancelar una accion YA TOMADA =
+ * devolver una ficha gastada este turno (target.tokens++ mientras
+ * tokens<tokensAtTurnStart); el recurso gasta SU ficha y queda usedThisTurn.
+ * Los bonos (+3/+4) entran por A.boosts durante un ataque abierto sin resolver,
+ * igual que Hammer of Thor / res_attack_bonus. */
+function l36CancelSpent(tgt,who){
+  if((tgt.tokens||0)>=(tgt.tokensAtTurnStart||0))throw new Error(who+': el objetivo no gasto ninguna ficha de accion este turno');
+  tgt.tokens=(tgt.tokens||0)+1;
+  log(who+': se cancela la accion de '+card(tgt.cardId).name+' (ficha devuelta)');
+}
+function l36Use(pid,opts,kind,fnCancel,fnBoost){
+  opts=opts||{};
+  var R=findResourceEntry(opts.resourceUid);
+  if(!R||R.pid!==pid)throw new Error('Resource no encontrado o no es tuyo');
+  var re=R.entry,rc=card(re.cardId);
+  if(!rc||!rc.effect||rc.effect.kind!==kind)throw new Error('Ese Resource no es la carta esperada');
+  var mode=opts.mode||'cancel';
+  if(mode==='cancel'){
+    var tgt=findNode(opts.targetUid);
+    if(!tgt)throw new Error(rc.name+': objetivo inexistente');
+    fnCancel(tgt,card(tgt.cardId));
+    re.tokens--;re.usedThisTurn=true;
+    return {ok:true,mode:'cancel'};
+  }
+  if(!S.attack||S.attack.resolved)throw new Error(rc.name+': no hay ataque en curso (el bono se aplica antes de tirar)');
+  var A=S.attack,at=findNode(A.targetUid),atc=at?card(at.cardId):null;
+  fnBoost(A,at,atc);
+  re.tokens--;re.usedThisTurn=true;
+  return {ok:true,mode:mode};
+}
+E.useBigfoot=function(pid,opts){
+  return l36Use(pid,opts,'bigfoot_cancel',
+    function(tgt,tc){ if(!hasAttr(tc,'media',tgt))throw new Error('Bigfoot: el objetivo debe ser un grupo Media'); l36CancelSpent(tgt,'Bigfoot'); },
+    function(A,at,atc){
+      if(A.type!=='control')throw new Error('Bigfoot: el +3 solo sirve en Intentos de Control');
+      if(!hasAttr(atc,'green',at))throw new Error('Bigfoot: el +3 solo sirve contra grupos Green');
+      A.boosts.push({name:'Bigfoot',v:3});
+      log('Bigfoot: +3 al Intento de Control contra '+atc.name);
+    });
+};
+E.useHallucinations=function(pid,opts){
+  return l36Use(pid,opts,'hallu_cancel',
+    function(tgt,tc){ if(!tc||tc.subtype!=='personality')throw new Error('Hallucinations: el objetivo debe ser un Personality'); l36CancelSpent(tgt,'Hallucinations'); },
+    function(A,at,atc){
+      if(A.type!=='destroy')throw new Error('Hallucinations: el +3 solo sirve en Intentos de Destruir');
+      if(!atc||atc.subtype!=='personality')throw new Error('Hallucinations: el +3 solo sirve contra Personalities');
+      A.boosts.push({name:'Hallucinations',v:3});
+      log('Hallucinations: +3 al Intento de Destruir contra '+atc.name);
+    });
+};
+E.useLochNess=function(pid,opts){
+  return l36Use(pid,opts,'ness_cancel',
+    function(tgt,tc){ if(!hasAttr(tc,'coastal',tgt))throw new Error('Loch Ness: el objetivo debe ser un lugar Coastal'); l36CancelSpent(tgt,'Loch Ness'); },
+    function(A,at,atc){
+      if(A.type==='disaster'){
+        if(!hasAttr(atc,'coastal',at))throw new Error('Loch Ness: el +4 solo sirve a Disasters contra lugares Coastal');
+        A.boosts.push({name:'Loch Ness',v:4});
+        log('Loch Ness: +4 al Disaster contra '+atc.name);
+        return;
+      }
+      if(A.type!=='destroy')throw new Error('Loch Ness: el +4 solo sirve en Intentos de Destruir o Disasters');
+      if(!hasAttr(atc,'coastal',at))throw new Error('Loch Ness: el +4 solo sirve contra lugares Coastal');
+      A.boosts.push({name:'Loch Ness',v:4});
+      log('Loch Ness: +4 al Intento de Destruir contra '+atc.name);
+    });
+};
+E.useFrogGod=function(pid,opts){
+  opts=opts||{};
+  var R=findResourceEntry(opts.resourceUid);
+  if(!R||R.pid!==pid)throw new Error('Resource no encontrado o no es tuyo');
+  var re=R.entry,rc=card(re.cardId);
+  if(!rc||!rc.effect||rc.effect.kind!=='froggod_interfere')throw new Error('Ese Resource no es The Frog God');
+  if((re.tokens||0)<1)throw new Error(rc.name+': sin ficha de accion');
+  if(!S.attack||S.attack.resolved)throw new Error(rc.name+': no hay ataque en curso');
+  var A=S.attack;
+  if(!A.privilege)throw new Error(rc.name+': el ataque NO es privilegiado (cualquiera puede intervenir igual)');
+  re.tokens--;re.usedThisTurn=true;
+  S.frogGodOpen={pid:pid,turn:S.turn};
+  log('The Frog God abre la interferencia para '+S.players[pid].name+' en el ataque privilegiado');
+  return {ok:true};
+};
 E.useAttackBonus=function(pid,opts){
   opts=opts||{};
   requireOwnMain(pid);
@@ -3134,6 +3215,13 @@ E.playResource=function(pid,handIdx,linkedToUid){
       }
       break;
     }
+    case 'bigfoot_cancel': case 'hallu_cancel': case 'ness_cancel': case 'froggod_interfere': {
+      /* L36 — 381 Bigfoot / 399 Hallucinations / 394 Loch Ness / 402 Frog God:
+       * colocacion no-op. La ficha de accion llega sola en beginTurn (el texto
+       * menciona "action"); el uso va por E.useBigfoot / E.useHallucinations /
+       * E.useLochNess / E.useFrogGod. */
+      break;
+    }
     default: throw new Error('El Resource "' + c.name + '" tiene una mecanica (' + resFx + ') que E.playResource todavia no ejecuta');
   }
   pl.illumTokens--;pl.usedResourceThisTurn=true;
@@ -3156,6 +3244,12 @@ E.playResource=function(pid,handIdx,linkedToUid){
     log(c.name+' queda enlazada: tiene una ACCION para destruir un Resource de un rival (tira 1d6)');
   }
   pl.resources.push(entry);
+  /* L36 — recursos con accion propia: el boton ▶ de la UI consulta entry.action
+   * (mismo contrato que suicide_squad/disaster_defence/res_attack_bonus). */
+  if (resFx==='bigfoot_cancel'||resFx==='hallu_cancel'||resFx==='ness_cancel'||resFx==='froggod_interfere'){
+    entry.action={kind:resFx};
+    log(c.name+' esta listo para actuar (gasta su ficha de accion)');
+  }
   /* L13 - 245 Earthquake Projector. Misma leccion del draw_hook y de L12: la
    * capacidad se registra DESPUES del push para poder dejar la referencia en la MISMA
    * entrada. Colocarla no ejecuta nada; su ACCION (+2 al Poder de cualquier ataque a
@@ -3478,7 +3572,12 @@ E.addSupport=function(pid,entry){
    * Es decir: el privilegio cierra la INTERFERENCIA (ayudar/oponerse), y el
    * mismo texto deja el rodadero abierto — por eso la ventana de P1-024 no se
    * mira para nada aqui. Solo quedan dentro atacante y defensor. */
-  if(A.privilege&&pid!==A.pid&&pid!==A.targetPid)
+  /* L36 — The Frog God (402): "You may interfere with a privileged attack, on
+   * either side." Tras usar la accion del idolo (E.useFrogGod), los grupos del
+   * dueno pueden intervenir en ESTE turno aunque el ataque sea privilegiado;
+   * cada grupo que interfiere gasta su propia ficha (regla impresa). */
+  if(A.privilege&&pid!==A.pid&&pid!==A.targetPid
+     &&!(S.frogGodOpen&&S.frogGodOpen.pid===pid&&S.frogGodOpen.turn===S.turn))
     throw new Error('El ataque es PRIVILEGIADO: solo el atacante y el defensor pueden participar');
   if(entry.selfDefend){
     if(pid!==A.targetPid||!A.targetUid)throw new Error('Solo un defensor de un grupo en juego puede autoprotegerse');
@@ -5147,7 +5246,7 @@ E.playPlot=function(pid,handIdx,targetUid,opts){
     * (inwo_rules_extracted.txt:924-931). El veto se comprueba dentro de cada case. */
   /* P1-024: las 6 cartas de la ventana de RODADERO dicen "Play immediately after
    any die roll" / "Play this card when…": solo tienen sentido fuera de turno. */
-var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='boost10'||eff0.kind==='power_increase'||eff0.kind==='resistance_increase'||eff0.kind==='messiah'||eff0.kind==='angst'||eff0.kind==='bodyguard'||eff0.kind==='talisman'||ROLL_KINDS.indexOf(eff0.kind)>=0
+var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='boost10'||eff0.kind==='power_increase'||eff0.kind==='resistance_increase'||eff0.kind==='messiah'||eff0.kind==='angst'||eff0.kind==='bodyguard'||eff0.kind==='talisman'||ROLL_KINDS.indexOf(eff0.kind)>=0||eff0.kind==='arewe_cancel' /* L36 — 248 Are We Having Fun Yet?: "Play this card at any time" */
   /* P1-026: Privileged Attack (346) dice "when you make any attack", o sea justo
      DENTRO de un ataque ajeno. P1-024/§37 lo veto por su cuenta el caso 'boost10'
      cuando la partida ya no es de nadie; aqui hace falta lo mismo pero el motor
@@ -6265,6 +6364,90 @@ case 'bulk_power':{
       ndP.powerFloor=4;ndP.spokesmanOf=oUidS35;
       log(c.name+': '+ccP.name+' queda enlazado a '+ccO.name+' (su Poder sube a 4 como minimo)');
       lastResult={ok:true,card:c.name,personalityUid:pUidS35,orgUid:oUidS35};
+      break;}
+    case 'massmurder_tokens':{
+      /* L36 — 313 Mass Murder: "Remove all Action tokens from any or all Media
+         groups in play (your choice)" + "cancel any just-taken actions". La UI
+         aplica el efecto a UN grupo Media elegido (cada copia, una eleccion;
+         declarado). El coste: ficha del Illuminati si hay, si no de un grupo
+         Media propio con Poder >= 5 (texto: "by your Illuminati, or by Media
+         group(s) with Power 5"). Cancelar lo ya tomado queda subsumido en la
+         retirada de fichas (declarado). */
+      var tgtM35=findNode(targetUid);
+      if(!tgtM35)throw new Error(c.name+': objetivo inexistente');
+      var tcM35=card(tgtM35.cardId);
+      if(!hasAttr(tcM35,'media',tgtM35))throw new Error(c.name+': el objetivo debe ser un grupo Media');
+      if(pl.illumTokens>=1){pl.illumTokens--;log(c.name+': pagas con la ficha de tu Illuminati');}
+      else{
+        var payM35=null;
+        walk(pl.structure,function(nP35){
+          if(payM35)return;
+          var ncP35=card(nP35.cardId);
+          if(ncP35&&hasAttr(ncP35,'media',nP35)&&(nP35.tokens||0)>=1&&curPower(nP35)>=5)payM35=nP35;
+        });
+        if(!payM35)throw new Error(c.name+': requiere accion de tu Illuminati o de grupo(s) Media con Poder 5');
+        spendGroupToken(pid,payM35.uid);
+        log(c.name+': pagas con la ficha de '+card(payM35.cardId).name);
+      }
+      tgtM35.tokens=0;
+      log(c.name+': '+tcM35.name+' se queda sin fichas de accion');
+      lastResult={ok:true,card:c.name,stripped:tcM35.name};
+      break;}
+    case 'miracledietplan':{
+      /* L36 — 397 Miracle Diet Plan: DOS efectos con DOS objetivos (grupo Science
+         propio + grupo rival). Coste: ficha de un grupo Media propio (texto:
+         "counts as an action for a Media group"). Veto durante ataque (texto:
+         "at any time except during an attack"). El triple usa `tripled` del nodo
+         (L3b): spendGroupToken lo consume al actuar el grupo. */
+      if(S.attack)throw new Error(c.name+': no se puede jugar durante un ataque');
+      var sU35=opts&&opts.scienceUid,rU35=opts&&opts.rivalUid;
+      if(!sU35||!rU35)throw new Error(c.name+': faltan objetivos (scienceUid y rivalUid)');
+      var ndS35=findNode(sU35);
+      if(!ndS35||findOwnerPid(sU35)!==pid)throw new Error(c.name+': el grupo Science debe ser tuyo');
+      var tcS35=card(ndS35.cardId);
+      if(!hasAttr(tcS35,'science',ndS35))throw new Error(c.name+': el anfitrion debe ser Science');
+      var ndR35=findNode(rU35);
+      if(!ndR35)throw new Error(c.name+': grupo rival inexistente');
+      if(findOwnerPid(rU35)===pid)throw new Error(c.name+': el grupo sin fichas debe ser de un RIVAL');
+      var tcR35=card(ndR35.cardId);
+      if(tcR35&&tcR35.type==='illuminati')throw new Error(c.name+': no afecta a un Illuminati');
+      var payD35=null;
+      walk(pl.structure,function(nD35){
+        if(payD35)return;
+        var ncD35=card(nD35.cardId);
+        if(ncD35&&hasAttr(ncD35,'media',nD35)&&(nD35.tokens||0)>=1)payD35=nD35;
+      });
+      if(!payD35)throw new Error(c.name+': requiere la accion de un grupo Media tuyo');
+      spendGroupToken(pid,payD35.uid);
+      ndS35.tripled={stat:'power',from:c.name};
+      ndR35.tokens=0;
+      log(c.name+': '+tcS35.name+' triplica su Poder en su proxima accion; '+tcR35.name+' pierde sus fichas');
+      lastResult={ok:true,card:c.name,tripled:tcS35.name,stripped:tcR35.name};
+      break;}
+    case 'arewe_cancel':{
+      /* L36 — 248 Are We Having Fun Yet? (INSTANTANEA): "One action or
+         special-ability use of the target is canceled" = devolver una ficha
+         gastada este turno. Coste declarado: la ficha del PRIMERO de tus grupos
+         con Poder > Poder del objetivo y ficha disponible (el texto permite la
+         suma de varios; el motor usa uno, deterministico). */
+      var tgtA35=findNode(targetUid);
+      if(!tgtA35)throw new Error(c.name+': objetivo inexistente');
+      var tcA35=card(tgtA35.cardId);
+      var payA35=null;
+      walk(pl.structure,function(nA35){
+        if(payA35)return;
+        var ncA35=card(nA35.cardId);
+        if(ncA35&&(nA35.tokens||0)>=1&&curPower(nA35)>curPower(tgtA35))payA35=nA35;
+      });
+      if(!payA35)throw new Error(c.name+': requiere la accion de grupo(s) con Poder total mayor que el objetivo');
+      spendGroupToken(pid,payA35.uid);
+      if((tgtA35.tokens||0)<(tgtA35.tokensAtTurnStart||0)){
+        tgtA35.tokens=(tgtA35.tokens||0)+1;
+        log(c.name+': se cancela la accion de '+tcA35.name+' (ficha devuelta)');
+      }else{
+        log(c.name+': '+tcA35.name+' no habia gastado fichas este turno (la carta se juega igual)');
+      }
+      lastResult={ok:true,card:c.name,canceled:tcA35.name};
       break;}
     case 'token_wither':{
       /* 418 World Hunger — DOS frases en una carta (interpretacion 6/7):

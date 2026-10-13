@@ -378,6 +378,34 @@ var CB = {
       after('🎤 Celebrity Spokesman enlazado');
     } catch (e) { log('! ' + e.message); }
   },
+  /* L36 — acciones de Resource (P1-167). */
+  onUseL36Cancel: function (resUid, kind, targetUid) {
+    try {
+      var pid = E.getState().currentPid, o = { resourceUid: resUid, mode: 'cancel', targetUid: targetUid };
+      if (kind === 'bigfoot_cancel') E.useBigfoot(pid, o);
+      else if (kind === 'hallu_cancel') E.useHallucinations(pid, o);
+      else E.useLochNess(pid, o);
+      after('🚫 Accion del objetivo cancelada (ficha devuelta)');
+    } catch (e) { log('! ' + e.message); }
+  },
+  onUseBigfootBoost: function (resUid) {
+    try { E.useBigfoot(E.getState().currentPid, { resourceUid: resUid, mode: 'boost' }); after('✊ Bigfoot: +3 al Intento de Control'); } catch (e) { log('! ' + e.message); }
+  },
+  onUseHallucinationsBoost: function (resUid) {
+    try { E.useHallucinations(E.getState().currentPid, { resourceUid: resUid, mode: 'boost' }); after('💀 Hallucinations: +3 al Intento de Destruir'); } catch (e) { log('! ' + e.message); }
+  },
+  onUseLochNessBoost: function (resUid, mode) {
+    try { E.useLochNess(E.getState().currentPid, { resourceUid: resUid, mode: mode || 'destroy' }); after('🌊 Loch Ness: bono aplicado al ataque'); } catch (e) { log('! ' + e.message); }
+  },
+  onUseFrogGod: function (resUid) {
+    try { E.useFrogGod(E.getState().currentPid, { resourceUid: resUid }); after('🐸 The Frog God abre la interferencia'); } catch (e) { log('! ' + e.message); }
+  },
+  onPlayDietPlan: function (handIdx, scienceUid, rivalUid) {
+    try {
+      E.playPlot(humanPid(), handIdx, null, { scienceUid: scienceUid, rivalUid: rivalUid });
+      after('💊 Miracle Diet Plan aplicado');
+    } catch (e) { log('! ' + e.message); }
+  },
   onMoveGroup: function (uid, newParentUid) { E.moveGroup(E.getState().currentPid, uid, newParentUid); after('Grupo movido'); },
   onEndTurn: function () { endTurnFlow(); }
 };

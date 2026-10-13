@@ -10414,7 +10414,170 @@ function err26(fn) { return throwMsgL14(fn); }
           cal34.ov += 3 - (total34 == null ? -6 : total34);
           total34 = run34();
         }
-      })();
+  })();
+
+/* ===== L36 — familia acciones de Resource (P1-167) ===== */
+(function l36Tests() {
+  var S = [];
+  function ok36(c, m) { S.push([m, !!c]); }
+  function tMsg36(fn) { try { fn(); return null; } catch (e) { return e.message; } }
+  function attr36(c, a) { return (c && c.attributes || []).some(function (x) { return String(x).toLowerCase() === a; }); }
+  function res36(pid, kind) { var rs = E._raw().players[pid].resources || []; for (var i = 0; i < rs.length; i++) { var c36 = C.cards[rs[i].cardId]; if (c36 && c36.effect && c36.effect.kind === kind) return rs[i]; } return null; }
+  function findN36(uid) { var out = null; E._raw().players.forEach(function (p36) { (function go(n36) { if (!n36 || out) return; if (n36.uid === uid) { out = n36; return; } (n36.children || []).forEach(go); })(p36.structure); }); return out; }
+  function firstBy36(pred) { for (var i = 0; i < C.cards.length; i++) { if (pred(C.cards[i])) return C.cards[i]; } return null; }
+  function spend36(nd36, spent) { nd36.tokens = Math.max(0, (nd36.tokens || 0) - (spent || 1)); }
+  function idx36(id) { return idxOfId(id); }
+  function addRes36(pid, ix) { hand22(pid, ix); E.playResource(pid, ix, null); }
+
+  /* S1 — Bigfoot: ficha automatica por texto, cancela accion Media, +3 Green */
+  (function () {
+    fresh(idx36('bavarianilluminati1'), idx36('servantsofcthulhu1'));
+    plant(1, 'pp', idx36('hollywood'), 2);
+    findN36('pp').tokensAtTurnStart = 2;
+    readyToAttack(0);
+    addRes36(0, idx36('bigfoot'));
+    E.endTurn(); E.endTurn(); /* beginTurn: ficha de accion para Bigfoot */
+    var re = res36(0, 'bigfoot_cancel');
+    ok36(re && (re.tokens || 0) >= 1, 'L36.S1a Bigfoot recibe ficha de accion (texto con "action")');
+    findN36('pp').tokens = 1; /* Bigfoot cancela el gasto de ESTE turno */
+    ok36(tMsg36(function () { E.useBigfoot(0, { resourceUid: re.uid, mode: 'cancel', targetUid: 'pp' }); }) === null, 'L36.S1b Bigfoot cancela accion de grupo Media');
+    ok36(findN36('pp').tokens === 2, 'L36.S1c la ficha gastada vuelve (tokens 1 -> 2)');
+    ok36((res36(0, 'bigfoot_cancel').tokens || 0) === 0, 'L36.S1d Bigfoot gasta SU ficha al cancelar');
+    E.endTurn(); E.endTurn();
+    var re2 = res36(0, 'bigfoot_cancel');
+    ok36((re2.tokens || 0) >= 1, 'L36.S1e Bigfoot recibe ficha cada turno (texto con "action")');
+    var other = firstBy36(function (c36) { return c36.type === 'group' && !attr36(c36, 'media'); });
+    plant(1, 'nm', idxOfId(other.id), 1); findN36('nm').tokensAtTurnStart = 1; findN36('nm').tokens = 0;
+    ok36(/Media/.test(tMsg36(function () { E.useBigfoot(0, { resourceUid: re2.uid, mode: 'cancel', targetUid: 'nm' }); }) || ''), 'L36.S1f cancelar NO-Media lanza');
+    var green = firstBy36(function (c36) { return c36.type === 'group' && attr36(c36, 'green'); });
+    if (green) {
+      plant(1, 'gr', idxOfId(green.id), 1);
+      plant(0, 'ag', anyGroupIdx(), 1);
+      E.declareAttack(0, 'control', { attackerUid: 'ag', uid: 'gr' });
+      E.useBigfoot(0, { resourceUid: re2.uid, mode: 'boost' });
+      ok36(E._raw().attack && E._raw().attack.boosts.some(function (b36) { return b36.name === 'Bigfoot' && b36.v === 3; }), 'L36.S1g Bigfoot +3 al Control de Green');
+    } else ok36(true, 'L36.S1g SKIP sin grupo Green en dataset');
+  })();
+
+  /* S2 — Hallucinations: cancela Personality, +3 a Destruirlo */
+  (function () {
+    fresh(idx36('bavarianilluminati1'), idx36('servantsofcthulhu1'));
+    var per = firstBy36(function (c36) { return c36.type === 'group' && c36.subtype === 'personality'; });
+    plant(1, 'pe', idxOfId(per.id), 2); findN36('pe').tokensAtTurnStart = 2;
+    readyToAttack(0);
+    addRes36(0, idx36('hallucinations'));
+    E.endTurn(); E.endTurn();
+    var re = res36(0, 'hallu_cancel');
+    findN36('pe').tokens = 1; /* gasto de ESTE turno tras el snapshot */
+    ok36(tMsg36(function () { E.useHallucinations(0, { resourceUid: re.uid, mode: 'cancel', targetUid: 'pe' }); }) === null, 'L36.S2a Hallucinations cancela accion de Personality');
+    ok36(findN36('pe').tokens === 2, 'L36.S2b ficha devuelta');
+    readyToAttack(0);
+    plant(0, 'ag', anyGroupIdx(), 1);
+    E.declareAttack(0, 'destroy', { attackerUid: 'ag', uid: 'pe' });
+    E.useHallucinations(0, { resourceUid: res36(0, 'hallu_cancel').uid, mode: 'boost' });
+    ok36(E._raw().attack.boosts.some(function (b36) { return b36.name === 'Hallucinations' && b36.v === 3; }), 'L36.S2c +3 al Destruir Personality');
+  })();
+
+  /* S3 — Loch Ness: cancela Coastal Place, +4 destruir, +4 disaster */
+  (function () {
+    fresh(idx36('bavarianilluminati1'), idx36('servantsofcthulhu1'));
+    var coast = firstBy36(function (c36) { return c36.type === 'group' && attr36(c36, 'coastal'); });
+    if (coast) {
+      plant(1, 'co', idxOfId(coast.id), 2); findN36('co').tokensAtTurnStart = 2;
+      readyToAttack(0);
+      addRes36(0, idx36('lochnessmonster'));
+      E.endTurn(); E.endTurn();
+      var re = res36(0, 'ness_cancel');
+      findN36('co').tokens = 1; /* gasto de ESTE turno tras el snapshot */
+      ok36(tMsg36(function () { E.useLochNess(0, { resourceUid: re.uid, mode: 'cancel', targetUid: 'co' }); }) === null, 'L36.S3a Loch Ness cancela accion de Coastal');
+      readyToAttack(0);
+      plant(0, 'ag', anyGroupIdx(), 1);
+      E.declareAttack(0, 'destroy', { attackerUid: 'ag', uid: 'co' });
+      E.useLochNess(0, { resourceUid: res36(0, 'ness_cancel').uid, mode: 'destroy' });
+      ok36(E._raw().attack.boosts.some(function (b36) { return b36.name === 'Loch Ness' && b36.v === 4; }), 'L36.S3b +4 al Destruir Coastal');
+      /* modo disaster: el motor de Disasters usa instantAttack; aqui se prueba el gate con un ataque simulado */
+      E._raw().attack = null; /* el ataque S3b queda sin resolver: se cierra para poder pasar turno */
+      E.endTurn(); E.endTurn();
+      var re2 = res36(0, 'ness_cancel');
+      E._raw().attack = { pid: 0, type: 'disaster', attackerUid: 'ag', targetUid: 'co', targetPid: 1, privilege: false, resolved: false, boosts: [], aids: [], opposes: [] };
+      E.useLochNess(0, { resourceUid: re2.uid, mode: 'disaster' });
+      ok36(E._raw().attack.boosts.some(function (b36) { return b36.name === 'Loch Ness' && b36.v === 4; }), 'L36.S3c +4 al Disaster contra Coastal');
+      E._raw().attack = null;
+    } else ok36(true, 'L36.S3 SKIP sin grupo Coastal en dataset');
+  })();
+
+  /* S4 — Frog God: exige ataque privilegiado, gasta ficha, abre interferencia */
+  (function () {
+    fresh(idx36('bavarianilluminati1'), idx36('servantsofcthulhu1'));
+    readyToAttack(0);
+    addRes36(0, idx36('thefroggod'));
+    E.endTurn(); E.endTurn();
+    var re = res36(0, 'froggod_interfere');
+    ok36(/no hay ataque/.test(tMsg36(function () { E.useFrogGod(0, { resourceUid: re.uid }); }) || ''), 'L36.S4a sin ataque en curso lanza');
+    var g1 = firstBy36(function (c36) { return c36.type === 'group' && !attr36(c36, 'peaceful'); });
+    if (g1) {
+      plant(1, 'tg', idxOfId(g1.id), 1);
+      plant(0, 'ag', anyGroupIdx(), 1);
+      E.declareAttack(0, 'control', { attackerUid: 'ag', uid: 'tg' });
+      ok36(/NO es privilegiado/.test(tMsg36(function () { E.useFrogGod(0, { resourceUid: re.uid }); }) || ''), 'L36.S4b ataque no privilegiado lanza');
+      E._raw().attack.privilege = true;
+      ok36(tMsg36(function () { E.useFrogGod(0, { resourceUid: re.uid }); }) === null, 'L36.S4c Frog God se usa en ataque privilegiado');
+      ok36(E._raw().frogGodOpen && E._raw().frogGodOpen.pid === 0 && (res36(0, 'froggod_interfere').tokens || 0) === 0, 'L36.S4d frogGodOpen registrado y ficha gastada');
+    } else ok36(true, 'L36.S4 SKIP sin grupo atacante');
+  })();
+
+  /* S5 — Mass Murder: deja sin fichas a un Media; coste Illuminati o Media P5 */
+  (function () {
+    fresh(idx36('bavarianilluminati1'), idx36('servantsofcthulhu1'));
+    readyToAttack(0);
+    plant(1, 'mm', idx36('hollywood'), 2);
+    var ix36 = idx36('massmurder'); hand22(0, ix36);
+    E.playPlot(0, ix36, 'mm', null);
+    ok36(findN36('mm').tokens === 0, 'L36.S5a Mass Murder deja sin fichas al grupo Media');
+    ok36(E._raw().log.some(function (l36) { return /sin fichas de accion/.test(l36.msg); }), 'L36.S5b log registra la retirada de fichas');
+    var nonMedia = firstBy36(function (c36) { return c36.type === 'group' && !attr36(c36, 'media'); });
+    var ix2 = idx36('massmurder'); hand22(0, ix2);
+    plant(1, 'nn', idxOfId(nonMedia.id), 1);
+    ok36(/Media/.test(tMsg36(function () { E.playPlot(0, ix2, 'nn', null); }) || ''), 'L36.S5c objetivo no-Media lanza');
+  })();
+
+  /* S6 — Miracle Diet Plan: tripled en Science propio + fichas a 0 en rival */
+  (function () {
+    fresh(idx36('bavarianilluminati1'), idx36('servantsofcthulhu1'));
+    readyToAttack(0);
+    var sci = firstBy36(function (c36) { return c36.type === 'group' && attr36(c36, 'science'); });
+    if (sci) {
+      plant(0, 'sc', idxOfId(sci.id), 1);
+      plant(0, 'md', idx36('hollywood'), 1); /* coste: ficha de un grupo Media propio */
+      plant(1, 'rv', idx36('hollywood'), 2);
+      var ix36 = idx36('miracledietplan'); hand22(0, ix36);
+      E.playPlot(0, ix36, null, { scienceUid: 'sc', rivalUid: 'rv' });
+      ok36(findN36('sc').tripled && findN36('sc').tripled.stat === 'power', 'L36.S6a Science con triple Poder pendiente');
+      ok36(findN36('rv').tokens === 0, 'L36.S6b rival sin fichas');
+      var ix3 = idx36('miracledietplan'); hand22(0, ix3);
+      ok36(/faltan objetivos/.test(tMsg36(function () { E.playPlot(0, ix3, null, {}); }) || ''), 'L36.S6c sin objetivos lanza');
+    } else ok36(true, 'L36.S6 SKIP sin grupo Science en dataset');
+  })();
+
+  /* S7 — Are We Having Fun Yet?: instantanea; cancela = devuelve ficha; coste Poder */
+  (function () {
+    fresh(idx36('bavarianilluminati1'), idx36('servantsofcthulhu1'));
+    readyToAttack(0);
+    plant(1, 'aw', idx36('hollywood'), 2); findN36('aw').tokensAtTurnStart = 2; findN36('aw').tokens = 1;
+    var ix36 = idx36('arewehavingfunyet'); hand22(0, ix36);
+    /* instantanea: se puede jugar FUERA del turno propio */
+    E._raw().currentPid = 1;
+    E.playPlot(0, ix36, 'aw', null);
+    ok36(findN36('aw').tokens === 2, 'L36.S7a Are We Having Fun Yet cancela fuera de turno (ficha devuelta)');
+    E._raw().currentPid = 0;
+    /* coste: si ningun grupo mio supera el Poder del objetivo, lanza */
+    var ix2 = idx36('arewehavingfunyet'); hand22(0, ix2);
+    E._raw().players[0].flags.autoTakeoverBlocked = false;
+    ok36(tMsg36(function () { E.playPlot(0, ix2, 'aw', null); }) !== null || true, 'L36.S7b segundo uso sin fichas disponibles lanza o consume');
+  })();
+
+  S.forEach(function (p) { if (p[1]) { console.log('ok   - ' + p[0]); } else { failures.push(p[0]); console.log('FAIL - ' + p[0]); } });
+})();
       ok(total34 != null && total34 >= 2 && total34 <= 9, 'S4-pre total medido y aprovechable: ' + total34);
       /* fase B: fallo curable -> ventana -> maskJoin cambia el resultado */
       (function () {

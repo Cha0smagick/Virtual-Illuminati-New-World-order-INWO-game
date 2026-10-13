@@ -2977,6 +2977,43 @@ const L35_FX = {
 const L35_FXN = {};
 for (const k35 in L35_FX) { L35_FXN[norm(k35)] = L35_FX[k35]; }
 
+/* L36 — familia acciones de Resource (P1-167). Recursos con accion propia
+ * (Bigfoot, Hallucinations, Loch Ness, Frog God) y Plots de tokens
+ * (Mass Murder, Miracle Diet Plan) + el instantaneo Are We Having Fun Yet?.
+ * Textos verbatim de cards.js (los recortes de OCR del pie se recortan). */
+const L36_FX = {
+  'Bigfoot': {
+    kind: 'bigfoot_cancel',
+    t: "Bigfoot Bigfoot has the power to distract any Media group by showing himself in public. By using his action, Bigfoot can cancel any action taken by any Media group. Bigfoot also gives a +3 on any attempt to control a Green group. Unique"
+  },
+  'Hallucinations': {
+    kind: 'hallu_cancel',
+    t: "Hallucinations You control a powerful telepath. Unfortunately, shes totally insanebut she can act once per turn, to project her madness into the mind of any Personality and cancel their action, or to give +3 on any attempt to destroy them. ACTION"
+  },
+  'Loch Ness Monster': {
+    kind: 'ness_cancel',
+    t: "Loch Ness Monster I saw it! It was there! Call the papers! Call the National Guard! Sell my stocks! By using Nessies action, you can cancel the action of any Coastal Place, or add +4 to any attempt to destroy a Coastal Place, or add +4 to the power of a Disaster aimed at such a place. Unique"
+  },
+  'The Frog God': {
+    kind: 'froggod_interfere',
+    t: "The Frog God The idols are both frightening and silly, and no one knows why the Masters keep them around You may interfere with a privileged attack, on either side. No other players may interfere unless they use other special cards. Interference is an action for each group that interferes, and use of this card is an action for the Frog God. Magic Artifact"
+  },
+  'Are We Having Fun Yet': {
+    kind: 'arewe_cancel',
+    t: "Are We Having “Boss, this secret society stuff is getting ofd. Can't we [8 take a vacation or start a band or something?” Play this card at any time. It requires an action by group(s) with total Power greater than that of the target. One action or special-ability use of the target is canceled"
+  },
+  'Mass Murder': {
+    kind: 'massmurder_tokens',
+    t: "Mass Murder A shocking news story distracts all media, and by the time it runs its course, the public has forgotten all aboutwhat WAS that issue, anyway? Remove all Action tokens from any or all Media groups in play (your choice), and cancel any just-taken actions by Media groups. Play this card at any time. It requires an action by your Illuminati, or by Media group(s) with Power 5. Requires Media or Illuminati Action"
+  },
+  'Miracle Diet Plan': {
+    kind: 'miracledietplan',
+    t: "Miracle Diet Plan Over 2,000,000 copies sold! Get your today! This card may be played at any time except during an attack, and counts as an action for a Media group. Triple the Power of the next action of any one Science group you now control. And remove the Action token(s) from any rival group (except an Illuminati), as the weird chemicals in your diet pills turn their minds to jelly Requires Media Action"
+  }
+};
+const L36_FXN = {};
+for (const k36 in L36_FX) { L36_FXN[norm(k36)] = L36_FX[k36]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
@@ -3266,7 +3303,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

@@ -649,6 +649,13 @@ function chipAct(r) {
   /* L23 - las 3 cartas que dan un bono a un ataque ya declarado: el boton es el
    * mismo generico de L13 (chipMini lo dibuja si chipAct devuelve algo). */
   if (md === 'atk_type_bonus' || md === 'any_destroy' || md === 'target_attrs') return 'attackbonus';
+  /* L36 — recursos con accion propia (P1-167): el dispatcher de data-act abre
+   * el menu de modos (cancelar / bono) y la eleccion de objetivo va por sel. */
+  var kA36 = rc && rc.effect && rc.effect.kind;
+  if (kA36 === 'bigfoot_cancel') return 'bfuse';
+  if (kA36 === 'hallu_cancel') return 'halluse';
+  if (kA36 === 'ness_cancel') return 'nessuse';
+  if (kA36 === 'froggod_interfere') return 'froguse';
   return null;
 }
 function chipCard(r) { return cardOf(r.cardId); }
@@ -1631,6 +1638,9 @@ function route(uid) {
     else if (m === 'plotTarget') { clearSel(); CB.onPlayPlot(d.handIdx, uid); }
     else if (m === 'spokesmanP') { sel = { mode: 'spokesmanO', data: { handIdx: d.handIdx, personalityUid: uid } }; log('🎤 PASO 2/2 — clic en el ORGANIZATION anfitrion (no Secret, no Government, sin alineaciones opuestas).'); render(curState); }
     else if (m === 'spokesmanO') { clearSel(); CB.onPlaySpokesman(d.handIdx, d.personalityUid, uid); }
+    else if (m === 'resCancelPick') { clearSel(); CB.onUseL36Cancel(d.resUid, d.kind, uid); }
+    else if (m === 'dietS') { sel = { mode: 'dietR', data: { handIdx: d.handIdx, scienceUid: uid } }; log('💊 PASO 2/2 — clic en el grupo RIVAL que se queda sin fichas.'); render(curState); }
+    else if (m === 'dietR') { clearSel(); CB.onPlayDietPlan(d.handIdx, d.scienceUid, uid); }
     else if (m === 'comboTarget') { clearSel(); CB.onPlayCombo(d.handIdx, uid, d.mainCardId, d.otherCardId); }
     /* L19 — 354 Reorganization. Dos clics por movimiento: primero el grupo que se
        mueve, despues su maeastre nuevo. Se acumulan en d.moves y se aplican
@@ -1869,6 +1879,12 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
   var spokesmanEntry = isSpokesman
     ? { label: '🎤 Enlazar una Personality a un Organization (Poder sube a 4)', value: 'spokesman' }
     : null;
+  /* L36 — 397 Miracle Diet Plan: DOS objetivos (grupo Science propio + grupo
+   * rival sin fichas). Dos clics via route('dietS' → 'dietR'). */
+  var isDiet = c.type === 'plot' && c.effect && c.effect.kind === 'miracledietplan';
+  var dietEntry = isDiet
+    ? { label: '💊 Triplicar un Science tuyo y dejar sin fichas a un rival', value: 'diet' }
+    : null;
   /* L29 — 232 Crop Circles: acción de BUSCAR en un mazo. El motor cobra la ficha
    * del primer grupo Magic usable (o el que se clicó, patrón disaster_defence) y
    * valida el derecho de robo por mazo; aquí solo se elige CUÁL mazo. */
@@ -1892,6 +1908,7 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
     deckEntry,
     reorgEntry,
     spokesmanEntry,
+    dietEntry,
     cropEntry,
     upheavalEntry,
     comboEntry24,
@@ -1899,7 +1916,7 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
     scandalEntry,
     negateEntry22,
     negPassEntry22,
-    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck && !isTurnStart && !isReorg && !isUpheaval && !isCombo && !isNwoOne && !isScandal && !isNegator22 && !isCrop && !isSpokesman) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
+    (!isGoal && c.type === 'plot' && !isCancelCard && !isRollCard && !isEventCard && !isDeck && !isTurnStart && !isReorg && !isUpheaval && !isCombo && !isNwoOne && !isScandal && !isNegator22 && !isCrop && !isSpokesman && !isDiet) ? { label: plotNeedsTarget(c) ? '✨ Jugar Plot ahora' : '✨ Jugar ya (afecta a todos)', value: 'plot' } : null,
     c.type === 'plot' ? { label: 'ℹ ¿Cuándo sirven los Plots?', value: 'info' } : null,
     c.type !== 'illuminati' ? { label: '🗑 Descartar', value: 'discard' } : null,
     { label: 'Cancelar', value: null }
@@ -1997,6 +2014,12 @@ if (sel.mode === 'handPick' && sel.data.for === 'resource') {
       clearSel();
       sel = { mode: 'spokesmanP', data: { handIdx: ix } };
       log('🎤 051 Celebrity Spokesman — PASO 1/2: clic en la PERSONALITY TUYA que tendra un Poder minimo de 4.');
+      render(curState);
+    }
+    else if (v === 'diet') {
+      clearSel();
+      sel = { mode: 'dietS', data: { handIdx: ix } };
+      log('💊 397 Miracle Diet Plan — PASO 1/2: clic en tu grupo SCIENCE (triplicara su Poder en su proxima accion).');
       render(curState);
     }
     else if (v === 'deckDraw') {
@@ -2120,6 +2143,14 @@ var KIND_ES = {
   corporate_double: 'Tus Corporate groups con Poder 4+ cuentan doble hacia tu total de grupos',
   light_no_opposed: 'Las alineaciones opuestas dejan de afectar control y destruir',
   solidarity_x2: 'Duplica la Resistencia de TODOS los grupos',
+  /* L36 — familia acciones de Resource (P1-167). */
+  bigfoot_cancel: 'Cancela una accion de un grupo Media, o +3 a Control de grupos Green',
+  hallu_cancel: 'Cancela la accion de un Personality, o +3 a Destruirlo',
+  ness_cancel: 'Cancela la accion de un lugar Coastal, +4 a Destruirlo o +4 a su Disaster',
+  froggod_interfere: 'Abre la interferencia de tus grupos en un ataque privilegiado',
+  arewe_cancel: 'Cancela una accion/uso especial del objetivo (instantaneo)',
+  massmurder_tokens: 'Deja sin fichas de accion a un grupo Media',
+  miracledietplan: 'Triplica el Poder de la proxima accion de un Science tuyo y deja sin fichas a un grupo rival',
   attack_privilege: 'Modificar el privilegio de un ataque en curso',
   combo_attack: 'Combinar dos ataques del mismo tipo sobre el mismo objetivo',
   illu_special: 'Poder especial de Illuminati', align_edit: 'Editar alineamientos',
@@ -2841,6 +2872,34 @@ function bindEvents() {
      * el +2 se aplica al proximo Disaster o ataque a destruir que se anuncie. */
     else if (act === 'disasterboost') { var dbUid = btn.getAttribute('data-uid'); if (!dbUid) return; CB.onUseDisasterBoost(dbUid); }
     else if (act === 'attackbonus') { var abUid = btn.getAttribute('data-uid'); if (!abUid) return; CB.onUseAttackBonus(abUid); }
+    /* L36 — acciones de Resource (P1-167): menu de modos; 'cancel' pide objetivo
+     * via sel.resCancelPick, los bonos se aplican al ataque abierto. */
+    else if (act === 'bfuse' || act === 'halluse' || act === 'nessuse') {
+      var l36Uid = btn.getAttribute('data-uid'); if (!l36Uid) return;
+      var l36Name = act === 'bfuse' ? 'Bigfoot' : act === 'halluse' ? 'Hallucinations' : 'Loch Ness';
+      var l36Opts = [{ label: '🚫 Cancelar una accion ya tomada del objetivo', value: 'cancel' }];
+      if (act === 'bfuse') l36Opts.push({ label: '✊ +3 al Intento de Control contra un grupo Green', value: 'boost' });
+      if (act === 'halluse') l36Opts.push({ label: '💀 +3 al Intento de Destruir contra un Personality', value: 'boost' });
+      if (act === 'nessuse') {
+        l36Opts.push({ label: '💥 +4 al Intento de Destruir contra un lugar Coastal', value: 'destroy' });
+        l36Opts.push({ label: '🌊 +4 al Disaster contra un lugar Coastal', value: 'disaster' });
+      }
+      prompt('▶ ' + l36Name + ' — ¿que haces con su accion?', l36Opts).then(function (vm) {
+        if (!vm) return;
+        if (vm === 'cancel') {
+          sel = { mode: 'resCancelPick', data: { resUid: l36Uid, kind: act === 'bfuse' ? 'bigfoot_cancel' : act === 'halluse' ? 'hallu_cancel' : 'ness_cancel' } };
+          log('🎯 PASO 2/2 — clic en el grupo objetivo de la cancelacion.');
+          render(curState);
+        } else {
+          try {
+            if (act === 'bfuse') CB.onUseBigfootBoost(l36Uid);
+            else if (act === 'halluse') CB.onUseHallucinationsBoost(l36Uid);
+            else CB.onUseLochNessBoost(l36Uid, vm);
+          } catch (e) { log('⚠ ' + e.message); }
+        }
+      });
+    }
+    else if (act === 'froguse') { var fgUid = btn.getAttribute('data-uid'); if (!fgUid) return; CB.onUseFrogGod(fgUid); }
     else if (act === 'gadgetuse') { var guUid = btn.getAttribute('data-uid'); if (!guUid) return; CB.onUseGadgetAction(guUid); }
     else if (act === 'resdestroypick') { sel = { mode: 'resDestroy', data: { resUid: btn.getAttribute('data-uid') } }; log('🎯 Paso 2/2 — elige el Resource objetivo y luego TIRA EL DADO.'); render(curState); }
     else if (act === 'resdestroycancel') { clearSel(); render(curState); }
