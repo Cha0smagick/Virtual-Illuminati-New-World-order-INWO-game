@@ -803,7 +803,7 @@ E.newGame=function(configs){
   S={
       phase:'setup',turn:0,round:1,currentPid:-1,turnCompleted:false,
     players:[],groupDeck:[],plotDeck:[],groupDiscard:[],plotDiscard:[],
-    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,pendingAlignEdit:null,pendingResDestroy:null,pendingLyhf:null,pendingNegation:null,returnTurnTo:null,alignRetro:{},l18extra:{},alignRule:null,log:[],uidCounter:100,winner:null,
+    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,pendingAlignEdit:null,pendingResDestroy:null,pendingLyhf:null,pendingMask:null,pendingLips:null,pendingNegation:null,returnTurnTo:null,alignRetro:{},l18extra:{},alignRule:null,log:[],uidCounter:100,winner:null,
   goneForever:[],
     config:{goalCount:(configs.goalCount||12)},
     lastRoll:null
@@ -1213,7 +1213,9 @@ function publicState(){
       rivalPid:S.pendingLyhf.rivalPid,
       rivalName:S.players[S.pendingLyhf.rivalPid]?S.players[S.pendingLyhf.rivalPid].name:'?',
       cards:S.pendingLyhf.cards.map(function(ixL){return {idx:ixL,name:card(ixL).name,type:card(ixL).type};})}:null,
- /* L8b: la ventana de robo es INTIMA del jugador que roba (233/367 eligen entre sus
+
+    pendingLips:S.pendingLips?{byPid:S.pendingLips.byPid,byName:S.players[S.pendingLips.byPid].name,attackerName:S.pendingLips.attackerName,targetName:S.pendingLips.targetName}:null,
+    pendingMask:S.pendingMask?{byPid:S.pendingMask.byPid,byName:S.players[S.pendingMask.byPid].name,side:S.pendingMask.side,pw:S.pendingMask.pw,total:S.pendingMask.total}:null, /* L8b: la ventana de robo es INTIMA del jugador que roba (233/367 eligen entre sus
   * propias cartas), al reves que pendingPeek que es de un rival. Se proyecta
   * entero solo para el dueno: los indices de carta son de SU mazo y ningun otro
   * jugador debe verlos. El hook ya sabe que las cartas son las que el mira. */
@@ -2934,6 +2936,41 @@ E.playResource=function(pid,handIdx,linkedToUid){
        * E.weatherMod. */
       break;
     }
+    case 'angel_reroll':{
+      /* L34 — 193 Angel's Feather: se linkea a un grupo Peaceful propio. */
+      var ndAF=findNode(linkedToUid);
+      if(!ndAF||findOwnerPid(linkedToUid)!==pid)throw new Error(c.name+': enlazalo a un grupo tuyo');
+      var ccAF=card(ndAF.cardId);
+      if(!nodeAligns(ndAF,ccAF).some(function(aAF){return aAF==='peaceful';}))throw new Error(c.name+': el anfitrion debe ser Peaceful');
+      log(c.name+': enlazado — los fallos de control del grupo y los exitos contra tus Peaceful se repiten');
+      break;
+    }
+    case 'mask_join':{
+      /* L34 — 237 Death Mask: se linkea a un grupo Magic propio; su accion entra
+       * en ataques tras los dados (ventana pendingMask). */
+      var ndDM=findNode(linkedToUid);
+      if(!ndDM||findOwnerPid(linkedToUid)!==pid)throw new Error(c.name+': enlazalo a un grupo tuyo');
+      var ccDM=card(ndDM.cardId);
+      if(!hasAttr(ccDM,'magic',ndDM))throw new Error(c.name+': el anfitrion debe ser Magic');
+      log(c.name+': enlazado — el grupo Magic puede entrar en cualquier ataque tras los dados');
+      break;
+    }
+    case 'thor_boost':{
+      /* L34 — 274 Hammer of Thor: colocacion no-op; la accion vive en E.thorBoost. */
+      break;
+    }
+    case 'rogue_boost':{
+      /* L34 — 358 Rogue Boomer: colocacion no-op; pasiva en declareAttack y el
+       * +10 de una sola vez en E.rogueBoom. */
+      break;
+    }
+    case 'bronze_keep':{
+      /* L34 — 389 The Bronze Head: colocacion no-op. P1-165: su clausula ("no se
+       * descarta al fallar el takeover de una carta de la propia mano") YA es el
+       * comportamiento por defecto de este motor (applyAttackResult handTarget no
+       * descarta: la carta permanece en la mano). */
+      break;
+    }
     default: throw new Error('El Resource "' + c.name + '" tiene una mecanica (' + resFx + ') que E.playResource todavia no ejecuta');
   }
   pl.illumTokens--;pl.usedResourceThisTurn=true;
@@ -3129,7 +3166,10 @@ E.declareAttack=function(pid,type,target){
   }
   var rusTgtCom32=(tcr32&&hasAttr(tcr32,'communist',rusT32))||false;
   var rusAttCom32=hasAttr(attCard,'communist',att);
-  if(A.type==='control'&&tcr32&&tcr32.effect&&tcr32.effect.kind==='communist_bonuses'&&rusAttCom32){
+  /* P1-165: el +4 directo es del ATACANTE Rusia (kind communist_bonuses) contra
+   * un grupo Communist (la version anterior exigia que el OBJETIVO fuera Rusia:
+   * invertido, y dejaba el +4 directo sin aplicarse nunca). */
+  if(A.type==='control'&&attCard&&attCard.effect&&attCard.effect.kind==='communist_bonuses'&&rusTgtCom32){
     A.boosts.push({name:'Russia',v:4});
     log('Russia: +4 por el control directo de un grupo Communist');
   }
@@ -3142,6 +3182,26 @@ E.declareAttack=function(pid,type,target){
        gets a +4 for direct control of Russia" */
     A.boosts.push({name:'Russia',v:4});
     log('Russia: +4 para el grupo Communist que la controla directamente');
+  }
+  /* L34 — pasivas de la familia ataque: Clone Arrangers (+4 control Personality),
+   * Rogue Boomer (+5 control Nation si el dueno tiene el Resource) y
+   * Sweepstakes Prize (+4 permanente de la Personality linkeada). */
+  var attA34=findNode(A.attackerUid);
+  var acA34=attA34?card(attA34.cardId):null;
+  var tnA34=findNode(A.targetUid);
+  var tcA34=tnA34?card(tnA34.cardId):null;
+  var ownA34=S.players[pid];
+  if(A.type==='control'&&tnA34&&tcA34&&tcA34.subtype==='personality'&&acA34&&acA34.effect&&acA34.effect.kind==='clone_revive'){
+    A.boosts.push({name:'Clone Arrangers',v:4});
+    log('Clone Arrangers: +4 al control de la Personality (reemplazo con clon)');
+  }
+  if(A.type==='control'&&tnA34&&tcA34&&hasAttr(tcA34,'nation',tnA34)&&ownA34.resources&&ownA34.resources.some(function(rb34){var cb34=card(rb34.cardId);return cb34&&cb34.effect&&cb34.effect.kind==='rogue_boost';})){
+    A.boosts.push({name:'Rogue Boomer',v:5});
+    log('Rogue Boomer: +5 al control de una Nation (intimidacion)');
+  }
+  if(A.type==='control'&&attA34&&ownA34.linkedPlots&&ownA34.linkedPlots.some(function(lp34){var lc34=card(lp34.cardId);return lp34.linkedTo===A.attackerUid&&lc34&&lc34.effect&&lc34.effect.kind==='sweepstakes_link';})){
+    A.boosts.push({name:'Sweepstakes Prize',v:4});
+    log('Sweepstakes Prize: +4 permanente de la Personality rica');
   }
   /* Only spend the attacker token after every target validation has passed. */
   /* P1-022: la raiz Illuminati SI puede atacar (regla oficial
@@ -3908,6 +3968,76 @@ E.resolveAttack=function(){
     A.det=det;A.resultText=result;
     S.lastResultText=(A.type==='control'?'CONTROLAR':'DESTRUIR')+' → '+result+
       (det.roll!=null?(' · tiraste '+det.roll+' · necesitabas ≤'+det.total):(' · fuerza '+det.total));    var defW3=findOwnerPid(A.targetUid);
+    /* L34 — Angel's Feather: re-roll OBLIGATORIO ("The second roll counts").
+     * (a) el grupo linkeado fallo un Attack to Control; (b) exito de cualquier
+     * tipo contra un grupo Peaceful del dueno de un Angel. Una sola vez por ataque. */
+    if(!A.angelRerolled&&!forcedFail&&roll!=null&&roll!==11&&roll!==12){
+      var angA34=null,rrA34=(S.players[A.pid].resources||[]);
+      for(var qA34=0;qA34<rrA34.length;qA34++){var rcA34=card(rrA34[qA34].cardId);if(rcA34&&rcA34.effect&&rcA34.effect.kind==='angel_reroll'&&rrA34[qA34].linkedTo===A.attackerUid){angA34=rrA34[qA34];break;}}
+      var angD34=null;
+      if(defW3!=null&&S.players[defW3]){var rrD34=(S.players[defW3].resources||[]);for(var qD34=0;qD34<rrD34.length;qD34++){var rcD34=card(rrD34[qD34].cardId);if(rcD34&&rcD34.effect&&rcD34.effect.kind==='angel_reroll'){angD34=rrD34[qD34];break;}}}
+      var tnR34=findNode(A.targetUid);
+      var tcR34=tnR34?card(tnR34.cardId):null;
+      var reR34=null;
+      if(angA34&&A.type==='control'&&roll>total)reR34='att';
+      else if(angD34&&tnR34&&tcR34&&nodeAligns(tnR34,tcR34).some(function(aR34){return aR34==='peaceful';})&&roll<=total)reR34='def';
+      if(reR34){
+        A.angelRerolled=true;
+        roll=roll2d6();
+        det.roll=roll;
+        if(roll===11||roll===12)result='FALLO automático (11-12 siempre fallan)';
+        else if(roll<=total)result='ÉXITO';
+        else result='fallo';
+        A.resultText=result;
+        log("Angel's Feather: el ataque se repite — la segunda tirada ("+roll+") cuenta");
+      }
+    }
+    /* L34 — Read My Lips: exito (no Assassination: el gate lo marca) contra una
+     * Personality propia -> el defensor decide si la carta convierte el exito en fallo. */
+    if(result==='ÉXITO'&&!A.neutralTarget&&!A.handTarget&&defW3!=null&&S.players[defW3]&&roll!=null){
+      var tnL34=findNode(A.targetUid);
+      var tcL34=tnL34?card(tnL34.cardId):null;
+      if(tnL34&&tcL34&&tcL34.subtype==='personality'&&!A.headJar){
+        var hl34=S.players[defW3].hand;
+        for(var z34=0;z34<hl34.length;z34++){
+          var hc34=card(hl34[z34]);
+          if(hc34&&hc34.effect&&hc34.effect.kind==='lips_undo'){
+            var anL34=findNode(A.attackerUid);
+            S.pendingLips={byPid:defW3,roll:roll,total:total,det:det,attackerName:anL34?card(anL34.cardId).name:'?',targetName:tcL34.name};
+            log('Read My Lips: '+S.players[defW3].name+' puede anular el ataque exitoso (E.resolveLips(pid,use))');
+            return publicState();
+          }
+        }
+      }
+    }
+    /* L34 — Death Mask: el grupo Magic linkeado puede entrar tras los dados
+     * ("if it could have entered normally"). Solo abre la decision si su Poder
+     * podria CAMBIAR el resultado (simplificacion declarada en plan.md SS84). */
+    if(!S.pendingLips&&!S.pendingMask&&!forcedFail&&roll!=null&&roll!==11&&roll!==12&&!A.neutralTarget&&!A.handTarget){
+      var mE34=null;
+      for(var q34=0;q34<S.players.length&&!mE34;q34++){
+        var rr34=S.players[q34].resources||[];
+        for(var w34=0;w34<rr34.length;w34++){
+          var rc34=card(rr34[w34].cardId);
+          if(!(rc34&&rc34.effect&&rc34.effect.kind==='mask_join'))continue;
+          var hs34=findNode(rr34[w34].linkedTo);
+          if(!hs34||findOwnerPid(hs34.uid)!==q34)continue;
+          if(!(hs34.tokens>=1)||noTokensFlag(hs34))continue;
+          var pw34=curPower(hs34);
+          if(pw34<=0)continue;
+          var side34=(q34===A.pid)?'att':((q34===defW3)?'def':null);
+          if(!side34)continue;
+          if(side34==='att'&&roll>total&&roll<=total+pw34)mE34={pid:q34,side:'att',pw:pw34};
+          else if(side34==='def'&&roll<=total&&roll>total-pw34)mE34={pid:q34,side:'def',pw:pw34};
+          if(mE34)break;
+        }
+      }
+      if(mE34){
+        S.pendingMask={byPid:mE34.pid,side:mE34.side,pw:mE34.pw,roll:roll,total:total,det:det};
+        log('Death Mask: '+S.players[mE34.pid].name+' puede unir a su grupo Magic ('+(mE34.side==='att'?'+':'-')+mE34.pw+' sobre el total '+total+') (E.maskJoin/E.maskPass)');
+        return publicState();
+      }
+    }
     applyAttackResult(A,det,result);
     /* L33 — hooks de destruccion-proteccion (Sucked no cuenta; WW3 y Necro si). */
     var anF=findNode(A.attackerUid);
@@ -4892,7 +5022,7 @@ en otro sitio"); que sean 11 cartas con un kind es exactamente lo que el
      * la ventana pendingTurnStart, E.endTurn ya ha movido currentPid al rival que va a
      * empezar, asi que requireOwnMain(actor) lanzaria "No es tu turno" y la carta seria
      * INJUGABLE. El timing real lo valida su case (ventana abierta + forPid distinto del
-     * actor), no esta lista. L14.c razono al reves y por eso el bug solo se vio al medir. */||eff0.kind==='turn_control'||eff0.kind==='turn_start_block'||eff0.kind==='turn_start_lock'||eff0.kind==='stay_dead'||eff0.kind==='counterspell'||eff0.kind==='head_jar'
+     * actor), no esta lista. L14.c razono al reves y por eso el bug solo se vio al medir. */||eff0.kind==='turn_control'||eff0.kind==='turn_start_block'||eff0.kind==='turn_start_lock'||eff0.kind==='stay_dead'||eff0.kind==='counterspell'||eff0.kind==='head_jar'||eff0.kind==='censor_boost'||eff0.kind==='rich_boost'
   /* L31: 366 Senate Investigating Committee comparte el timing de 405 (la
      ventana pendingTurnStart que abre E.endTurn); 300 Let's You and Him Fight
      imprime "Play this card at any time" y cobra la accion del ILUMINADO de
@@ -6064,6 +6194,67 @@ case 'bulk_power':{
                      rival: (tOwner >= 0 ? S.players[tOwner].name : null),
                      stripped: stAll.length, groups: stAll };
       break;}
+    case 'censor_boost':{
+      /* L34 — 214 Censorship: "played by any Straight, Conservative or Government
+       * group which makes (or aids) an attack against a Media group. It gives an
+       * extra +15 Power to that attack and makes it Privileged." El grupo evaluado
+       * es el ATACANTE (opts.aidUid para aids: laguna declarada en plan.md SS84). */
+      if(!S.attack||S.attack.resolved)throw new Error(c.name+': necesita un ataque ya declarado');
+      var AC34=S.attack;
+      if(AC34.pid!==pid)throw new Error(c.name+': solo puedes reforzar tu propio ataque');
+      var anC34=findNode(AC34.attackerUid);
+      var acC34=anC34?card(anC34.cardId):null;
+      if(!anC34||!acC34)throw new Error(c.name+': el atacante ya no existe');
+      if(!nodeAligns(anC34,acC34).some(function(aC34){return aC34==='straight'||aC34==='conservative'||aC34==='government';}))
+        throw new Error(c.name+': el atacante debe ser Straight, Conservative o Government');
+      var tnC34=findNode(AC34.targetUid);
+      var tcC34=tnC34?card(tnC34.cardId):null;
+      if(!tcC34||!hasAttr(tcC34,'media',tnC34))
+        throw new Error(c.name+': el objetivo debe ser un grupo Media');
+      AC34.boosts.push({name:'Censorship',v:15});
+      AC34.privilege=true;
+      log(c.name+': +15 al ataque y lo vuelve Privilegiado — "We\'re closing you down."');
+      lastResult={ok:true,card:c.name,kind:'censor_boost',bonus:15};
+      break;}
+    case 'rich_boost':{
+      /* L34 — 247 Eat the Rich!: igual que Censorship pero con grupo Media
+       * atacante, objetivo con Power 6 o mas, y +10. */
+      if(!S.attack||S.attack.resolved)throw new Error(c.name+': necesita un ataque ya declarado');
+      var AR34=S.attack;
+      if(AR34.pid!==pid)throw new Error(c.name+': solo puedes reforzar tu propio ataque');
+      var anR34=findNode(AR34.attackerUid);
+      var acR34=anR34?card(anR34.cardId):null;
+      if(!acR34||!hasAttr(acR34,'media',anR34))
+        throw new Error(c.name+': el atacante debe ser un grupo Media');
+      var tnR34b=findNode(AR34.targetUid);
+      var tcR34b=tnR34b?card(tnR34b.cardId):null;
+      if(!tcR34b)throw new Error(c.name+': el objetivo ya no existe');
+      if(curPower(tnR34b)<6)throw new Error(c.name+': el objetivo necesita Power 6 o mas (tiene '+curPower(tnR34b)+')');
+      AR34.boosts.push({name:'Eat the Rich!',v:10});
+      AR34.privilege=true;
+      log(c.name+': +10 al ataque y lo vuelve Privilegiado — "blaming the wealthy and powerful for everything"');
+      lastResult={ok:true,card:c.name,kind:'rich_boost',bonus:10};
+      break;}
+    case 'sweepstakes_link':{
+      /* L34 — 380 Sweepstakes Prize: se linkea a una Personality propia; la pasiva
+       * +4 vive en declareAttack (bloque L34). Maximo 1 por jugador. */
+      var pqS=pl.linkedPlots.some(function(lqS){var lcq=card(lqS.cardId);return lcq&&lcq.effect&&lcq.effect.kind==='sweepstakes_link';});
+      if(pqS)throw new Error(c.name+': ya tienes un Sweepstakes Prize en juego ("No player may have more than one")');
+      var puS=(opts&&opts.personalityUid)||null;
+      var pnS=puS?findNode(puS):null;
+      if(!pnS||findOwnerPid(puS)!==pid)throw new Error(c.name+': elige la Personality tuya a la que enlazas (opts.personalityUid)');
+      var pcS=card(pnS.cardId);
+      if(!pcS||pcS.subtype!=='personality')throw new Error(c.name+': el objetivo debe ser una Personality');
+      pl.linkedPlots.push({uid:'lp'+(S.uidCounter++),cardId:handIdx,linkedTo:puS});
+      log(c.name+': '+pcS.name+' se vuelve inimaginablemente rica (+4 permanente a sus ataques de control)');
+      lastResult={ok:true,card:c.name,kind:'sweepstakes_link',linkedTo:puS};
+      break;}
+    case 'clone_revive':{
+      throw new Error(c.name+': no se juega desde la mano — restaura a los muertos gastando SU accion con E.cloneRevive(pid,cloneUid,deadIdx,parentUid)');
+    }
+    case 'lips_undo':{
+      throw new Error(c.name+': no se juega desde la mano — se consume con E.resolveLips(pid,use) cuando un rival logra un ataque contra tu Personality');
+    }
     case 'attack_boost':{
       /* ==== L5a - ATTACK BOOST: "+N a un ataque a Destroy/Control de X" ====
        *
@@ -8483,6 +8674,9 @@ E.weirdRefuel=function(pid,targetUid,plotHandIdx){
   var pcW=card(plotHandIdx);
   if(!pcW||pcW.type!=='plot')
     throw new Error('Center for Weird Studies: tienes que descartar una Plot card');
+  /* P1-165: discardPlot NO saca la carta de la mano (playPlot lo hace aparte);
+   * sin removeFromHand la Plot quedaba en la mano Y en el descarte. */
+  removeFromHand(pl,plotHandIdx);
   discardPlot(plotHandIdx,pid);
   pl.flags.cwsRefuelUsed=true;
   tgtW.tokens=(tgtW.tokens||0)+1;
@@ -8567,7 +8761,158 @@ function removeResUid(uid){
       }
     }
   });
-}E.endTurn=function(){
+}/* ===== L34 — familia ataque: acciones y ventanas ===== */
+/* Clone Arrangers: "As its action, this group may restore to life any just-killed
+ * Personality card. Other groups cannot interfere in any way. The restored
+ * Personality may be placed on any open control arrow of any of your groups.
+ * If you control the Clone Arrangers, you automatically control the new card.
+ * The original Personality no longer counts as destroyed for the goals of
+ * whoever killed it." */
+E.cloneRevive=function(pid,cloneUid,deadIdx,parentUid){
+  var ndC=findNode(cloneUid);
+  if(!ndC||findOwnerPid(cloneUid)!==pid)throw new Error('Clone Arrangers: el grupo no es tuyo');
+  var ccC=card(ndC.cardId);
+  if(!(ccC&&ccC.effect&&ccC.effect.kind==='clone_revive'))throw new Error('Clone Arrangers: ese grupo no es el Clone Arrangers');
+  if(typeof deadIdx!=='number')throw new Error('Clone Arrangers: indica el indice de catalogo de la Personality (deadIdx)');
+  var deadC=card(deadIdx);
+  if(!deadC||deadC.subtype!=='personality')throw new Error('Clone Arrangers: la carta no es una Personality');
+  if(S.goneForever&&S.goneForever.indexOf(deadIdx)>=0)throw new Error('Clone Arrangers: esa Personality se fue para siempre ("And STAY Dead!")');
+  var killer=-1,list=null,li=-1;
+  for(var q=0;q<S.players.length;q++){
+    var aa=(S.players[q].assassinatedBy||[]);var ix=aa.indexOf(deadIdx);
+    if(ix>=0){killer=q;list=aa;li=ix;break;}
+    var dd=(S.players[q].destroyedByMe||[]);var jx=dd.indexOf(deadIdx);
+    if(jx>=0){killer=q;list=dd;li=jx;break;}
+  }
+  if(killer<0)throw new Error('Clone Arrangers: esa Personality no esta muerta ("just-killed")');
+  if(!(ndC.tokens>=1)||noTokensFlag(ndC))throw new Error('Clone Arrangers: sin Action token');
+  var par=findNode(parentUid);
+  if(!par||findOwnerPid(parentUid)!==pid)throw new Error('Clone Arrangers: elige una flecha de control de tus grupos (parentUid)');
+  spendGroupToken(pid,cloneUid);
+  list.splice(li,1);
+  var nnC={uid:'n'+(S.uidCounter++),cardId:deadIdx,children:[],tokens:1};
+  par.children.push(nnC);
+  log('Clone Arrangers: '+deadC.name+' vuelve a la vida bajo '+card(par.cardId).name+' — el asesino deja de contarla como destruida');
+  var out=publicState();
+  out.lastResult={ok:true,card:ccC.name,kind:'clone_revive',revived:deadC.name};
+  return out;
+};
+/* Hammer of Thor: "Its action can be used to increase the Power of any Government
+ * or Violent group by 2, either to make any attack or to defend against an Attack
+ * to Destroy." Una vez por turno (token del Resource, regla generica /action/). */
+E.thorBoost=function(pid,resUid){
+  if(!S.attack||S.attack.resolved)throw new Error('Hammer of Thor: no hay un ataque en curso');
+  var A=S.attack;
+  var entry=null;var rr=S.players[pid].resources||[];
+  for(var q=0;q<rr.length;q++)if(rr[q].uid===resUid){entry=rr[q];break;}
+  if(!entry)throw new Error('Hammer of Thor: no tienes ese Resource');
+  var rc=card(entry.cardId);
+  if(!(rc&&rc.effect&&rc.effect.kind==='thor_boost'))throw new Error('Hammer of Thor: no es el artefacto');
+  if(!(entry.tokens>=1))throw new Error('Hammer of Thor: sin Action token este turno');
+  var side=(A.pid===pid)?'att':'def';
+  if(side==='def'&&A.type!=='destroy')throw new Error('Hammer of Thor: solo defiende contra un Attack to Destroy');
+  var hostUid=(side==='att')?A.attackerUid:A.targetUid;
+  var hn=findNode(hostUid);
+  var hc=hn?card(hn.cardId):null;
+  if(!hn||!hc)throw new Error('Hammer of Thor: el grupo a reforzar ya no existe');
+  if(!nodeAligns(hn,hc).some(function(a){return a==='government'||a==='violent';}))throw new Error('Hammer of Thor: el grupo debe ser Government o Violent');
+  entry.tokens--;
+  A.boosts.push({name:'Hammer of Thor',v:(side==='att')?2:-2});
+  log('Hammer of Thor: '+(side==='att'?'+2 al ataque de ':'-2 al ataque contra ')+hc.name);
+  var out=publicState();
+  out.lastResult={ok:true,card:rc.name,kind:'thor_boost',side:side};
+  return out;
+};
+/* Rogue Boomer (una vez): "+10 to any attempt to destroy any Place... but must
+ * then be discarded." El uso de Disaster queda declarado (los Disasters no
+ * crean S.attack). */
+E.rogueBoom=function(pid,resUid){
+  if(!S.attack||S.attack.resolved)throw new Error('Rogue Boomer: no hay un ataque en curso');
+  var A=S.attack;
+  if(A.pid!==pid)throw new Error('Rogue Boomer: solo en tu propio ataque');
+  if(A.type!=='destroy')throw new Error('Rogue Boomer: solo para un Attack to Destroy');
+  var tn=findNode(A.targetUid);
+  var tc=tn?card(tn.cardId):null;
+  if(!tc||tc.subtype!=='place')throw new Error('Rogue Boomer: solo contra un Place');
+  var entry=null;var rr=S.players[pid].resources||[];
+  for(var q=0;q<rr.length;q++)if(rr[q].uid===resUid){entry=rr[q];break;}
+  if(!entry)throw new Error('Rogue Boomer: no tienes ese Resource');
+  var rc=card(entry.cardId);
+  if(!(rc&&rc.effect&&rc.effect.kind==='rogue_boost'))throw new Error('Rogue Boomer: no es el boomer');
+  A.boosts.push({name:'Rogue Boomer',v:10});
+  removeResUid(resUid);
+  log('Rogue Boomer: +10 al ataque contra '+tc.name+' — el submarino se entrega y se descarta');
+  var out=publicState();
+  out.lastResult={ok:true,card:rc.name,kind:'rogue_boost',bonus:10};
+  return out;
+};
+/* Death Mask: "That group can now use its action to enter any attack after the
+ * dice are rolled (if it could have entered normally, that is). If its Power is
+ * enough to change the result, that's what happens." */
+E.maskJoin=function(pid){
+  if(!S.pendingMask)throw new Error('Death Mask: no hay decision pendiente');
+  var M=S.pendingMask;
+  if(pid!==M.byPid)throw new Error('Death Mask: la decision es de '+S.players[M.byPid].name);
+  var entry=null;var rr=S.players[pid].resources||[];
+  for(var q=0;q<rr.length;q++){var cc=card(rr[q].cardId);if(cc&&cc.effect&&cc.effect.kind==='mask_join'){entry=rr[q];break;}}
+  if(!entry)throw new Error('Death Mask: ya no tienes el Resource');
+  var hn=findNode(entry.linkedTo);
+  if(!hn||findOwnerPid(hn.uid)!==pid)throw new Error('Death Mask: el grupo Magic ya no esta en juego');
+  if(!(hn.tokens>=1)||noTokensFlag(hn))throw new Error('Death Mask: el grupo Magic sin Action token');
+  var pw=curPower(hn);
+  if(pw<=0)throw new Error('Death Mask: el grupo Magic no tiene Poder');
+  var AL=S.attack;
+  if(!AL)throw new Error('Death Mask: el ataque ya no existe');
+  var side=(AL.pid===pid)?'att':'def';
+  var nt=M.total+(side==='att'?pw:-pw);
+  var roll=M.roll;
+  var result;
+  if(roll===11||roll===12)result='FALLO automático (11-12 siempre fallan)';
+  else if(roll<=nt)result='ÉXITO';
+  else result='fallo';
+  spendGroupToken(pid,hn.uid);
+  S.pendingMask=null;
+  log('Death Mask: el grupo Magic entra tras los dados (Poder '+pw+' al lado '+(side==='att'?'atacante':'defensor')+') — nuevo total '+nt+': '+result);
+  if(AL)applyAttackResult(AL,M.det,result);
+  return publicState();
+};
+E.maskPass=function(pid){
+  if(!S.pendingMask)throw new Error('Death Mask: no hay decision pendiente');
+  var M=S.pendingMask;
+  S.pendingMask=null;
+  var result=(M.roll===11||M.roll===12)?'FALLO automático (11-12 siempre fallan)':(M.roll<=M.total?'ÉXITO':'fallo');
+  var AL=S.attack;
+  log('Death Mask: el grupo Magic no entra; el resultado queda como estaba');
+  if(AL)applyAttackResult(AL,M.det,result);
+  return publicState();
+};
+/* Read My Lips: "Play this card after a successful Attack to Control or Destroy
+ * any of your Personalities, except for an Assassination. The attack becomes a
+ * failure." La ventana la abre settle; aqui se consume o se pasa. */
+E.resolveLips=function(pid,use){
+  if(!S.pendingLips)throw new Error('Read My Lips: no hay decision pendiente');
+  var L=S.pendingLips;
+  if(pid!==L.byPid)throw new Error('Read My Lips: la decision es de '+S.players[L.byPid].name);
+  var plL=S.players[pid];
+  if(use){
+    var hiL=-1;
+    for(var q=0;q<plL.hand.length;q++){var ccL=card(plL.hand[q]);if(ccL&&ccL.effect&&ccL.effect.kind==='lips_undo'){hiL=q;break;}}
+    if(hiL<0)throw new Error('Read My Lips: ya no tienes la carta en la mano');
+    var ciL=plL.hand.splice(hiL,1)[0];
+    discardPlot(ciL,pid);
+    log('Read My Lips: '+plL.name+' anula el ataque de '+L.attackerName+' contra '+L.targetName+' — "The attack becomes a failure."');
+    S.pendingLips=null;
+    var AL=S.attack;
+    if(AL)applyAttackResult(AL,L.det,'FALLO (Read My Lips)');
+    return publicState();
+  }
+  S.pendingLips=null;
+  log('Read My Lips: '+plL.name+' deja pasar el ataque');
+  var AL2=S.attack;
+  if(AL2)applyAttackResult(AL2,L.det,'ÉXITO');
+  return publicState();
+};
+E.endTurn=function(){
   if(S.phase==='gameover')return publicState();
   if(S.phase!=='main')throw new Error('No se puede terminar un turno fuera de la fase principal');
   if(S.turnCompleted)throw new Error('Este turno ya fue terminado');
@@ -8585,6 +8930,8 @@ function removeResUid(uid){
   /* L31 — LYHF: la pelea tiene las dos cartas YA SACADAS de la mano del rival.
    * Terminar el turno aqui dejaria la eleccion colgada al siguiente jugador. */
   if(S.pendingLyhf)throw new Error('No se puede terminar el turno sin resolver la pelea instigada');
+  if(S.pendingLips)throw new Error('Read My Lips: primero resuelve la decision pendiente (E.resolveLips)');
+  if(S.pendingMask)throw new Error('Death Mask: primero resuelve la decision pendiente (E.maskJoin/E.maskPass)');
   var pid=S.currentPid;
   var pl=S.players[pid];
   if(!pl)throw new Error('No hay jugador activo');

@@ -288,6 +288,24 @@ var CB = {
       after('Center for Weird Studies: accion recargada (Plot descartada)');
     } catch (e) { log('! ' + e.message); }
   },
+  /* L34 — Read My Lips y Death Mask. Ambas las cierra el DECISOR (byPid,
+     que durante la ventana no es currentPid): humanPid(). */
+  onLipsUse: function () {
+    try { E.resolveLips(humanPid(), true); after('Read My Lips: el ataque se convierte en fallo'); }
+    catch (e) { log('! ' + e.message); }
+  },
+  onLipsPass: function () {
+    try { E.resolveLips(humanPid(), false); after('Read My Lips: el ataque se aplica'); }
+    catch (e) { log('! ' + e.message); }
+  },
+  onMaskJoin: function () {
+    try { E.maskJoin(humanPid()); after('Death Mask: el grupo Magic entra tras los dados'); }
+    catch (e) { log('! ' + e.message); }
+  },
+  onMaskPass: function () {
+    try { E.maskPass(humanPid()); after('Death Mask: el grupo Magic no entra'); }
+    catch (e) { log('! ' + e.message); }
+  },
   /* L9 — 332 Orbital Mind Control Lasers. La ventana la abre E.useGadgetAction y
    * la cierra E.resolveAlignEdit. Aqui NO se elige grupo ni alineacion: eso ya lo
    * ha hecho la UI (pick + selects), asi que solo se reenvia la decision. Usamos

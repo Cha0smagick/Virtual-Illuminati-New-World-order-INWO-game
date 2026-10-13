@@ -949,6 +949,24 @@ function attackPanel(st) {
     $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar">' + lfHtml + '</div>');
   }
 
+  /* L34 — Read My Lips y Death Mask: decisiones tras los dados. Read My Lips la
+   * cierra el DEFENSOR (byPid) si la carta sigue en su mano; Death Mask el dueno
+   * del mask elegible (byPid). Ambas se muestran solo si el decisor es humano. */
+  var LP = st.pendingLips;
+  if (LP && st.players[LP.byPid] && st.players[LP.byPid].human) {
+    $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar"><b>⚔ Read My Lips</b>: el ataque de ' +
+      esc(LP.attackerName || 'el rival') + ' contra ' + esc(LP.targetName || 'tu Personality') + ' fue exitoso. ' +
+      '<button data-act="lipsuse" title="The attack becomes a failure">Usar la carta</button> ' +
+      '<button data-act="lipspass" title="El ataque se aplica">Dejar pasar</button></div>');
+  }
+  var MK = st.pendingMask;
+  if (MK && st.players[MK.byPid] && st.players[MK.byPid].human) {
+    $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar"><b>⚔ Death Mask</b>: tu grupo Magic puede entrar (' +
+      (MK.side === 'att' ? '+' : '-') + (MK.pw || 0) + ' sobre el total ' + (MK.total || 0) + '). ' +
+      '<button data-act="maskjoin" title="Gasta la accion del grupo Magic; si su Poder cambia el resultado, cambia">Unir grupo</button> ' +
+      '<button data-act="maskpass" title="El resultado queda como estaba">No entrar</button></div>');
+  }
+
   /* L31 — Fraternal Orders. "By spending this group's action, you may draw
    * another Group card at any time": primera acción de grupo con botonera
    * propia. Se ofrece cuando el jugador del turno es humano y el nodo tiene
@@ -2106,6 +2124,16 @@ var KIND_ES = {
   necro_link: 'Dobla Poder Violent/Magic; un 11-12 destruye al grupo',
   sucked_burst: 'x4 Poder para una accion; luego se destruye',
   world_war: 'Naciones atacantes con Poder triple',
+  clone_revive: 'Restaura a una Personality asesinada (accion del grupo)',
+  angel_reroll: 'Repite fallos de control del anfitrion y exitos contra tus Peaceful',
+  censor_boost: '+15 y Privilegiado: Media atacada por Straight/Conservative/Government',
+  mask_join: 'El grupo Magic entra tras los dados si su Poder cambia el resultado',
+  rich_boost: '+10 y Privilegiado: Media contra un objetivo de Power 6+',
+  thor_boost: '+2 a un grupo Government/Violent en ataque o defensa vs Destroy',
+  lips_undo: 'Convierte el ataque exitoso contra tu Personality en fallo',
+  rogue_boost: '+5 al control de Nations; una vez +10 destruyendo un Place',
+  sweepstakes_link: '+4 permanente a los ataques de control de la Personality rica',
+  bronze_keep: 'Al fallar el takeover de mano, la carta vuelve a tu mano',
   force_align: 'Forzar Alineamiento', force_discard_exposed: 'Descartar carta expuesta',
   group_boost_timed: 'Refuerzo de grupo temporal', link_effect: 'Efecto ligado a una carta',
   messiah: 'El Mesias', mistakenidentity: 'Identidad equivocada',
@@ -2748,6 +2776,11 @@ function bindEvents() {
   else if (act === 'lyhfpick') { clearSel(); CB.onResolveLyhf(parseInt(btn.getAttribute('data-v'), 10)); }
   else if (act === 'fraternaldraw') { clearSel(); CB.onFraternalDraw(btn.getAttribute('data-uid')); }
   else if (act === 'cwsrefuel') { CB.onCwsRefuel(); }
+    /* L34 — Read My Lips y Death Mask (decisiones tras los dados). */
+  else if (act === 'lipsuse') { clearSel(); CB.onLipsUse(); }
+  else if (act === 'lipspass') { clearSel(); CB.onLipsPass(); }
+  else if (act === 'maskjoin') { clearSel(); CB.onMaskJoin(); }
+  else if (act === 'maskpass') { clearSel(); CB.onMaskPass(); }
     /* L9 — 332 Orbital Mind Control Lasers. `pick` es el paso 1 (elegir grupo): no
      * toca el motor, solo guarda el objetivo en `sel` como hace el resto de menus de
      * dos pasos (ver pickMover/attacker). `apply` y `pass` son el paso 2 y si

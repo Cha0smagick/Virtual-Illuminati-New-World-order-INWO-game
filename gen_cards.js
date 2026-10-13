@@ -2885,6 +2885,55 @@ const L33_FX = {
 const L33_FXN = {};
 for (const k33 in L33_FX) { L33_FXN[norm(k33)] = L33_FX[k33]; }
 
+/* L34 — P1-165: familia ataque. Textos verbatim de research/scribd_inwo_cards_full.html.
+ * Huecos de texto declarados (#14-#16): batf, cia, factionfight (solo OCR manchado).
+ * Vultures queda SIN referente: este motor no descarta al fallar el takeover de un
+ * Group desde la mano (applyAttackResult handTarget), asi que su reaccion no aplica. */
+const L34_FX = {
+  'Clone Arrangers': {
+    kind: 'clone_revive',
+    t: "Gives +4 on any attack to control a Personality (by replacing them with a clone). As its action, this group may restore to life any just-killed Personality card. Other groups cannot interfere in any way. The restored Personality may be placed on any open control arrow of any of your groups. If you control the Clone Arrangers, you automatically control the new card. The original Personality no longer counts as destroyed for the goals of whoever killed it."
+  },
+  "Angel's Feather": {
+    kind: 'angel_reroll',
+    t: "This item must be linked to a Peaceful group. Any failed Attack to Control made by the group, or any successful attack of any kind made against any Peaceful group you control, is re-rolled. The second roll counts. Unique Magic Artifact"
+  },
+  'Censorship': {
+    kind: 'censor_boost',
+    t: "This isn't a freedom-of-speech issue. This is a decency issue. We're closing you down. This card may be played by any Straight, Conservative or Government group which makes (or aids) an attack against a Media group. It gives an extra +15 Power to that attack and makes it Privileged."
+  },
+  'Death Mask': {
+    kind: 'mask_join',
+    t: "Whoever wears it can see a slightly different world through its staring eyeholes — and when the mask is removed, the different world is the true one. Link the Death Mask to any Magic group. That group can now use its action to enter any attack after the dice are rolled (if it could have entered normally, that is). If its Power is enough to change the result, that's what happens. Unique Magic Artifact"
+  },
+  'Eat the Rich!': {
+    kind: 'rich_boost',
+    t: "Carefully orchestrating the media, you create an insane groundswell of anger, blaming the wealthy and powerful for everything. This card may be played by any Media group which makes an Attack to Destroy against a Group with a Power of 6 or more, or aids that attack. It gives an extra +10 to that attack and makes it Privileged."
+  },
+  'Hammer of Thor': {
+    kind: 'thor_boost',
+    t: "This mystic artifact can act once per turn. Its action can be used to increase the Power of any Government or Violent group by 2, either to make any attack or to defend against an Attack to Destroy. Unique Magic Artifact"
+  },
+  'Read My Lips': {
+    kind: 'lips_undo',
+    t: "A public figure appears on national TV and talks his way out of everything! Play this card after a successful Attack to Control or Destroy any of your Personalities, except for an Assassination. The attack becomes a failure."
+  },
+  'Rogue Boomer': {
+    kind: 'rogue_boost',
+    t: "The commander of a nuclear missile sub is on your payroll. Gives +5 to any attempt to control any Nation, through intimidation. Or can be used once to give a +10 to any attempt to destroy any Place or to aid any Disaster! — but must then be discarded."
+  },
+  'Sweepstakes Prize': {
+    kind: 'sweepstakes_link',
+    t: "You may already be a winner! One of your Personalities has become unbelievably rich. Link this card to them. They now have a permanent +4 bonus on any direct Attack to Control they make. No player may have more than one Sweepstakes Prize in play."
+  },
+  'The Bronze Head': {
+    kind: 'bronze_keep',
+    t: "Its first recorded owner was Roger Bacon. He said it foretold the future. It does that and much more! If you play a Group card from your own hand, and fail in your attempt to take it over, this card is not discarded. Return it to your hand. Unique Magic Artifact"
+  }
+};
+const L34_FXN = {};
+for (const k34 in L34_FX) { L34_FXN[norm(k34)] = L34_FX[k34]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
@@ -3174,7 +3223,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

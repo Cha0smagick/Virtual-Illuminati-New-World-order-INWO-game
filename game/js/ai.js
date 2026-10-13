@@ -654,8 +654,30 @@ function settleLyhfWindow(E) {
   try { E.resolveLyhf(owner, 0); }
   catch (e) { if (window.console) console.error('[INWO] AI: fallo al resolver la pelea instigada: ' + (e && e.message ? e.message : e)); }
 }
+/* L34 — Read My Lips: la IA defensora no gasta la carta (pasa). */
+function settleLipsWindow(E) {
+  var st = E.getState();
+  if (!st || !st.pendingLips) return;
+  var owner = st.pendingLips.byPid;
+  var pl = (st.players || [])[owner];
+  if (pl && pl.human) return;
+  try { E.resolveLips(owner, false); }
+  catch (e) { if (window.console) console.error('[INWO] AI: fallo al resolver Read My Lips: ' + (e && e.message ? e.message : e)); }
+}
+/* L34 — Death Mask: la IA deja que el resultado quede como estaba (pasa). */
+function settleMaskWindow(E) {
+  var st = E.getState();
+  if (!st || !st.pendingMask) return;
+  var owner = st.pendingMask.byPid;
+  var pl = (st.players || [])[owner];
+  if (pl && pl.human) return;
+  try { E.maskPass(owner); }
+  catch (e) { if (window.console) console.error('[INWO] AI: fallo al resolver Death Mask: ' + (e && e.message ? e.message : e)); }
+}
 function settleWindows(E) {
   settleLyhfWindow(E);
+  settleLipsWindow(E);
+  settleMaskWindow(E);
   settleAlignEditWindow(E);
   settleDrawWindow(E);
   settleEventWindow(E);
