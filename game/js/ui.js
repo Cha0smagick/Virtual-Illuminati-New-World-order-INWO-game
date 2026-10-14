@@ -1328,7 +1328,16 @@ var NO_TARGET_KINDS = ['token_gift', 'attack_boost', 'deck_manip', 'turn_start_b
    * objetivo unico, mismo camino "Jugar ya". */
   'solidarity_x2', 'light_no_opposed', 'corporate_double',
   /* L38 — ataques/takeovers sin objetivo o con objetivo implicito. */
-  'blitz_token', 'march_substitute', 'faction_boost', 'stars_takeover'];
+  'blitz_token', 'march_substitute', 'faction_boost', 'stars_takeover',
+  /* L40 — reglas oficiales finales (P1-171): las cinco sin nodo objetivo van por
+   * el boton generico "Jugar ya", que llama CB.onPlayPlot(handIdx) sin objetivo:
+   * el motor resuelve el resto. Vultures coge del descarte la carta del takeover
+   * fallido; Hat Trick paga con la primera ficha propia disponible y devuelve el
+   * ultimo Plot usado; An Offer roba 2 Plots (el impreso permite 1 o 2: modo por
+   * defecto, declarado); Tax Reform y Corruption no eligen nada — el area del
+   * Relief la fija S.lastRelief. Xanadu NO entra: exige grupo objetivo PROPIO y
+   * pasa por el selector plotTarget como cualquier Plot con target. */
+  'vultures_grab', 'hat_trick', 'offer_refuse', 'tax_reform', 'corruption_relief'];
 /* L8a — MENU DE MANIPULACION DE MAZO (361 Savings & Loan Scam, 388 The Big Sellout,
  * 411 Voodoo Economics).
  *
@@ -2196,6 +2205,13 @@ var KIND_ES = {
   stars_takeover: 'Takeover automatico de una Resource de tu mano (coste Magic/Illuminati)',
   march_substitute: 'Sustituye UNA accion requerida (cuesta el Plot superior de tu mazo; 1 vez/turno)',
   faction_boost: '+5 al ataque en curso contra el grupo del que tienes un duplicado (no es accion)',
+  /* L40 — reglas oficiales finales (P1-171). */
+  vultures_grab: 'Tras un takeover fallido desde la mano de un rival, la carta descartada va a TU mano',
+  hat_trick: 'En vez de descartar el Plot que acabas de usar, descarta Hat Trick y el Plot vuelve a tu mano',
+  offer_refuse: 'Al principio de tu turno: 1-2 Plots extra a cambio de tu robo de Grupo',
+  tax_reform: 'El IRS grava 1 Plot de cada jugador al principio de cada turno tuyo (continuo)',
+  xanadu_loyal: 'Lealtad eterna: los duplicados no dan bonus al atacar a este grupo',
+  corruption_relief: 'Tras un Relief a un area devastada: sin nuevo Relief hasta pasado tu proximo turno',
   /* L39 — familia especiales (P1-170). */
   eliza_link: 'Grupo Computer/Network con una accion extra por turno (crash con 11/12)',
   unmasked_illum: 'Cambia tu carta de Illuminati por otra de tu mano',

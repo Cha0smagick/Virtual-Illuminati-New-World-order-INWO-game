@@ -231,6 +231,12 @@ console.log('tras AI.responder → aids=' + A.aids.length + ' opposes=' + A.oppo
   ' selfDef=' + A.selfDefended + ' defBoosts=' + A.defBoosts.length + ' fuerza=' + before + '→' + after_);
 
 E.resolveAttack();
+/* P1-016/P1-024: si el reparto puso una carta de rodadero en cualquier mano,
+ * resolveAttack APLAZA la resolucion (ventana de reaccion abierta, ataque aun
+ * abierto). closePendingRoll sin reacciones jugadas completa la tirada
+ * original y limpia el ataque; sin esto el test depende del reparto. */
+var guardR = 0;
+while (E.getState().pendingRoll && guardR++ < 8) E.resolvePendingRoll();
 var cleared = E.getState().attack === null;
 console.log('resuelto · attack limpiado: ' + cleared);
 if (!cleared) { console.error('FALLO: el ataque no se limpió tras resolveAttack'); process.exit(1); }

@@ -157,7 +157,9 @@ const BLOCKED_CARDS = {
    * POR JUGADOR ("a rival's Plot deck" / "his Plot deck"); este motor tiene UN solo
    * mazo compartido (S.plotDeck), asi que "miro el mazo de ese rival" no tiene nada
    * que mirar. No es un texto sin transcribir: es una subspecies de motor que falta. */
-  'anofferyoucantrefuse': '§52 "two extra Plot cards not from your deck, but from the deck of a rival" — el motor tiene UN S.plotDeck compartido, no mazos de Plot por jugador (INJUGABLE)',
+  /* L40 (P1-171): SALEN anofferyoucantrefuse, hattrick, vultures y taxreform
+   * (clasificadas con mecanica real; ver §85 del audit). ENTRA opportunityknocks.
+   * powerforitsownsake permanece: su texto completo no tiene fuente local. */
   /* L26 · 395 The Internet Worm SALIO de esta lista, y el motivo es que su bloqueo era
    * otro. Sigue faltando el mazo de Plot POR JUGADOR — por eso 191 sigue congelada. Pero
    * 395 no mira la mano de nadie: "the top three undrawn cards in HIS Plot deck are
@@ -167,14 +169,12 @@ const BLOCKED_CARDS = {
    * efecto es observable en el unico sitio donde se puede observar un mazo global: las
    * tres Plot que ya no se pueden robar. No se ha inventado un mazo por jugador para
    * cerrar una carta; se ha leido la que hay. Ver seccion 51 de la auditoria. */
-  'hattrick': '§38 exigiria deshacer una Plot ya resuelta de forma transaccional',
   'ilied': '§38 el motor no tiene tratos que cumplir, luego el marcador no lo consumiria nadie (INJUGABLE)',
-  'vultures': '§38 el motor no tiene el camino "jugar un grupo de la mano, fallar el takeover y descartarlo" (placeUnder lanza y la carta sigue en la mano); las reglas oficiales si (inwo_rules_extracted.txt:226-241)',
+  'opportunityknocks': '§85 el impreso exige un ataque unico FUERA DE TURNO contra el grupo recien descartado, con +5; requireOwnMain (engine) veta toda accion fuera de turno y el motor no tiene camino de ataque con objetivo en el descarte (INJUGABLE sin subsistema nuevo)',
   /* §42 / L3 — dos cartas que plan.md metio en BULK-POWER y que al leer el
      texto impreso resulta que NO son de esa familia. Congeladas por motivo
      DISTINTO: una es ilegible, la otra es de otra mecanica. */
-  'powerforitsownsake': '§42 ilegible: el OCR solo da "including your llluminati group 3" y no aparece en NINGUNA de las dos fuentes secundarias (scribd_card_text.json ni scribd_inwo_cards_full.html), asi que no se puede autorizar el numero',
-  'taxreform': '§42 NO es bulk_power: su texto impreso es un efecto continuo entre turnos ("The IRS can now tax one Plot card from each player, at the beginning of its own turn"), que es un subsistema distinto de una modificacion de Poder/Resistencia'
+  'powerforitsownsake': '§85 sin fuente local: el OCR solo da "including your llluminati group 3" (CARD_RESEARCH.md) y ninguna fuente secundaria transcribe mas; el texto completo jugado en L40 se RETIRO junto con su logica de victoria del motor. Vuelve a unverified'
 };
 
 const IMPLEMENTED_STATUSES = new Set([

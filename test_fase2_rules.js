@@ -24,7 +24,7 @@ function throws(fn, re, m) {
  * fallarian segun el reparto. Se quitan del mazo y de TODAS las manos: la
  * regresion de L22 las vuelve a meter explicitamente, igual que hand18 y
  * toHandL14 hacen con las suyas. Es la regla 14 (fixture sin reparto aleatorio). */
-var L37REACTIVE = ['coverup', 'arkofthecovenant', 'theholygrail', 'immortalityserum', 'soulburner', 'hitlersbrain', 'backlash', 'lips_undo', 'deathmask'];
+var L37REACTIVE = ['coverup', 'arkofthecovenant', 'theholygrail', 'immortalityserum', 'soulburner', 'hitlersbrain', 'backlash', 'readmylips', 'deathmask'];
 function isReactive37(id) { return L37REACTIVE.indexOf(id) >= 0; }
 function isNegatorCard(ix) {
   var e = ix != null && C.cards[ix] ? C.cards[ix].effect : null;
@@ -656,6 +656,25 @@ function readyToAttack(pid) {
   var rivalPid = pidOf('bavarianilluminati');
   ok(netPid >= 0 && rivalPid >= 0 && netPid !== rivalPid,
     'F6 los dos Illuminati estan en jugadores distintos -> ' + netPid + ' / ' + rivalPid);
+  /* El reparto inicial puede traer 2-3 Goal cards y enforceGoalHandLimit
+   * (startGame, P1-010) descarta el exceso: un jugador entra a su primer turno
+   * con menos Plots de los "fijos" que supone el comentario de arriba — flake
+   * {"0":3,"1":3} medido 2/40 en estres. El robo de inicio ya ocurrio DENTRO de
+   * startGame, asi que no hay "antes" que normalizar: se normalizan las manos a
+   * exactamente 2 Plots (los Group cards se quedan) y se repone el robo ya
+   * consumido del jugador al que le toca (+2 Network, +1 el otro). Resultado:
+   * Network estrictamente por encima SIEMPRE, sin depender del reparto. */
+  E._raw().players.forEach(function (plF6) {
+    var plotsF6 = plF6.hand.filter(function (ixF6) { return C.cards[ixF6].type === 'plot'; });
+    while (plotsF6.length > 2) { var rmF6 = plotsF6.pop(); plF6.hand.splice(plF6.hand.indexOf(rmF6), 1); }
+    while (plotsF6.length < 2 && E._raw().plotDeck.length) {
+      var nxF6 = E._raw().plotDeck.pop();
+      if (C.cards[nxF6].type === 'plot') { plF6.hand.push(nxF6); plotsF6.push(nxF6); }
+    }
+  });
+  var curF6b = E._raw().currentPid;
+  var nDrawF6 = (curF6b === netPid) ? 2 : 1; /* el robo de inicio que ya consumio en startGame */
+  for (var dF6 = 0; dF6 < nDrawF6 && E._raw().plotDeck.length; dF6++) E._raw().players[curF6b].hand.push(E._raw().plotDeck.pop());
   var handAtTurn = {};
   var stepsF6 = 0;
   while (handAtTurn[netPid] == null || handAtTurn[rivalPid] == null) {
@@ -712,9 +731,13 @@ function readyToAttack(pid) {
      falla (medido: 6-7 fallos de cada 40). Se mide lo que las reglas dicen, no
    * el bookkeeping que otros bloques manipulan. */
   var cthLog = (E._raw().log || []).some(function (l) { return /robada por Cthulhu/.test(l.msg || ''); });
+  var LR9 = E._raw().lastResult || null;
+  var tail9 = (E._raw().log || []).slice(-8).map(function (l) { return String((l && l.msg != null) ? l.msg : l); });
   ok(cthLog && !findNode(E._raw().players[dfn].structure, 'dv'),
      'P1-009 Cthulhu roba un Plot cada vez que destruye -> victima viva=' +
-     !!findNode(E._raw().players[dfn].structure, 'dv') + ' robo en el log=' + cthLog);
+     !!findNode(E._raw().players[dfn].structure, 'dv') + ' robo en el log=' + cthLog +
+     ' lastResult=' + JSON.stringify(LR9) + ' pendingRoll=' + !!E._raw().pendingRoll +
+     ' attack=' + !!E._raw().attack + ' logTail=' + JSON.stringify(tail9));
 
   /* ---- 6) Shangri-La: +5 a defenderse de CUALQUIER ataque ---- */
   fresh('shangrila1', 'bavarianilluminati1');
@@ -5823,7 +5846,13 @@ function sealWindows() {
      viviera fuera, al correr los bloques de arriba seria `undefined`. */
   var windowKinds = ['bodyguard', 'talisman', 'bribery', 'computervirus',
                      'murphyslaw', 'timewarp', 'mistakenidentity', 'mothersmarch',
-                     'stealing_the_plans', 'embezzlement'];
+                     'stealing_the_plans', 'embezzlement',
+                     /* 'fnord' reacciona a TIRADAS PROPIAS (ROLL_KINDS del motor):
+                      * si el reparto pone uno en la mano del ATACANTE, la ventana
+                      * de rodadero se abre tras resolveAttack y el re-roll queda
+                      * sin resolver (victima viva, sin log) — flake medido en
+                      * npm test con P1-009 Cthulhu. Se sella como el resto. */
+                     'fnord'];
   var S = E._raw();
   S.players.forEach(function (p) {
     p.hand = p.hand.filter(function (ix) {
@@ -10287,7 +10316,7 @@ function err26(fn) { return throwMsgL14(fn); }
   function fresh37(a37, b37) {
     fresh(a37, b37);
     var r37 = E._raw();
-    var l37ids = ['coverup', 'arkofthecovenant', 'theholygrail', 'immortalityserum', 'soulburner', 'hitlersbrain', 'backlash', 'lips_undo', 'deathmask'];
+    var l37ids = ['coverup', 'arkofthecovenant', 'theholygrail', 'immortalityserum', 'soulburner', 'hitlersbrain', 'backlash', 'readmylips', 'deathmask'];
     function bad37(id37) { return l37ids.indexOf(id37) >= 0; }
     for (var q37 = 0; q37 < r37.players.length; q37++) {
       var h37 = r37.players[q37].hand;
@@ -10381,7 +10410,10 @@ function err26(fn) { return throwMsgL14(fn); }
     E.declareAttack(1, 'destroy', { attackerUid: 'sA', uid: 'per' });
     E._raw().attack.boosts.push({ name: 'test37', v: 50 }); /* garantiza exito ante la defensa maestra */
     withMock37([0.01, 0.01], function () { E.resolveAttack(); });
-    ok37(inTree37('per') && logHas37(/INMORTAL/), 'L37.S4b la Personality inmortal no puede ser destruida');
+    var st37b = E._raw();
+    ok37(inTree37('per') && logHas37(/INMORTAL/), 'L37.S4b la Personality inmortal no puede ser destruida -> inTree=' +
+      inTree37('per') + ' logINMORTAL=' + logHas37(/INMORTAL/) + ' pendingRoll=' + !!st37b.pendingRoll +
+      ' attackAbierto=' + !!st37b.attack);
     /* robo con ventana autoTakeover simulada */
     plant(1, 'per2', idxOfId(per.id), 1);
     E._raw().currentPid = 0; /* el ataque S4b dejo el turno en P1 */
@@ -11435,6 +11467,17 @@ function err26(fn) { return throwMsgL14(fn); }
     fresh(idx39('bavarianilluminati1'), idx39('servantsofcthulhu1'));
     var goal39 = firstBy39(function (c39) { return c39.type === 'plot' && c39.effect && c39.effect.kind === 'goal'; });
     if (!goal39) { ok39(true, 'L39.S3 SKIP sin Goal cards'); return; }
+    /* El motor roba la PRIMERA Goal en mano del rival: si el reparto aleatorio
+     * dio a P1 cualquier otra Goal, esa va antes en su mano y el fixture de
+     * abajo (Goal del catalogo empujada al final) deja de mandar — flake medido
+     * en npm test. Se purgan TODAS las Goals de las manos: la unica que queda
+     * es la empujada, y el robo es determinista. goalCardsIn solo mira hand. */
+    for (var q39g = 0; q39g < E._raw().players.length; q39g++) {
+      E._raw().players[q39g].hand = E._raw().players[q39g].hand.filter(function (ix39g) {
+        var cc39g = C.cards[ix39g];
+        return !(cc39g && cc39g.type === 'plot' && cc39g.effect && cc39g.effect.kind === 'goal');
+      });
+    }
     var pl1 = E._raw().players[1];
     pl1.hand.push(idxOfId(goal39.id));
     var pl0 = E._raw().players[0];
@@ -11446,6 +11489,174 @@ function err26(fn) { return throwMsgL14(fn); }
     ok39(pl0.hand.indexOf(idxOfId(goal39.id)) >= 0, "L39.S3a Nice Idea roba la Goal card del rival");
     ok39((pl0.exposedPlots || []).indexOf(goal39.id) >= 0, 'L39.S3b la Goal robada queda expuesta');
     ok39(/Illuminati Action/.test(tMsg39(function () { var ix2 = idx39('niceideaitsminenow'); hand22(0, ix2); var sv = pl0.illumTokens; pl0.illumTokens = 0; try { E.playPlot(0, ix2, null, null); } finally { pl0.illumTokens = sv; } }) || ''), 'L39.S3c sin accion de Illuminati lanza');
+  })();
+
+  S.forEach(function (p) { if (p[1]) { console.log('ok   - ' + p[0]); } else { failures.push(p[0]); console.log('FAIL - ' + p[0]); } });
+})();
+
+
+/* ===== L40 — reglas oficiales finales (P1-171) ===== */
+(function l40Tests() {
+  var S = [];
+  function ok40(c, m) { S.push([m, !!c]); }
+  function tMsg40(fn) { try { fn(); return null; } catch (e) { return e.message; } }
+  function findN40(uid) { var out = null; E._raw().players.forEach(function (p40) { (function go(n40) { if (!n40 || out) return; if (n40.uid === uid) { out = n40; return; } (n40.children || []).forEach(go); })(p40.structure); }); return out; }
+  function firstBy40(pred) { for (var i = 0; i < C.cards.length; i++) { if (pred(C.cards[i])) return C.cards[i]; } return null; }
+  function idx40(id) { return idxOfId(id); }
+  function handHas40(pid, ix) { return E._raw().players[pid].hand.indexOf(ix) >= 0; }
+  function msg40(l40) { return String((l40 && l40.msg != null) ? l40.msg : l40); }
+  function logHas40(re) { return E._raw().log.some(function (l40) { return re.test(msg40(l40)); }); }
+  var realRnd40 = Math.random;
+  function withMock40(seq, fn) { var i40 = 0; Math.random = function () { return seq[Math.min(i40++, seq.length - 1)]; }; try { fn(); if (E._raw().pendingRoll) { try { E.resolvePendingRoll(); } catch (e40x) { /* ventana sin resolutor */ } } } finally { Math.random = realRnd40; } }
+
+  /* S1 — Vultures: el takeover desde mano que FALLA descarta la carta (regla
+     oficial L40: antes volvia a la mano) y el que no es el dueno la agarra. */
+  (function () {
+    fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+    var R40 = E._raw();
+    var GA40 = anyGroupIdx();
+    var GH40 = -1; for (var i40 = 0; i40 < C.cards.length; i40++) if (C.cards[i40].type === 'group' && i40 !== GA40) { GH40 = i40; break; }
+    for (var q40 = 0; q40 < R40.players.length; q40++) R40.players[q40].hand = R40.players[q40].hand.filter(function (ix) { return ix !== GH40; });
+    R40.players[0].hand.push(GH40);
+    plant(1, 'vA', GA40, 2);
+    findN40('vA').powerOverride = 15;
+    if (readyToAttack(1) == null) { ok40(true, 'L40.S1 SKIP sin turno de ataque'); return; }
+    E.declareAttack(1, 'control', { attackerUid: 'vA', handIdx: GH40 });
+    ok40(!!(E._raw().attack && E._raw().attack.handTarget), 'L40.S1a el objetivo de mano queda registrado');
+    withMock40([0.99, 0.99], function () { E.resolveAttack(); }); /* 11-12: fallo siempre */
+    ok40(E._raw().groupDiscard.indexOf(GH40) >= 0 && !handHas40(0, GH40), 'L40.S1b el takeover fallido DESCARTA la carta de mano');
+    ok40(!!(E._raw().lastHandFail && E._raw().lastHandFail.cardId === GH40 && E._raw().lastHandFail.turn === E._raw().turn), 'L40.S1c lastHandFail registrado este turno');
+    var vul40 = idx40('vultures'); hand22(1, vul40);
+    E.playPlot(1, vul40, null, null);
+    ok40(handHas40(1, GH40) && E._raw().groupDiscard.indexOf(GH40) < 0, 'L40.S1d Vultures: la carta descartada pasa a TU mano');
+    ok40(logHas40(/pasa a tu mano/), 'L40.S1e log de Vultures');
+    E._raw().currentPid = 0;
+    E._raw().lastHandFail = { failerPid: 0, cardId: GA40, turn: E._raw().turn };
+    var m40 = tMsg40(function () { var iv = idx40('vultures'); hand22(0, iv); E.playPlot(0, iv, null, null); });
+    ok40(/es TUYA/.test(m40 || ''), 'L40.S1f no puedes agarrar una carta fallada por ti');
+  })();
+
+  /* S2 — Hat Trick: descartas Hat Trick y el Plot que acabas de usar vuelve a
+     tu mano (fixture de lastPlotPlayed: cualquier Plot real exigiria pagar el
+     coste de su propio efecto, p.ej. deck_burn exige accion de Illuminati). */
+  (function () {
+    fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+    var R40 = E._raw(); R40.currentPid = 0;
+    plant(0, 'pago', anyGroupIdx(), 2);
+    var hat40 = idx40('hattrick'); hand22(0, hat40);
+    var m40 = tMsg40(function () { E.playPlot(0, hat40, null, null); });
+    ok40(/no has usado ningun Plot/.test(m40 || ''), 'L40.S2a sin Plot usado este turno lanza');
+    var px40 = -1;
+    for (var i40 = 0; i40 < C.cards.length && px40 < 0; i40++) {
+      if (C.cards[i40].type !== 'plot') continue;
+      var enMano40 = R40.players.some(function (p40) { return p40.hand.indexOf(i40) >= 0; });
+      if (!enMano40) px40 = i40;
+    }
+    if (px40 < 0) { ok40(true, 'L40.S2 SKIP sin Plot libre'); return; }
+    R40.plotDiscard.push(px40);
+    R40.lastPlotPlayed = { cardId: px40, turn: R40.turn };
+    var hat2 = idx40('hattrick'); hand22(0, hat2);
+    E.playPlot(0, hat2, null, null);
+    ok40(handHas40(0, px40), 'L40.S2b el Plot usado vuelve a tu mano');
+    ok40(E._raw().plotDiscard.indexOf(hat2) >= 0 && !handHas40(0, hat2), 'L40.S2c Hat Trick se descarta en su lugar');
+  })();
+
+  /* S3 — An Offer You Can't Refuse: 2 Plots extra a cambio del robo de Grupo. */
+  (function () {
+    fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+    var R40 = E._raw(); R40.currentPid = 0;
+    var off40 = idx40('anofferyoucantrefuse'); hand22(0, off40);
+    var plotsEn40 = function () { return R40.players[0].hand.filter(function (ix) { return C.cards[ix].type === 'plot'; }).length; };
+    var pb40 = plotsEn40(); /* la Offer misma cuenta como Plot en mano */
+    E.playPlot(0, off40, null, null);
+    var mano40 = R40.players[0].hand;
+    ok40(plotsEn40() === pb40 + 1 && mano40.slice(-2).every(function (ix) { return C.cards[ix].type === 'plot'; }), 'L40.S3a robas 2 Plots extra (neto: -1 Offer +2 robados)');
+    ok40(R40.players[0].flags.noGroupDraw === R40.turn, 'L40.S3b regalas tu robo de Grupo este turno');
+    var m40 = tMsg40(function () { E.drawGroup(0); });
+    ok40(/regalaste tu robo de Grupo/.test(m40 || ''), 'L40.S3c E.drawGroup vetado el turno del trato');
+    E.endTurn(); E.endTurn();
+    var d40 = null; try { d40 = E.drawGroup(0); } catch (e40) { d40 = null; }
+    ok40(!!(d40 && d40.idx != null), 'L40.S3d el veto caduca: el proximo turno vuelves a robar Grupo');
+  })();
+
+  /* S4 — Tax Reform: el IRS grava SOLO al empezar el turno del dueno ("its own
+     turn"). S4c valida el gate del dueno anadido en P1-171: sin el gate, el
+     beginTurn del rival gravaba tambien. */
+  (function () {
+    fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+    var R40 = E._raw(); R40.currentPid = 0;
+    var tax40 = idx40('taxreform'); hand22(0, tax40);
+    E.playPlot(0, tax40, null, null);
+    ok40(R40.taxReformActive === true && R40.taxReformOwner === 0, 'L40.S4a Tax Reform continuo con dueno registrado');
+    ok40(!logHas40(/el IRS grava 1 Plot del mazo/), 'L40.S4b al jugarla todavia no grava');
+    E.endTurn(); /* beginTurn de P1 */
+    ok40(!logHas40(/el IRS grava 1 Plot del mazo/), 'L40.S4c el turno del rival NO grava');
+    E.endTurn(); /* beginTurn de P0 (dueno) */
+    ok40(logHas40(/el IRS grava 1 Plot del mazo/), 'L40.S4d al empezar el turno del dueno el IRS grava');
+    var n40 = E._raw().log.filter(function (l40) { return /el IRS grava 1 Plot del mazo/.test(msg40(l40)); }).length;
+    ok40(n40 === 1, 'L40.S4e exactamente un gravamen (2 jugadores, 1 rival)');
+  })();
+
+  /* S5 — Corruption: tras un Relief a un area devastada, sin nuevo Relief para
+     esa area hasta pasado el proximo turno del jugador (reliefLock). */
+  (function () {
+    fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+    var R40 = E._raw();
+    var place = firstBy40(function (c40) { return c40.type === 'group' && c40.subtype === 'place'; });
+    if (!place) { ok40(true, 'L40.S5 SKIP sin Place'); return; }
+    plant(0, 'area', idxOfId(place.id), 1);
+    var ar40 = findN40('area');
+    ar40.devastated = true;
+    ar40.reliefPending = { untilTurn: R40.turn + 1, byPid: 0, byCard: null };
+    E.endTurn(); /* el Relief automatico de 410 llega en expireTurnFlags */
+    ok40(ar40.devastated === false && !!(R40.lastRelief && R40.lastRelief.areaUid === 'area' && R40.lastRelief.turn === R40.turn), 'L40.S5a el Relief automatico llega y registra S.lastRelief');
+    R40.currentPid = 1;
+    var cor40 = idx40('corruption'); hand22(1, cor40);
+    E.playPlot(1, cor40, null, null);
+    ok40(!!(ar40.reliefLock && ar40.reliefLock.untilTurn === R40.turn + 1), 'L40.S5b Corruption cierra el area hasta pasado el proximo turno del jugador');
+    ar40.devastated = true;
+    ar40.reliefPending = { untilTurn: R40.turn + 1, byPid: 0, byCard: null };
+    var mark40 = R40.lastRelief.turn;
+    E.endTurn(); /* turno del dueno: el lock sigue vivo */
+    ok40(ar40.devastated === true && R40.lastRelief.turn === mark40, 'L40.S5c el Relief bloqueado por reliefLock no llega');
+    E.endTurn(); /* el lock ya caduco */
+    ok40(ar40.devastated === false && !!(R40.lastRelief && R40.lastRelief.turn === R40.turn), 'L40.S5d caducado el lock, el area vuelve a recibir Relief');
+  })();
+
+  /* S5b — Corruption sin Relief previo este turno lanza. */
+  (function () {
+    fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+    var R40 = E._raw(); R40.currentPid = 0;
+    var cor40 = idx40('corruption'); hand22(0, cor40);
+    var m40 = tMsg40(function () { E.playPlot(0, cor40, null, null); });
+    ok40(/no ha llegado Relief/.test(m40 || ''), 'L40.S5e Corruption sin Relief previo lanza');
+  })();
+
+  /* S6 — Xanadu: lealtad eterna; el duplicado rival (Faction Fight) no da bonus. */
+  (function () {
+    fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+    var R40 = E._raw();
+    var g40 = firstBy40(function (c40) { return c40.type === 'group' && !((c40.alignments || []).indexOf('peaceful') >= 0 || (c40.attributes || []).indexOf('peaceful') >= 0); });
+    if (!g40) { ok40(true, 'L40.S6 SKIP sin grupo no Peaceful'); return; }
+    plant(0, 'xT', idxOfId(g40.id), 1);
+    R40.currentPid = 0;
+    var xan40 = idx40('xanadu'); hand22(0, xan40);
+    E.playPlot(0, xan40, 'xT', null);
+    ok40(findN40('xT').xanaduLoyal === true, 'L40.S6a Xanadu marca lealtad eterna en tu grupo');
+    ok40(logHas40(/sera leal para siempre/), 'L40.S6b log de Xanadu');
+    plant(1, 'xR', idxOfId(g40.id), 1);
+    var m40 = tMsg40(function () { var ix2 = idx40('xanadu'); hand22(0, ix2); E.playPlot(0, ix2, 'xR', null); });
+    ok40(/elige uno de TUS grupos/.test(m40 || ''), 'L40.S6c no puedes marcar un grupo rival');
+    if (readyToAttack(1) == null) { ok40(true, 'L40.S6 SKIP sin turno de ataque'); return; }
+    plant(1, 'xA', idxOfId(g40.id), 2);
+    findN40('xA').powerOverride = 15;
+    E.declareAttack(1, 'destroy', { attackerUid: 'xA', uid: 'xT' });
+    hand22(1, idxOfId(g40.id)); /* duplicado del objetivo (patron L38.S6) */
+    var ff40 = idx40('factionfight'); hand22(1, ff40);
+    var m40b = tMsg40(function () { E.playPlot(1, ff40, null, null); });
+    ok40(/Xanadu/.test(m40b || ''), 'L40.S6d Faction Fight vetado contra el grupo leal');
+    ok40(!!(E._raw().attack && E._raw().attack.boosts.every(function (b40) { return b40.name !== 'Faction Fight'; })), 'L40.S6e el bonus de duplicado no se aplico');
+    withMock40([0.99, 0.99], function () { E.resolveAttack(); }); /* cerrar el ataque */
   })();
 
   S.forEach(function (p) { if (p[1]) { console.log('ok   - ' + p[0]); } else { failures.push(p[0]); console.log('FAIL - ' + p[0]); } });

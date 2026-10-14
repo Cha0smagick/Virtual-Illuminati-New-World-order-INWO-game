@@ -1799,11 +1799,13 @@ function expireTurnFlags(){
        * cuenta para las metas). El subarbol entero se limpia porque devastar marca el
        * subarbol entero (L3372). */
       if(n.reliefPending&&n.reliefPending.untilTurn!=null&&S.turn>=n.reliefPending.untilTurn
-         &&findOwnerPid(n.uid)===n.reliefPending.byPid){
+         &&findOwnerPid(n.uid)===n.reliefPending.byPid
+&&!(n.reliefLock&&S.turn<=n.reliefLock.untilTurn)){
         var rlC=n.reliefPending.byCard!=null?card(n.reliefPending.byCard).name:'la carta de Relief';
         if(n.devastated){
           walk(n,function(x){x.devastated=false;if(x.tokens!=null&&x.tokens<1)x.tokens=1;});
           log(card(n.cardId).name+' recibe Relief automatico de '+rlC+': ya no esta devastado y recupera su accion');
+S.lastRelief={areaUid:n.uid,turn:S.turn};
         }else{
           log(card(n.cardId).name+' no necesitaba Relief: '+rlC+' caduca igualmente');
         }
@@ -1999,6 +2001,17 @@ E.beginTurn=function(pid,isFirst){
     if(!cE39||!cE39.effect||cE39.effect.kind!=='eliza_link')return;
     if(rE39.linkedTo&&findOwnerPid(rE39.linkedTo)===pid)placeBonusAction(pid,rE39.linkedTo,cE39.name);
   });
+  /* L40 — Tax Reform: "The IRS can now tax one Plot card from each player, at
+     the beginning of its own turn, drawing from their decks." El gate del dueno
+     es parte de la frase impresa: grava cuando EMPIEZA EL TURNO DEL DUENO, no
+     en el de cualquiera (P1-171). Mazo compartido: un Plot por cada OTRO
+     jugador pasa del mazo al descarte en el turno del dueno. */
+  if(S.taxReformActive&&S.taxReformOwner===pid){
+    S.players.forEach(function(qT40,qi40){
+      if(qi40===pid)return;
+      if(S.plotDeck.length){S.plotDiscard.push(S.plotDeck.pop());log('Tax Reform: el IRS grava 1 Plot del mazo (jugador '+(qi40+1)+')');}
+    });
+  }
   /* P1-009: The Network — "You start your turn by drawing two Plot cards,
      rather than one." Se hace aquí (no como acción del jugador) porque es
      parte del inicio del turno, y se respeta el límite de Plots en mano de la
@@ -2103,6 +2116,7 @@ E.drawGroup=function(pid){
   /* L14 — 364: mismo bloqueo para el robo de Grupo ("Plot or Group cards"). 405
    * (Unlucky 13) solo imprimia "no Plot cards", asi que este camino no lo tenia. */
   if(pl.flags.noDrawTurn)throw new Error('Seize the Time!: no puedes robar Group cards durante el turno especial');
+  if(pl.flags.noGroupDraw===S.turn)throw new Error("An Offer You Can't Refuse: regalaste tu robo de Grupo este turno");
   if(pl.flags.groupDrawn)throw new Error('Ya robaste tu carta de Grupo este turno');
   if(S.pendingDraw)throw new Error('Primero resuelve la eleccion de robo pendiente');
   /* L8b: 367 imprime "a Plot or Group card". */
@@ -4516,7 +4530,17 @@ function applyAttackResult(A,det,resultText){
       S.neutralArea.push({uid:'n'+(S.uidCounter++),cardId:ht.idx});
       log(hc.name+' falló el control desde la mano → va al ÁREA NEUTRAL');
     }else{
-      log(resultText+' — '+hc.name+' permanece en la mano rival');
+      /* L40 — REGLA OFICIAL (inwo_rules_extracted 226-241): un takeover desde la
+         mano que FALLA descarta la carta de Grupo. Excepcion impresa: The Bronze
+         Head (389, P1-165) la devuelve a la mano de su dueno. */
+      if(resEntryOf(A.pid,'bronze_keep')){
+        log(resultText+' — '+hc.name+' permanece en la mano (The Bronze Head)');
+      }else{
+        removeFromHand(S.players[ht.owner],ht.idx);
+        S.groupDiscard.push(ht.idx);
+        S.lastHandFail={failerPid:ht.owner,cardId:ht.idx,turn:S.turn};
+        log(resultText+' — '+hc.name+' se DESCARTA (regla oficial de takeover fallido)');
+      }
     }
     S.attack=null;return;
   }
@@ -5455,7 +5479,7 @@ E.playPlot=function(pid,handIdx,targetUid,opts){
     * (inwo_rules_extracted.txt:924-931). El veto se comprueba dentro de cada case. */
   /* P1-024: las 6 cartas de la ventana de RODADERO dicen "Play immediately after
    any die roll" / "Play this card when…": solo tienen sentido fuera de turno. */
-var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='boost10'||eff0.kind==='power_increase'||eff0.kind==='resistance_increase'||eff0.kind==='messiah'||eff0.kind==='angst'||eff0.kind==='bodyguard'||eff0.kind==='talisman'||ROLL_KINDS.indexOf(eff0.kind)>=0||eff0.kind==='arewe_cancel' /* L36 — 248 Are We Having Fun Yet?: "Play this card at any time" */||eff0.kind==='backlash_undo' /* L37 — 072 Backlash */||eff0.kind==='faction_boost'||eff0.kind==='unmasked_illum' /* L39 — 369 Unmasked!: "Play this card at any time" */ /* L38 — 340 Faction Fight: "Using this card is not an action" */
+var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='boost10'||eff0.kind==='power_increase'||eff0.kind==='resistance_increase'||eff0.kind==='messiah'||eff0.kind==='angst'||eff0.kind==='bodyguard'||eff0.kind==='talisman'||ROLL_KINDS.indexOf(eff0.kind)>=0||eff0.kind==='arewe_cancel' /* L36 — 248 Are We Having Fun Yet?: "Play this card at any time" */||eff0.kind==='backlash_undo' /* L37 — 072 Backlash */||eff0.kind==='faction_boost'||eff0.kind==='unmasked_illum' /* L39 — 369 Unmasked!: "Play this card at any time" */||eff0.kind==='vultures_grab' /* L40 — 241 Vultures */||eff0.kind==='hat_trick' /* L40 — 130 Hat Trick: immediately after you use a Plot */ /* L38 — 340 Faction Fight: "Using this card is not an action" */
   /* P1-026: Privileged Attack (346) dice "when you make any attack", o sea justo
      DENTRO de un ataque ajeno. P1-024/§37 lo veto por su cuenta el caso 'boost10'
      cuando la partida ya no es de nadie; aqui hace falta lo mismo pero el motor
@@ -6802,6 +6826,7 @@ case 'bulk_power':{
       if(findOwnerPid(S.attack.targetUid)===pid)throw new Error(c.name+': el objetivo debe ser de un RIVAL');
       var dup38=pl.hand.some(function(h38){return C.cards[h38].id===card(tgF38.cardId).id;});
       if(!dup38)throw new Error(c.name+': necesitas un duplicado de '+card(tgF38.cardId).name+' en tu mano');
+      if(tgF38.xanaduLoyal)throw new Error(c.name+': Xanadu — lealtad eterna: el duplicado no da bonus contra este grupo');
       S.attack.boosts.push({name:'Faction Fight',v:5});
       log(c.name+': +5 al ataque contra '+card(tgF38.cardId).name+' (duplicado en mano)');
       lastResult={ok:true,card:c.name};
@@ -6846,6 +6871,90 @@ case 'bulk_power':{
       if(pl.exposedPlots.indexOf(C.cards[gIdx39].id)<0)pl.exposedPlots.push(C.cards[gIdx39].id);
       log(c.name+': robas la Goal card de '+S.players[rivN39].name+' ('+C.cards[gIdx39].name+')');
       lastResult={ok:true,card:c.name,from:S.players[rivN39].name,goal:C.cards[gIdx39].name};
+      break;}
+    case 'vultures_grab':{
+      /* L40 — 241 Vultures: tras un takeover fallido desde la mano (regla oficial
+         L40 que AHORA descarta la carta), la coges para tu mano. */
+      var hf40=S.lastHandFail;
+      if(!hf40||hf40.turn!==S.turn)throw new Error(c.name+': ningun rival ha fallado un takeover desde la mano este turno');
+      if(hf40.failerPid===pid)throw new Error(c.name+': la carta fallada es TUYA');
+      var gi40=S.groupDiscard.indexOf(hf40.cardId);
+      if(gi40<0)throw new Error(c.name+': la carta ya no esta en el descarte');
+      S.groupDiscard.splice(gi40,1);
+      pl.hand.push(hf40.cardId);
+      log(c.name+': '+C.cards[hf40.cardId].name+' pasa a tu mano');
+      lastResult={ok:true,card:c.name,taken:C.cards[hf40.cardId].name};
+      break;}
+    case 'hat_trick':{
+      /* L40 — 130 Hat Trick: en vez de descartar el Plot que acabas de usar,
+         descartas Hat Trick y el Plot vuelve a tu mano (requiere accion de grupo). */
+      var lp40=S.lastPlotPlayed;
+      if(!lp40||lp40.turn!==S.turn)throw new Error(c.name+': no has usado ningun Plot este turno');
+      var pi40=S.plotDiscard.indexOf(lp40.cardId);
+      if(pi40<0)throw new Error(c.name+': el Plot usado ya no esta en el descarte');
+      var pay40=null;
+      walk(pl.structure,function(n40){if(pay40||!countsForGoals(n40))return;var nc40=card(n40.cardId);if(nc40&&(n40.tokens||0)>=1)pay40=n40;});
+      if(!pay40)throw new Error(c.name+': requiere la accion de un grupo tuyo');
+      spendGroupToken(pid,pay40.uid);
+      S.plotDiscard.splice(pi40,1);
+      pl.hand.push(lp40.cardId);
+      removeFromHand(pl,handIdx);
+      S.plotDiscard.push(handIdx);
+      log(c.name+': '+C.cards[lp40.cardId].name+' vuelve a tu mano (Hat Trick descartado en su lugar)');
+      lastResult={ok:true,card:c.name,recovered:C.cards[lp40.cardId].name};
+      return publicState();
+    }
+    case 'offer_refuse':{
+      /* L40 — 042 An Offer You Can't Refuse: al principio de tu turno robas Plots
+         extra "del mazo de un rival" (o 1 de cada de dos rivales); mazo compartido:
+         1 o 2 Plots extra. Coste: regalas tu robo de Grupo este turno. */
+      if(S.currentPid!==pid)throw new Error(c.name+': se juega al principio de TU turno');
+      var mode40=(opts&&opts.mode)||'two';
+      var draws40=mode40==='one'?1:2;
+      for(var d40=0;d40<draws40;d40++){
+        if(!S.plotDeck.length)break;
+        var ix40d=S.plotDeck.pop();pl.hand.push(ix40d);
+        log(c.name+': robas 1 Plot extra ('+card(ix40d).name+')');
+      }
+      pl.flags.noGroupDraw=S.turn;
+      log(c.name+': regalas tu robo de Grupo este turno');
+      lastResult={ok:true,card:c.name,draws:draws40};
+      break;}
+    case 'tax_reform':{
+      /* L40 — 069 Tax Reform: continuo. "The IRS can now tax one Plot card from
+         each player, AT THE BEGINNING OF ITS OWN TURN": ese turno es el del
+         jugador que la juega, no el de cualquiera, asi que S.taxReformOwner
+         fija el dueno y el hook de beginTurn solo grava en turnos del dueno
+         (sin el gate gravaba tambien en los turnos ajenos: impuesto duplicado).
+         Mazo compartido: "from each player" = 1 Plot por cada OTRO jugador
+         (autorregravarse no tiene sentido con un unico mazo; declarado). */
+      S.taxReformActive=true;S.taxReformOwner=pid;
+      log(c.name+': el IRS grava 1 Plot de cada jugador al principio de cada turno tuyo');
+      lastResult={ok:true,card:c.name,tax:true};
+      break;}
+    case 'corruption_relief':{
+      /* L40 — 375 Corruption: tras un Relief a un area devastada, los funcionarios
+         roban los suministros: sin nuevo Relief para esa area hasta pasado tu
+         proximo turno (el gancho de Relief existe desde la carta 410). */
+      var lr40=S.lastRelief;
+      if(!lr40||lr40.turn!==S.turn)throw new Error(c.name+': no ha llegado Relief a ninguna area devastada este turno');
+      var ar40=findNode(lr40.areaUid);
+      if(!ar40)throw new Error(c.name+': el area del Relief ya no existe');
+      ar40.reliefLock={untilTurn:S.turn+1};
+      log(c.name+': funcionarios corruptos roban los suministros de '+card(ar40.cardId).name+' (sin nuevo Relief hasta pasado tu proximo turno)');
+      lastResult={ok:true,card:c.name,area:card(ar40.cardId).name};
+      break;}
+    case 'xanadu_loyal':{
+      /* L40 — Xanadu: lealtad eterna. Impreso: "If a card duplicating one of your
+       * Groups is played, it gives no bonus to an attempt to Control or Destroy
+       * your group." En este motor el UNICO bonus que un duplicado da a un ataque
+       * de control/destruccion es el +5 de Faction Fight (case faction_boost): ahi
+       * vive la anulacion. La captura por control NO esta anulada (el impreso no lo dice). */
+      var xT40=findNode(targetUid);
+      if(!xT40||findOwnerPid(targetUid)!==pid)throw new Error(c.name+': elige uno de TUS grupos');
+      xT40.xanaduLoyal=true;
+      log(c.name+': '+card(xT40.cardId).name+' sera leal para siempre');
+      lastResult={ok:true,card:c.name,loyal:card(xT40.cardId).name};
       break;}
     case 'token_wither':{
       /* 418 World Hunger — DOS frases en una carta (interpretacion 6/7):
@@ -8563,7 +8672,7 @@ case 'bulk_power':{
            * E.beginTurn llama PRIMERO (L1164) con S.turn ya incrementado: precedente
            * exacto de n.defTriple.untilTurn (L1104). Se guarda byPid para filtrar por
            * dueno, porque el walk de expireTurnFlags recorre los grupos de TODOS. */
-          ndD.reliefPending={untilTurn:S.turn+1,byPid:ownD,byCard:handIdx};
+          if(!(ndD.reliefLock&&S.turn<=ndD.reliefLock.untilTurn))ndD.reliefPending={untilTurn:S.turn+1,byPid:ownD,byCard:handIdx};else log('Corruption: no puede concederse Relief a esta area todavia');
         }
         log(c.name+' protege a '+tcD.name+' con +'+dd.defenseBonus+' contra cualquier Disaster'+(dd.reliefPending?' y con Relief automatico al empezar el proximo turno de '+S.players[ownD].name:''));
         lastResult={ok:true,negated:true,card:c.name,kind:'disaster_defence',mode:modeD,
@@ -9344,6 +9453,8 @@ case 'bulk_power':{
         +nwoUndone21.becomes+' alineacion(es) y '+nwoUndone21.noTokens+' grupo(s) sin ficha');
   }
   var linkedHere=pl.linkedPlots.some(function(lp){return lp.cardId===handIdx;});
+  /* L40 — Hat Trick: recordatorio del Plot usado este turno. */
+  S.lastPlotPlayed={cardId:handIdx,turn:S.turn};
   if(pl.exposedPlots.indexOf(handIdx)<0&&!linkedHere)discardPlot(handIdx,pid);
   /* L32 — Power Grab: "Your turn ends immediately; you get new Action
      tokens". El cierre corre aqui, cuando la carta ya salio de la mano, para

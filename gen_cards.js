@@ -3104,6 +3104,43 @@ const L39_FX = {
 const L39_FXN = {};
 for (const k39 in L39_FX) { L39_FXN[norm(k39)] = L39_FX[k39]; }
 
+/* L40 - reglas oficiales finales (P1-171). Textos de docs/audit/CARD_RESEARCH.md
+ * (fuente secundaria local). I Lied sigue bloqueada (sin subsistema de tratos);
+ * Cover of Darkness sigue con efecto truncado por OCR (solo flavor). ENTRAN en
+ * BLOCKED_CARDS: Power for Its Own Sake (sin fuente local: solo el fragmento OCR
+ * "including your llluminati group 3"; el texto jugado en L40 se retiro) y
+ * Opportunity Knocks (exige ataque unico FUERA DE TURNO contra la carta del
+ * descarte: requireOwnMain veta acciones fuera de turno y no hay camino de
+ * ataque con objetivo en el descarte — subsistema ausente). */
+const L40_FX = {
+  'Vultures': {
+    kind: 'vultures_grab',
+    t: "Vultures Play this card after a rival plays a Group from his own hand, fails to take it over, and discards it. Place the discarded Group card in your own hand!"
+  },
+  'Tax Reform': {
+    kind: 'tax_reform',
+    t: "Tax Reform The IRS can now tax one Plot card from each player, at the beginning of its own turn, drawing from their decks."
+  },
+  'Hat Trick': {
+    kind: 'hat_trick',
+    t: "Hat Trick Play this card immediately after you use a Plot card. Discard this card instead, and put the other Plot card back into your hand. Using this card requires an action from a group. Requires Action"
+  },
+  "An Offer You Can't Refuse": {
+    kind: 'offer_refuse',
+    t: "An Offer You Can't Refuse Play this card at the beginning of your turn. You may draw not from your own deck, but from the deck of a rival! Or you may take one card each from two rivals' Plot decks. To do this, you must give up your chance to draw any Group cards this turn. Draw No Group Cards This Turn"
+  },
+  'Corruption': {
+    kind: 'corruption_relief',
+    t: "Corruption Play this card after Relief has come to a Devastated area. Corrupt local officials steal the supplies, and no new relief may be attempted for that area until after the next turn of the person playing this card."
+  },
+  'Xanadu': {
+    kind: 'xanadu_loyal',
+    t: "Xanadu Is it a piace... Xanadu is the ultimate vacation spot where all desires are fulfifed. Once one of your servants has visited Xanadu, he'll be loyal forever, just for the chance to go bock . If a card duplicating one of your Groups is played, it gives no bonus to an attempt to Control or Destroy your group."
+  }
+};
+const L40_FXN = {};
+for (const k40 in L40_FX) { L40_FXN[norm(k40)] = L40_FX[k40]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
@@ -3393,7 +3430,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias
