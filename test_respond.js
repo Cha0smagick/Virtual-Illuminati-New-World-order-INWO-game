@@ -214,6 +214,11 @@ try {
   console.error('FALLO: declareAttack lanzó -> ' + e.message);
   process.exit(1);
 }
+/* P1-012: la declaracion puede abrir la ventana de DEFENSA si el reparto puso
+ * una carta de reaccion (bodyguard...) en cualquier mano. Sin cerrarla, el
+ * resolveAttack de abajo no llega a rodar y el ataque queda abierto — flake
+ * 1/40 medido en estres. Nadie reacciona: se cierra igual que sellarVentanas. */
+sellarVentanas();
 
 var A = E.getState().attack;
 if (!A) { console.error('FALLO: el ataque no quedó abierto tras declareAttack'); process.exit(1); }
@@ -233,10 +238,18 @@ console.log('tras AI.responder → aids=' + A.aids.length + ' opposes=' + A.oppo
 E.resolveAttack();
 /* P1-016/P1-024: si el reparto puso una carta de rodadero en cualquier mano,
  * resolveAttack APLAZA la resolucion (ventana de reaccion abierta, ataque aun
- * abierto). closePendingRoll sin reacciones jugadas completa la tirada
- * original y limpia el ataque; sin esto el test depende del reparto. */
+ * abierto). Se drenan TODOS los tipos de ventana como hace sellarVentanas:
+ * closePendingRoll sin reacciones jugadas completa la tirada original y limpia
+ * el ataque; sin esto el test depende del reparto. */
 var guardR = 0;
-while (E.getState().pendingRoll && guardR++ < 8) E.resolvePendingRoll();
+while (guardR++ < 8) {
+  var sR = E.getState();
+  if (sR.pendingRoll) { E.resolvePendingRoll(); continue; }
+  if (sR.pendingEvent) { E.resolvePendingEvent(); continue; }
+  if (sR.pendingAttack) { E.resolvePendingAttack(); continue; }
+  if (sR.pendingTurnStart) { E.resolvePendingTurnStart({}); continue; }
+  break;
+}
 var cleared = E.getState().attack === null;
 console.log('resuelto · attack limpiado: ' + cleared);
 if (!cleared) { console.error('FALLO: el ataque no se limpió tras resolveAttack'); process.exit(1); }
