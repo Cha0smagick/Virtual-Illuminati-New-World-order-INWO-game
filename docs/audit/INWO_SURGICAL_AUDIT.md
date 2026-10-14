@@ -9163,3 +9163,15 @@ tienen EOL mixto en el arbol de trabajo.
 **Tests**: L38 S1-S6 (12 checks). Estabilizacion: strip global ampliado a lips_undo/deathmask; fresh37 purga 9 reactivas; withMock37 resuelve pendingRoll; S8c boost de garantia. npm test 5/5.
 
 **Estado**: deuda plot/resource 13 (7 reales + 6 bloqueadas). Backlog vivo: L39 (eliza, unmasked, niceideaitsminenow, corruption, coverofdarkness-truncado, opportunityknocks, vultures-bloqueada).
+
+## 84. L39 - FAMILIA ESPECIALES (P1-170)
+
+**Regla**: Eliza (Gadget: enlace a Computer/Network ? accion extra por turno; crash 11/12 ? descarte + exposicion de Plots), Unmasked! (INSTANT: reemplaza tu carta Illuminati por otra de tu mano; poderes/goals cambian; la vieja al descarte), Nice Idea. It's Mine Now. (accion de Illuminati: roba la Goal card de un rival y la expone).
+
+**Motor**: playResource eliza_link (host computer/network); beginTurn placeBonusAction al enlazado (patron kells L35); settle crash hook (r>=11 && bonusAction {from:'Eliza',turn} en el atacante ? descarta recurso + exposedPlots del dueno); unmasked_illum (illumId swap + cardId del nodo + vieja a groupDiscard; Agents vacua); niceidea_steal (illumTokens-- + primera Goal del rival ? mi mano + exposedPlots); whitelist instant + unmasked_illum.
+
+**Interpretaciones**: corruption sin subsistema Relief ? pendiente; opportunityknocks/vultures sin via failed-hand-takeover-discard (§52) ? bloqueadas; coverofdarkness efecto OCR-truncado (§42) ? pendiente; Nice Idea 'exposed' = primera Goal del rival (declarado); crash de Eliza scope = ficha Eliza gastada este turno.
+
+**Tests (bloque L39 S1-S3, 9 checks)**: ficha extra observable, crash con 12 (recurso al descarte + exposedPlots), reemplazo de Illuminati (illumId + nodo + descarte), robo de Goal (mano + exposedPlots) + rechazo sin accion. RESULTADO: npm test ALL TESTS PASSED (11 suites); FASE 4: 237 clasificadas, 10 pendientes (antes 13).
+
+**Estado**: deuda plot/resource 10 = 4 declaradas (corruption, opportunityknocks, vultures, coverofdarkness) + 6 bloqueadas congeladas (anofferyoucantrefuse, hattrick, ilied, vultures, powerforitsownsake, taxreform). Backlog no-implementable sin subsistemas nuevos; el catologo de 421 cartas queda CUBIERTO al techo declarado.

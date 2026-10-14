@@ -3083,6 +3083,27 @@ const L38_FX = {
 const L38_FXN = {};
 for (const k38 in L38_FX) { L38_FXN[norm(k38)] = L38_FX[k38]; }
 
+/* L39 — familia especiales (P1-170). Eliza, Unmasked!, Nice Idea. It's Mine Now.
+ * corruption (sin subsystem Relief), opportunityknocks/vultures (sin ruta de
+ * takeover fallido desde mano, §52) y coverofdarkness (efecto OCR cortado, §42)
+ * quedan sin mecanica con motivo declarado. */
+const L39_FX = {
+  'Eliza': {
+    kind: 'eliza_link',
+    t: "Eliza can be linked to any Computer group, or to the Network. That group may take an extra action each turn! But if that extra action ever results in a roll of 11 or 12, Eliza has crashed. Discard this card and expose all your hidden Plot cards. Gadget"
+  },
+  'Unmasked!': {
+    kind: 'unmasked_illum',
+    t: "Play this card at any time, along with an Illuminati card from your hand. The new card becomes your Illuminati group, changing your powers and goals! The old card is discarded. If you already had an Agents card for the new Illuminati type, that card is lost."
+  },
+  "Nice Idea. It's Mine Now.": {
+    kind: 'niceidea_steal',
+    t: "This card may be used on any rival who has an exposed Goal card. It may be used only on your turn, and requires an action from your Illuminati Take his Goal card and put it in front of you, exposed. It's yours now Requires Illuminati Action"
+  }
+};
+const L39_FXN = {};
+for (const k39 in L39_FX) { L39_FXN[norm(k39)] = L39_FX[k39]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
@@ -3372,7 +3393,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

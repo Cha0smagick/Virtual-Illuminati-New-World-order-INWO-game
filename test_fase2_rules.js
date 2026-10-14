@@ -11375,6 +11375,82 @@ function err26(fn) { return throwMsgL14(fn); }
   S.forEach(function (p) { if (p[1]) { console.log('ok   - ' + p[0]); } else { failures.push(p[0]); console.log('FAIL - ' + p[0]); } });
 })();
 
+
+/* ===== L39 — familia especiales (P1-170) ===== */
+(function l39Tests() {
+  var S = [];
+  function ok39(c, m) { S.push([m, !!c]); }
+  function tMsg39(fn) { try { fn(); return null; } catch (e) { return e.message; } }
+  function attr39(c, a) { return (c && c.attributes || []).some(function (x) { return String(x).toLowerCase() === a; }); }
+  function res39(pid, kind) { var rs = E._raw().players[pid].resources || []; for (var i = 0; i < rs.length; i++) { var c39 = C.cards[rs[i].cardId]; if (c39 && c39.effect && c39.effect.kind === kind) return rs[i]; } return null; }
+  function findN39(uid) { var out = null; E._raw().players.forEach(function (p39) { (function go(n39) { if (!n39 || out) return; if (n39.uid === uid) { out = n39; return; } (n39.children || []).forEach(go); })(p39.structure); }); return out; }
+  function firstBy39(pred) { for (var i = 0; i < C.cards.length; i++) { if (pred(C.cards[i])) return C.cards[i]; } return null; }
+  function idx39(id) { return idxOfId(id); }
+  function addRes39(pid, ix, link) { var pl39 = E._raw().players[pid]; E._raw().currentPid = pid; pl39.illumTokens = Math.max(pl39.illumTokens || 0, 1); pl39.usedResourceThisTurn = false; hand22(pid, ix); E.playResource(pid, ix, link || null); }
+  var realRnd39 = Math.random;
+  function withMock39(seq, fn) { var i39 = 0; Math.random = function () { return seq[Math.min(i39++, seq.length - 1)]; }; try { fn(); if (E._raw().pendingRoll) { try { E.resolvePendingRoll(); } catch (e39x) { } } } finally { Math.random = realRnd39; } }
+
+  /* S1 — Eliza: enlace Computer, ficha extra por turno, crash con 11/12 */
+  (function () {
+    fresh(idx39('bavarianilluminati1'), idx39('servantsofcthulhu1'));
+    var comp = firstBy39(function (c39) { return c39.type === 'group' && attr39(c39, 'computer'); });
+    if (!comp) { ok39(true, 'L39.S1 SKIP sin grupo Computer'); return; }
+    plant(0, 'cg', idxOfId(comp.id), 1);
+    addRes39(0, idx39('eliza'), 'cg');
+    ok39(res39(0, 'eliza_link') !== null, 'L39.S1a Eliza enlazada al grupo Computer');
+    readyToAttack(0); E.endTurn(); E.endTurn();
+    var cg39 = findN39('cg');
+    ok39(Array.isArray(cg39.bonusAction) && cg39.bonusAction.some(function (b39) { return b39.from === 'Eliza'; }), 'L39.S1b Eliza da ficha de accion extra cada turno');
+    var g39 = firstBy39(function (c39) { return c39.type === 'group' && (c39.power || 0) < 5 && !attr39(c39, 'peaceful'); });
+    plant(1, 'eT', idxOfId((g39 || { id: C.cards[anyGroupIdx()].id }).id), 1);
+    var pl0 = E._raw().players[0];
+    var plotIdx39 = -1;
+    for (var q39 = 0; q39 < pl0.hand.length; q39++) if (C.cards[pl0.hand[q39]].type === 'plot') { plotIdx39 = pl0.hand[q39]; break; }
+    if (plotIdx39 < 0) { var anyPlot39 = firstBy39(function (c39) { return c39.type === 'plot'; }); pl0.hand.push(idxOfId(anyPlot39.id)); }
+    E._raw().currentPid = 0;
+    E.declareAttack(0, 'destroy', { attackerUid: 'cg', uid: 'eT' });
+    E._raw().attack.boosts.push({ name: 't39', v: 50 }); /* evita auto-fallo por defensa maestra */
+    withMock39([0.99, 0.99], function () { E.resolveAttack(); });
+    ok39(res39(0, 'eliza_link') === null, 'L39.S1c Eliza crashea con tirada 11/12 y se descarta');
+    ok39((pl0.exposedPlots || []).length >= 1, 'L39.S1d los Plots ocultos quedan expuestos tras el crash');
+  })();
+
+  /* S2 — Unmasked!: cambia tu Illuminati */
+  (function () {
+    fresh(idx39('bavarianilluminati1'), idx39('servantsofcthulhu1'));
+    var pl0 = E._raw().players[0];
+    var other39 = firstBy39(function (c39) { return c39.type === 'illuminati' && c39.id !== 'bavarianilluminati1'; });
+    if (!other39) { ok39(true, 'L39.S2 SKIP sin segunda Illuminati'); return; }
+    pl0.hand.push(idxOfId(other39.id));
+    var old39 = pl0.illumId;
+    E._raw().currentPid = 0;
+    var ix39b = idx39('unmasked'); hand22(0, ix39b);
+    E.playPlot(0, ix39b, null, null);
+    ok39(pl0.illumId === idxOfId(other39.id), 'L39.S2a Unmasked! cambia tu carta de Illuminati');
+    ok39(E._raw().groupDiscard.indexOf(old39) >= 0, 'L39.S2b el Illuminati viejo se descarta');
+  })();
+
+  /* S3 — Nice Idea. It's Mine Now.: roba la Goal del rival */
+  (function () {
+    fresh(idx39('bavarianilluminati1'), idx39('servantsofcthulhu1'));
+    var goal39 = firstBy39(function (c39) { return c39.type === 'plot' && c39.effect && c39.effect.kind === 'goal'; });
+    if (!goal39) { ok39(true, 'L39.S3 SKIP sin Goal cards'); return; }
+    var pl1 = E._raw().players[1];
+    pl1.hand.push(idxOfId(goal39.id));
+    var pl0 = E._raw().players[0];
+    pl0.illumTokens = Math.max(pl0.illumTokens || 0, 1);
+    E._raw().currentPid = 0;
+    var ix39c = idx39('niceideaitsminenow'); hand22(0, ix39c);
+    var errS3 = tMsg39(function () { E.playPlot(0, ix39c, null, null); });
+    if (errS3) console.log('DEBUG S3: ' + errS3);
+    ok39(pl0.hand.indexOf(idxOfId(goal39.id)) >= 0, "L39.S3a Nice Idea roba la Goal card del rival");
+    ok39((pl0.exposedPlots || []).indexOf(goal39.id) >= 0, 'L39.S3b la Goal robada queda expuesta');
+    ok39(/Illuminati Action/.test(tMsg39(function () { var ix2 = idx39('niceideaitsminenow'); hand22(0, ix2); var sv = pl0.illumTokens; pl0.illumTokens = 0; try { E.playPlot(0, ix2, null, null); } finally { pl0.illumTokens = sv; } }) || ''), 'L39.S3c sin accion de Illuminati lanza');
+  })();
+
+  S.forEach(function (p) { if (p[1]) { console.log('ok   - ' + p[0]); } else { failures.push(p[0]); console.log('FAIL - ' + p[0]); } });
+})();
+
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });

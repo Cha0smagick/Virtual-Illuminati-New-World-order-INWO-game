@@ -1993,6 +1993,12 @@ E.beginTurn=function(pid,isFirst){
     if(!cBK||!cBK.effect||cBK.effect.kind!=='kells_boost')return;
     if(rBK.linkedTo&&findOwnerPid(rBK.linkedTo)===pid)placeBonusAction(pid,rBK.linkedTo,cBK.name);
   });
+  /* L39 — 376 Eliza: la misma ficha-extra-por-turno que Book of Kells. */
+  pl.resources.forEach(function(rE39){
+    var cE39=card(rE39.cardId);
+    if(!cE39||!cE39.effect||cE39.effect.kind!=='eliza_link')return;
+    if(rE39.linkedTo&&findOwnerPid(rE39.linkedTo)===pid)placeBonusAction(pid,rE39.linkedTo,cE39.name);
+  });
   /* P1-009: The Network — "You start your turn by drawing two Plot cards,
      rather than one." Se hace aquí (no como acción del jugador) porque es
      parte del inicio del turno, y se respeta el límite de Plots en mano de la
@@ -3267,6 +3273,16 @@ E.playResource=function(pid,handIdx,linkedToUid){
       log(c.name + ': al destruir un grupo robaras 1 Plot extra; no podras controlar grupos Peaceful');
       break;
     }
+    case 'eliza_link': {
+      /* L39 — 376 Eliza: enlace a grupo Computer o The Network; ficha extra por
+         turno (hook en beginTurn) y crash si la accion extra saca 11/12
+         (hook en settle, tras la tirada). */
+      if(!linkedToUid||findOwnerPid(linkedToUid)!==pid)throw new Error(c.name+': enlazala a un grupo tuyo');
+      var ndE39=findNode(linkedToUid),tcE39=ndE39?card(ndE39.cardId):null;
+      if(!tcE39||!(hasAttr(tcE39,'computer',ndE39)||/network/i.test(tcE39.name||'')))throw new Error(c.name+': el anfitrion debe ser un grupo Computer o The Network');
+      log(c.name+': '+tcE39.name+' actuara una vez extra por turno');
+      break;
+    }
   }
   pl.illumTokens--;pl.usedResourceThisTurn=true;
   removeFromHand(pl,handIdx);
@@ -4423,6 +4439,28 @@ E.resolveAttack=function(){
   };
   if(det.total<2)return settle(null,det.total,false,null);
   var r=roll2d6();S.lastRoll={d:r};
+  /* L39 — 376 Eliza: "if that extra action ever results in a roll of 11 or
+     12, Eliza has crashed. Discard this card and expose all your hidden Plot
+     cards." Se comprueba en la tirada de cualquier accion del grupo enlazado
+     que lleve ficha de Eliza este turno (bonusAction from='Eliza'). */
+  if(r>=11&&S.attack&&S.attack.attackerUid){
+    var ndE39b=findNode(S.attack.attackerUid);
+    if(ndE39b&&Array.isArray(ndE39b.bonusAction)&&ndE39b.bonusAction.some(function(b39){return b39&&b39.from==='Eliza'&&b39.turn===S.turn;})){
+      for(var qE39=0;qE39<S.players.length;qE39++){
+        var rrE39=S.players[qE39].resources||[],hitE39=-1;
+        for(var iE39=0;iE39<rrE39.length;iE39++){var rcE39=card(rrE39[iE39].cardId);if(rcE39&&rcE39.effect&&rcE39.effect.kind==='eliza_link'){hitE39=iE39;break;}}
+        if(hitE39>=0){
+          S.groupDiscard.push(rrE39[hitE39].cardId);
+          S.players[qE39].resources.splice(hitE39,1);
+          var hE39=S.players[qE39].hand||[];
+          S.players[qE39].exposedPlots=S.players[qE39].exposedPlots||[];
+          for(var jE39=hE39.length-1;jE39>=0;jE39--){var ccE39=card(hE39[jE39]);if(ccE39&&ccE39.type==='plot'&&S.players[qE39].exposedPlots.indexOf(ccE39.id)<0)S.players[qE39].exposedPlots.push(ccE39.id);}
+          log('Eliza ha crasheado (11/12 en la accion extra): se descarta y se exponen los Plots ocultos de '+S.players[qE39].name);
+          break;
+        }
+      }
+    }
+  }
   var lbl=(A.type==='control'?'Control':'Destrucción')+' de '+S.players[A.pid].name;
   if(openRollWindow({klass:A.type,label:lbl,target:attackTargetName(A),pid:A.pid,
                      roll:r,total:det.total,wasSuccess:(r!==11&&r!==12&&r<=det.total),
@@ -5417,7 +5455,7 @@ E.playPlot=function(pid,handIdx,targetUid,opts){
     * (inwo_rules_extracted.txt:924-931). El veto se comprueba dentro de cada case. */
   /* P1-024: las 6 cartas de la ventana de RODADERO dicen "Play immediately after
    any die roll" / "Play this card when…": solo tienen sentido fuera de turno. */
-var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='boost10'||eff0.kind==='power_increase'||eff0.kind==='resistance_increase'||eff0.kind==='messiah'||eff0.kind==='angst'||eff0.kind==='bodyguard'||eff0.kind==='talisman'||ROLL_KINDS.indexOf(eff0.kind)>=0||eff0.kind==='arewe_cancel' /* L36 — 248 Are We Having Fun Yet?: "Play this card at any time" */||eff0.kind==='backlash_undo' /* L37 — 072 Backlash */||eff0.kind==='faction_boost' /* L38 — 340 Faction Fight: "Using this card is not an action" */
+var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='boost10'||eff0.kind==='power_increase'||eff0.kind==='resistance_increase'||eff0.kind==='messiah'||eff0.kind==='angst'||eff0.kind==='bodyguard'||eff0.kind==='talisman'||ROLL_KINDS.indexOf(eff0.kind)>=0||eff0.kind==='arewe_cancel' /* L36 — 248 Are We Having Fun Yet?: "Play this card at any time" */||eff0.kind==='backlash_undo' /* L37 — 072 Backlash */||eff0.kind==='faction_boost'||eff0.kind==='unmasked_illum' /* L39 — 369 Unmasked!: "Play this card at any time" */ /* L38 — 340 Faction Fight: "Using this card is not an action" */
   /* P1-026: Privileged Attack (346) dice "when you make any attack", o sea justo
      DENTRO de un ataque ajeno. P1-024/§37 lo veto por su cuenta el caso 'boost10'
      cuando la partida ya no es de nadie; aqui hace falta lo mismo pero el motor
@@ -6767,6 +6805,47 @@ case 'bulk_power':{
       S.attack.boosts.push({name:'Faction Fight',v:5});
       log(c.name+': +5 al ataque contra '+card(tgF38.cardId).name+' (duplicado en mano)');
       lastResult={ok:true,card:c.name};
+      break;}
+    case 'unmasked_illum':{
+      /* L39 — 369 Unmasked!: "Play this card at any time, along with an
+         Illuminati card from your hand. The new card becomes your Illuminati
+         group, changing your powers and goals! The old card is discarded."
+         illuIdx explicito o auto-pick de la primera carta Illuminati en mano
+         (declarado). Clausula de Agents cards = laguna (sin sistema Agents). */
+      var iU39=(opts&&opts.illuIdx!=null)?opts.illuIdx:-1;
+      if(iU39<0){for(var wU39=0;wU39<pl.hand.length;wU39++){if(card(pl.hand[wU39])&&card(pl.hand[wU39]).type==='illuminati'){iU39=pl.hand[wU39];break;}}}
+      if(iU39<0||!card(iU39)||card(iU39).type!=='illuminati')throw new Error(c.name+': necesitas una carta de Illuminati en tu mano');
+      var oldU39=pl.illumId;
+      pl.illumId=iU39;
+      var foundU39=null;
+      walk(pl.structure,function(nU39){if(!foundU39&&nU39.cardId===oldU39)foundU39=nU39;});
+      if(foundU39)foundU39.cardId=iU39;
+      removeFromHand(pl,iU39);
+      S.groupDiscard.push(oldU39);
+      log(c.name+': '+card(oldU39).name+' es descartado — tu Illuminati es ahora '+card(iU39).name);
+      lastResult={ok:true,card:c.name,oldIllum:card(oldU39).name,newIllum:card(iU39).name};
+      break;}
+    case 'niceidea_steal':{
+      /* L39 — 006 Nice Idea. It's Mine Now.: "any rival who has an exposed
+         Goal card. It may be used only on your turn, and requires an action
+         from your Illuminati". El motor no distingue Goal expuesta/oculta en
+         mano (declarado): la primera Goal en mano de un rival vale. */
+      if(pl.illumTokens<1)throw new Error(c.name+': Requires Illuminati Action');
+      var rivN39=-1,gIdx39=-1;
+      for(var qN39=0;qN39<S.players.length;qN39++){
+        if(qN39===pid)continue;
+        var gsN39=goalCardsIn(S.players[qN39]);
+        if(gsN39.length){rivN39=qN39;gIdx39=gsN39[0];break;}
+      }
+      if(rivN39<0)throw new Error(c.name+': ningun rival tiene una Goal card');
+      pl.illumTokens--;
+      var rHand39=S.players[rivN39].hand;
+      rHand39.splice(rHand39.indexOf(gIdx39),1);
+      pl.hand.push(gIdx39);
+      pl.exposedPlots=pl.exposedPlots||[];
+      if(pl.exposedPlots.indexOf(C.cards[gIdx39].id)<0)pl.exposedPlots.push(C.cards[gIdx39].id);
+      log(c.name+': robas la Goal card de '+S.players[rivN39].name+' ('+C.cards[gIdx39].name+')');
+      lastResult={ok:true,card:c.name,from:S.players[rivN39].name,goal:C.cards[gIdx39].name};
       break;}
     case 'token_wither':{
       /* 418 World Hunger — DOS frases en una carta (interpretacion 6/7):

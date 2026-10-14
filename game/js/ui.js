@@ -2196,6 +2196,10 @@ var KIND_ES = {
   stars_takeover: 'Takeover automatico de una Resource de tu mano (coste Magic/Illuminati)',
   march_substitute: 'Sustituye UNA accion requerida (cuesta el Plot superior de tu mazo; 1 vez/turno)',
   faction_boost: '+5 al ataque en curso contra el grupo del que tienes un duplicado (no es accion)',
+  /* L39 — familia especiales (P1-170). */
+  eliza_link: 'Grupo Computer/Network con una accion extra por turno (crash con 11/12)',
+  unmasked_illum: 'Cambia tu carta de Illuminati por otra de tu mano',
+  niceidea_steal: 'Roba la Goal card de un rival (accion de Illuminati)',
   attack_privilege: 'Modificar el privilegio de un ataque en curso',
   combo_attack: 'Combinar dos ataques del mismo tipo sobre el mismo objetivo',
   illu_special: 'Poder especial de Illuminati', align_edit: 'Editar alineamientos',
