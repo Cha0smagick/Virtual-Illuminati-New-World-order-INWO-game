@@ -24,7 +24,7 @@ function throws(fn, re, m) {
  * fallarian segun el reparto. Se quitan del mazo y de TODAS las manos: la
  * regresion de L22 las vuelve a meter explicitamente, igual que hand18 y
  * toHandL14 hacen con las suyas. Es la regla 14 (fixture sin reparto aleatorio). */
-var L37REACTIVE = ['coverup', 'arkofthecovenant', 'theholygrail', 'immortalityserum', 'soulburner', 'hitlersbrain', 'backlash'];
+var L37REACTIVE = ['coverup', 'arkofthecovenant', 'theholygrail', 'immortalityserum', 'soulburner', 'hitlersbrain', 'backlash', 'lips_undo', 'deathmask'];
 function isReactive37(id) { return L37REACTIVE.indexOf(id) >= 0; }
 function isNegatorCard(ix) {
   var e = ix != null && C.cards[ix] ? C.cards[ix].effect : null;
@@ -10287,7 +10287,7 @@ function err26(fn) { return throwMsgL14(fn); }
   function fresh37(a37, b37) {
     fresh(a37, b37);
     var r37 = E._raw();
-    var l37ids = ['coverup', 'arkofthecovenant', 'theholygrail', 'immortalityserum', 'soulburner', 'hitlersbrain', 'backlash'];
+    var l37ids = ['coverup', 'arkofthecovenant', 'theholygrail', 'immortalityserum', 'soulburner', 'hitlersbrain', 'backlash', 'lips_undo', 'deathmask'];
     function bad37(id37) { return l37ids.indexOf(id37) >= 0; }
     for (var q37 = 0; q37 < r37.players.length; q37++) {
       var h37 = r37.players[q37].hand;
@@ -11230,7 +11230,7 @@ function err26(fn) { return throwMsgL14(fn); }
       hand22(0, FS);
       E.playResource(0, FS, 'per8');
       go35(1);
-      rollTotal35([0.01, 0.01], function () { E.declareAttack(1, 'control', { attackerUid: 'at8', uid: 'per8' }); });
+      rollTotal35([0.01, 0.01], function () { E.declareAttack(1, 'control', { attackerUid: 'at8', uid: 'per8' }); if (E._raw().attack) E._raw().attack.boosts.push({ name: 't35', v: 50 }); /* garantiza captura ante defensa variable */ });
       ok(E._raw().players[1].resources.some(function (r) { return r.cardId === FS; }), 'S8c el saucer es capturado con su Personality');
       /* (d) modo sin link: takeover extra de Resource pagando el Plot de cima */
       fresh(I0, I1);
@@ -11251,6 +11251,129 @@ function err26(fn) { return throwMsgL14(fn); }
     S.forEach(function (p) { if (p[1]) { console.log('ok   - ' + p[0]); } else { failures.push(p[0]); console.log('FAIL - ' + p[0]); } });
   })();
 
+
+
+/* ===== L38 — familia ataques y takeovers (P1-169) ===== */
+(function l38Tests() {
+  var S = [];
+  function ok38(c, m) { S.push([m, !!c]); }
+  function tMsg38(fn) { try { fn(); return null; } catch (e) { return e.message; } }
+  function attr38(c, a) { return (c && c.attributes || []).some(function (x) { return String(x).toLowerCase() === a; }); }
+  function findN38(uid) { var out = null; E._raw().players.forEach(function (p38) { (function go(n38) { if (!n38 || out) return; if (n38.uid === uid) { out = n38; return; } (n38.children || []).forEach(go); })(p38.structure); }); return out; }
+  function inTree38(uid) { return findN38(uid) !== null; }
+  function firstBy38(pred) { for (var i = 0; i < C.cards.length; i++) { if (pred(C.cards[i])) return C.cards[i]; } return null; }
+  function idx38(id) { return idxOfId(id); }
+  var realRnd38 = Math.random;
+  function withMock38(seq, fn) { var i38 = 0; Math.random = function () { return seq[Math.min(i38++, seq.length - 1)]; }; try { fn(); if (E._raw().pendingRoll) { try { E.resolvePendingRoll(); } catch (e38x) { /* ventana sin resolutor */ } } } finally { Math.random = realRnd38; } }
+
+  /* S1 - Annual Convention */
+  (function () {
+    fresh(idx38('bavarianilluminati1'), idx38('servantsofcthulhu1'));
+    var place = firstBy38(function (c38) { return c38.type === 'group' && c38.subtype === 'place'; });
+    var org = firstBy38(function (c38) { return c38.type === 'group' && c38.subtype === 'organization'; });
+    if (!place || !org) { ok38(true, 'L38.S1 SKIP sin place/organization'); return; }
+    plant(0, 'site', idxOfId(place.id), 1);
+    plant(1, 'org', idxOfId(org.id), 1);
+    plant(1, 'aA', idxOfId(org.id), 2);
+    findN38('aA').powerOverride = 15;
+    readyToAttack(0);
+    E.endTurn(); E._raw().currentPid = 1;
+    E.declareAttack(1, 'destroy', { attackerUid: 'aA', uid: 'site' });
+    E._raw().attack.boosts.push({ name: 'test38', v: 50 });
+    withMock38([0.01, 0.01], function () { E.resolveAttack(); });
+    ok38(E._raw().lastPlaceDown && E._raw().lastPlaceDown.mode === 'destroyed', 'L38.S1a lastPlaceDown registrado (Place destruido)');
+    var ix38 = idx38('annualconvention'); hand22(0, ix38);
+    E._raw().currentPid = 0;
+    withMock38([0.01, 0.01], function () { E.playPlot(0, ix38, 'org', { extraPower: 50 }); });
+    ok38(!inTree38('org'), 'L38.S1b Annual Convention: Instant Attack destruye el Organization');
+  })();
+
+  /* S2 - Bimbo at Eleven */
+  (function () {
+    fresh(idx38('bavarianilluminati1'), idx38('servantsofcthulhu1'));
+    var per = firstBy38(function (c38) { return c38.type === 'group' && c38.subtype === 'personality'; });
+    var media = firstBy38(function (c38) { return c38.type === 'group' && attr38(c38, 'media'); });
+    if (!per || !media) { ok38(true, 'L38.S2 SKIP sin personality/media'); return; }
+    plant(1, 'bper', idxOfId(per.id), 1);
+    plant(0, 'bmed', idxOfId(media.id), 1);
+    readyToAttack(0);
+    var ix38 = idx38('bimboateleven'); hand22(0, ix38);
+    E.playPlot(0, ix38, 'bper', null);
+    var A38 = E._raw().attack;
+    ok38(A38 && A38.privilege === true && A38.boosts.some(function (b38) { return b38.name === 'Bimbo at Eleven' && b38.v === 5; }), 'L38.S2a Bimbo: ataque privilegiado con +5 declarado');
+    A38.boosts.push({ name: 'test38', v: 50 });
+    withMock38([0.01, 0.01], function () { E.resolveAttack(); });
+    ok38(E._raw().disgraced && E._raw().disgraced.indexOf(per.id) >= 0, 'L38.S2b objetivo permanentemente deshonrado');
+  })();
+
+  /* S3 - Blitzkrieg */
+  (function () {
+    fresh(idx38('bavarianilluminati1'), idx38('servantsofcthulhu1'));
+    var g38 = firstBy38(function (c38) { return c38.type === 'group'; });
+    plant(1, 'bzT', idxOfId(g38.id), 1);
+    plant(0, 'bzA', idxOfId(g38.id), 2);
+    findN38('bzA').powerOverride = 15;
+    readyToAttack(0);
+    E.declareAttack(0, 'control', { attackerUid: 'bzA', uid: 'bzT' });
+    E._raw().attack.boosts.push({ name: 'test38', v: 50 });
+    withMock38([0.01, 0.01], function () { E.resolveAttack(); });
+    ok38(E._raw().lastCapture && E._raw().lastCapture.pid === 0, 'L38.S3a captura registrada');
+    var ix38 = idx38('blitzkrieg'); hand22(0, ix38);
+    E.playPlot(0, ix38, null, null);
+    ok38(findN38('bzT').tokens === 2, 'L38.S3b Blitzkrieg: ficha extra en el grupo capturado');
+  })();
+
+  /* S4 - The Stars are Right */
+  (function () {
+    fresh(idx38('bavarianilluminati1'), idx38('servantsofcthulhu1'));
+    readyToAttack(0);
+    var res38 = firstBy38(function (c38) { return c38.type === 'resource'; });
+    var ix38 = idx38('thestarsareright'); hand22(0, ix38);
+    hand22(0, idxOfId(res38.id));
+    E._raw().players[0].illumTokens = 2;
+    E.playPlot(0, ix38, null, { resIdx: idxOfId(res38.id) });
+    var got38 = (E._raw().players[0].resources || []).some(function (r38) { return r38.cardId === idxOfId(res38.id); });
+    ok38(got38, 'L38.S4a The Stars are Right: Resource pasa de la mano a tus recursos');
+  })();
+
+  /* S5 - March on Washington */
+  (function () {
+    fresh(idx38('bavarianilluminati1'), idx38('servantsofcthulhu1'));
+    readyToAttack(0);
+    var media = firstBy38(function (c38) { return c38.type === 'group' && attr38(c38, 'media'); });
+    plant(1, 'mmT', idxOfId(media.id), 2);
+    E._raw().players[0].illumTokens = 0;
+    var before38 = E._raw().plotDiscard.length;
+    var ix38 = idx38('marchonwashington'); hand22(0, ix38);
+    E.playPlot(0, ix38, null, null);
+    ok38(E._raw().plotDiscard.length === before38 + 2, 'L38.S5a March: coste (Plot superior) + la carta jugada van al descarte');
+    ok38(E._raw().players[0].flags.marchReady === E._raw().turn, 'L38.S5b marchReady activo');
+    var ix2 = idx38('massmurder'); hand22(0, ix2);
+    E.playPlot(0, ix2, 'mmT', null);
+    ok38(findN38('mmT').tokens === 0, 'L38.S5c Mass Murder pagado con March (sin ficha Illuminati ni Media)');
+  })();
+
+  /* S6 - Faction Fight */
+  (function () {
+    fresh(idx38('bavarianilluminati1'), idx38('servantsofcthulhu1'));
+    var g38 = firstBy38(function (c38) { return c38.type === 'group' && !attr38(c38, 'peaceful'); });
+    plant(1, 'ffT', idxOfId(g38.id), 1);
+    plant(0, 'ffA', idxOfId(g38.id), 2);
+    findN38('ffA').powerOverride = 15;
+    readyToAttack(0);
+    E.declareAttack(0, 'destroy', { attackerUid: 'ffA', uid: 'ffT' });
+    hand22(0, idxOfId(g38.id)); /* duplicado del objetivo */
+    var ix38 = idx38('factionfight'); hand22(0, ix38);
+    E.playPlot(0, ix38, null, null);
+    ok38(E._raw().attack && E._raw().attack.boosts.some(function (b38) { return b38.name === 'Faction Fight' && b38.v === 5; }), 'L38.S6a Faction Fight: +5 al ataque con duplicado');
+    var ix2 = idx38('factionfight'); hand22(0, ix2);
+    var dupIdx = E._raw().players[0].hand.indexOf(idxOfId(g38.id));
+    if (dupIdx >= 0) E._raw().players[0].hand.splice(dupIdx, 1);
+    ok38(/duplicado/.test(tMsg38(function () { E.playPlot(0, ix2, null, null); }) || ''), 'L38.S6b sin duplicado en mano lanza');
+  })();
+
+  S.forEach(function (p) { if (p[1]) { console.log('ok   - ' + p[0]); } else { failures.push(p[0]); console.log('FAIL - ' + p[0]); } });
+})();
 
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');

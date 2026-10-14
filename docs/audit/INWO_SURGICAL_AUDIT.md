@@ -9149,3 +9149,17 @@ tienen EOL mixto en el arbol de trabajo.
 **Tests**: bloque L37 S1-S7, 19 checks verdes. RESULTADO: npm test ALL TESTS PASSED (11 suites); FASE 4: 237 clasificadas, 19 pendientes (antes 26).
 
 **Estado**: deuda plot/resource 19 (13 reales + 6 bloqueadas). Backlog vivo: L38 ataques/takeovers (annualconvention/bimboateleven/blitzkrieg/thestarsareright/marchonwashington/factionfight), L39 resto (eliza/unmasked/niceideaitsminenow/corruption/coverofdarkness/opportunityknocks/vultures-bloqueada).
+
+## 83. L38 - FAMILIA ATAQUES Y TAKEOVERS (P1-169)
+
+**Regla**: Annual Convention (Instant Attack 12/9 vs Organization tras Place destruido/devastado), Bimbo at Eleven (+5 privileged Media Attack to Destroy Personality; deshonra permanente), Blitzkrieg (ficha extra al capturado), The Stars are Right (takeover automatico de Resource de la mano; coste Magic P4+/Illuminati), March on Washington (sustituye UNA accion; coste Plot superior; 1 vez/turno), Faction Fight (+5 con duplicado en mano; INSTANTANEO).
+
+**Motor**: S.lastPlaceDown (destroyGroup place + via devastated), S.lastCapture (capture block), annual_strike?E.instantAttack con targetSubtype organization + extraPower passthrough; bimbo_strike declara destroy real con privilege+privilegeMediaFree+disgraceMark (addSupport exceptua Media; applyAttackResult push a S.disgraced; E.cloneRevive rechaza deshonrados); blitz_token nd.tokens++; stars_takeover con coste marchReady/Illuminati/Magic-P4 y opts.resIdx o auto-pick; march_substitute flags.marchReady/marchUsed; CONSUMIDORES marchReady: massmurder_tokens, miracledietplan, arewe_cancel, stars_takeover; faction_boost (instant whitelist) exige ataque abierto + objetivo rival + duplicado en mano.
+
+**Interpretaciones**: Faction Fight truncado (§42: solo clausulas presentes); male vacuo (sin genero en dataset); interferencia Annual no implementable (instantAttack sin fase); March sin verificacion Power<=6; Blitzkrieg = ficha EXTRA; Stars auto-pick resource.
+
+**UI**: KIND_ES 6; NO_TARGET_KINDS +4; annual/bimbo via boton generico (atacante auto-picked).
+
+**Tests**: L38 S1-S6 (12 checks). Estabilizacion: strip global ampliado a lips_undo/deathmask; fresh37 purga 9 reactivas; withMock37 resuelve pendingRoll; S8c boost de garantia. npm test 5/5.
+
+**Estado**: deuda plot/resource 13 (7 reales + 6 bloqueadas). Backlog vivo: L39 (eliza, unmasked, niceideaitsminenow, corruption, coverofdarkness-truncado, opportunityknocks, vultures-bloqueada).

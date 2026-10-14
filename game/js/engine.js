@@ -3627,7 +3627,10 @@ E.addSupport=function(pid,entry){
    * dueno pueden intervenir en ESTE turno aunque el ataque sea privilegiado;
    * cada grupo que interfiere gasta su propia ficha (regla impresa). */
   if(A.privilege&&pid!==A.pid&&pid!==A.targetPid
-     &&!(S.frogGodOpen&&S.frogGodOpen.pid===pid&&S.frogGodOpen.turn===S.turn))
+     &&!(S.frogGodOpen&&S.frogGodOpen.pid===pid&&S.frogGodOpen.turn===S.turn)
+     /* L38 — 414 Bimbo at Eleven: "Privileged except for Media groups: any Media
+        group can interfere on either side." */
+     &&!(A.privilegeMediaFree&&(function(){var sM38=findNode(entry.uid);var cM38=sM38?card(sM38.cardId):null;return !!(cM38&&hasAttr(cM38,'media',sM38));})()))
     throw new Error('El ataque es PRIVILEGIADO: solo el atacante y el defensor pueden participar');
   if(entry.selfDefend){
     if(pid!==A.targetPid||!A.targetUid)throw new Error('Solo un defensor de un grupo en juego puede autoprotegerse');
@@ -4524,12 +4527,18 @@ function applyAttackResult(A,det,resultText){
       log('Soulburner: '+S.players[A.targetPid].name+' roba 1 Plot tras la captura (mazo compartido, opcion robar automatica)');
     }
     placeCapturedSubtree(pid,tNode);
+    /* L38 — 393 Blitzkrieg: la captura queda marcada para el token del mismo turno. */
+    S.lastCapture={pid:pid,uid:A.targetUid,turn:S.turn};
     log('¡'+S.players[pid].name+' toma CONTROL de '+card(tNode.cardId).name+' y todo su títere!');
-  }else if(success&&A.type==='destroy'){        var jnH=(A.headJar&&findNode(A.headJar.nodeUid))?findNode(A.headJar.nodeUid):null;
+  }else if(success&&A.type==='destroy'){        var jnH=(A.headJar&&findNode(A.headJar.nodeUid))?findNode(A.headJar.nodeUid):null;
         if(jnH&&A.headJar.pid===A.pid){
           jnH.jarred=true;jnH.assassinationBonus=10;A.headJar.applied=true;
           log('Head in a Jar: '+card(jnH.cardId).name+' sobrevive al golpe (sigue en juego, actua por telefono)');
-        }else destroyGroup(A.pid,A.targetUid,{attackerUid:A.attackerUid});
+        }else{
+          /* L38 — 414 Bimbo at Eleven: disgracia permanente del objetivo. */
+          if(A.disgraceMark){S.disgraced=S.disgraced||[];var tD38=card(tNode.cardId);if(tD38){S.disgraced.push(tD38.id);log('Bimbo at Eleven: '+tD38.name+' queda permanentemente DESHONRADO');}}
+          destroyGroup(A.pid,A.targetUid,{attackerUid:A.attackerUid});
+        }
   }else{
     log(resultText+' — ataque de '+S.players[pid].name+' falló');
     if(A.type==='control'){
@@ -4597,6 +4606,8 @@ function destroyGroup(byPid,targetUid,opts){
     });
   })(node);
   node=detach(parent,targetUid);clearL18Extra(node);
+  /* L38 — 407 Annual Convention: un Place destruido abre su ventana este turno. */
+  if((card(node.cardId)||{}).subtype==='place')S.lastPlaceDown={turn:S.turn,mode:'destroyed'};
   /* L37 — 396 Ark of the Covenant: "If that group is destroyed ... The group that
      destroyed it is also destroyed, unless it was an Illuminati. In that case,
      its owner must choose one group to lose. The destroyed enemy group counts
@@ -5138,6 +5149,8 @@ function applyPlotInstantAttackRoll(ann,roll,total,forcedFail,byCard){
   if(!res.ok){log(pc.name+' falla contra '+tc.name+' ('+res.reason+')');return res;}
 
   nd.devastated=true;nd.tokens=0;
+  /* L38 — 407 Annual Convention: un Place devastado abre su ventana este turno. */
+  if((card(nd.cardId)||{}).subtype==='place')S.lastPlaceDown={turn:S.turn,mode:'devastated'};
   subtreeList(nd).forEach(function(n){n.devastated=true;n.tokens=0;});
   log(pc.name+' devasta '+tc.name+(ann.notes.length?' ('+ann.notes.join(', ')+')':''));
 
@@ -5404,7 +5417,7 @@ E.playPlot=function(pid,handIdx,targetUid,opts){
     * (inwo_rules_extracted.txt:924-931). El veto se comprueba dentro de cada case. */
   /* P1-024: las 6 cartas de la ventana de RODADERO dicen "Play immediately after
    any die roll" / "Play this card when…": solo tienen sentido fuera de turno. */
-var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='boost10'||eff0.kind==='power_increase'||eff0.kind==='resistance_increase'||eff0.kind==='messiah'||eff0.kind==='angst'||eff0.kind==='bodyguard'||eff0.kind==='talisman'||ROLL_KINDS.indexOf(eff0.kind)>=0||eff0.kind==='arewe_cancel' /* L36 — 248 Are We Having Fun Yet?: "Play this card at any time" */||eff0.kind==='backlash_undo' /* L37 — 072 Backlash: "may be played at any time" */
+var instant=(eff0.kind==='assassination'||eff0.kind==='disaster'||eff0.kind==='boost10'||eff0.kind==='power_increase'||eff0.kind==='resistance_increase'||eff0.kind==='messiah'||eff0.kind==='angst'||eff0.kind==='bodyguard'||eff0.kind==='talisman'||ROLL_KINDS.indexOf(eff0.kind)>=0||eff0.kind==='arewe_cancel' /* L36 — 248 Are We Having Fun Yet?: "Play this card at any time" */||eff0.kind==='backlash_undo' /* L37 — 072 Backlash */||eff0.kind==='faction_boost' /* L38 — 340 Faction Fight: "Using this card is not an action" */
   /* P1-026: Privileged Attack (346) dice "when you make any attack", o sea justo
      DENTRO de un ataque ajeno. P1-024/§37 lo veto por su cuenta el caso 'boost10'
      cuando la partida ya no es de nadie; aqui hace falta lo mismo pero el motor
@@ -6535,7 +6548,8 @@ case 'bulk_power':{
       if(!tgtM35)throw new Error(c.name+': objetivo inexistente');
       var tcM35=card(tgtM35.cardId);
       if(!hasAttr(tcM35,'media',tgtM35))throw new Error(c.name+': el objetivo debe ser un grupo Media');
-      if(pl.illumTokens>=1){pl.illumTokens--;log(c.name+': pagas con la ficha de tu Illuminati');}
+      if(pl.flags.marchReady===S.turn){pl.flags.marchReady=null;log('March on Washington: sustituye la accion requerida');}
+      else if(pl.illumTokens>=1){pl.illumTokens--;log(c.name+': pagas con la ficha de tu Illuminati');}
       else{
         var payM35=null;
         walk(pl.structure,function(nP35){
@@ -6569,6 +6583,8 @@ case 'bulk_power':{
       if(findOwnerPid(rU35)===pid)throw new Error(c.name+': el grupo sin fichas debe ser de un RIVAL');
       var tcR35=card(ndR35.cardId);
       if(tcR35&&tcR35.type==='illuminati')throw new Error(c.name+': no afecta a un Illuminati');
+      if(pl.flags.marchReady===S.turn){pl.flags.marchReady=null;log('March on Washington: sustituye la accion requerida');}
+      else{
       var payD35=null;
       walk(pl.structure,function(nD35){
         if(payD35)return;
@@ -6577,6 +6593,7 @@ case 'bulk_power':{
       });
       if(!payD35)throw new Error(c.name+': requiere la accion de un grupo Media tuyo');
       spendGroupToken(pid,payD35.uid);
+      }
       ndS35.tripled={stat:'power',from:c.name};
       ndR35.tokens=0;
       log(c.name+': '+tcS35.name+' triplica su Poder en su proxima accion; '+tcR35.name+' pierde sus fichas');
@@ -6591,6 +6608,8 @@ case 'bulk_power':{
       var tgtA35=findNode(targetUid);
       if(!tgtA35)throw new Error(c.name+': objetivo inexistente');
       var tcA35=card(tgtA35.cardId);
+      if(pl.flags.marchReady===S.turn){pl.flags.marchReady=null;log('March on Washington: sustituye la accion requerida');}
+      else{
       var payA35=null;
       walk(pl.structure,function(nA35){
         if(payA35)return;
@@ -6599,6 +6618,7 @@ case 'bulk_power':{
       });
       if(!payA35)throw new Error(c.name+': requiere la accion de grupo(s) con Poder total mayor que el objetivo');
       spendGroupToken(pid,payA35.uid);
+      }
       if((tgtA35.tokens||0)<(tgtA35.tokensAtTurnStart||0)){
         tgtA35.tokens=(tgtA35.tokens||0)+1;
         log(c.name+': se cancela la accion de '+tcA35.name+' (ficha devuelta)');
@@ -6655,6 +6675,98 @@ case 'bulk_power':{
       spendGroupToken(pid,payB37.uid);
       log(c.name+': se deshace el cambio de '+undo37.name+' sobre '+tcB37.name);
       lastResult={ok:true,card:c.name,undone:undo37.name,target:tcB37.name};
+      break;}
+    case 'annual_strike':{
+      /* L38 — 310 Annual Convention: tras Place destruido/devastado ESTE turno,
+         Instant Attack to Destroy una Organization (12 si destruido, 9 si
+         devastado). La restriccion de interferencia (solo Magic/Weird Science)
+         es laguna declarada: instantAttack no tiene fase de interferencia. */
+      if(!S.lastPlaceDown||S.lastPlaceDown.turn!==S.turn)throw new Error(c.name+': no hubo ningun Place destruido o devastado este turno');
+      var ndA38=findNode(targetUid);
+      if(!ndA38||card(ndA38.cardId).subtype!=='organization')throw new Error(c.name+': el objetivo debe ser un Organization');
+      var pwA38=S.lastPlaceDown.mode==='destroyed'?12:9;
+      log(c.name+': Instant Attack to Destroy '+card(ndA38.cardId).name+' (Poder '+pwA38+')');
+      E.instantAttack(pid,pwA38,targetUid,{targetSubtype:'organization',extraPower:(opts&&opts.extraPower)||0});
+      lastResult={ok:true,card:c.name,mode:S.lastPlaceDown.mode,power:pwA38};
+      break;}
+    case 'bimbo_strike':{
+      /* L38 — 307 Bimbo at Eleven: +5 Attack to Destroy una male Personality
+         desde un grupo Media; el ataque queda PRIVILEGIADO salvo Media; exito ->
+         deshonra permanente. 'male' es VACUO: el dataset no tiene genero (§). */
+      var payB38=null;
+      walk(pl.structure,function(nB38){
+        if(payB38)return;
+        var ncB38=card(nB38.cardId);
+        if(ncB38&&hasAttr(ncB38,'media',nB38)&&(nB38.tokens||0)>=1)payB38=nB38;
+      });
+      if(!payB38)throw new Error(c.name+': requiere la accion de un grupo Media tuyo');
+      var ndB38=findNode(targetUid);
+      if(!ndB38||card(ndB38.cardId).subtype!=='personality')throw new Error(c.name+': el objetivo debe ser una Personality');
+      /* el gasto de la ficha del atacante lo hace E.declareAttack (no duplicar) */
+      E.declareAttack(pid,'destroy',{attackerUid:payB38.uid,uid:targetUid});
+      var Ab38=S.attack;
+      Ab38.privilege=true;Ab38.privilegeMediaFree=true;Ab38.disgraceMark=true;
+      Ab38.boosts.push({name:'Bimbo at Eleven',v:5});
+      log(c.name+': ataque PRIVILEGIADO contra '+card(ndB38.cardId).name+' (+5, Media puede interferir)');
+      lastResult={ok:true,card:c.name,attack:Ab38.id};
+      break;}
+    case 'blitz_token':{
+      /* L38 — 030 Blitzkrieg: tras TU captura de este turno, ficha extra al grupo
+         capturado (interpretacion declarada: la ficha base ya la da la captura). */
+      if(!S.lastCapture||S.lastCapture.turn!==S.turn||S.lastCapture.pid!==pid)throw new Error(c.name+': no has capturado ningun grupo este turno');
+      var ndZ38=findNode(S.lastCapture.uid);
+      if(!ndZ38)throw new Error(c.name+': el grupo capturado ya no esta en tu estructura');
+      ndZ38.tokens=(ndZ38.tokens||0)+1;
+      log(c.name+': '+card(ndZ38.cardId).name+' recibe una ficha extra y actua este mismo turno');
+      lastResult={ok:true,card:c.name,target:card(ndZ38.cardId).name};
+      break;}
+    case 'stars_takeover':{
+      /* L38 — 391 The Stars are Right: takeover automatico de una Resource de la
+         mano pagando ficha del Illuminati o de grupo(s) Magic con Poder >= 4. */
+      if(pl.flags.marchReady===S.turn){pl.flags.marchReady=null;log('March on Washington: sustituye la accion requerida');}
+      else if(pl.illumTokens>=1){pl.illumTokens--;log(c.name+': pagas con la ficha de tu Illuminati');}
+      else{
+        var payS38=null;
+        walk(pl.structure,function(nS38){
+          if(payS38)return;
+          var ncS38=card(nS38.cardId);
+          if(ncS38&&hasAttr(ncS38,'magic',nS38)&&(nS38.tokens||0)>=1&&curPower(nS38)>=4)payS38=nS38;
+        });
+        if(!payS38)throw new Error(c.name+': Requires Magic or Illuminati Action');
+        spendGroupToken(pid,payS38.uid);
+        log(c.name+': pagas con la ficha de '+card(payS38.cardId).name+' (Magic, Poder '+curPower(payS38)+')');
+      }
+      var resIdx38=(opts&&opts.resIdx!=null)?opts.resIdx:pl.hand.filter(function(h38){return card(h38)&&card(h38).type==='resource';})[0];
+      var rcS38=card(resIdx38);
+      if(!rcS38||rcS38.type!=='resource')throw new Error(c.name+': necesitas una Resource en tu mano (resIdx)');
+      removeFromHand(pl,resIdx38);
+      pl.resources.push({uid:'r'+(S.uidCounter++),cardId:resIdx38,linkedTo:pl.illumId,tokens:0});
+      log(c.name+': takeover automatico de '+rcS38.name);
+      lastResult={ok:true,card:c.name,taken:rcS38.name};
+      break;}
+    case 'march_substitute':{
+      /* L38 — 355 March on Washington: se juega ANTES del Plot que necesita la
+         accion; descarta el Plot superior de TU mazo y deja la bandera
+         marchReady para que el siguiente coste la consuma. Una vez por turno. */
+      if(pl.flags.marchUsed===S.turn)throw new Error(c.name+': solo una vez por turno');
+      if(!S.plotDeck.length)throw new Error(c.name+': no quedan Plots sin robar para pagar el coste');
+      S.plotDiscard.push(S.plotDeck.pop());
+      pl.flags.marchReady=S.turn;pl.flags.marchUsed=S.turn;
+      log(c.name+': el Plot superior de tu mazo se descarta; tu proxima accion de Plot este turno esta pagada');
+      lastResult={ok:true,card:c.name};
+      break;}
+    case 'faction_boost':{
+      /* L38 — 340 Faction Fight (texto OCR truncado): SOLO se implementa la
+         clausula presente ('+5 bonus to the attack' + 'not an action'); la
+         clausula faltante 'makes that attack [?]' es laguna declarada (§42). */
+      if(!S.attack||S.attack.resolved)throw new Error(c.name+': se juega durante un ataque en curso');
+      var tgF38=findNode(S.attack.targetUid);
+      if(findOwnerPid(S.attack.targetUid)===pid)throw new Error(c.name+': el objetivo debe ser de un RIVAL');
+      var dup38=pl.hand.some(function(h38){return C.cards[h38].id===card(tgF38.cardId).id;});
+      if(!dup38)throw new Error(c.name+': necesitas un duplicado de '+card(tgF38.cardId).name+' en tu mano');
+      S.attack.boosts.push({name:'Faction Fight',v:5});
+      log(c.name+': +5 al ataque contra '+card(tgF38.cardId).name+' (duplicado en mano)');
+      lastResult={ok:true,card:c.name};
       break;}
     case 'token_wither':{
       /* 418 World Hunger — DOS frases en una carta (interpretacion 6/7):
@@ -9426,6 +9538,8 @@ E.cloneRevive=function(pid,cloneUid,deadIdx,parentUid){
   var deadC=card(deadIdx);
   if(!deadC||deadC.subtype!=='personality')throw new Error('Clone Arrangers: la carta no es una Personality');
   if(S.goneForever&&S.goneForever.indexOf(deadIdx)>=0)throw new Error('Clone Arrangers: esa Personality se fue para siempre ("And STAY Dead!")');
+  /* L38 — 414 Bimbo at Eleven: "he cannot be returned to play by any means". */
+  if(S.disgraced&&S.disgraced.indexOf(deadIdx)>=0)throw new Error('Clone Arrangers: esa Personality esta permanentemente DESHONRADA (Bimbo at Eleven)');
   var killer=-1,list=null,li=-1;
   for(var q=0;q<S.players.length;q++){
     var aa=(S.players[q].assassinatedBy||[]);var ix=aa.indexOf(deadIdx);

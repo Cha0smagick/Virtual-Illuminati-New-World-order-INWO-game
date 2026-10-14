@@ -3049,6 +3049,40 @@ const L37_FX = {
 const L37_FXN = {};
 for (const k37 in L37_FX) { L37_FXN[norm(k37)] = L37_FX[k37]; }
 
+/* L38 — familia ataques y takeovers (P1-169). Plots de ataque instantaneo
+ * (Annual Convention), ataque privilegiado Media (Bimbo at Eleven), token
+ * post-captura (Blitzkrieg), takeover automatico de Resource (The Stars Are
+ * Right), sustituto de acciones (March on Washington) y bono con duplicado
+ * (Faction Fight, texto OCR truncado: solo se implementa la clausula +5). */
+const L38_FX = {
+  'Annual Convention': {
+    kind: 'annual_strike',
+    t: "“Tragically, the organization's yearly meeting was in the path of the destruction : Play this card immediately after a Place has been destroyed or Devastated. It is an Instant Attack to Destroy any Organization in play. The Power of the attack is 12 if the affected Place was completely destroyed, or 9 if it was merely devastated. Groups capable of Mogic or Weird Sdence can interfere either for or against the attack. Other groups cannot aid either side."
+  },
+  'Bimbo at Eleven': {
+    kind: 'bimbo_strike',
+    t: "Bimbo at Eleven This card gives +5 on an Attack to Destroy any male Personality. The attack must come from a Media group. The attack becomes Privileged except for Media groups any Media group can interfere on either side! If the attack succeeds, the target is considered permanently disgraced and out of public life. Thus, he cannot be returned to play by any means!"
+  },
+  'Blitzkrieg': {
+    kind: 'blitz_token',
+    t: "Play this card after you take control of any Group Place an Action token on the newly-captured Group, so that it can act during the same turn it was"
+  },
+  'The Stars are Right': {
+    kind: 'stars_takeover',
+    t: "The Stars are Right Play this card on your turn. You may spend your Illuminati action, or the action(s) of Magic groups with a Power of at least 4, to make an automatic takeover of any Resource from your hand. Requires Magic or Illuminati Action"
+  },
+  'March on Washington': {
+    kind: 'march_substitute',
+    t: "March on Washington Play this card along with a Plot card that requires an action or actions. This card substitutes for any one action of a Power of 6 or less, from any Alignment or Attribute, though not an Illuminati action. However, you must discard the top undrawn Plot card from your own deck. You may March On Washington only once per turn."
+  },
+  'Faction Fight': {
+    kind: 'faction_boost',
+    t: "Played along with a duplicate card for any Group controlled by one of your rivals, this gives an extra +5 bonus to the attack, and makes that attack Using this card is not an action, bul the attack is"
+  }
+};
+const L38_FXN = {};
+for (const k38 in L38_FX) { L38_FXN[norm(k38)] = L38_FX[k38]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
@@ -3338,7 +3372,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

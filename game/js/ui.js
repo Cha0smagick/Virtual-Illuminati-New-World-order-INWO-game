@@ -1326,7 +1326,9 @@ var NO_TARGET_KINDS = ['token_gift', 'attack_boost', 'deck_manip', 'turn_start_b
    * (quita la penalizacion por alineaciones opuestas) y 286 The Corporate Masters
    * (flag del jugador en countControlled): los tres son efectos globales sin
    * objetivo unico, mismo camino "Jugar ya". */
-  'solidarity_x2', 'light_no_opposed', 'corporate_double'];
+  'solidarity_x2', 'light_no_opposed', 'corporate_double',
+  /* L38 — ataques/takeovers sin objetivo o con objetivo implicito. */
+  'blitz_token', 'march_substitute', 'faction_boost', 'stars_takeover'];
 /* L8a — MENU DE MANIPULACION DE MAZO (361 Savings & Loan Scam, 388 The Big Sellout,
  * 411 Voodoo Economics).
  *
@@ -2187,6 +2189,13 @@ var KIND_ES = {
   soulburner_hook: 'Roba Plots del mazo cuando un rival captura (1) o destruye (2) tus grupos',
   brain_draw: 'Roba 1 Plot extra al destruir un grupo; no puedes controlar Peaceful',
   backlash_undo: 'Deshace UN cambio de Power/Resistencia hecho por un Plot al objetivo (instantaneo)',
+  /* L38 — familia ataques y takeovers (P1-169). */
+  annual_strike: 'Instant Attack (12/9) contra un Organization tras un Place destruido/devastado',
+  bimbo_strike: '+5 privileged (Media libre) Attack to Destroy a un Personality; queda deshonrado',
+  blitz_token: 'Ficha extra al grupo recien capturado (actua el mismo turno)',
+  stars_takeover: 'Takeover automatico de una Resource de tu mano (coste Magic/Illuminati)',
+  march_substitute: 'Sustituye UNA accion requerida (cuesta el Plot superior de tu mazo; 1 vez/turno)',
+  faction_boost: '+5 al ataque en curso contra el grupo del que tienes un duplicado (no es accion)',
   attack_privilege: 'Modificar el privilegio de un ataque en curso',
   combo_attack: 'Combinar dos ataques del mismo tipo sobre el mismo objetivo',
   illu_special: 'Poder especial de Illuminati', align_edit: 'Editar alineamientos',
