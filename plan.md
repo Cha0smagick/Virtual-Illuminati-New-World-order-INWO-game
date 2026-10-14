@@ -1142,10 +1142,10 @@ CERRADO 2026-10 (audit `## 70.`, P1-124..P1-126, 2 cartas: 298/299).
 - **Aceptacion**: un grupo con 0 flechas puede recibir 298 y pasa a 1; con 1 o 2 puede recibir 299
   y pasa a 3; un grupo con 3 ya no admite ninguna de las dos (afirmado por el contador, no por
   el log).
-- [ ] L18.a AUDIT del subsistema de flechas (que representa una flecha en el modelo actual, si
+- [x] L18.a AUDIT del subsistema de flechas (que representa una flecha en el modelo actual, si
   hay alguna, y como se cuenta "outgoing").
-- [ ] L18.b DATOS: familia `control_arrows` en `gen_cards.js`.
-- [ ] L18.c MOTOR + UI + REGRESION (al menos 2 escenarios).
+- [x] L18.b DATOS: familia `control_arrows` en `gen_cards.js`.
+- [x] L18.c MOTOR + UI + REGRESION (al menos 2 escenarios).
 
 ## [x] L19 - REORGANIZACION DE LA ESTRUCTURA
 CERRADO 2026-10 (audit `## 68.`, P1-115..P1-119, 1 carta: 354).
@@ -1158,8 +1158,8 @@ CERRADO 2026-10 (audit `## 68.`, P1-115..P1-119, 1 carta: 354).
   (medidos en L14.a.12) => la recolocacion se puede construir con lo que ya mueve grupos.
 - **Aceptacion**: con la estructura montada, 354 la deja reorganizada sin cambiar quien controla
   nada y sin perder ni ganar Poder total (afirmado comparando Poder antes y despues).
-- [ ] L19.a AUDIT de como se mueve hoy un grupo y que invariantes hay que conservar.
-- [ ] L19.b DATOS + L19.c MOTOR + L19.d UI + L19.e REGRESION + L19.f CIERRE.
+- [x] L19.a AUDIT de como se mueve hoy un grupo y que invariantes hay que conservar.
+- [x] L19.b DATOS + L19.c MOTOR + L19.d UI + L19.e REGRESION + L19.f CIERRE.
 
 ## [x] L20 - DESCARTE GLOBAL
 CERRADO 2026-10 (audit `## 69.`, P1-120..P1-123, 1 carta: 408).
@@ -1172,9 +1172,9 @@ CERRADO 2026-10 (audit `## 69.`, P1-120..P1-123, 1 carta: 408).
 - **Aceptacion**: con los dos jugadores con al menos un grupo, 408 de A obliga a los dos a
   descartar uno cada uno (afirmado por la AUSENCIA del uid concreto de cada uno), y ningun
   `destroyedBy` se escribe.
-- [ ] L20.a AUDIT de como se descarta un grupo hoy y de la diferencia entre descartar y destruir
+- [x] L20.a AUDIT de como se descarta un grupo hoy y de la diferencia entre descartar y destruir
   para las metas (`countsForGoals` / `destroyGroup`).
-- [ ] L20.b DATOS + L20.c MOTOR (incluido "no cuentan como destruidos") + L20.d UI (el jugador
+- [x] L20.b DATOS + L20.c MOTOR (incluido "no cuentan como destruidos") + L20.d UI (el jugador
   elige, no se autoelige) + L20.e REGRESION + L20.f CIERRE.
 
 ## [x] L21 - NEW WORLD ORDER: UNA POR COLOR, LA ANTERIOR SE DESCARTA
@@ -1579,18 +1579,18 @@ impreso no aclara el orden y el motor paga por la ventana de reaccion).
 - [x] L37.e TESTS: bloque L37 en test_fase2_rules.js S1-S7 (19 checks + helpers fresh37/withMock37): ventana Cover-Up (abrir/usar/FALLO/supervivencia), Ark (colocacion, changeArk, credito Goals, represalia), Grail (veto de destruccion + permanece), Serum (serumImmortal, veto INMORTAL, robo useSerum), Soulburner (roba 2 al destruir), Brain (roba 1 al destruir, guard Peaceful), Backlash (deshace powerMods + log + rechazo sin cambios). ROBUSTEZ: fresh37/stripNegators22 purgan las 7 reactivas de manos/mazos (las ventanas aleatorias de Cover-Up flakesaban L28/L35), withMock37 cierra pendingRoll residual, boosts +50 y currentPid forzado en los ataques de prueba. npm test ALL TESTS PASSED (11 suites) x8 corridas; FASE 4: 237 clasificadas, 19 pendientes (antes 26).
 - [x] L37.f CIERRE: ?v=61->62 (13 refs) + audit ##82 + commit 'L37: familia reactivas - P1-168'.
 
-**Lagunas DECLARADAS (L37):** (1) Cover-Up "nullify an Exposed! card": la exposicion (attrsRemoved 'secret', P1-127) NO se revierte; declarado en L16 y mantenido — solo la rama de Convertir-Ataque-en-Fallo esta activa. (2) Ark 'You may change the name during your turn': E.changeArk libre y sin coste (sin limite por turno). (3) Ark + Illuminati: S.arkPenalty se resuelve con un clic del dueno (elige cualquier grupo propio; el texto dice 'choose one group to lose'). (4) Serum: 'nothing can kill' cubre destroyGroup (veto) y re-home de subarbol; captura mueve el serum con la Personality ('The link remains if captured'). (5) Soulburner: las opciones 'expose all his hidden Plots' / 'force him to discard a Plot of your choice' NO implementadas — el motor roba automaticamente del mazo compartido (1 en captura, 2 en destruccion). (6) Hitler's Brain: 'hide all your exposed Plots' no implementado — roba 1 Plot automatico. (7) Backlash: deshace cambios de Power/Resistencia (powerMods/resistanceMods); los cambios de ALINEACION no (el motor no registra cambios de align por Plot con trazabilidad de fuente); no afecta cartas NWO (nwoColor filtrado).
+**Lagunas DECLARADAS (L37):** (1) Cover-Up "nullify an Exposed! card": la exposicion (attrsRemoved 'secret', P1-127) NO se revierte; declarado en L16 y mantenido ï¿½ solo la rama de Convertir-Ataque-en-Fallo esta activa. (2) Ark 'You may change the name during your turn': E.changeArk libre y sin coste (sin limite por turno). (3) Ark + Illuminati: S.arkPenalty se resuelve con un clic del dueno (elige cualquier grupo propio; el texto dice 'choose one group to lose'). (4) Serum: 'nothing can kill' cubre destroyGroup (veto) y re-home de subarbol; captura mueve el serum con la Personality ('The link remains if captured'). (5) Soulburner: las opciones 'expose all his hidden Plots' / 'force him to discard a Plot of your choice' NO implementadas ï¿½ el motor roba automaticamente del mazo compartido (1 en captura, 2 en destruccion). (6) Hitler's Brain: 'hide all your exposed Plots' no implementado ï¿½ roba 1 Plot automatico. (7) Backlash: deshace cambios de Power/Resistencia (powerMods/resistanceMods); los cambios de ALINEACION no (el motor no registra cambios de align por Plot con trazabilidad de fuente); no afecta cartas NWO (nwoColor filtrado).
 
 ## 88. L38 - Familia ataques y takeovers (P1-169)
 
-- [x] L38.a AUDIT: 6 textos verbatim (Annual Convention, Bimbo at Eleven, Blitzkrieg con cola OCR cortada pero sentido completo, The Stars are Right, March on Washington, Faction Fight con texto OCR TRUNCADO - solo se implementa la clausula presente '+5 bonus to the attack' + 'not an action'; 'makes that attack [?]' = laguna declarada por §42).
+- [x] L38.a AUDIT: 6 textos verbatim (Annual Convention, Bimbo at Eleven, Blitzkrieg con cola OCR cortada pero sentido completo, The Stars are Right, March on Washington, Faction Fight con texto OCR TRUNCADO - solo se implementa la clausula presente '+5 bonus to the attack' + 'not an action'; 'makes that attack [?]' = laguna declarada por ï¿½42).
 - [x] L38.b DATOS: L38_FX/L38_FXN en gen_cards.js con kinds annual_strike, bimbo_strike, blitz_token, stars_takeover, march_substitute, faction_boost; encadenados al final del pfx || chain.
 - [x] L38.c MOTOR: (1) S.lastPlaceDown={turn,mode} en destroyGroup (place ? destroyed) y en la via devastated; (2) S.lastCapture={pid,uid,turn} en el bloque de captura; (3) annual_strike: valida lastPlaceDown del turno + objetivo Organization ? E.instantAttack(12/9,{targetSubtype:'organization',extraPower:opts.extraPower|0}); (4) bimbo_strike: auto-pick grupo Media propio con ficha (el gasto lo hace declareAttack), objetivo Personality (male VACUO: sin attrs de genero en el dataset, declarado), declara destroy + A.privilege + A.privilegeMediaFree + A.disgraceMark + boost +5; addSupport exceptua Media cuando privilegeMediaFree; destroy exitoso ? S.disgraced.push(id) + log; E.cloneRevive rechaza deshonrados; (5) blitz_token: ficha extra al grupo recien capturado (lastCapture del turno); (6) stars_takeover: coste marchReady ? Illuminati ? Magic P>=4 con ficha; opts.resIdx o primera resource de la mano (auto, declarado) ? resources.push; (7) march_substitute: 1 vez/turno, coste = Plot superior del mazo propio al descarte, deja flags.marchReady; CONSUMIDORES: massmurder_tokens, miracledietplan, arewe_cancel y stars_takeover gastan marchReady antes de buscar fichas; (8) faction_boost (instantaneo): en ataque abierto contra grupo RIVAL con duplicado del objetivo en la mano ? A.boosts.push +5.
 - [x] L38.d UI: KIND_ES 6 entradas; NO_TARGET_KINDS + blitz_token/march_substitute/faction_boost/stars_takeover; annual y bimbo por el boton generico de Plot con target (atacante Media auto-picked por el motor).
 - [x] L38.e TESTS: bloque L38 S1-S6 (12 checks) en test_fase2_rules.js. Estabilizacion global de la suite: isReactive37/L37REACTIVE ahora tambien purga lips_undo y deathmask (ventanas pendingLips/pendingMask en manos aleatorias); fresh37 purga las 9 reactivas; withMock37 resuelve pendingRoll pendiente; S8c (L35) recibe boost de garantia. npm test 5/5 ALL TESTS PASSED.
 - [x] L38.f CIERRE: ?v=62->63 (13 refs) + audit ##83 + commit 'L38: familia ataques y takeovers - P1-169'.
 
-**Lagunas DECLARADAS (L38):** (1) Faction Fight: texto OCR truncado ('makes that attack [...]'); por §42 no se autorizan palabras ausentes - solo se implementa el '+5 bonus' y 'not an action' (instantaneo). (2) Bimbo 'male Personality': el dataset no tiene atributo de genero en ninguna de las 421 cartas; la validacion se queda en subtype personality (laguna declarada). (3) Annual Convention: la restriccion de interferencia (solo Magic/Weird Science) no es implementable en instantAttack (sin fase de interferencia) - declarada. (4) March on Washington 'action of Power 6 or less': la sustitucion cubre el coste completo sin verificar el tope de Poder (declarado). (5) Blitzkrieg: el grupo capturado ya tiene 1 ficha; Blitzkrieg anade una ficha EXTRA (interpretacion). (6) The Stars are Right: auto-pick de la primera Resource de la mano cuando no se indica resIdx.
+**Lagunas DECLARADAS (L38):** (1) Faction Fight: texto OCR truncado ('makes that attack [...]'); por ï¿½42 no se autorizan palabras ausentes - solo se implementa el '+5 bonus' y 'not an action' (instantaneo). (2) Bimbo 'male Personality': el dataset no tiene atributo de genero en ninguna de las 421 cartas; la validacion se queda en subtype personality (laguna declarada). (3) Annual Convention: la restriccion de interferencia (solo Magic/Weird Science) no es implementable en instantAttack (sin fase de interferencia) - declarada. (4) March on Washington 'action of Power 6 or less': la sustitucion cubre el coste completo sin verificar el tope de Poder (declarado). (5) Blitzkrieg: el grupo capturado ya tiene 1 ficha; Blitzkrieg anade una ficha EXTRA (interpretacion). (6) The Stars are Right: auto-pick de la primera Resource de la mano cuando no se indica resIdx.
 
 ## 89. L39 - Familia especiales (P1-170)
 
@@ -1601,4 +1601,4 @@ impreso no aclara el orden y el motor paga por la ventana de reaccion).
 - [x] L39.e TESTS: bloque L39 S1-S3 (9 checks: ficha extra+crash+exposicion, reemplazo de Illuminati, robo de Goal). npm test ALL TESTS PASSED (11 suites); FASE 4: 237 clasificadas, 10 pendientes (antes 13).
 - [x] L39.f CIERRE: ?v=63->64 + audit ##84 + commit 'L39: familia especiales - P1-170'.
 
-**Lagunas DECLARADAS (L39):** (1) corruption: el motor NO tiene subsistema de Relief a areas devastadas ? disparador inexistente, carta pendiente. (2) opportunityknocks y vultures: requieren la via 'jugar grupo de la mano, fallar takeover, descartarlo' — este motor conserva la carta en la mano (P1-165, Bronze Head); bloqueadas (§52). (3) coverofdarkness: el OCR corto el EFECTO (solo queda flavor + disparador); §42 prohbe inventar el texto ? pendiente. (4) Unmasked! clausula de Agents cards: no existe subsistema Agents ? vacua documentada. (5) Nice Idea 'exposed Goal card': el motor no distingue expuesta/oculta en mano ? se roba la primera Goal del rival (declarado). (6) Eliza crash: scope = el nodo atacante gasto la ficha extra de Eliza ESTE turno (bonusAction from:'Eliza', turn actual).
+**Lagunas DECLARADAS (L39):** (1) corruption: el motor NO tiene subsistema de Relief a areas devastadas ? disparador inexistente, carta pendiente. (2) opportunityknocks y vultures: requieren la via 'jugar grupo de la mano, fallar takeover, descartarlo' ï¿½ este motor conserva la carta en la mano (P1-165, Bronze Head); bloqueadas (ï¿½52). (3) coverofdarkness: el OCR corto el EFECTO (solo queda flavor + disparador); ï¿½42 prohbe inventar el texto ? pendiente. (4) Unmasked! clausula de Agents cards: no existe subsistema Agents ? vacua documentada. (5) Nice Idea 'exposed Goal card': el motor no distingue expuesta/oculta en mano ? se roba la primera Goal del rival (declarado). (6) Eliza crash: scope = el nodo atacante gasto la ficha extra de Eliza ESTE turno (bonusAction from:'Eliza', turn actual).

@@ -261,10 +261,19 @@ run('ending a turn with an unresolved attack is rejected', function () {
 run('unverified resource play is rejected before mutation', function () {
   const state = start(100);
   const pid = state.currentPid;
-  const resourceIndex = C.cards.findIndex(function (card) {
+  let resourceIndex = C.cards.findIndex(function (card) {
     return card.type === 'resource' && card.mechanicsStatus === 'unverified';
   });
-  assert(resourceIndex >= 0, 'unverified resource fixture exists');
+  /* P1-170: con el catalogo al techo declarado ya puede no quedar ningun Resource
+   * sin mecanica. El invariante es el mismo para Plots (rechazo ANTES de mutar):
+   * el fixture cae a un Plot sin mecanica y se juega por playPlot. */
+  const viaPlot = resourceIndex < 0;
+  if (viaPlot) {
+    resourceIndex = C.cards.findIndex(function (card) {
+      return card.type === 'plot' && card.mechanicsStatus === 'unverified';
+    });
+  }
+  assert(resourceIndex >= 0, 'unverified card fixture exists (resource o plot)');
   const raw = E._raw();
   const player = raw.players[pid];
   player.hand.push(resourceIndex);
@@ -276,7 +285,7 @@ run('unverified resource play is rejected before mutation', function () {
     used: player.usedResourceThisTurn,
     resources: player.resources.length
   };
-  expectThrow(function () { E.playResource(pid, resourceIndex); }, 'no tiene una mecánica verificada');
+  expectThrow(function () { (viaPlot ? E.playPlot(pid, resourceIndex, null) : E.playResource(pid, resourceIndex)); }, 'no tiene una mecánica verificada');
   assert(player.illumTokens === before.tokens, 'resource rejection preserves action token');
   assert(player.usedResourceThisTurn === before.used, 'resource rejection preserves used flag');
   assert(player.hand.length === before.hand, 'resource rejection preserves hand');
