@@ -9156,7 +9156,7 @@ tienen EOL mixto en el arbol de trabajo.
 
 **Motor**: S.lastPlaceDown (destroyGroup place + via devastated), S.lastCapture (capture block), annual_strike?E.instantAttack con targetSubtype organization + extraPower passthrough; bimbo_strike declara destroy real con privilege+privilegeMediaFree+disgraceMark (addSupport exceptua Media; applyAttackResult push a S.disgraced; E.cloneRevive rechaza deshonrados); blitz_token nd.tokens++; stars_takeover con coste marchReady/Illuminati/Magic-P4 y opts.resIdx o auto-pick; march_substitute flags.marchReady/marchUsed; CONSUMIDORES marchReady: massmurder_tokens, miracledietplan, arewe_cancel, stars_takeover; faction_boost (instant whitelist) exige ataque abierto + objetivo rival + duplicado en mano.
 
-**Interpretaciones**: Faction Fight truncado (§42: solo clausulas presentes); male vacuo (sin genero en dataset); interferencia Annual no implementable (instantAttack sin fase); March sin verificacion Power<=6; Blitzkrieg = ficha EXTRA; Stars auto-pick resource.
+**Interpretaciones**: Faction Fight truncado (ï¿½42: solo clausulas presentes); male vacuo (sin genero en dataset); interferencia Annual no implementable (instantAttack sin fase); March sin verificacion Power<=6; Blitzkrieg = ficha EXTRA; Stars auto-pick resource.
 
 **UI**: KIND_ES 6; NO_TARGET_KINDS +4; annual/bimbo via boton generico (atacante auto-picked).
 
@@ -9170,7 +9170,7 @@ tienen EOL mixto en el arbol de trabajo.
 
 **Motor**: playResource eliza_link (host computer/network); beginTurn placeBonusAction al enlazado (patron kells L35); settle crash hook (r>=11 && bonusAction {from:'Eliza',turn} en el atacante ? descarta recurso + exposedPlots del dueno); unmasked_illum (illumId swap + cardId del nodo + vieja a groupDiscard; Agents vacua); niceidea_steal (illumTokens-- + primera Goal del rival ? mi mano + exposedPlots); whitelist instant + unmasked_illum.
 
-**Interpretaciones**: corruption sin subsistema Relief ? pendiente; opportunityknocks/vultures sin via failed-hand-takeover-discard (§52) ? bloqueadas; coverofdarkness efecto OCR-truncado (§42) ? pendiente; Nice Idea 'exposed' = primera Goal del rival (declarado); crash de Eliza scope = ficha Eliza gastada este turno.
+**Interpretaciones**: corruption sin subsistema Relief ? pendiente; opportunityknocks/vultures sin via failed-hand-takeover-discard (ï¿½52) ? bloqueadas; coverofdarkness efecto OCR-truncado (ï¿½42) ? pendiente; Nice Idea 'exposed' = primera Goal del rival (declarado); crash de Eliza scope = ficha Eliza gastada este turno.
 
 **Tests (bloque L39 S1-S3, 9 checks)**: ficha extra observable, crash con 12 (recurso al descarte + exposedPlots), reemplazo de Illuminati (illumId + nodo + descarte), robo de Goal (mano + exposedPlots) + rechazo sin accion. RESULTADO: npm test ALL TESTS PASSED (11 suites); FASE 4: 237 clasificadas, 10 pendientes (antes 13).
 
@@ -9191,3 +9191,13 @@ tienen EOL mixto en el arbol de trabajo.
 **Flake S8c cerrado por causa raiz (P1-163)**: el fallo intermitente "el saucer es capturado con su Personality" (declarado en L28/L38, ~1/30) era un defecto del FIXTURE, no del motor: el strip de reactivas (L37REACTIVE y l37ids en fresh37) filtraba por el id inexistente "lips_undo" (el id real de la carta es "readmylips"; lips_undo es su effect.kind). La carta sobrevivia al strip, entraba en mano por robo aleatorio durante los endTurn de readyToAttack/go35 y abria la ventana pendingLips que el fixture S8c no resuelve: el ataque exitoso queda resolved:false y la captura nunca ocurre. Fix: ids corregidos a "readmylips" en ambas listas; los bloques que prueban la carta la re-introducen con hand22 (patron regla 14). Probe de diagnostico: 2 fallos/61 antes del fix, 0/61 despues; las otras 8 ids de la lista verificadas existentes.
 
 **Estado**: FASE 4: 252 cartas clasificadas, 4 Plots/Resources sin mecanica (techo 176), 3 ramas muertas declaradas, 3 cartas bloqueadas congeladas, 4 huecos de texto declarados. Bloqueadas: ilied (sin subsistema de tratos), opportunityknocks (exige ataque unico FUERA DE TURNO contra la carta recien descartada: requireOwnMain veta toda accion fuera de turno y no hay camino de ataque con objetivo en el descarte), powerforitsownsake (sin fuente local del texto; el texto jugado en L40 se RETIRO junto con su logica de victoria). coverofdarkness sigue sin mecanica (el OCR corto el efecto). Deuda plot/resource: 4 (1 real + 3 bloqueadas).
+
+## 86. FIX DE FLAKE POR CLASE EN FIXTURES (test_fase2_rules.js)
+
+**Diagnostico**: caceria con 4 shards x 1500 corridas capturo 4 fallos/6000 (~1/1500) con 3 firmas y UNA causa raiz: ventanas pendientes SOBRANTES de los turnos IA dentro de readyToAttack. Las reactivas que entran en mano por robo aleatorio (stealing_the_plans, embezzlement) abren ventanas pendingEvent que el fixture no resuelve; la ventana ocupa S.pendingEvent y rompe el siguiente bloque: shard 1+4 = S4 crash de E.weirdRefuel "elige la Plot card de tu mano" (plotIx null); shard 2 = P1-060 con ventana plotDiscarded sobrante ocupando pendingEvent (la asercion truthy pasaba con la ventana equivocada); shard 3 = P1-060 "el suceso lo provocaste tu" (ventana plotDrawn propia sobrante). L6 359, sospechoso inicial, paso en TODAS las corridas capturadas: falso culpable.
+
+**Fix (3 ediciones, solo fixtures, motor intacto)**: (1) readyToAttack drena las ventanas sobrantes con clear24() (el dren canonico del fichero, hoisteado) antes de `return pid`; (2) S4: tras readyToAttack, si no hay Plot en mano se fuerza una desde plotDeck (splice+push saltando negadoras/turn-start/reactivas) en lugar del esc() blando que permitia plotIx null; (3) P1-060: la asercion exige `pendingEvent.kind === 'plotDrawn'` (antes solo truthy), de modo que cualquier fuga de ventanas futura falla en voz alta.
+
+**Verificacion**: npm test ALL TESTS PASSED (11 suites); caceria de verificacion 4 shards x 1500 = 6000/6000 verdes, 0 fallos (antes: 4/6000). Las 3 firmas no reaparecieron.
+
+**Estado**: flake de clase cerrado (tercero del repo tras S8c/P1-163 y el de L8c): el patron "fixture que no drena ventanas de turnos automaticos" queda documentado; todo fixture nuevo debe drenar tras readyToAttack.

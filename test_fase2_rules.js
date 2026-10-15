@@ -102,7 +102,19 @@ function readyToAttack(pid) {
   for (var g = 0; g < 8; g++) {
     var s = E.getState();
     if (s.gameover) return null;
-    if (s.currentPid === pid && s.players[0].turnsCompleted >= 1 && s.players[1].turnsCompleted >= 1) return pid;
+    if (s.currentPid === pid && s.players[0].turnsCompleted >= 1 && s.players[1].turnsCompleted >= 1) {
+      /* P1-DRENAJE: los turnos de la IA pueden dejar ventanas abiertas (roba
+       * Plots al empezar su turno y descarta el exceso al acabarlo; si el rival
+       * tiene un reactor —Stealing the Plans, Embezzlement— eso abre una ventana
+       * de suceso que NADIE resuelve y que sobrevive al helper). La ventana
+       * sobreviviente ocupa S.pendingEvent y hace que el PRIMER drawPlot/
+       * playPlot del bloque choque contra ella o no abra la suya: medido 4/6000
+       * en la caceria particionada con tres firmas (P1-060 x2 con ventana
+       * ajena de kind plotDiscarded y plotDrawn-by-me, S4 weirdRefuel, L6 359).
+       * clear24 (definido abajo; hoisted) es el drenaje canonico del fichero. */
+      clear24();
+      return pid;
+    }
     E.endTurn();
   }
   return null;
@@ -3111,7 +3123,7 @@ function readyToAttack(pid) {
       return c.type === 'plot' && c.idx !== EMB.idx && c.idx !== res.idx;
     })[0];
     put(resp, filler);
-    ok(!!E.getState().pendingEvent, 'P1-060 la ventana de SUCESO esta abierta (control del camino feliz)');
+    ok(E.getState().pendingEvent && E.getState().pendingEvent.kind === 'plotDrawn', 'P1-060 la ventana de SUCESO esta abierta y es plotDrawn (control del camino feliz)');
     if (!E.getState().pendingEvent) return;
     E.playPlot(resp, EMB.idx, null, { payment: filler.idx });
     ok(!!E._raw().pendingEvent, 'P1-060 jugar la carta dejo la ventana en el segundo paso');
@@ -9978,7 +9990,22 @@ function err26(fn) { return throwMsgL14(fn); }
     readyToAttack(0);
     E.playResource(0, CWS, null);
     var plotIx = R.players[0].hand.filter(function (ix) { return C.cards[ix].type === 'plot'; })[0];
-    esc('S4-pre plot en mano', plotIx != null);
+    /* P1-FLAKE: tras readyToAttack la mano puede quedarse sin ninguna Plot (la
+     * IA roba al empezar su turno y descarta el exceso al acabarlo). Se fuerza
+     * una desde el mazo (regla 13, misma via que hand22) en lugar de dejar el
+     * esc() blando que seguia y reventaba en weirdRefuel: crash "elige la Plot
+     * card" capturado 2 veces en la caceria particionada (shards 1 y 4). */
+    if (plotIx == null) {
+      for (var k4 = R.plotDeck.length - 1; k4 >= 0; k4--) {
+        var p4 = R.plotDeck[k4];
+        if (C.cards[p4].type === 'plot' && !isNegatorCard(p4) && !isTurnStartCard(p4) && !isReactive37(C.cards[p4].id)) {
+          plotIx = R.plotDeck.splice(k4, 1)[0];
+          R.players[0].hand.push(plotIx);
+          break;
+        }
+      }
+    }
+    esc('S4-pre plot en mano (forzada si faltaba)', plotIx != null);
     /* el grupo aun no uso su accion -> rechaza */
     var m4 = tMsg(function () { E.weirdRefuel(0, 'g1', plotIx); });
     ok(m4.indexOf('HABER USADO') >= 0 || m4.indexOf('ya') >= 0, 'S4a target sin usar su accion: "' + m4 + '"');
