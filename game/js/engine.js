@@ -3396,11 +3396,10 @@ function spendGroupToken(pid,uid){
    attributes. They can never be destroyed, except by losing all their puppets."
 
    De la segunda cita se deduce que el Illuminati NO puede ayudar ni oponerse
-   nunca (ayudar exige una alineacion comun con el objetivo y oponerse una
-   opuesta, y el no tiene ninguna), y por eso la primera frase es la declaracion
-   COMPLETA de su participacion en combate: solo puede ser el atacante. Por eso
-   addSupport() se deja intacto a proposito: su exclusion por alineaciones ya es
-   la regla correcta, y no hace falta ningun codigo extra para el Illuminati.
+   nunca: no tiene alineaciones (que ayudan/oponen) ni Global Power (P2-R5), asi
+   que las comprobaciones de addSupport lo rechazan sin codigo extra para el. Por
+   eso la primera frase es la declaracion COMPLETA de su participacion en
+   combate: solo puede ser el atacante.
 
    Y para ATACAR no hace falta ningun helper: el Illuminati es un grupo mas y
    gasta su propia ficha de grupo con spendGroupToken(), igual que cualquier
@@ -3443,7 +3442,7 @@ E.declareAttack=function(pid,type,target){
 
   var A={id:'a'+(S.uidCounter++),pid:pid,type:type,
     attackerUid:attackerUid,aids:[],opposes:[],privilege:false,privilegeLocked:false,
-    boosts:[],defBoosts:[],selfDefended:false,resolved:false};
+    boosts:[],defBoosts:[],selfDefended:false,selfDefTokens:0,resolved:false};
   var tn='';
 
   if(isNeutralUid(target.uid)){
@@ -3630,6 +3629,20 @@ E.weatherMod=function(pid,v){
   return publicState();
 };
 
+/* P2-R5 — ¿`uid` es master o titere DIRECTO del objetivo `tNode`? Regla de
+   oposicion (inwo_rules_extracted.txt:469-472): "A Group can oppose an Attack to
+   Control ... if it has at least one alignment identical to the target, or if it
+   is the target's master or puppet." Ejemplo oficial (:573-575): los Wargamers,
+   titere de B.A.T.F., se oponen aunque no compartan alineacion ni tengan GP. */
+function isMasterOrPuppetOf(uid,tNode){
+  if(!tNode)return false;
+  if((tNode.children||[]).some(function(c){return c.uid===uid;}))return true;
+  var owner=findOwnerPid(tNode.uid);
+  if(owner<0)return false;
+  var parent=findNodeThatHas(S.players[owner].structure,tNode.uid);
+  return !!(parent&&parent.uid===uid);
+}
+
 /* aid/oppose entries: {uid,power} — eligibility checked here */
 E.addSupport=function(pid,entry){
   if(!S.attack||S.attack.resolved)throw new Error('Sin ataque activo');
@@ -3666,8 +3679,15 @@ E.addSupport=function(pid,entry){
     if(pid!==A.targetPid||!A.targetUid)throw new Error('Solo un defensor de un grupo en juego puede autoprotegerse');
     var nd=findNode(A.targetUid);
     if(!nd)throw new Error('El grupo defensor ya no está en juego');
-    if(nd.tokens==null||nd.tokens<1)throw new Error('Defensor sin Action token');
-    nd.tokens--;A.selfDefended=true;
+    /* P2-R6: regla oficial (inwo_rules_extracted.txt:445-451): "If the target has
+       more than one token, it can spend them all, and each one gets the bonus!"
+       El Poder se dobla, luego se triplica, luego se cuadruplica...: con n fichas
+       el factor es (1+n). Se puede llamar varias veces (tokens:1) y las fichas se
+       acumulan en A.selfDefTokens; computeStrength aplica (1+n). */
+    var nDef=Math.floor(entry.tokens||1);
+    if(nDef<1)throw new Error('Número de fichas de autodefensa inválido');
+    if(nd.tokens==null||nd.tokens<nDef)throw new Error('Defensor sin Action tokens suficientes');
+    nd.tokens-=nDef;A.selfDefended=true;A.selfDefTokens=(A.selfDefTokens||0)+nDef;
     return publicState();
   }
   var sup=findNode(entry.uid);
@@ -3677,23 +3697,52 @@ E.addSupport=function(pid,entry){
   if(sup.tokens==null||sup.tokens<1)throw new Error('Sin Action token');
   var sc=card(sup.cardId);
   if(!sc)throw new Error('El grupo de apoyo no tiene datos válidos');
+  /* P2-R7 — "No Duplicates in the Same Attack!" (inwo_rules_extracted.txt:443-446):
+     un grupo no puede gastar mas de una ficha en el MISMO ataque (la excepcion es
+     la autodefensa, rama de arriba). Y (:576) "no Group may attack itself, or aid
+     an attack on itself": el atacante no ayuda su ataque y el objetivo no se
+     apoya a si mismo (su via legal es selfDefend). */
+  if(A.aids.concat(A.opposes).some(function(x){return x.uid===entry.uid;}))
+    throw new Error('Ese grupo ya participa en este ataque (máx 1 ficha por ataque)');
+  if(entry.uid===A.attackerUid)throw new Error('El atacante no puede ayudar su propio ataque');
+  if(entry.uid===A.targetUid)throw new Error('El objetivo se defiende a sí mismo (selfDefend), no como apoyo');
   var tNode=A.targetUid?findNode(A.targetUid):null;
   var tCard=tNode?card(tNode.cardId):(A.handTarget?C.cards[A.handTarget.idx]:null);
   if(!tCard)throw new Error('Objetivo no encontrado');
+  /* P2-R5 — elegibilidad por alineacion. Regla oficial "Aiding or Opposing
+     Attacks" (inwo_rules_extracted.txt:466-473) y "Attack to Destroy" 4
+     (:581-590):
+       - ayudar a CONTROLAR: >=1 alineacion COMUN con el objetivo.
+       - OPONERSE a controlar: alineacion comun O ser master/titere del objetivo.
+       - ayudar a DESTRUIR: >=1 alineacion OPUESTA al objetivo.
+       - OPONERSE a destruir: MISMA regla que oponerse a controlar (identica o
+         master/titere), NO la de ayudar.
+     Global Power (:502-504, :589-590): "If a Group's alignments don't let it use
+     its normal Power to aid or oppose an attack, it can still use its Global
+     Power." No supera el Poder regular actual (:513-516) ni escala con boosts. */
+  var supAligns=nodeAligns(sup,sc),tAligns=nodeAligns(tNode,tCard);
+  var eligible=false;
   if(A.type==='control'){
-    /* P1-017: se comparan las alineaciones de los NODOS, no de las cartas: un
-       grupo al que Dictatorship (239) le anadio 'violent' puede ayudar a controlar
-       a otro violent aunque su carta impresa no lo fuera. tNode es null en un
-       ataque a una carta de la mano (aun no esta en juego): entonces nodeAligns
-       cae a la carta, que es el comportamiento correcto. */
-    if(!shares(nodeAligns(sup,sc),nodeAligns(tNode,tCard)))throw new Error('Para ayudar a controlar necesita ≥1 alineación común con el objetivo');
+    eligible=shares(supAligns,tAligns);
+    if(entry.oppose)eligible=eligible||isMasterOrPuppetOf(entry.uid,tNode);
+  }else if(entry.oppose){
+    eligible=shares(supAligns,tAligns)||isMasterOrPuppetOf(entry.uid,tNode);
   }else{
-    var opp=false,al=nodeAligns(sup,sc),tl=nodeAligns(tNode,tCard);
-    for(var i=0;i<al.length;i++){for(var j=0;j<tl.length;j++){if(isOpposite(al[i],tl[j]))opp=true;}}
-    if(!opp)throw new Error('Para ayudar a destruir necesita ≥1 alineación opuesta al objetivo');
+    for(var iA=0;iA<supAligns.length&&!eligible;iA++){
+      for(var jA=0;jA<tAligns.length;jA++){if(isOpposite(supAligns[iA],tAligns[jA])){eligible=true;break;}}
+    }
+  }
+  var pw=(typeof entry.power==='number')?entry.power:curPower(sup);
+  if(!eligible){
+    var gpE=(typeof sc.globalPower==='number')?sc.globalPower:null;
+    if(gpE!=null&&gpE>0)pw=Math.min(gpE,pw);
+    else throw new Error(A.type==='control'
+      ?(entry.oppose?'Para OPONERSE a controlar hace falta ≥1 alineación común con el objetivo, ser su master/títere o tener Global Power'
+                    :'Para ayudar a controlar hace falta ≥1 alineación común con el objetivo o Global Power')
+      :(entry.oppose?'Para OPONERSE a destruir hace falta ≥1 alineación común con el objetivo, ser su master/títere o tener Global Power'
+                    :'Para ayudar a destruir hace falta ≥1 alineación opuesta al objetivo o Global Power'));
   }
   spendGroupToken(pid,entry.uid);
-  var pw=(typeof entry.power==='number')?entry.power:curPower(sup);
   (entry.oppose?A.opposes:A.aids).push({uid:entry.uid,name:sc.name,power:pw});
   log((entry.oppose?'Se OPONE ':'Ayuda ')+sc.name+' (+'+pw+')');
   return publicState();
@@ -3709,6 +3758,13 @@ E.addBoost=function(pid,idx,toDefense){
   if(kind!=='boost10'&&kind!=='boost10_attack')
     throw new Error('Esta carta no tiene efecto de boost válido');
   if(kind==='boost10_attack'&&toDefense)throw new Error('Este boost solo mejora el ataque');
+  /* P2-R9 — "No player may use duplicates of the same Plot card in a single
+     attack, or to defend against a single attack" (inwo_rules_extracted.txt:
+     447-449). El ejemplo oficial (:525-529) usa dos +10 DISTINTOS (Martial Law y
+     Martyrs), que siguen permitidos: se compara el NOMBRE, no la instancia. */
+  var lst=(toDefense?S.attack.defBoosts:S.attack.boosts);
+  if(lst.some(function(b){return b.name===c.name;}))
+    throw new Error('No puedes usar un duplicado del mismo Plot en este ataque ('+c.name+')');
   pl.hand.splice(i,1);discardPlot(idx,pid);
   (toDefense?S.attack.defBoosts:S.attack.boosts).push({name:c.name,v:10});
   log((toDefense?'Defensa +10':'Ataque +10')+' jugada ('+c.name+')');
@@ -3850,7 +3906,7 @@ function computeStrength(resolveMode){
       det.defenseBonus+=closenessDefenseBonus(A.targetPid,tNode,tCard,attAligns,det.notes);
     }
     det.posBonus=(!A.neutralTarget&&!A.handTarget&&A.targetPid!=null&&A.targetUid)?positionBonus(A.targetPid,A.targetUid):0;
-    if(A.selfDefended&&tNode)det.selfDef=2*curPower(tNode);
+    if(A.selfDefended&&tNode)det.selfDef=(1+(A.selfDefTokens||1))*curPower(tNode);
     /* P1-009: la inmunidad Discordian ya NO se reporta aquí como nota; se hace
        cumplir en declareAttack (ataque normal) y en resolvePlotInstantAttack /
        instantAttack (ataques instantáneos), que no pasan por esta función. */
@@ -3899,7 +3955,7 @@ function computeStrength(resolveMode){
        objetivo con el atacante para NO conceder la defensa posicional cuando la
        víctima es un grupo propio. */
     if(!A.neutralTarget&&!A.handTarget&&A.targetPid!=null&&A.targetUid&&A.targetPid!==A.pid)det.posBonus=positionBonus(A.targetPid,A.targetUid);
-    if(A.selfDefended&&tNode)det.selfDef=2*curPower(tNode);
+    if(A.selfDefended&&tNode)det.selfDef=(1+(A.selfDefTokens||1))*curPower(tNode);
     /* P1-009: Servants of Cthulhu +4 a cualquier destroy (el campo cthulhu ya
        participa en la fórmula de total). Se generaliza el antiguo caso
        hard-coded 'cthulhu' para que el bonus llegue por el dato, no por el id. */

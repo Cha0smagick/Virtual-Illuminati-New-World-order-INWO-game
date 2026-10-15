@@ -54,6 +54,19 @@ for (var round = 0; round < 8; round++) {
   var st2 = E.getState(), cur2 = st2.players[st2.currentPid];
   assert(typeof cur2.autoUsed === 'boolean' && typeof cur2.drewPlot === 'boolean', 'flags autoUsed/drewPlot expuestos');
 
+  /* Fase 3: el arnes conduce las ventanas igual que driveWindow (app.js).
+     Si un HUMANO es respondedor, la ventana queda abierta a proposito tras
+     AI.takeTurn — el UI real le ofrece pasar (resolvePendingEvent/resolvePendingRoll
+     sin opts = pasar). Sin este bucle, endTurn lanza la guarda de Fase 3 y el
+     test es flaky (~25% segun reparto de cartas). */
+  for (var gw = 0; gw < 6; gw++) {
+    var sw = E.getState();
+    if (sw.pendingDraw) { try { E.resolvePendingDraw(sw.pendingDraw.mode === 'choose3' ? { pick: 0, rest: 'bottom' } : { take: 'top' }); } catch (eW) {} continue; }
+    if (sw.pendingEvent) { try { E.resolvePendingEvent(); } catch (eW) {} continue; }
+    if (sw.pendingRoll) { try { E.resolvePendingRoll(); } catch (eW) {} continue; }
+    break;
+  }
+
   var beforePid = pid;
   E.endTurn(); /* el motor avanza SOLO — igual que app.js corregido */
   /* L8c (P1-053): si la 405 del reparto inicial cayo en la mano del Humano,

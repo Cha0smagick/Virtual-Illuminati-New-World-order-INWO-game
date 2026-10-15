@@ -1092,7 +1092,14 @@ function attackPanel(st) {
     for (var i = 0; i < st.players.length; i++) if (st.players[i].human) { hp = i; break; }
     if (hp >= 0) {
       var isDefender = A.targetPid === hp;
-      if (isDefender && !A.selfDefended) html += '<button data-act="selfdef" title="Tu grupo defensor gasta su token: su Power cuenta DOBLE para resistir el golpe">🛡 Defiende tu grupo (Power ×2)</button>';
+      /* P2-R6: la regla oficial permite gastar VARIAS fichas del defensor
+         (Power 2×, luego 3×, 4×...). El boton se mantiene mientras queden
+         fichas del grupo objetivo. */
+      var dTok = 0;
+      if (isDefender && A.targetUid) {
+        (function walkDT(n) { if (n.uid === A.targetUid) dTok = n.tokens | 0; (n.children || []).forEach(walkDT); })(st.players[hp].structure);
+      }
+      if (isDefender && dTok > 0) html += '<button data-act="selfdef" title="Tu grupo defensor gasta una ficha: su Power cuenta DOBLE para resistir el golpe (con más fichas, otro múltiplo)">🛡 ' + (A.selfDefended ? 'Gasta otra ficha' : 'Defiende tu grupo (Power ×2)') + '</button>';
       if (A.pid !== hp && !supportedBy(st, hp)) html += '<button data-act="aid" title="Uno de tus grupos suma su Power al atacante">🤝 Ayudar (+Power)</button>' +
         '<button data-act="oppose" title="Uno de tus grupos resta su Power al atacante">✋ Oponerse (−Power)</button>';
       if (A.pid === hp || isDefender) html += '<button data-act="resolve" class="primary" title="Tira dos dados: si sale ≤ la fuerza del ataque, tiene éxito">🎲 RESOLVER ▶</button>';

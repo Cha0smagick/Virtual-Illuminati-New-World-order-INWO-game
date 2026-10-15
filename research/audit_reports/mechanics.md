@@ -150,7 +150,7 @@
 - Pendientes de verificación/motor: source-text-unmapped, unverified
 
 ## Simulación y sanidad
-- Muestras de dados: 31
+- Muestras de dados: 25
 - Dados inválidos: 0
 - NaN: 0
 - Poder null: 0

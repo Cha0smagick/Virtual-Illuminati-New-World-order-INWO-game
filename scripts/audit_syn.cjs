@@ -22,7 +22,7 @@ const lineOf = (token) => {
 const mechanics = [
   ['Control: P-R y tirada 2d6', 'roll2d6'],
   ['Auto-fallo por fuerza < 2', 'auto-fail'],
-  ['11-12 fallan siempre', 'r===11'],
+  ['11-12 fallan siempre', 'roll===11'],
   ['Alineamientos del líder', '+4'],
   ['Defensa de master-alignment', 'master'],
   ['Bonus de posición', 'positionBonus'],

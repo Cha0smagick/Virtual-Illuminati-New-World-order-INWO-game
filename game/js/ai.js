@@ -748,7 +748,29 @@ function reactWindow(E) {
   else if (st.pendingEvent) reactEvent(E);
 }
 
+/* la ventana de NEGACION: una Plot jugada por la IA es anulable y el motor
+   para esperando a un negador (Assassination/NWO, E.playPlot 5663-5686).
+   E.endTurn RECHAZA el turno con ella abierta, y sin conductor IA-vs-IA se
+   congelaba (diag_attack.cjs: "sin resolver la negacion"). Politica NEUTRA,
+   igual que Read My Lips/Death Mask: la IA no gasta negaciones; si un HUMANO
+   esta entre los negadores (negs[].pid) se deja ABIERTA para la UI
+   (onResolveNegation), y si no, `pass` re-juega la Plot. Va PRIMERA en
+   settleWindows porque resolverla puede abrir suceso/rodadero (la Plot
+   se re-ejecuta) y esas ventanas se cierran despues. */
+function settleNegationWindow(E) {
+  var st = E.getState();
+  if (!st || !st.pendingNegation) return;
+  var negs = st.pendingNegation.negs || [];
+  for (var i = 0; i < negs.length; i++) {
+    var pl = (st.players || [])[negs[i].pid];
+    if (pl && pl.human) return;
+  }
+  try { E.resolvePendingNegation('pass'); }
+  catch (e) { aiErr('[INWO] AI negacion: ' + (e && e.message ? e.message : e)); }
+}
+
 function settleWindows(E) {
+  settleNegationWindow(E);
   settleLyhfWindow(E);
   settleLipsWindow(E);
   settleMaskWindow(E);

@@ -11689,6 +11689,144 @@ function err26(fn) { return throwMsgL14(fn); }
   S.forEach(function (p) { if (p[1]) { console.log('ok   - ' + p[0]); } else { failures.push(p[0]); console.log('FAIL - ' + p[0]); } });
 })();
 
+/* ===== P2 — interferencia/defensa corregidas (auditoria atomica 2026-10-15) =====
+   #5 addSupport: oposicion master/titere y Global Power; #6 autodefensa
+   multi-ficha; #9 Plot duplicado en el mismo ataque. Cada aserto cita la regla
+   oficial de inwo_rules_extracted.txt. */
+(function p2FixesTests() {
+  function gIdxNoShared(otherIdx) {
+    var oa = C.cards[otherIdx].alignments || [];
+    for (var i = 0; i < C.cards.length; i++) {
+      var c = C.cards[i];
+      if (c.type !== 'group' || !c.alignments || !c.alignments.length) continue;
+      if (c.alignments.some(function (a) { return oa.indexOf(a) >= 0; })) continue;
+      return i;
+    }
+    return -1;
+  }
+  function gIdxSharedNoOpposite(otherIdx) {
+    var oa = C.cards[otherIdx].alignments || [];
+    var OPP = { violent: 'peaceful', peaceful: 'violent', conservative: 'liberal', liberal: 'conservative', straight: 'weird', weird: 'straight', corporate: 'government', government: 'corporate', criminal: 'government', media: 'government' };
+    for (var i = 0; i < C.cards.length; i++) {
+      var c = C.cards[i];
+      if (c.type !== 'group' || !c.alignments || !c.alignments.length) continue;
+      var shared = c.alignments.some(function (a) { return oa.indexOf(a) >= 0; });
+      if (!shared) continue;
+      var hasOpp = c.alignments.some(function (a) { return oa.indexOf(OPP[a]) >= 0; });
+      if (hasOpp) continue;
+      return i;
+    }
+    return -1;
+  }
+  function rootOf(pid) { return E._raw().players[pid].structure; }
+  function hangUnder(parentNode, uid, cardId, tokens) {
+    parentNode.children.push({ uid: uid, cardId: cardId, children: [], tokens: tokens == null ? 0 : tokens });
+    return parentNode.children[parentNode.children.length - 1];
+  }
+
+  /* --- #5a: OPONERSE siendo MASTER del objetivo sin alineacion comun --- */
+  (function () {
+    fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+    var T = idxOfId('texas');
+    var M = gIdxNoShared(T);
+    if (readyToAttack(0) == null || M < 0) { ok(true, 'P2-R5a SKIP'); return; }
+    var mM = plant(1, 'r5M', M, 1);
+    hangUnder(mM, 'r5T', T, 1); /* T es TITERE de M */
+    plant(0, 'r5A', anyGroupIdx(), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'r5A', uid: 'r5T' });
+    ok(!!E._raw().attack, 'P2-R5a fixture: ataque abierto contra el titere');
+    E.addSupport(1, { uid: 'r5M', oppose: true });
+    ok(E._raw().attack.opposes.length === 1,
+      'P2-R5a el MASTER se OPONE aunque no comparta alineacion (rulebook:469-472)');
+  })();
+
+  /* --- #5b: Global Power cuando las alineaciones no encajan --- */
+  (function () {
+    fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+    var T = idxOfId('texas');
+    var G = gIdxNoShared(T);
+    if (readyToAttack(0) == null || G < 0) { ok(true, 'P2-R5b SKIP'); return; }
+    C.cards[G].globalPower = 2; /* el dataset aun no trae el campo (#10) */
+    try {
+      plant(1, 'r5bT', T, 1);
+      plant(1, 'r5bG', G, 1);
+      plant(0, 'r5bA', anyGroupIdx(), 1);
+      E.declareAttack(0, 'control', { attackerUid: 'r5bA', uid: 'r5bT' });
+      E.addSupport(1, { uid: 'r5bG', oppose: true });
+      var op = E._raw().attack.opposes[0];
+      ok(E._raw().attack.opposes.length === 1 && op && op.power === 2,
+        'P2-R5b Global Power permite OPONERSE sin alineacion comun (rulebook:502-504) -> power=' + (op && op.power));
+    } finally { delete C.cards[G].globalPower; }
+  })();
+
+  /* --- #5c: OPONERSE a DESTRUIR con alineacion IDENTICA (no opuesta) --- */
+  (function () {
+    fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+    var T = idxOfId('texas');
+    var X = gIdxSharedNoOpposite(T);
+    if (readyToAttack(0) == null || X < 0) { ok(true, 'P2-R5c SKIP'); return; }
+    plant(1, 'r5cT', T, 1);
+    plant(1, 'r5cX', X, 1);
+    plant(0, 'r5cA', anyGroupIdx(), 1);
+    E.declareAttack(0, 'destroy', { attackerUid: 'r5cA', uid: 'r5cT' });
+    E.addSupport(1, { uid: 'r5cX', oppose: true });
+    ok(E._raw().attack.opposes.length === 1,
+      'P2-R5c oponerse a DESTRUIR usa la regla de CONTROL: identica o master/titere (rulebook:582-588)');
+  })();
+
+  /* --- #6: autodefensa con DOS fichas -> factor 3 (regla: cada ficha suma) --- */
+  (function () {
+    function selfDefWith(nTokens) {
+      fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+      if (readyToAttack(0) == null) return -1;
+      var t = plant(1, 'r6T', idxOfId('texas'), nTokens);
+      plant(0, 'r6A', anyGroupIdx(), 1);
+      E.declareAttack(0, 'control', { attackerUid: 'r6A', uid: 'r6T' });
+      E.addSupport(1, { selfDefend: true, tokens: nTokens });
+      var d = E.previewStrength().selfDef;
+      if (t.tokens !== 0) return -2;
+      return d;
+    }
+    var d1 = selfDefWith(1), d2 = selfDefWith(2);
+    ok(d1 > 0 && d2 > 0 && Math.abs(d2 - 1.5 * d1) < 0.001,
+      'P2-R6 2 fichas dan factor 3 (1 ficha -> factor 2): ' + d1 + ' -> ' + d2 + ' (rulebook:445-451)');
+  })();
+
+  /* --- #7: un grupo no puede gastar 2 fichas en el MISMO ataque --- */
+  (function () {
+    fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+    if (readyToAttack(0) == null) { ok(true, 'P2-R7 SKIP'); return; }
+    var t7 = plant(1, 'r7T', idxOfId('texas'), 1);
+    /* G es TITERE de T: elegible para oponerse (master/titere) con 2 fichas. */
+    hangUnder(t7, 'r7G', gIdxNoShared(idxOfId('texas')) < 0 ? anyGroupIdx() : gIdxNoShared(idxOfId('texas')), 2);
+    plant(0, 'r7A', anyGroupIdx(), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'r7A', uid: 'r7T' });
+    E.addSupport(1, { uid: 'r7G', oppose: true });
+    ok(E._raw().attack.opposes.length === 1, 'P2-R7 fixture: el titere se opone una vez');
+    throws(function () { E.addSupport(1, { uid: 'r7G', oppose: true }); }, /ya participa/i,
+      'P2-R7 el mismo grupo no gasta 2 fichas en el mismo ataque (rulebook:443-446)');
+  })();
+
+  /* --- #9: Plot duplicado en el mismo ataque --- */
+  (function () {
+    fresh(idxOfId('bavarianilluminati1'), idxOfId('servantsofcthulhu1'));
+    var boost = -1;
+    for (var i = 0; i < C.cards.length; i++) {
+      var e = C.cards[i].effect;
+      if (C.cards[i].type === 'plot' && e && e.kind === 'boost10') { boost = i; break; }
+    }
+    if (readyToAttack(0) == null || boost < 0) { ok(true, 'P2-R9 SKIP'); return; }
+    plant(0, 'r9A', anyGroupIdx(), 1);
+    plant(1, 'r9T', idxOfId('texas'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'r9A', uid: 'r9T' });
+    E._raw().players[0].hand.push(boost, boost); /* dos copias del MISMO Plot */
+    E.addBoost(0, boost);
+    ok(E._raw().attack.boosts.length === 1, 'P2-R9 el primer +10 si entra');
+    throws(function () { E.addBoost(0, boost); }, /duplicado/i,
+      'P2-R9 el segundo Plot identico en el MISMO ataque se rechaza (rulebook:447-449)');
+  })();
+})();
+
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });

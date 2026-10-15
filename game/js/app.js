@@ -442,7 +442,13 @@ function after(msg) {
      que este es el UNICO punto de reanudacion que hace falta. */
   if (st.pendingRoll || st.pendingEvent) { driveWindow(function () { resumeFromWindow(); }); return; }
   if (respKey !== null) { respKey = null; resumeAfterAttack(); return; }
-  maybeRunAI();
+  /* P2-AF4: si el humano acaba de aplicar una ventana abierta por la IA
+     (Embezzlement al robar, Botched Contact al takeover, negacion...), aiPending
+     sigue puesto: resumeFromWindow reentra en finishAITurn. Con `maybeRunAI`
+     la IA relanzaba takeTurn y chocaba con "Ya robaste tu carta de
+     Plot este turno" (E.drawPlot), congelando su turno. Cuando no hay aiPending
+     ni ventana, resumeFromWindow cae a maybeRunAI: mismo comportamiento. */
+  resumeFromWindow();
 }
 
 /* ---- control de velocidad (espectador IA vs IA y ritmo general) ---- */
@@ -634,6 +640,18 @@ function needsHuman(st) {
   for (var q = 0; q < st.players.length; q++) if (q !== A.pid && st.players[q].human) return true;
   return false;
 }
+/* P2-AF3: ¿hay un HUMANO entre los negadores potenciales de la ventana de
+   negacion? (AI.humanResponds no cubre pendingNegation: sus respondedores viven
+   en negs[], no en responders[]) */
+function negHumanPending(st) {
+  var N = st && st.pendingNegation;
+  if (!N || !N.negs) return false;
+  for (var i = 0; i < N.negs.length; i++) {
+    var pl = (st.players || [])[N.negs[i].pid];
+    if (pl && pl.human) return true;
+  }
+  return false;
+}
 
 function runAI(pid) {
   if (busyAI) return;
@@ -657,6 +675,13 @@ function runAI(pid) {
         driveWindow(function () { resumeFromWindow(); });
         return;
       }
+      /* P2-AF3: ventana de negacion con negador humano — pausa SIN driveWindow
+         (driveWindow no conduce la negacion; el humano decide en la UI y
+         onResolveNegation -> after -> resumeFromWindow reentra). Sin negador
+         humano, AI.settleWindows (llamada dentro de takeTurn) ya la cerro. */
+      if (st.pendingNegation && negHumanPending(st)) {
+        aiPending = pid; busyAI = false; refresh(); return;
+      }
       finishAITurn(pid);
     } catch (e) { busyAI = false; log('⚠ IA: ' + e.message); refresh(); }
   }, D(350));
@@ -678,12 +703,20 @@ function finishAITurn(pid) {
       driveWindow(function () { var q = aiPending; aiPending = null; finishAITurn(q); });
       return;
     }
+    /* P2-AF3: negacion con negador humano — mismo trato que en runAI. */
+    if (stw.pendingNegation && negHumanPending(stw)) { aiPending = pid; refresh(); return; }
     /* L8b — ultima puerta antes de terminar: `E.endTurn` rechaza si queda una
        eleccion de robo abierta (233/367). `settleWindows` ya la cierra en cada
        contacto con el motor, asi que esto solo puede saltar si un camino futuro
        se olvida; sin esta linea la partida se quedaria atascada en silencio,
        porque el throw cae en el catch de abajo y solo loguea. */
     if (window.AI && window.AI.settleDraw) { try { window.AI.settleDraw(E); } catch (e) { log('⚠ IA no pudo resolver su eleccion de robo: ' + e.message); } }
+    /* P2-AF3: segunda puerta para la NEGACION (y demas ventanas): si algo la
+       reabrio tras el settleDraw, se cierra aqui o se pausa si el humano es
+       negador; evita el atasco silencioso que solo loguea el throw. */
+    if (!negHumanPending(E.getState()) && window.AI && window.AI.settleWindows) {
+      try { window.AI.settleWindows(E); } catch (e) { log('⚠ IA no pudo cerrar sus ventanas: ' + e.message); }
+    }
     /* E.endTurn avanza y hace beginTurn del siguiente él mismo */
     E.endTurn();
     afterAdvance();
