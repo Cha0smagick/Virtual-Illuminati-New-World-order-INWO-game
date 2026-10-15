@@ -1229,7 +1229,9 @@ Si un lote anterior construye la mecanica que necesitan, se desbloquean y se imp
 - 185, 195, 206, 229, 331: ausentes de la transcripcion secundaria (`textFull` nulo); hay que
   leer el OCR de la carta antes de disenar su mecanica.
 - **Fase 3** (fuera de este plan, ya declarada en §37/§38): UX, onboarding, verificacion en
-  navegador real, y una IA que **juegue** las cartas de reaccion (hoy solo cierra las ventanas).
+  navegador real, y una IA que **juegue** las cartas de reaccion — LOTE 1 SERVIDO (commit fa335c1,
+  audit ## 89.): la IA respeta las ventanas del humano y juega las suyas; queda i18n de narrativa
+  y verificacion visual en produccion.
 
 ## [x] L22 - VENTANA DE NEGACION DE UN PLOT INMEDIATAMENTE ANTERIOR      -> audit ## 73., P1-140..P1-145, 207->283/363/224
 

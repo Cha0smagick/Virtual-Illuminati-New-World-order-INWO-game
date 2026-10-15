@@ -75,10 +75,12 @@ function twoReadyPlayers() {
   let state = start(100);
   const first = state.currentPid;
   placeOpeningGroup(state, first);
+  if (E.getState().pendingEvent) E.resolvePendingEvent(); // el autoTakeover abre ventana de suceso si un rival trae reactivas
   E.endTurn();
   state = E.getState();
   const second = state.currentPid;
   placeOpeningGroup(state, second);
+  if (E.getState().pendingEvent) E.resolvePendingEvent();
   E.endTurn();
   state = E.getState();
   return { state: state, first: first, second: second };
