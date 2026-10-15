@@ -596,6 +596,18 @@ function start(mode, bases) {
   try {
     window.UI.init(CB);
     ensureSpeedBtn();
+    /* Auditoria (backlog §66.4/§65): window.__INWO_STATE de solo lectura para que la
+     * verificacion en navegador real (consola, harness externo) deje de depender de
+     * inyeccion de cartas. publicState() (engine.js:1181) es una proyeccion campo a
+     * campo reconstruida en cada llamada, con los arrays internos copiados (slice):
+     * mutar lo que devuelve el getter NO toca el estado vivo del motor. */
+    try {
+      Object.defineProperty(window, '__INWO_STATE', {
+        configurable: false, enumerable: true,
+        /* null = todavia no hay partida (publicState exige estado vivo). */
+        get: function () { try { return E.getState(); } catch (e) { return null; } }
+      });
+    } catch (e) { /* si ya existia, se respeta el primero */ }
     /* reinicio blindado: sin residuos de partidas anteriores */
     try {
       clearTimeout(respTimer); respTimer = null; respKey = null; respDone = {};
