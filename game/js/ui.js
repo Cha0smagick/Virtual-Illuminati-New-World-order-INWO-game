@@ -1131,15 +1131,30 @@ function supportedBy(st, pid) {
 /* ---------- HAND + ACTIONS ---------- */
 function handBar(st) {
   var cur = st.players[st.currentPid];
-  var showHand = cur && cur.human && st.phase === 'main' && (!st.attack || st.attack.pid === st.currentPid);
+  /* Fase 3: durante el turno de la IA, si hay ventana de rodadero/suceso con
+     respondedor humano, se le muestra SU mano para que reaccione (Bribery,
+     Computer Virus, embezzlement...). Sin esto la ventana queda abierta pero
+     el humano no ve cartas: no puede hacer nada. `reactor` es el primer
+     respondedor humano que aun sostiene su carta habilitada. */
+  var reactor = null;
+  var winH = st.pendingRoll || st.pendingEvent;
+  if (winH && winH.responders) {
+    for (var ri = 0; ri < winH.responders.length; ri++) {
+      var rq = st.players[winH.responders[ri].pid];
+      if (rq && rq.human && rq.hand.indexOf(winH.responders[ri].cardIdx) >= 0) { reactor = rq; break; }
+    }
+  }
+  var showHand = (cur && cur.human && st.phase === 'main' && (!st.attack || st.attack.pid === st.currentPid)) ||
+                 (!!reactor && st.phase !== 'setup' && st.phase !== 'gameover');
   var html = '';
   if (!showHand) {
-    html = '<span class="muted">' + (cur && !cur.human ? 'Turno de la IA…' : (st.attack ? 'Ataque en curso — resuélvelo' : 'Esperando…')) + '</span>';
+    html = '<span class="muted">' + (cur && !cur.human && !reactor ? 'Turno de la IA…' : (st.attack ? 'Ataque en curso — resuélvelo' : 'Esperando…')) + '</span>';
     $('handCards').innerHTML = html;
     buildBtns(st, false);
     return;
   }
-  var idxs = cur.hand.slice();
+  var owner = reactor || cur;
+  var idxs = owner.hand.slice();
   if (handSort === 'type') idxs.sort(function (a, b) {
     var t = function (i) { var k = cardOf(i).type; return k === 'group' ? 0 : k === 'resource' ? 1 : 2; };
     return t(a) - t(b) || a - b;
@@ -1160,7 +1175,9 @@ function handBar(st) {
        * layout y, si alguien lo muestra desde las herramientas, la fila vuelve a crecer. */
       imgTag(c, 'thumb') + '</button>';
   }).join('');
-  buildBtns(st, true);
+  /* Fase 3: con `reactor`, la mano es de reaccion, no de turno propio — los
+     botones de orden (robar/takeover/atacar) quedan deshabilitados. */
+  buildBtns(st, !reactor);
 }
 
 function buildBtns(st, myMain) {
@@ -1733,6 +1750,29 @@ function enablersForL11(cardObj, hand) {
 function handClick(ix) {
   var c = cardOf(ix);
   var myMain = curState.phase === 'main' && curState.players[curState.currentPid].human;
+  /* Fase 3: ventana de rodadero/suceso abierta durante un turno ajeno — el
+     humano puede jugar las reactivas que el motor le habilito (son
+     instantaneas, "Play immediately after any die roll"). Solo las cartas
+     listadas en responders de la ventana; el pid lo resuelve
+     CB.onPlayRollCard/onPlayEventCard via responderPidFor. */
+  if (!myMain && CB && curState.phase !== 'setup' && curState.phase !== 'gameover' &&
+      (curState.pendingRoll || curState.pendingEvent)) {
+    var winR = curState.pendingRoll || curState.pendingEvent;
+    var mineR = null;
+    (winR.responders || []).forEach(function (r) { if (r.cardIdx === ix) mineR = r; });
+    if (mineR) {
+      if (!curState.players[mineR.pid] || !curState.players[mineR.pid].human) return; /* habilitada de otro */
+      if (c.type !== 'plot') { log('ℹ Esa carta no reacciona a esta ventana.'); render(curState); return; }
+      if (curState.pendingRoll) {
+        if (c.effect && c.effect.kind === 'fnord') { startFnord258(ix); return; } /* 258 pide pago aparte */
+        CB.onPlayRollCard(ix);
+      } else {
+        CB.onPlayEventCard(ix, {}); /* embezzlement: el motor auto-elige el pago */
+      }
+      render(curState);
+      return;
+    }
+  }
   if (!myMain || !CB) return;
   /* L11 - paso 2/2 y 3/3 del duplicado. Se comprueba ANTES que el flujo normal,
      porque un Group no se puede jugar desde la mano de ninguna otra manera. */

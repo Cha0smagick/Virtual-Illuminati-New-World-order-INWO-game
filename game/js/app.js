@@ -165,7 +165,9 @@ var CB = {
   onPlayRollCard: function (handIdx, opts) {
     /* L29 — `opts` es el pago de 258 Fnord!: {pay:{mode:'top'}} o
        {pay:{mode:'hand',handIdx:[a,b]}}. Las demás cartas de rodadero no lo usan. */
-    try { E.playPlot(E.getState().currentPid, handIdx, null, opts || {}); after('Carta de rodadero jugada'); }
+    /* Fase 3: `responderPidFor` resuelve el pid del respondedor (durante una
+       ventana el que reacciona puede no ser el jugador activo). */
+    try { E.playPlot(responderPidFor(handIdx), handIdx, null, opts || {}); after('Carta de rodadero jugada'); }
     catch (e) { log('⚠ ' + e.message); }
   },
   /* L29 — 232 Crop Circles: acción de búsqueda. `deck` es 'plot'|'group'; el motor
@@ -195,7 +197,9 @@ var CB = {
   /* P1-027 — cartas de la ventana de SUCESO. Mismo contrato de dos pasos que
      §37: jugar la carta NO cierra la ventana; cerrar es otro boton. */
   onPlayEventCard: function (handIdx, opts) {
-    try { E.playPlot(E.getState().currentPid, handIdx, null, opts || {}); after('Carta de suceso jugada: ahora aplica el resultado'); }
+    /* Fase 3: `responderPidFor` resuelve el pid del respondedor (el humano
+       reclama el suceso abierto por el robo de la IA). */
+    try { E.playPlot(responderPidFor(handIdx), handIdx, null, opts || {}); after('Carta de suceso jugada: ahora aplica el resultado'); }
     catch (e) { log('! ' + e.message); }
   },
   /* L8a — 361/388/411 (deck_manip). `opts` trae lo que el jugador eligio en el menu
@@ -431,6 +435,12 @@ function after(msg) {
   var st = refresh();
   if (checkOver(st)) return;
   if (st.attack && !st.attack.resolved) { scheduleResponses(); return; }
+  /* Fase 3: ventana de rodadero/suceso abierta (por resolver un ataque, jugar
+     una reactiva o aplicar la ventana). El turno pausado se reanuda desde
+     resumeFromWindow cuando el humano aplica; NUNCA relanzando takeTurn, que
+     duplicaria el turno de la IA. onResolvePendingRoll/Event llegan aqui, asi
+     que este es el UNICO punto de reanudacion que hace falta. */
+  if (st.pendingRoll || st.pendingEvent) { driveWindow(function () { resumeFromWindow(); }); return; }
   if (respKey !== null) { respKey = null; resumeAfterAttack(); return; }
   maybeRunAI();
 }
@@ -505,6 +515,86 @@ function resumeAfterAttack() {
   }
 }
 
+/* ---- Fase 3: maquina de estados de las ventanas de rodadero/suceso ----
+   Las ventanas P1-024 (rodadero) y P1-027 (suceso) tienen RESPONDEDORES:
+   jugadores que sostienen una carta que el motor habilito para esa ventana
+   exacta (responders[].cardIdx es el indice global de la carta). Antes la IA
+   las cerraba a ciegas en su turno (settleWindows) y el humano nunca podia
+   jugar sus reactivas contra acciones de la IA. Ahora:
+     1. Los respondedores IA aplican su politica (AI.reactWindow) con retardo.
+     2. Si queda un respondedor HUMANO (con la carta aun en mano), se espera:
+        la UI le pinta su mano y el boton «Aplicar el resultado».
+     3. Si no queda nadie, se aplica la ventana y se sigue (onDone).
+   Usa su PROPIO temporizador (winTimer): resumeAfterAttack limpia respTimer y
+   no debe matar una reaccion de ventana en vuelo. */
+var winTimer = null;
+function winRespondersLeft(st, isAI) {
+  var win = st.pendingRoll || st.pendingEvent;
+  if (!win || !win.responders) return [];
+  return (win.responders || []).filter(function (r) {
+    var pl = st.players[r.pid];
+    if (!pl || pl.human !== !isAI) return false;
+    return pl.hand.indexOf(r.cardIdx) >= 0;
+  });
+}
+function winHumanPending(st) { return winRespondersLeft(st, false).length > 0; }
+function applyWindowAndChain(onDone, isRoll) {
+  try { if (isRoll) E.resolvePendingRoll(); else E.resolvePendingEvent(); }
+  catch (e) { log('⚠ ' + e.message); }
+  var s2 = refresh();
+  if (checkOver(s2)) return;
+  if (s2.pendingRoll || s2.pendingEvent) { driveWindow(onDone); return; }
+  onDone();
+}
+function driveWindow(onDone) {
+  var st = E.getState();
+  if (st.phase === 'gameover') return;
+  var win = st.pendingRoll || st.pendingEvent;
+  if (!win) { onDone(); return; }
+  var isRoll = !!st.pendingRoll;
+  var aiLeft = winRespondersLeft(st, true);
+  if (aiLeft.length) {
+    /* Guardia anti-bucle: si la IA no consume ninguna carta en esta pasada
+       (politica de pasar, o un fallo ya logueado), no reiterar eternamente. */
+    var before = aiLeft.map(function (r) { return r.pid + ':' + r.cardIdx; }).sort().join('|');
+    clearTimeout(winTimer);
+    winTimer = setTimeout(function () {
+      try { window.AI.reactWindow(E); } catch (e) { log('⚠ IA reacción: ' + e.message); }
+      var s2 = E.getState();
+      var after2 = winRespondersLeft(s2, true);
+      var consumed = after2.map(function (r) { return r.pid + ':' + r.cardIdx; }).sort().join('|') !== before;
+      if (!consumed) { applyWindowAndChain(onDone, isRoll); return; }
+      driveWindow(onDone);
+    }, D(600));
+    return;
+  }
+  if (winHumanPending(st)) { refresh(); return; } /* el humano decide con sus botones */
+  applyWindowAndChain(onDone, isRoll);
+}
+/* Continuacion tras aplicar una ventana: ventanas encadenadas -> driveWindow;
+   turno de IA pausado -> finishAITurn; si no, el flujo normal (maybeRunAI). */
+function resumeFromWindow() {
+  var st = refresh();
+  if (checkOver(st)) return;
+  if (st.pendingRoll || st.pendingEvent) { driveWindow(function () { resumeFromWindow(); }); return; }
+  if (aiPending != null) { var p = aiPending; aiPending = null; finishAITurn(p); return; }
+  maybeRunAI();
+}
+/* Fase 3 — pid del respondedor cuya carta habilitada en la ventana abierta es
+   `handIdx` (indice global). Durante una ventana el que reacciona puede no ser
+   el jugador activo (el humano reacciona a un rodadero/suceso de la IA). Si la
+   ventana no lo lista, se asume el activo (comportamiento pre-Fase 3). */
+function responderPidFor(handIdx) {
+  var st = E.getState();
+  var win = st.pendingRoll || st.pendingEvent;
+  if (win && win.responders) {
+    for (var i = 0; i < win.responders.length; i++) {
+      if (win.responders[i].cardIdx === handIdx) return win.responders[i].pid;
+    }
+  }
+  return st.currentPid;
+}
+
 function checkOver(st) {
   if (st.phase === 'gameover' && st.winner) {
     var names = (st.winner.pids || []).map(function (p) { return st.players[p] ? st.players[p].name : p; }).join(' & ');
@@ -558,6 +648,15 @@ function runAI(pid) {
         /* la IA dejó un ataque abierto esperando tu reacción */
         aiPending = pid; busyAI = false; refresh(); scheduleResponses(); return;
       }
+      /* Fase 3: ventana de rodadero/suceso con respondedor humano — se PAUSA el
+         turno (aiPending) y driveWindow conduce la ventana; al aplicar el humano,
+         resumeFromWindow reentra en finishAITurn. Sin la pausa, takeTurn->endTurn
+         pisaba la ventana y las reactivas del humano eran papel mojado. */
+      if (st.pendingRoll || st.pendingEvent) {
+        aiPending = pid; busyAI = false; refresh();
+        driveWindow(function () { resumeFromWindow(); });
+        return;
+      }
       finishAITurn(pid);
     } catch (e) { busyAI = false; log('⚠ IA: ' + e.message); refresh(); }
   }, D(350));
@@ -569,6 +668,16 @@ function finishAITurn(pid) {
     var st = E.getState();
     if (st.phase === 'gameover') { checkOver(refresh()); return; }
     if (st.attack && !st.attack.resolved) { try { E.resolveAttack(); } catch (e) { log('⚠ IA no pudo resolver el ataque: ' + e.message); } }
+    /* Fase 3: resolver el ataque pudo abrir la ventana de rodadero (el defensor
+       humano sostiene Bribery...). NO se avanza a endTurn con ella abierta: se
+       pausa el turno y driveWindow conduce — la IA reacciona si le toca; el
+       humano decide si tambien es respondedor; al aplicar, se reentra aqui. */
+    var stw = E.getState();
+    if (stw.pendingRoll || stw.pendingEvent) {
+      aiPending = pid; refresh();
+      driveWindow(function () { var q = aiPending; aiPending = null; finishAITurn(q); });
+      return;
+    }
     /* L8b — ultima puerta antes de terminar: `E.endTurn` rechaza si queda una
        eleccion de robo abierta (233/367). `settleWindows` ya la cierra en cada
        contacto con el motor, asi que esto solo puede saltar si un camino futuro

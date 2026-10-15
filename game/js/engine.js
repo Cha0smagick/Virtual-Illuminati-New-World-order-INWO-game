@@ -4038,6 +4038,15 @@ function closePendingRoll(){
   if(!P)return null;
   S.pendingRoll=null;
   var ctx=ROLL_CTX;ROLL_CTX=null;
+  /* Fase 3: una ventana sin contexto (inyectada a mano por un test, o cuyo
+   * ataque ya no existe) no puede aplicar su efecto: se cierra en seco en vez
+   * de reventar en `ctx.finish`. El contrato de resolvePendingRoll ya es
+   * tolerante (no-op si no hay ventana); esto extiende la tolerancia al caso
+   * sin contexto. */
+  if(!ctx){
+    log('VENTANA SIN CONTEXTO: '+P.label+' se aplica en seco (sin efecto)');
+    return publicState();
+  }
   var res;
   if(P.cancelled){
     log('CANCELADO: '+P.cancelled.cardName+' de '+P.cancelled.name+' — '+P.label+' falla automaticamente');
@@ -9962,6 +9971,17 @@ E.endTurn=function(){
   if(S.pendingLyhf)throw new Error('No se puede terminar el turno sin resolver la pelea instigada');
   if(S.pendingLips)throw new Error('Read My Lips: primero resuelve la decision pendiente (E.resolveLips)');
   if(S.pendingMask)throw new Error('Death Mask: primero resuelve la decision pendiente (E.maskJoin/E.maskPass)');
+  /* Fase 3 — las ventanas de RODADERO/SUCESO/ESPIONAJE/NEGACION/COVER-UP no
+   * cruzan el borde de turno: su respondedor puede no ser el proximo jugador,
+   * y una ventana que viaja al turno ajeno es una reaccion robada (o un
+   * atasco). `driveWindow`/`resumeFromWindow` (app.js) y `settleWindows`
+   * (ai.js) las aplican antes; esta guarda es la ultima puerta, con el patron
+   * L8b: convertir el atasco silencioso en un mensaje. */
+  if(S.pendingRoll)throw new Error('No se puede terminar el turno sin aplicar la ventana de rodadero');
+  if(S.pendingEvent)throw new Error('No se puede terminar el turno sin aplicar la ventana de suceso');
+  if(S.pendingPeek)throw new Error('No se puede terminar el turno sin resolver el espionaje');
+  if(S.pendingNegation)throw new Error('No se puede terminar el turno sin resolver la negacion');
+  if(S.pendingCoverup)throw new Error('No se puede terminar el turno sin resolver Cover-Up');
   var pid=S.currentPid;
   var pl=S.players[pid];
   if(!pl)throw new Error('No hay jugador activo');

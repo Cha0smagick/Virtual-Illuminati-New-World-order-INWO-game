@@ -562,29 +562,34 @@ function takeTurn(E, pid) {
 }
 /* P1-024 — la ventana de RODADERO. Tras tirar, el motor puede parar esperando
    una carta de rodadero (Bribery, Computer Virus, Murphy's Law, Time Warp,
-   Mistaken Identity, Mothers' March). En un ataque announced SIN resolver, el
-   efecto todavia no se ha aplicado, asi que `st.attack` sigue abierto: si nadie
-   cierra la ventana la partida se queda colgada.
-   DECLARACION DE LIMITACION: la IA todavia no JUEGA cartas de rodadero (eso
-   exige elegir a quien conviene — §37 lo deja para Fase 3); lo que
-   si hace es cerrarla, que es el mismo efecto que no reaccionar. Se implementa
-   aqui, y no en un if suelto en cada llamada, porque los tres puntos de
-   resolucion comparten exactamente la misma necesidad. */
+   Mistaken Identity, Mothers' March).
+   Fase 3 (§37/§38): la IA AHORA SI juega sus reactivas — reactRoll aplica la
+   politica defensiva antes de aplicar la ventana. Y si un HUMANO esta entre
+   los respondedores, la ventana NO se cierra aqui: se deja ABIERTA para que
+   la UI le ofrezca sus cartas (driveWindow, en app.js, pausa el turno de la
+   IA y lo reanuda cuando el humano aplica). Cerrarla a ciegas convertia las
+   reactivas del humano en papel mojado contra la IA. */
 function settleRollWindow(E) {
   var st = E.getState();
-  if (st && st.pendingRoll) E.resolvePendingRoll();
+  if (!st || !st.pendingRoll) return;
+  if (humanResponds(st.pendingRoll, st)) return;
+  try { reactRoll(E); } catch (e0) { aiErr('[INWO] AI rodadero: ' + (e0 && e0.message ? e0.message : e0)); }
+  try { if (E.getState().pendingRoll) E.resolvePendingRoll(); } catch (e1) { aiErr('[INWO] AI resolveroll: ' + (e1 && e1.message ? e1.message : e1)); }
 }
-/* P1-027 — la ventana de SUCESO. Mismo problema y misma solucion que
-   settleRollWindow, con un matiz que obliga a llamarla en MAS sitios: la ventana
-   de suceso se abre al ROBAR una Plot (E.drawPlot, linea 518) y al DESCARTAR
-   una, y `E.drawPlot` es justo lo primero que hace la IA. Ademas la ventana de
-   EMBEZZLEMENT bloquea el uso de la Plot robada, asi que dejarla abierta
-   atascaria el turno entero.
-   DECLARACION DE LIMITACION: la IA todavia no JUEGA cartas de suceso ni de
-   rodadero (§37 y §38 las dejan para Fase 3); lo que si hace es cerrarlas. */
+/* P1-027 — la ventana de SUCESO. Mismo trato que la de rodadero, con un matiz
+   que obliga a llamarla en MAS sitios: la ventana de suceso se abre al ROBAR
+   una Plot (E.drawPlot, linea 518) y al DESCARTAR una, y `E.drawPlot` es justo
+   lo primero que hace la IA. La ventana de EMBEZZLEMENT bloquea el uso de la
+   Plot robada; cerrar en seco la que no interesa a nadie evita el atasco.
+   Fase 3: reactEvent RECLAMA el suceso cuando la IA es respondedor (sus
+   reactivas solo se abren por sucesos de OTRO jugador y benefician a quien
+   responde). Con respondedor humano, la ventana queda ABIERTA para la UI. */
 function settleEventWindow(E) {
   var st = E.getState();
-  if (st && st.pendingEvent) E.resolvePendingEvent();
+  if (!st || !st.pendingEvent) return;
+  if (humanResponds(st.pendingEvent, st)) return;
+  try { reactEvent(E); } catch (e0) { aiErr('[INWO] AI suceso: ' + (e0 && e0.message ? e0.message : e0)); }
+  try { if (E.getState().pendingEvent) E.resolvePendingEvent(); } catch (e1) { aiErr('[INWO] AI resolveevent: ' + (e1 && e1.message ? e1.message : e1)); }
 }
 /* L8b — la ventana de ELECCIÓN DE ROBO (233 Crystal Skull, 367 Shroud of Turin).
    Es la QUINTA ventana y, a diferencia de las otras cuatro, no se puede dejar
@@ -674,6 +679,75 @@ function settleMaskWindow(E) {
   try { E.maskPass(owner); }
   catch (e) { if (window.console) console.error('[INWO] AI: fallo al resolver Death Mask: ' + (e && e.message ? e.message : e)); }
 }
+
+/* Fase 3 — ¿hay un HUMANO entre los respondedores de la ventana? Si lo hay,
+   la ventana no se cierra sola: la UI debe ofrecerle sus cartas. */
+function aiErr(msg) {
+  /* En el navegador window.console existe; en los tests Node (global.window={})
+     no, y un catch que silencia convierte el gate en un falso verde. */
+  try { if (typeof console !== 'undefined' && console.error) console.error(msg); } catch (e) {}
+}
+function humanResponds(win, st) {
+  if (!win || !win.responders) return false;
+  for (var i = 0; i < win.responders.length; i++) {
+    var pl = (st.players || [])[win.responders[i].pid];
+    if (pl && pl.human) return true;
+  }
+  return false;
+}
+/* Fase 3 — la IA JUEGA sus cartas de rodadero (antes solo cerraba la ventana).
+   Politica defensiva y honesta: si el ataque AJENO va ganando (exito
+   provisional), quema la primera carta de rodadero que el motor le habilito —
+   `responders` ya trae cardIdx legal (el indice global de la carta), no hay
+   que adivinar nada. Si el ataque es suyo o ya falla, pasa: no se sabotea ni
+   gasta papel sin motivo. Se intentan TODAS las reactivas IA en una pasada,
+   porque `responders` es una foto fija: distinguir jugada de pendiente se hace
+   con hand.indexOf(cardIdx). */
+function reactRoll(E) {
+  var st = E.getState();
+  var R = st && st.pendingRoll;
+  if (!R || !R.responders) return;
+  R.responders.forEach(function (r) {
+    var pl = (st.players || [])[r.pid];
+    if (!pl || pl.human) return;
+    if (pl.hand.indexOf(r.cardIdx) < 0) return; /* ya jugada en pasada previa */
+    /* OJO al nombre: reactRoll lee la PROYECCION (publicState), donde
+       S.pendingRoll.pid se publica como `attackerPid` (engine:1192). En el
+       estado crudo se llama `pid`; aqui, `attackerPid`. */
+    if (R.attackerPid === r.pid) return;        /* ataque propio: pasar */
+    if (!R.success) return;                     /* el enemigo ya falla: pasar */
+    try { E.playPlot(r.pid, r.cardIdx, null, {}); }
+    catch (e) { aiErr('[INWO] AI reactRoll ' + r.cardName + ': ' + (e && e.message ? e.message : e)); }
+  });
+}
+/* Fase 3 — la IA RECLAMA los sucesos. Las cuatro reactivas de suceso
+   (embezzlement, stealing_the_plans, takeover_return, dup_payoff) solo se
+   abren por sucesos de OTRO jugador (lo garantiza eventReactionAllowed) y
+   todas benefician a quien responde, asi que la politica honesta es reclamar
+   siempre que el motor la tenga habilitada. El pago de embezzlement lo
+   auto-elige el motor (primera Plot propia) si no se le pasa opts.payment. */
+function reactEvent(E) {
+  var st = E.getState();
+  var EV = st && st.pendingEvent;
+  if (!EV || !EV.responders) return;
+  EV.responders.forEach(function (r) {
+    var pl = (st.players || [])[r.pid];
+    if (!pl || pl.human) return;
+    if (pl.hand.indexOf(r.cardIdx) < 0) return;
+    try { E.playPlot(r.pid, r.cardIdx, null, {}); }
+    catch (e) { aiErr('[INWO] AI reactEvent ' + r.cardName + ': ' + (e && e.message ? e.message : e)); }
+  });
+}
+/* Fase 3 — conductor de ventanas que usa app.js (driveWindow): la IA aplica
+   su politica sobre la ventana que este abierta, sin cerrarla. El cierre lo
+   decide el conductor despues de mirar si queda un humano por reaccionar. */
+function reactWindow(E) {
+  var st = E.getState();
+  if (!st) return;
+  if (st.pendingRoll) reactRoll(E);
+  else if (st.pendingEvent) reactEvent(E);
+}
+
 function settleWindows(E) {
   settleLyhfWindow(E);
   settleLipsWindow(E);
@@ -713,6 +787,13 @@ window.AI = {
      atasco silencioso en nada. Se reutiliza `settleDrawWindow` para que la
      politica de eleccion este escrita una sola vez. */
   settleDraw: function (E) { settleDrawWindow(E); },
+  /* Fase 3 — exportadas para las ventanas de rodadero/suceso:
+     - reactWindow: app.js (driveWindow) la llama para que la IA aplique su
+       politica sobre la ventana abierta, SIN cerrarla (el conductor decide).
+     - settleWindows: puerta de cierre usada por los tests y por caminos donde
+       nadie mas va a reaccionar (espectador IA vs IA). */
+  reactWindow: function (E) { reactWindow(E); },
+  settleWindows: function (E) { settleWindows(E); },
   _internal: { respondInternal: respondInternal, takeTurn: takeTurn }
 };
 })();
