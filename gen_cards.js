@@ -3141,6 +3141,80 @@ const L40_FX = {
 const L40_FXN = {};
 for (const k40 in L40_FX) { L40_FXN[norm(k40)] = L40_FX[k40]; }
 
+/* L41 — FAMILIA "bonos de ataque de los GRUPOS" (kind atk_bonus). Un solo kind
+ * consume el motor (`groupAttackBonus` en engine.js) y cada carta solo aporta
+ * DATOS: `scope` ('self' = solo el grupo atacante, 'owner' = todos los ataques de
+ * su dueno), `clauses` (cada una con atkType + calificador `vs` + value) y `pick`
+ * ('sum' por defecto; 'best' cuando el texto da un valor UNICO aunque casen dos
+ * calificadores, p.ej. "+4, o +8 si es las dos cosas").
+ * Calificadores `vs`: align/notAlign/aligns(+match), attr/notAttr/attrs(+match),
+ * cardId. Todo verbatim de research/scribd_inwo_cards_full.html y del OCR; las
+ * interpretaciones van declaradas en cada carta.
+ * INTERPRETACIONES:
+ *   - "direct control" (Al Gore, Democrats, Girlie Magazines) = el GRUPO es el
+ *     atacante de un ataque a control; mismo criterio que Russia (L32), que ya
+ *     modela su "+4 for direct control of any Communist group" como bono de
+ *     ataque a control.
+ *   - "Gives +N on any attempt to ..." (owner) = bono de TODOS los ataques del
+ *     dueño mientras controla la carta, lo ejerza el grupo que lo ejerza.
+ *   - "the Nuclear Power Plants" (Anti-Nuclear Activists): en el dataset el grupo
+ *     nuclear es `nuclearpowercompanies` (Nuclear Power Companies); no existe
+ *     otro grupo nuclear, asi que el calificador apunta ahi. */
+const L41_FX = {
+  'Al Gore': {
+    kind: 'atk_bonus',
+    clauses: [{ scope: 'self', atkType: 'control', vs: { attr: 'green' }, value: 8 }],
+    t: 'Al Gore Personality Has +8 for direct control of any Green group.'
+  },
+  'Gordo Remora': {
+    kind: 'atk_bonus',
+    clauses: [{ scope: 'self', atkType: 'destroy', vs: { align: 'weird' }, value: 10 }],
+    t: 'Gordo Remora Personality He mobilizes hate and fear against fringe groups — anything for a ratings point! Gordo gets a +10 bonus if he makes a direct attack to destroy a Weird group.'
+  },
+  'Girlie Magazines': {
+    kind: 'atk_bonus',
+    clauses: [{ scope: 'self', atkType: 'control', vs: { align: 'straight' }, value: 5 }],
+    t: 'Girlie Magazines Has +5 for direct control of any Straight group. But they dont look at the pictures, they just read the articles. Honest!'
+  },
+  'Democrats': {
+    kind: 'atk_bonus',
+    clauses: [{ scope: 'self', atkType: 'control', vs: { align: 'government', notAttr: 'nation' }, value: 4 }],
+    t: 'Democrats The Democrats have an extra +4 for direct control of any Government group that is not a Nation.'
+  },
+  'Federal Reserve': {
+    kind: 'atk_bonus',
+    clauses: [
+      { scope: 'owner', atkType: 'any', vs: { attr: 'bank' }, value: 6 },
+      { scope: 'owner', atkType: 'any', vs: { attr: 'nation' }, value: 2 },
+      { scope: 'owner', atkType: 'any', vs: { align: 'corporate' }, value: 2 }
+    ],
+    pick: 'sum',
+    t: 'Federal Reserve Gives a +6 on any attack against any Bank, and a +2 on any attack against any Nation or Corporate group.'
+  },
+  'Anti-Nuclear Activists': {
+    kind: 'atk_bonus',
+    clauses: [
+      { scope: 'owner', atkType: 'destroy', vs: { attr: 'science' }, value: 6 },
+      { scope: 'owner', atkType: 'destroy', vs: { cardId: 'nuclearpowercompanies' }, value: 10 },
+      { scope: 'owner', atkType: 'control', vs: { attr: 'green' }, value: 4 }
+    ],
+    pick: 'best',
+    t: 'Anti-Nuclear Activists Gives +6 on attempt to destroy any Science group, or +10 against the Nuclear Power Plants. Give +4 on any attempt to control any Green group.'
+  },
+  'F.B.I.': {
+    kind: 'atk_bonus',
+    clauses: [
+      { scope: 'self', atkType: 'destroy', vs: { align: 'criminal' }, value: 10 },
+      { scope: 'owner', atkType: 'destroy', vs: { align: 'criminal' }, value: 4 },
+      { scope: 'owner', atkType: 'control', vs: { align: 'criminal' }, value: 2 }
+    ],
+    pick: 'best',
+    t: 'F.B.I. Has +10 to directly destroy a Criminal group. Gives +4 on any attempt to destroy a Criminal group, or +2 on any attempt to control a Criminal group.'
+  }
+};
+const L41_FXN = {};
+for (const k41 in L41_FX) { L41_FXN[norm(k41)] = L41_FX[k41]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
@@ -3430,7 +3504,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

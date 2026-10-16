@@ -11827,6 +11827,53 @@ function err26(fn) { return throwMsgL14(fn); }
   })();
 })();
 
+/* ===== L41 — bonos de ataque de los GRUPOS (kind atk_bonus) ===== */
+(function l41Tests() {
+  var U = 'bavarianilluminati1', V = 'servantsofcthulhu1';
+  function plantAtk(pid, uid, id, tgtPid, tgtUid, tgtId, type) {
+    fresh(idxOfId(U), idxOfId(V));
+    if (readyToAttack(pid) == null) return null;
+    plant(pid, uid, idxOfId(id), 1);
+    plant(tgtPid, tgtUid, idxOfId(tgtId), 1);
+    E.declareAttack(pid, type, { attackerUid: uid, uid: tgtUid });
+    return E.previewStrength();
+  }
+  /* Al Gore: bono PROPIO (self) a controlar un grupo Green. */
+  var d1 = plantAtk(0, 'a41', 'algore', 1, 't41a', 'california', 'control');
+  ok(d1 && d1.cthulhu === 8, 'L41 Al Gore +8 (self) al controlar Green -> cthulhu=' + (d1 && d1.cthulhu));
+  /* Federal Reserve: bono del DUEÑO (owner) contra un Bank, lo ejerza otro grupo.
+     I.R.S. es Bank pero ni Corporate ni Nation -> solo la clausula del Bank. */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'fr41', idxOfId('federalreserve'), 1);
+    plant(0, 'a41b', anyGroupIdx(), 1);
+    plant(1, 't41b', idxOfId('irs'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'a41b', uid: 't41b' });
+    var d2 = E.previewStrength();
+    ok(d2.cthulhu === 6, 'L41 Federal Reserve +6 (owner) contra un Bank con otro atacante -> cthulhu=' + d2.cthulhu);
+  } else { ok(true, 'L41 (Federal Reserve) SKIP'); }
+  /* Interpretacion declarada de pick:'sum': Wall Street es Bank Y Corporate, asi
+     que recibe los dos bonus del texto ("a +6 ... and a +2 ...") -> 8. */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'fr41b', idxOfId('federalreserve'), 1);
+    plant(0, 'a41b2', anyGroupIdx(), 1);
+    plant(1, 't41b2', idxOfId('wallstreet'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'a41b2', uid: 't41b2' });
+    var d2b = E.previewStrength();
+    ok(d2b.cthulhu === 8, 'L41 Federal Reserve pick=sum: Bank+Corporate recibe 6+2 -> cthulhu=' + d2b.cthulhu);
+  } else { ok(true, 'L41 (Federal Reserve sum) SKIP'); }
+  /* F.B.I.: pick 'best' (+10 directo, no +10+4=14) al destruir Criminal. */
+  var d3 = plantAtk(0, 'a41c', 'fbi', 1, 't41c', 'clonearrangers', 'destroy');
+  ok(d3 && d3.cthulhu === 10, 'L41 F.B.I. pick=best -> +10 (no 14) al destruir Criminal -> cthulhu=' + (d3 && d3.cthulhu));
+  /* Democrats: notAttr nation (B.A.T.F. es Government y no Nation). */
+  var d4 = plantAtk(0, 'a41d', 'democrats', 1, 't41d', 'batf', 'control');
+  ok(d4 && d4.cthulhu === 4, 'L41 Democrats +4 al controlar Government NO-Nation -> cthulhu=' + (d4 && d4.cthulhu));
+  /* Control negativo: un grupo sin bono no aporta cthulhu. */
+  var d5 = plantAtk(0, 'a41e', 'ama', 1, 't41e', 'batf', 'control');
+  ok(d5 && d5.cthulhu === 0, 'L41 un grupo sin atk_bonus no aporta bono -> cthulhu=' + (d5 && d5.cthulhu));
+})();
+
 if (failures.length) {
   console.log('FASE 2 RULES FAILED (' + failures.length + '):');
   failures.forEach(function (f) { console.log('  - ' + f); });

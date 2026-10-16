@@ -1,7 +1,7 @@
 # Auditoría de mecánicas — INWO
 
 ## Familias de efecto
-- unverified: 142 (bloqueado: falta fuente/motor)
+- unverified: 135 (bloqueado: falta fuente/motor)
 - ability_unverified: 20 (bloqueado: falta fuente/motor)
 - illu_special: 18 (motor específico)
 - boost10: 15 (motor específico)
@@ -11,6 +11,7 @@
 - power_increase: 10 (motor específico)
 - force_align: 9 (motor específico)
 - bulk_power: 8 (motor específico)
+- atk_bonus: 7 (motor específico)
 - disaster_defence: 5 (motor específico)
 - assassination: 5 (motor específico)
 - resource_effect: 5 (motor específico)
@@ -143,14 +144,14 @@
 
 ## Estados de mecánica
 - implemented: 1
-- implemented-pending-engine: 233
+- implemented-pending-engine: 240
 - implemented-special: 18
 - source-text-unmapped: 27
-- unverified: 142
+- unverified: 135
 - Pendientes de verificación/motor: source-text-unmapped, unverified
 
 ## Simulación y sanidad
-- Muestras de dados: 25
+- Muestras de dados: 19
 - Dados inválidos: 0
 - NaN: 0
 - Poder null: 0

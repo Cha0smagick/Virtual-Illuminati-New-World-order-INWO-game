@@ -3833,6 +3833,67 @@ function plotHandLimitOf(pid){
 
 /* ---------------- strength calc ---------------- */
 E.previewStrength=function(){return computeStrength(false);};
+/* L41 — BONOS DE ATAQUE DE LOS GRUPOS (patrón "Has +8 for direct control of any
+   Green group" / "Gives +6 on any attempt to destroy any Science group").
+   Dos alcances:
+     - scope 'self' (por defecto): el bono es del GRUPO atacante, solo cuando ÉL
+       ataca ("Has ... for direct control").
+     - scope 'owner': el grupo concede el bono a TODOS los ataques de su dueño
+       ("Gives ... on any attempt to ..."), lo ejerza quien lo ejerza.
+   `atkType` limita a 'control'/'destroy' ('any' = ambos). El calificador `vs`
+   filtra el OBJETIVO por alineación, atributo o carta concreta.
+   El valor se suma en det.cthulhu (el campo que ya recoge los bonus del
+   atacante) para NO alterar la invariante de 12 campos de la fórmula (P1-005). */
+function vsMatchQ(vs,tNode,tCard){
+  if(!vs)return true;
+  var al=nodeAligns(tNode,tCard);
+  if(vs.align&&al.indexOf(String(vs.align).toLowerCase())<0)return false;
+  if(vs.notAlign&&al.indexOf(String(vs.notAlign).toLowerCase())>=0)return false;
+  if(Array.isArray(vs.aligns)&&vs.aligns.length){
+    var want=vs.aligns.map(function(a){return String(a).toLowerCase();});
+    var hit=(vs.match==='any')?want.some(function(a){return al.indexOf(a)>=0;}):want.every(function(a){return al.indexOf(a)>=0;});
+    if(!hit)return false;
+  }
+  if(vs.attr&&!hasAttr(tCard,String(vs.attr).toLowerCase(),tNode))return false;
+  if(vs.notAttr&&hasAttr(tCard,String(vs.notAttr).toLowerCase(),tNode))return false;
+  if(Array.isArray(vs.attrs)&&vs.attrs.length){
+    var any=(vs.match==='any');
+    var ok=any?vs.attrs.some(function(a){return hasAttr(tCard,String(a).toLowerCase(),tNode);})
+              :vs.attrs.every(function(a){return hasAttr(tCard,String(a).toLowerCase(),tNode);});
+    if(!ok)return false;
+  }
+  if(vs.cardId&&(!tCard||tCard.id!==vs.cardId))return false;
+  return true;
+}
+function groupAttackBonus(pid,attNode,attCard,type,tNode,tCard,notes){
+  if(!tCard&&!tNode)return 0;
+  var st=(pid!=null&&pid>=0&&S.players[pid])?S.players[pid].structure:null;
+  if(!st)return 0;
+  var v=0;
+  walk(st,function(nd){
+    if(!nd.cardId)return;
+    var c=card(nd.cardId);
+    var e=c&&c.effect;
+    if(!e||e.kind!=='atk_bonus')return;
+    /* Compatibilidad: un efecto sin `clauses` se lee como una sola clausula.
+       `scope` puede vivir en la clausula (F.B.I.: +10 self y +4 owner en la MISMA
+       carta) o en el efecto; por defecto 'self'. */
+    var clauses=e.clauses||[{atkType:e.atkType,scope:e.scope,vs:e.vs,value:e.value}];
+    var vals=[];
+    clauses.forEach(function(cl){
+      if((cl.scope||e.scope||'self')!=='owner'&&nd!==attNode)return; /* 'self': solo el atacante */
+      if(cl.atkType&&cl.atkType!=='any'&&cl.atkType!==type)return;
+      if(!vsMatchQ(cl.vs,tNode,tCard))return;
+      var val=Number(cl.value)||0;
+      if(val)vals.push(val);
+    });
+    if(!vals.length)return;
+    var add=(e.pick==='best')?Math.max.apply(null,vals):vals.reduce(function(a,b){return a+b;},0);
+    v+=add;if(notes)notes.push(c.name+': +'+add+' al '+type);
+  });
+  return v;
+}
+
 function computeStrength(resolveMode){
   var A=S.attack;
   if(!A)throw new Error('Sin ataque activo');
@@ -3881,6 +3942,9 @@ function computeStrength(resolveMode){
        fórmula de total que las pruebas verifican. */
     var ibCtl=illuAttackBonus(A.pid,'control',tNode,tCard);
     if(ibCtl){det.leaderMod+=ibCtl;det.notes.push('Bonus del Illuminati atacante: +'+ibCtl);}
+    /* L41: bonos de ataque de los grupos del atacante (Al Gore, Black Activists...). */
+    var abC41=groupAttackBonus(A.pid,att,attCard,'control',tNode,tCard,det.notes);
+    if(abC41)det.cthulhu+=abC41;
     /* P1-014: la Resistencia se lee del NODO, no de la carta. Sin esto, las
        cartas "Resistance Increase" fijarian un valor que la cuenta de fuerza
        nunca leeria. Para un objetivo en la mano no hay nodo y se usa la carta. */
@@ -3961,6 +4025,9 @@ function computeStrength(resolveMode){
        hard-coded 'cthulhu' para que el bonus llegue por el dato, no por el id. */
     var ibDst=illuAttackBonus(A.pid,'destroy',tNode,tCard);
     if(ibDst){det.cthulhu+=ibDst;det.notes.push('Bonus del Illuminati atacante (destroy): +'+ibDst);}
+    /* L41: bonos de ataque de los grupos del atacante (Anti-Nuclear, F.B.I....). */
+    var abD41=groupAttackBonus(A.pid,att,attCard,'destroy',tNode,tCard,det.notes);
+    if(abD41)det.cthulhu+=abD41;
     /* P1-016: Bodyguard (+6 "against any Attempt to Destroy, including further
        Assassinations") y Talisman of Ahrimanes (+2 contra cualquier destruccion).
        Se pliega en det.defBoosts, que YA participa en la formula de total, en vez
@@ -7814,6 +7881,8 @@ case 'bulk_power':{
       throw new Error(c.name+': habilidad pasiva — sus dos fichas de accion se reparten al comenzar el turno');
     case 'communist_bonuses':
       throw new Error(c.name+': habilidad pasiva — los bonos Communist se aplican al declarar ataques');
+    case 'atk_bonus':
+      throw new Error(c.name+': habilidad pasiva — sus bonos de ataque se aplican al resolver el ataque');
     case 'weird_refuel':
       throw new Error(c.name+': no se juega desde la mano — es un Resource y se coloca con su accion Illuminati');
     case 'disaster_mod':

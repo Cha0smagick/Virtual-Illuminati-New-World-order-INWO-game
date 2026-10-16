@@ -1,6 +1,6 @@
 === USO REAL DE CARTAS ===
 partidas completadas: 8/8
-turnos: 123
+turnos: 170
 errores: 0
 
 | Familia | Cartas | Veces jugada |
@@ -14,6 +14,7 @@ errores: 0
 | arewe_cancel | 1 | 0 |
 | ark_note | 1 | 0 |
 | assassination | 5 | 0 |
+| atk_bonus | 7 | 0 |
 | attack_boost | 4 | 0 |
 | attack_privilege | 3 | 0 |
 | backlash_undo | 1 | 0 |
@@ -23,7 +24,7 @@ errores: 0
 | bodyguard | 1 | 0 |
 | boost10 | 15 | 0 |
 | brain_draw | 1 | 0 |
-| bribery | 1 | 0 |
+| bribery | 1 | 1 |
 | bronze_keep | 1 | 0 |
 | bulk_power | 8 | 0 |
 | censor_boost | 1 | 0 |
@@ -31,7 +32,7 @@ errores: 0
 | clone_revive | 1 | 0 |
 | combo_attack | 2 | 0 |
 | communist_bonuses | 1 | 0 |
-| computervirus | 1 | 0 |
+| computervirus | 1 | 1 |
 | control_arrows | 2 | 0 |
 | controller_token_if | 2 | 0 |
 | corporate_double | 1 | 0 |
@@ -52,7 +53,7 @@ errores: 0
 | dup_enabler | 4 | 0 |
 | dup_payoff | 1 | 0 |
 | eliza_link | 1 | 0 |
-| embezzlement | 1 | 2 |
+| embezzlement | 1 | 1 |
 | extra_takeover | 1 | 0 |
 | faction_boost | 1 | 0 |
 | feud_pick | 1 | 0 |
@@ -122,15 +123,15 @@ errores: 0
 | spokesman_link | 1 | 0 |
 | stars_takeover | 1 | 0 |
 | stay_dead | 1 | 0 |
-| stealing_the_plans | 1 | 0 |
+| stealing_the_plans | 1 | 1 |
 | structure_reorg | 1 | 0 |
 | sucked_burst | 1 | 0 |
 | sweepstakes_link | 1 | 0 |
-| takeover_return | 2 | 3 |
+| takeover_return | 2 | 4 |
 | talisman | 1 | 0 |
 | tax_reform | 1 | 0 |
 | thor_boost | 1 | 0 |
-| timewarp | 1 | 0 |
+| timewarp | 1 | 1 |
 | token_gift | 11 | 0 |
 | token_strip | 2 | 0 |
 | token_strip_aligned | 1 | 0 |
@@ -140,23 +141,23 @@ errores: 0
 | turn_start_block | 1 | 0 |
 | turn_start_lock | 1 | 0 |
 | unmasked_illum | 1 | 0 |
-| unverified | 142 | 0 |
+| unverified | 135 | 0 |
 | vultures_grab | 1 | 0 |
 | weird_refuel | 1 | 0 |
 | xanadu_loyal | 1 | 0 |
 
 | Acción | Llamadas |
 |---|---:|
-| autoTakeover | 123 |
-| declareAttack | 206 |
-| exchangeForPlot | 105 |
-| illumDrawGroup | 123 |
-| playPlot | 5 |
+| autoTakeover | 170 |
+| declareAttack | 338 |
+| exchangeForPlot | 150 |
+| illumDrawGroup | 170 |
+| playPlot | 9 |
 
 ## 🚫 Intentos rechazados
-- Total: 0
-- Ninguno
+- Total: 1
+- playPlot computervirus (Computer Virus; implemented-pending-engine): Computer Virus necesita una accion de un grupo con algun atributo de: science, space, computer
 
-CONTROLAR: 105
-DESTRUIR: 87
+CONTROLAR: 147
+DESTRUIR: 86
 

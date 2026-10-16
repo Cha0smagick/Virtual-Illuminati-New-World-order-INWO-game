@@ -2284,6 +2284,7 @@ var KIND_ES = {
   controller_token_if: 'Ficha extra para el grupo que la controla si es Corporate',
   self_tokens_double: 'Actua con dos fichas de accion por turno',
   communist_bonuses: 'Bonos de ataque y defensa contra grupos Communist',
+  atk_bonus: 'Bonos de ataque contra grupos por alineación/atributo (o para todo el dueño)',
   weird_refuel: 'Descarta una Plot y recarga la accion de un grupo que ya actuo',
   market_strip: 'Quita las fichas de un grupo Corporate y de los Banks',
   extra_takeover: 'Segundo takeover automatico; tu turno termina',
