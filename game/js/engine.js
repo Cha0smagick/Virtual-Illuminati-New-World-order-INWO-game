@@ -3869,6 +3869,12 @@ function vsMatchQ(vs,tNode,tCard){
   if(vs.cardId&&(!tCard||tCard.id!==vs.cardId))return false;
   if(typeof vs.minPower==='number'&&!(tCard&&tCard.power>=vs.minPower))return false;
   if(typeof vs.maxPower==='number'&&!(tCard&&tCard.power<=vs.maxPower))return false;
+  if(vs.puppetOfAttr){
+    var oP=tNode?findOwnerPid(tNode.uid):-1;
+    var mP=(oP>=0&&tNode)?findNodeThatHas(S.players[oP].structure,tNode.uid):null;
+    var mcP=mP?card(mP.cardId):null;
+    if(!mcP||!hasAttr(mcP,String(vs.puppetOfAttr).toLowerCase(),mP))return false;
+  }
   return true;
 }
 /* Devuelve la mitad que corresponde ('atk'|'def') de un efecto de bonos. Acepta
@@ -3982,6 +3988,37 @@ function groupDefenseBonus(defNode,defCard,mode,notes){
   return v;
 }
 
+/* L44 — FLIP DE LIDER ("+4, rather than the normal -4", The Mafia; "+8, not the
+   normal -4", Tobacco; ICC). Cuando el perfil `vs` casa con ATACANTE y OBJETIVO
+   (ambos llevan la alineacion/atributo que origina el -4 por compartir), TODAS
+   las penalizaciones por alineaciones compartidas del ataque (n*mag) se anulan y
+   se sustituyen por el valor neto del texto: fix = n*mag + value. Si no hay
+   ninguna alineacion compartida no hay -4 que anular y el flip no aplica. */
+function groupAttackFlip(pid,attNode,attCard,type,tNode,tCard){
+  if(!attNode||!attCard||!tCard)return 0;
+  var st=(pid!=null&&pid>=0&&S.players[pid])?S.players[pid].structure:null;
+  if(!st)return 0;
+  var fix=0;
+  var mag=(S.alignRule&&typeof S.alignRule.mag==='number')?S.alignRule.mag:4;
+  walk(st,function(nd){
+    if(nd!==attNode)return; /* los flips del corpus son del grupo atacante */
+    var c=card(nd.cardId);
+    var e=bonusPart(c&&c.effect,'flip');
+    if(!e)return;
+    var clauses=e.clauses||[{atkType:e.atkType,vs:e.vs,value:e.value}];
+    clauses.forEach(function(cl){
+      if(cl.atkType&&cl.atkType!=='any'&&cl.atkType!==type)return;
+      if(!vsMatchQ(cl.vs,attNode,attCard))return;
+      if(!vsMatchQ(cl.vs,tNode,tCard))return;
+      var alA=nodeAligns(attNode,attCard),alT=nodeAligns(tNode,tCard),nS=0;
+      alA.forEach(function(a){if(alT.indexOf(a)>=0)nS++;});
+      if(nS<1)return;
+      fix+=nS*mag+(Number(cl.value)||0);
+    });
+  });
+  return fix;
+}
+
 function computeStrength(resolveMode){
   var A=S.attack;
   if(!A)throw new Error('Sin ataque activo');
@@ -4033,6 +4070,9 @@ function computeStrength(resolveMode){
     /* L41: bonos de ataque de los grupos del atacante (Al Gore, Black Activists...). */
     var abC41=groupAttackBonus(A.pid,att,attCard,'control',tNode,tCard,det.notes);
     if(abC41)det.cthulhu+=abC41;
+    /* L44: flip de lider (ICC: +4 en vez de -4 contra Fanatic Communist). */
+    var flC44=groupAttackFlip(A.pid,att,attCard,'control',tNode,tCard);
+    if(flC44){det.leaderMod+=flC44;det.notes.push('Flip de alineaciones: +'+flC44);}
     /* P1-014: la Resistencia se lee del NODO, no de la carta. Sin esto, las
        cartas "Resistance Increase" fijarian un valor que la cuenta de fuerza
        nunca leeria. Para un objetivo en la mano no hay nodo y se usa la carta. */
@@ -4119,6 +4159,9 @@ function computeStrength(resolveMode){
        hard-coded 'cthulhu' para que el bonus llegue por el dato, no por el id. */
     var ibDst=illuAttackBonus(A.pid,'destroy',tNode,tCard);
     if(ibDst){det.cthulhu+=ibDst;det.notes.push('Bonus del Illuminati atacante (destroy): +'+ibDst);}
+    /* L44: flip de lider (The Mafia: +4 en vez de -4 al destruir Criminal). */
+    var flD44=groupAttackFlip(A.pid,att,attCard,'destroy',tNode,tCard);
+    if(flD44){det.leaderMod+=flD44;det.notes.push('Flip de alineaciones: +'+flD44);}
     /* L41: bonos de ataque de los grupos del atacante (Anti-Nuclear, F.B.I....). */
     var abD41=groupAttackBonus(A.pid,att,attCard,'destroy',tNode,tCard,det.notes);
     if(abD41)det.cthulhu+=abD41;
@@ -4882,6 +4925,17 @@ function destroyGroup(byPid,targetUid,opts){
     log(card(node.cardId).name+' es INMORTAL (Immortality Serum): la destruccion se anula');
     return false;
   }
+  /* L44 — grupos indestructibles por su texto impreso ("This group may not be
+     destroyed", Joggers; "This group cannot be destroyed", Local Police
+     Departments). Mismo criterio de colocacion que serumImmortal: antes de
+     detach para no dejar la estructura a medio desmontar. */
+  if(node){
+    var cN44=card(node.cardId);
+    if(cN44&&cN44.effect&&cN44.effect.noDestroy===true){
+      log(cN44.name+' no puede ser destruido: la destruccion se anula');
+      return false;
+    }
+  }
   /* L37 — serum en el subarbol: los Personalities immortal sobreviven y vuelven
      a su dueno con todo su titere. */
   (function rehomeSerum37(n37){
@@ -4936,7 +4990,9 @@ function destroyGroup(byPid,targetUid,opts){
     log("Hitler's Brain: "+S.players[byPid].name+' roba 1 Plot extra (opcion robar automatica)');
   }
   var c=card(node.cardId);
-  if(!noCount)S.players[byPid].destroyedByMe.push(node.cardId);
+  /* L44 — Media Sensation: "Destroying a Media Sensation does not count toward
+     any Goal". El `noGoalOnDestroy` del dato excluye el push al contador. */
+  if(!noCount&&!(c&&c.effect&&c.effect.noGoalOnDestroy))S.players[byPid].destroyedByMe.push(node.cardId);
   S.groupDiscard.push(node.cardId);  /* L33 — 324 Necronomicon: al caer el grupo anfitrion, el libro SE DESLINKEA
      (no se destruye con el). Va antes del filtro de recursos linkeados. */
   S.players.forEach(function(qn){qn.resources.forEach(function(rn){
@@ -5288,6 +5344,16 @@ function announcePlotInstantAttack(pid,pc,tUid,opts){
      aplica aquí directamente sobre el Poder del Plot. */
   var ibPlot=illuAttackBonus(pid,'destroy',nd,tc);
   if(ibPlot){power+=ibPlot;notes.push('+'+ibPlot+' por '+illuCard(pid).name);}
+  /* L44: los bonos de grupo (atk_bonus) aplican tambien a los Instant Attacks.
+     Dos lecturas: la generica de "attempt to destroy" y la especifica del kind
+     (Assassination/Disaster), para textos como "+2 on any Assassination attempt"
+     (Joggers). NOTA: un atkType:'destroy' casa en ambos. */
+  var gAB44a=groupAttackBonus(pid,null,null,'destroy',nd,tc,notes);
+  if(gAB44a)power+=gAB44a;
+  if(eff.kind==='assassination'||eff.kind==='disaster'){
+    var gAB44b=groupAttackBonus(pid,null,null,eff.kind,nd,tc,notes);
+    if(gAB44b)power+=gAB44b;
+  }
 
   var needActAttr=actionCostAttr(eff);
   if(needActAttr){
@@ -7981,6 +8047,8 @@ case 'bulk_power':{
       throw new Error(c.name+': habilidad pasiva — sus bonos de defensa se aplican al resolver el ataque enemigo');
     case 'combo_bonus':
       throw new Error(c.name+': habilidad pasiva — sus bonos de ataque y defensa se aplican al resolver ataques');
+    case 'no_goal_destroy':
+      throw new Error(c.name+': habilidad pasiva — destruirla no cuenta para ninguna meta');
     case 'weird_refuel':
       throw new Error(c.name+': no se juega desde la mano — es un Resource y se coloca con su accion Illuminati');
     case 'disaster_mod':

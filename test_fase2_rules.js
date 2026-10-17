@@ -115,6 +115,10 @@ function readyToAttack(pid) {
       clear24();
       return pid;
     }
+    /* L44: drenar TAMBIEN antes de cada endTurn del bucle: el beginTurn de la IA
+       rival puede abrir una ventana de suceso (Embezzlement al robar) y el
+       endTurn siguiente la rechaza, matando el bloque con throw. */
+    clear24();
     E.endTurn();
   }
   return null;
@@ -304,7 +308,7 @@ function readyToAttack(pid) {
   E._raw().players[p].hand = plotIdx.slice(0, 6);
   E._raw().players[p].exposedPlots = plotIdx.slice(0, 3);
   E._raw().players[p].discards = [];
-  E.endTurn();
+  clear24(); E.endTurn();
   ok(totalPlots(p) <= 5, '6 en mano + 3 expuestos (9) -> quedan ' + totalPlots(p) + ' (<=5)');
 })();
 
@@ -9849,7 +9853,7 @@ function err26(fn) { return throwMsgL14(fn); }
       E.drawPlot(1);
       ok(true, 'S5g drawPlot permitido bajo senateLock');
     }
-    E.endTurn(); passTS(); /* turno de 0 */
+    clear24(); E.endTurn(); passTS(); /* turno de 0 */
     var lockBefore = E._raw().players[1].flags.senateLock;
     hand22(0, SEN); /* ANTES del endTurn: la ventana solo abre si un humano tiene la carta en mano */
     E.endTurn(); /* ventana del turno de 1, SIN pasar: aqui se juega la 2ª Senate */
@@ -11601,7 +11605,7 @@ function err26(fn) { return throwMsgL14(fn); }
     ok40(R40.players[0].flags.noGroupDraw === R40.turn, 'L40.S3b regalas tu robo de Grupo este turno');
     var m40 = tMsg40(function () { E.drawGroup(0); });
     ok40(/regalaste tu robo de Grupo/.test(m40 || ''), 'L40.S3c E.drawGroup vetado el turno del trato');
-    E.endTurn(); E.endTurn();
+    clear24(); E.endTurn(); clear24(); E.endTurn();
     var d40 = null; try { d40 = E.drawGroup(0); } catch (e40) { d40 = null; }
     ok40(!!(d40 && d40.idx != null), 'L40.S3d el veto caduca: el proximo turno vuelves a robar Grupo');
   })();
@@ -11963,6 +11967,54 @@ function err26(fn) { return throwMsgL14(fn); }
     ok(e43 === '' && E._raw().attack.opposes.length === 1,
       'L43 Big Media free_interfere: se opone sin alineacion comun -> ' + (e43 || 'ok'));
   } else { ok(true, 'L43 (Big Media) SKIP'); }
+
+  /* ===== L44 — flip de lider, instant attacks, indestructibles, no-goal ===== */
+  /* The Mafia: flip (+4 en vez de -4 al destruir Criminal) + atk +2 (owner). */
+  var d13 = plantAtk(0, 'mf44', 'themafia', 1, 't44a', 'irs', 'destroy');
+  ok(d13 && d13.leaderMod === 4 && d13.cthulhu === 2,
+    'L44 Mafia flip: leaderMod=' + (d13 && d13.leaderMod) + ' (net +4, no -4) y cthulhu=' + (d13 && d13.cthulhu));
+  /* ICC: +3 (owner, control Communist) lo ejerza quien lo ejerza. */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'icc44', idxOfId('internationalcommunistconspiracy'), 1);
+    plant(0, 'am44', anyGroupIdx(), 1);
+    plant(1, 'fc44', idxOfId('fidelcastro'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'am44', uid: 'fc44' });
+    var d14 = E.previewStrength();
+    ok(d14.cthulhu === 3, 'L44 ICC +3 (owner, control Communist) -> cthulhu=' + d14.cthulhu);
+  } else { ok(true, 'L44 (ICC) SKIP'); }
+  /* Urban Gangs: +2 (owner) a cualquier destroy, lo ejerza otro grupo. */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'ug44', idxOfId('urbangangs'), 1);
+    plant(0, 'am44b', anyGroupIdx(), 1);
+    plant(1, 'tg44', idxOfId('batf'), 1);
+    E.declareAttack(0, 'destroy', { attackerUid: 'am44b', uid: 'tg44' });
+    var d15 = E.previewStrength();
+    ok(d15.cthulhu === 2, 'L44 Urban Gangs +2 (owner, destroy) -> cthulhu=' + d15.cthulhu);
+  } else { ok(true, 'L44 (Urban Gangs) SKIP'); }
+  /* Joggers: indestructible (noDestroy) — la destruccion se anula. */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(1, 'jg44', idxOfId('joggers'), 1);
+    E.instantAttack(0, 50, 'jg44');
+    clear24(); /* la ventana de rodadero del instant puede quedar abierta */
+    ok(!!findNode(E._raw().players[1].structure, 'jg44'), 'L44 Joggers no puede ser destruido (instant de 50 anulado)');
+  } else { ok(true, 'L44 (Joggers) SKIP'); }
+  /* Media Sensation: destruible pero NO cuenta para Goals. Mock de dados: sin
+     el, un 11-12 auto-falla (~5.5%) y el aserto seria flaky. */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    var msIdx = idxOfId('mediasensation');
+    plant(1, 'ms44', msIdx, 1);
+    var realRnd44 = Math.random;
+    Math.random = function () { return 0.5; }; /* dados 4+4=8: exito seguro */
+    try { E.instantAttack(0, 50, 'ms44'); } finally { Math.random = realRnd44; }
+    clear24(); /* la ventana de rodadero del instant puede quedar abierta */
+    var R44 = E._raw();
+    ok(R44.groupDiscard.indexOf(msIdx) >= 0 && R44.players[0].destroyedByMe.indexOf(msIdx) < 0,
+      'L44 Media Sensation: destruida va al descarte pero NO cuenta para Goals');
+  } else { ok(true, 'L44 (Media Sensation) SKIP'); }
 })();
 
 if (failures.length) {

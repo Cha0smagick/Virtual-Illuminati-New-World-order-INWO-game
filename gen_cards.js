@@ -3318,6 +3318,57 @@ const L43_FX = {
 const L43_FXN = {};
 for (const k43 in L43_FX) { L43_FXN[norm(k43)] = L43_FX[k43]; }
 
+/* L44 — piezas sueltas que cierran cartas enteras:
+ * - atk_flip (mitad 'flip' de combo_bonus): "+N, rather than the normal -4" —
+ *   anula TODAS las penalizaciones por alineaciones compartidas y pone el valor
+ *   neto (groupAttackFlip en engine.js).
+ * - noGoalOnDestroy: destruir la carta no cuenta para Goals (Media Sensation).
+ * - noDestroy: la carta no puede ser destruida (Joggers) — lo lee destroyGroup.
+ * - Los atk_bonus ya aplican a Instant Attacks (announcePlotInstantAttack), asi
+ *   que Urban Gangs ("including Assassinations") queda completa con un
+ *   atk_bonus atkType:'destroy'.
+ * FUERA por rigor: Tobacco Companies (le falta el alignment Government en el
+ * dataset para que el -4 exista que anular) y TV Preachers ("net +6" sobre
+ * tipteres, no sobre toda la estructura del dueno). */
+const L44_FX = {
+  'The Mafia': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'any', vs: { align: 'criminal' }, value: 2 }] },
+    flip: { clauses: [{ scope: 'self', atkType: 'destroy', vs: { align: 'criminal' }, value: 4 }] },
+    t: 'The Mafia Has a +4, rather than the normal -4, to destroy any Criminal group directly. Also gives its owner a +2 on any attempt to control or destroy any Criminal group.'
+  },
+  'International Communist Conspiracy': {
+    kind: 'combo_bonus',
+    atk: {
+      pick: 'best',
+      clauses: [
+        { scope: 'owner', atkType: 'control', vs: { attr: 'communist' }, value: 3 },
+        { scope: 'owner', atkType: 'control', vs: { puppetOfAttr: 'communist' }, value: 3 }
+      ]
+    },
+    flip: { clauses: [{ scope: 'self', atkType: 'control', vs: { align: 'fanatic', attr: 'communist' }, value: 4 }] },
+    t: 'International Communist Conspiracy +3 on any attempt to control any Communist group, or any puppet of a Communist group. The International Communist Conspiracy also has a +4, rather than a -4, for direct control of any Fanatic Communist group.'
+  },
+  'Urban Gangs': {
+    kind: 'atk_bonus',
+    clauses: [{ scope: 'owner', atkType: 'destroy', vs: {}, value: 2 }],
+    t: 'Urban Gangs Gives +2 on any attempt to destroy another group, including Assassinations.'
+  },
+  'Joggers': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'assassination', vs: {}, value: 2 }] },
+    noDestroy: true,
+    t: 'Joggers No one ever suspects a harmless jogger. This group gives a +2 on any Assassination attempt. This group may not be destroyed.'
+  },
+  'Media Sensation': {
+    kind: 'no_goal_destroy',
+    noGoalOnDestroy: true,
+    t: 'Media Sensation Personality Write in any name from todays headlines. Any number of Media Sensations may be in play, as long as the names are different and dont duplicate any regular Personality card. Destroying a Media Sensation does not count toward any Goal they come and go too fast.'
+  }
+};
+const L44_FXN = {};
+for (const k44 in L44_FX) { L44_FXN[norm(k44)] = L44_FX[k44]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
@@ -3607,7 +3658,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias
