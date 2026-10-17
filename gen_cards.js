@@ -3259,6 +3259,42 @@ const L41_FX = {
 const L41_FXN = {};
 for (const k41 in L41_FX) { L41_FXN[norm(k41)] = L41_FX[k41]; }
 
+/* L42 — FAMILIA "bonos de DEFENSA de los GRUPOS" (kinds def_bonus y combo_bonus).
+ * El calificador `vsAtk` mira el BANDO ATACANTE (atacante o ayudantes, "made by,
+ * or aided by"). `mode`: 'resist' (ataques a control), 'power' (a destruir) o
+ * 'both'. combo_bonus lleva las mitades atk/def de la MISMA carta (Black
+ * Activists y Trekkies tienen ambas). Las cuatro cartas son el texto impreso
+ * COMPLETO: no queda ninguna habilidad fuera de estos kinds.
+ * INTERPRETACION declarada (Secular Humanists): "-3 Power" a los ataques
+ * enemigos es equivalente a +3 de defensa (mismo delta en el total), asi que se
+ * modela como bono de defensa 'both'. */
+const L42_FX = {
+  'Antiwar Activists': {
+    kind: 'def_bonus',
+    clauses: [{ scope: 'owner', mode: 'resist', vsAtk: { align: 'government' }, value: 4 }],
+    t: 'Antiwar Activists Gives all groups in your Power Structure an extra +4 Resistance against any attack made by (or aided by) a Government group.'
+  },
+  'Black Activists': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'control', vs: { align: 'liberal' }, value: 2 }] },
+    def: { clauses: [{ scope: 'owner', mode: 'both', vsAtk: { align: 'liberal' }, value: 4 }] },
+    t: 'Black Activists Gives +2 to any attempt to control any Liberal group. Gives +4 to your defense against any attack made, or aided, by a Liberal group.'
+  },
+  'Trekkies': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'self', atkType: 'control', vs: { attr: 'media' }, value: 4 }] },
+    def: { clauses: [{ scope: 'self', mode: 'resist', vsAtk: { attr: 'media' }, value: 4 }] },
+    t: 'Trekkies Any Media group gets a +4 on any attack to control the Trekkies, the Trekkies also get a +4 on any direct attack to control any Media group.'
+  },
+  'Secular Humanists': {
+    kind: 'def_bonus',
+    clauses: [{ scope: 'owner', mode: 'both', excludeSelf: true, vsAtk: { aligns: ['straight', 'conservative'], match: 'any' }, value: 3 }],
+    t: 'Secular Humanists While you control this group, all Straight or Conservative groups will be so distracted that any attacks they make against your other groups will be at -3 Power.'
+  }
+};
+const L42_FXN = {};
+for (const k42 in L42_FX) { L42_FXN[norm(k42)] = L42_FX[k42]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
@@ -3548,7 +3584,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

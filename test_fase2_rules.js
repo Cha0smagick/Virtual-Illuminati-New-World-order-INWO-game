@@ -11895,6 +11895,58 @@ function err26(fn) { return throwMsgL14(fn); }
   /* L41b: Telephone Psychics pick=best (+6 por cardId y por Media P<=2). */
   var d8 = plantAtk(0, 'tp41', 'telephonepsychics', 1, 't41h', 'tabloids', 'control');
   ok(d8 && d8.cthulhu === 6, 'L41b Telephone Psychics pick=best +6 control Tabloids -> cthulhu=' + (d8 && d8.cthulhu));
+
+  /* ===== L42 — bonos de DEFENSA (def_bonus / combo_bonus) ===== */
+  /* Trekkies: un Media ataca a controlar a Trekkies -> defensa +4 (scope self). */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'md42', idxOfId('tabloids'), 1);
+    plant(1, 'tk42', idxOfId('trekkies'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'md42', uid: 'tk42' });
+    var d9 = E.previewStrength();
+    ok(d9.defenseBonus === 4, 'L42 Trekkies +4 de defensa contra un atacante Media -> defenseBonus=' + d9.defenseBonus);
+  } else { ok(true, 'L42 (Trekkies) SKIP'); }
+  /* Black Activists: combo — defiende a SU dueño (+4 vs atacante Government) y
+     presta +2 de ataque (owner, control Liberal) a cualquiera de sus grupos.
+     Dos fixtures: una para cada mitad. */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(1) != null) {
+    plant(0, 'ba42', idxOfId('blackactivists'), 1);
+    plant(0, 'ag42', idxOfId('algore'), 1);
+    plant(1, 'it42', idxOfId('italy'), 1); /* atacante Liberal */
+    E.declareAttack(1, 'control', { attackerUid: 'it42', uid: 'ag42' });
+    var d10 = E.previewStrength();
+    ok(d10.defenseBonus === 4, 'L42 Black Activists def +4 (atacante Liberal) -> defenseBonus=' + d10.defenseBonus);
+  } else { ok(true, 'L42 (Black Activists def) SKIP'); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'ba42b', idxOfId('blackactivists'), 1);
+    plant(0, 'am42', anyGroupIdx(), 1);
+    plant(1, 'ag42b', idxOfId('algore'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'am42', uid: 'ag42b' });
+    var d10b = E.previewStrength();
+    ok(d10b.cthulhu === 2, 'L42 Black Activists atk +2 (owner, control Liberal) -> cthulhu=' + d10b.cthulhu);
+  } else { ok(true, 'L42 (Black Activists atk) SKIP'); }
+  /* Antiwar Activists: +4 Resistencia a TODA la estructura del dueño. */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(1, 'aw42', idxOfId('antiwaractivists'), 1);
+    plant(1, 'it42', idxOfId('italy'), 1);
+    plant(0, 'ci42b', idxOfId('cia'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'ci42b', uid: 'it42' });
+    var d11 = E.previewStrength();
+    ok(d11.defenseBonus === 4, 'L42 Antiwar +4 Resistencia (owner, atacante Government) -> defenseBonus=' + d11.defenseBonus);
+  } else { ok(true, 'L42 (Antiwar) SKIP'); }
+  /* Secular Humanists: +3 solo a sus OTROS grupos; excludeSelf. */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(1, 'sh42', idxOfId('secularhumanists'), 1);
+    plant(1, 'it42b', idxOfId('italy'), 1);
+    plant(0, 'lp42', idxOfId('localpolicedepartments'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'lp42', uid: 'it42b' });
+    var d12 = E.previewStrength();
+    ok(d12.defenseBonus === 3, 'L42 Secular +3 (atacante Straight, grupo "other") -> defenseBonus=' + d12.defenseBonus);
+  } else { ok(true, 'L42 (Secular) SKIP'); }
 })();
 
 if (failures.length) {

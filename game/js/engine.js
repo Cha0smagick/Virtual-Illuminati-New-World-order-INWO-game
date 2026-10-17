@@ -3867,6 +3867,17 @@ function vsMatchQ(vs,tNode,tCard){
   if(typeof vs.maxPower==='number'&&!(tCard&&tCard.power<=vs.maxPower))return false;
   return true;
 }
+/* Devuelve la mitad que corresponde ('atk'|'def') de un efecto de bonos. Acepta
+   los kinds simples atk_bonus/def_bonus y el combinado combo_bonus, que lleva
+   `atk:{clauses,pick}` y `def:{clauses,pick}` — hay cartas con las DOS mitades
+   (Black Activists, Trekkies) y una carta tiene un solo `effect`. */
+function bonusPart(e,which){
+  if(!e)return null;
+  if(e.kind==='combo_bonus')return e[which]||null;
+  if(which==='atk'&&e.kind==='atk_bonus')return e;
+  if(which==='def'&&e.kind==='def_bonus')return e;
+  return null;
+}
 function groupAttackBonus(pid,attNode,attCard,type,tNode,tCard,notes){
   if(!tCard&&!tNode)return 0;
   var st=(pid!=null&&pid>=0&&S.players[pid])?S.players[pid].structure:null;
@@ -3875,8 +3886,8 @@ function groupAttackBonus(pid,attNode,attCard,type,tNode,tCard,notes){
   walk(st,function(nd){
     if(!nd.cardId)return;
     var c=card(nd.cardId);
-    var e=c&&c.effect;
-    if(!e||e.kind!=='atk_bonus')return;
+    var e=bonusPart(c&&c.effect,'atk');
+    if(!e)return;
     /* Compatibilidad: un efecto sin `clauses` se lee como una sola clausula.
        `scope` puede vivir en la clausula (F.B.I.: +10 self y +4 owner en la MISMA
        carta) o en el efecto; por defecto 'self'. */
@@ -3892,6 +3903,61 @@ function groupAttackBonus(pid,attNode,attCard,type,tNode,tCard,notes){
     if(!vals.length)return;
     var add=(e.pick==='best')?Math.max.apply(null,vals):vals.reduce(function(a,b){return a+b;},0);
     v+=add;if(notes)notes.push(c.name+': +'+add+' al '+type);
+  });
+  return v;
+}
+
+/* L42 — BONOS DE DEFENSA DE LOS GRUPOS (contrapartida de atk_bonus). El filtro
+   mira el BANDO ATACANTE, no el objetivo: "any attack made by, or aided by, a
+   Government group" (Antiwar Activists), "against any attack by a Liberal group"
+   (Black Activists), "attacks they make against your other groups will be at -3
+   Power" (Secular Humanists). `mode` decide donde suma:
+     - 'resist': solo en un ataque a CONTROL, donde la defensa es la Resistencia.
+     - 'power' : solo en un ataque a DESTRUIR, donde la defensa es el Poder.
+     - 'both'  : en los dos.
+   Se pliega en det.defenseBonus (campo ya presente en la formula) para no alterar
+   la invariante de 12 campos (P1-005). `scope` 'self' = solo el grupo defensor;
+   'owner' = cualquiera de los grupos de su dueño. */
+function atkSideMatches(vsAtk){  if(!vsAtk)return true;
+  var A=S.attack;
+  if(!A)return false;
+  var an=findNode(A.attackerUid);
+  if(an){var ac=card(an.cardId);if(ac&&vsMatchQ(vsAtk,an,ac))return true;}
+  for(var i=0;i<A.aids.length;i++){
+    var hn=findNode(A.aids[i].uid);
+    if(hn){var hc=card(hn.cardId);if(hc&&vsMatchQ(vsAtk,hn,hc))return true;}
+  }
+  return false;
+}
+function groupDefenseBonus(defNode,defCard,mode,notes){
+  var A=S.attack;
+  if(!A)return 0;
+  /* Ataques a la propia estructura: el "dueño" es el atacante, no hay bono de
+     defensa ajeno que valga (mismo criterio que la posicion/closeness). */
+  if(A.targetPid==null||A.targetPid===A.pid)return 0;
+  var st=S.players[A.targetPid]?S.players[A.targetPid].structure:null;
+  if(!st)return 0;
+  var v=0;
+  walk(st,function(nd){
+    if(!nd.cardId)return;
+    var c=card(nd.cardId);
+    var e=bonusPart(c&&c.effect,'def');
+    if(!e)return;
+    var clauses=e.clauses||[{atkType:e.atkType,scope:e.scope,vsAtk:e.vsAtk,value:e.value}];
+    var vals=[];
+    clauses.forEach(function(cl){
+      var sc=cl.scope||e.scope||'self';
+      if(sc!=='owner'&&(!defNode||nd.uid!==defNode.uid))return;  /* 'self': solo el defensor */
+      if(cl.excludeSelf&&defNode&&nd.uid===defNode.uid)return;   /* "your OTHER groups" */
+      var md=cl.mode||e.mode||'both';
+      if(md!=='both'&&md!==mode)return;
+      if(!atkSideMatches(cl.vsAtk))return;
+      var val=Number(cl.value)||0;
+      if(val)vals.push(val);
+    });
+    if(!vals.length)return;
+    var add=(e.pick==='best')?Math.max.apply(null,vals):vals.reduce(function(a,b){return a+b;},0);
+    v+=add;if(notes)notes.push(c.name+': +'+add+' a la defensa ('+(mode==='resist'?'Resistencia':'Poder')+')');
   });
   return v;
 }
@@ -3952,6 +4018,9 @@ function computeStrength(resolveMode){
        nunca leeria. Para un objetivo en la mano no hay nodo y se usa la carta. */
     var R=nodeResistance(tNode,tCard);
     det.defenseBase=R;
+    /* L42: bonos de defensa de los grupos del defensor (Resistencia). */
+    var dbCtl42=groupDefenseBonus(tNode,tCard,'resist',det.notes);
+    if(dbCtl42)det.defenseBonus+=dbCtl42;
     if(tNode&&tNode.resistanceOverride!=null)
       det.notes.push('Resistencia fijada en '+R+' por un link permanente');
     /* L3b — 268 Good Polls: "the Power and Resistance ... is tripled, FOR
@@ -4001,6 +4070,9 @@ function computeStrength(resolveMode){
        que la fórmula NO cambia y la invariante que verifica la prueba P1-005 se
        mantiene intacta. */
     det.defenseBase=tNode?defenderPower(tNode,true):0;
+    /* L42: bonos de defensa de los grupos del defensor (Poder). */
+    var dbDst42=groupDefenseBonus(tNode,tCard,'power',det.notes);
+    if(dbDst42)det.defenseBonus+=dbDst42;
     /* L3b — 268 Good Polls, segunda mitad: en un ataque a DESTRUIR el objetivo
        se defiende con su PODER (regla de §25, por eso `defenderPower` y no
        `nodeResistance`), asi que "el Poder y la Resistencia se triplican" se
@@ -7885,6 +7957,10 @@ case 'bulk_power':{
       throw new Error(c.name+': habilidad pasiva — los bonos Communist se aplican al declarar ataques');
     case 'atk_bonus':
       throw new Error(c.name+': habilidad pasiva — sus bonos de ataque se aplican al resolver el ataque');
+    case 'def_bonus':
+      throw new Error(c.name+': habilidad pasiva — sus bonos de defensa se aplican al resolver el ataque enemigo');
+    case 'combo_bonus':
+      throw new Error(c.name+': habilidad pasiva — sus bonos de ataque y defensa se aplican al resolver ataques');
     case 'weird_refuel':
       throw new Error(c.name+': no se juega desde la mano — es un Resource y se coloca con su accion Illuminati');
     case 'disaster_mod':
