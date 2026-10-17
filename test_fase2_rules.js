@@ -11872,6 +11872,29 @@ function err26(fn) { return throwMsgL14(fn); }
   /* Control negativo: un grupo sin bono no aporta cthulhu. */
   var d5 = plantAtk(0, 'a41e', 'ama', 1, 't41e', 'batf', 'control');
   ok(d5 && d5.cthulhu === 0, 'L41 un grupo sin atk_bonus no aporta bono -> cthulhu=' + (d5 && d5.cthulhu));
+  /* L41b: United Nations (+6 control Nation, owner), lo ejerza otro grupo. */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'un41', idxOfId('unitednations'), 1);
+    plant(0, 'a41f', anyGroupIdx(), 1);
+    plant(1, 't41f', idxOfId('italy'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'a41f', uid: 't41f' });
+    var d6 = E.previewStrength();
+    ok(d6.cthulhu === 6, 'L41b United Nations +6 (owner) al controlar una Nation -> cthulhu=' + d6.cthulhu);
+  } else { ok(true, 'L41b (United Nations) SKIP'); }
+  /* L41b: Semiconscious Liberation Army (+3 owner a CUALQUIER destroy). */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'sla41', idxOfId('semiconsciousliberationarmy'), 1);
+    plant(0, 'a41g', anyGroupIdx(), 1);
+    plant(1, 't41g', idxOfId('batf'), 1);
+    E.declareAttack(0, 'destroy', { attackerUid: 'a41g', uid: 't41g' });
+    var d7 = E.previewStrength();
+    ok(d7.cthulhu === 3, 'L41b SLA +3 (owner) a cualquier ataque a destruir -> cthulhu=' + d7.cthulhu);
+  } else { ok(true, 'L41b (SLA) SKIP'); }
+  /* L41b: Telephone Psychics pick=best (+6 por cardId y por Media P<=2). */
+  var d8 = plantAtk(0, 'tp41', 'telephonepsychics', 1, 't41h', 'tabloids', 'control');
+  ok(d8 && d8.cthulhu === 6, 'L41b Telephone Psychics pick=best +6 control Tabloids -> cthulhu=' + (d8 && d8.cthulhu));
 })();
 
 if (failures.length) {

@@ -3210,6 +3210,50 @@ const L41_FX = {
     ],
     pick: 'best',
     t: 'F.B.I. Has +10 to directly destroy a Criminal group. Gives +4 on any attempt to destroy a Criminal group, or +2 on any attempt to control a Criminal group.'
+  },
+  'Madison Avenue': {
+    kind: 'atk_bonus',
+    clauses: [
+      { scope: 'self', atkType: 'control', vs: { attr: 'media' }, value: 10 },
+      { scope: 'owner', atkType: 'any', vs: { attr: 'media' }, value: 2 }
+    ],
+    pick: 'best',
+    t: 'Madison Avenue Has +10 for direct control of any Media group, or gives +2 on any attempt to control or destroy any Media group.'
+  },
+  'L-4 Society': {
+    kind: 'atk_bonus',
+    clauses: [
+      { scope: 'owner', atkType: 'any', vs: { attrs: ['science', 'space'], match: 'any' }, value: 4 },
+      { scope: 'self', atkType: 'control', vs: { attr: 'space' }, value: 8 }
+    ],
+    pick: 'best',
+    t: 'L-4 Society Gives +4 to any attempt to control or destroy any Science or Space group, or +8 for direct control of any Space group.'
+  },
+  'Republicans': {
+    kind: 'atk_bonus',
+    clauses: [{ scope: 'self', atkType: 'control', vs: { align: 'government', notAttr: 'nation' }, value: 5 }],
+    t: 'Republicans The Republicans have an extra +5 for direct control of any Government group that is not a Nation.'
+  },
+  'Semiconscious Liberation Army': {
+    kind: 'atk_bonus',
+    clauses: [{ scope: 'owner', atkType: 'destroy', vs: {}, value: 3 }],
+    t: 'Semiconscious Liberation Army Gives +3 on any attempt to destroy any group.'
+  },
+  'United Nations': {
+    kind: 'atk_bonus',
+    clauses: [{ scope: 'owner', atkType: 'control', vs: { attr: 'nation' }, value: 6 }],
+    t: 'United Nations Gives +6 on any attempt to control any Nation.'
+  },
+  'Telephone Psychics': {
+    kind: 'atk_bonus',
+    clauses: [
+      { scope: 'self', atkType: 'control', vs: { cardId: 'ronaldreagan' }, value: 6 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'nancyreagan' }, value: 6 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'tabloids' }, value: 6 },
+      { scope: 'self', atkType: 'control', vs: { attr: 'media', maxPower: 2 }, value: 6 }
+    ],
+    pick: 'best',
+    t: 'Telephone Psychics +6 for direct control of either Ronald or Nancy Reagan, for the Tabloids, or for any Media group with a Power of 1 or 2.'
   }
 };
 const L41_FXN = {};

@@ -3863,6 +3863,8 @@ function vsMatchQ(vs,tNode,tCard){
     if(!ok)return false;
   }
   if(vs.cardId&&(!tCard||tCard.id!==vs.cardId))return false;
+  if(typeof vs.minPower==='number'&&!(tCard&&tCard.power>=vs.minPower))return false;
+  if(typeof vs.maxPower==='number'&&!(tCard&&tCard.power<=vs.maxPower))return false;
   return true;
 }
 function groupAttackBonus(pid,attNode,attCard,type,tNode,tCard,notes){
