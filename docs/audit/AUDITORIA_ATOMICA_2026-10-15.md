@@ -94,6 +94,27 @@ Medido por `scripts/audit_syn.cjs`, `audit_mechanics.cjs`, `audit_stats.cjs`:
 - **Inmunidades:** fallo previo contra el mismo jugador (3466-3467), Discordian vs Straight/Government (3472-3473), Hitler's Brain vs Peaceful (3441), Illuminati no atacables (3462).
 - **Bonus específicos:** Russia (3490-3526), Clone Arrangers / Rogue Boomer / Sweepstakes (3527-3546), World War Three (3558-3570), Weather Satellite (3611-3631), Sucked Dry diferido al fin de turno (10012-10019).
 
+## Desarrollo hacia el 100% (estado y ruta)
+
+El "100%" de cobertura se mide con `test_fase4_cards.js` y `scripts/audit_mechanics.cjs`. Estado tras esta sesión:
+
+- **unverified: 142 → 125** (17 cartas implementadas en 3 commits: L41, L41b, L42).
+- `implemented-pending-engine`: 233 → 250. Cartas clasificadas: 252 → 265.
+
+Patrones de motor ya montados (añadir cartas de estas familias es ahora puro dato en `gen_cards.js`):
+- `atk_bonus` (L41): bonos de ataque de grupo por alineación/atributo/carta del objetivo, scope self/owner, cláusulas múltiples con `pick:'sum'|'best'`.
+- `def_bonus` / `combo_bonus` (L42): bonos de defensa filtrados por el bando atacante (atacante o ayudantes), modes resist/power/both, `excludeSelf`.
+
+Familias restantes (la cola, por orden previsto):
+1. `free_interfere` — "may aid or oppose any attack made by/against X regardless of alignments" (Big Media, Junk Mail, A.M.A., Druids, Dinosaur Park…). 1 check en `addSupport`.
+2. `attack_immune` — inmunidad a ataques de X (Goldfish Fanciers, Empty Vee, Offshore Banks solo-destroy, Stonehenge, Princess Di). 1 check en `declareAttack`.
+3. Bonos de apoyo (poder aportado al ayudar/oponerse: A.M.A. "+5 protect").
+4. Modificaciones de líder (The Mafia/Tobacco/TV Preachers/ICC: "+N, rather than the normal -4").
+5. Acciones activas de grupo (cancelar acciones, robar mano, descartes forzados, draws extra, reorganizar estructura): muchas, una a una.
+6. Resistencia condicional por atacante tipo override (Gun Lobby "resistance is 10").
+7. Deuda de datos: `globalPower` (#10), 27 `source-text-unmapped` (texto insuficiente en OCR/secundaria), 4 Plots sin mecánica, ramas muertas paralyze/zap/nwo, huecos de texto (california, margaretthatcher, ollienorth, vaticancity).
+8. Rediseños pendientes de decisión: #8 (atacar la propia mano) y #11 (área neutral).
+
 ## Qué quedó fuera y por qué
 
 - Verificación carta a carta de las 428 cartas contra imágenes (la miden los scripts audit_*; es la deuda de datos documentada).

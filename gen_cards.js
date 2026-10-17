@@ -3295,6 +3295,29 @@ const L42_FX = {
 const L42_FXN = {};
 for (const k42 in L42_FX) { L42_FXN[norm(k42)] = L42_FX[k42]; }
 
+/* L43 — free_interfere: ayudar u oponerse SIN alineacion comun, cuando el ataque
+ * es de/hacia el tipo declarado. Se combina con atk_bonus via combo_bonus (Big
+ * Media y Junk Mail tienen ambas mitades en su texto). El caso de Junk Mail
+ * "may attack any Secret group directly" no necesita mecanica: declareAttack no
+ * exige alineacion comun para atacar (solo flecha abierta), asi que esa frase ya
+ * se cumple por construccion. */
+const L43_FX = {
+  'Big Media': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'any', vs: { attr: 'media' }, value: 4 }] },
+    fi: { side: 'both', vs: { attr: 'media' } },
+    t: 'Big Media Gives +4 to any attempt to control or destroy other Media. May aid oppose any attack made by, or against, any other Media group.'
+  },
+  'Junk Mail': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'control', vs: { attr: 'secret' }, value: 6 }] },
+    fi: { side: 'target', vs: { attr: 'secret' } },
+    t: 'Junk Mail This group may attack any Secret group directly, or aid or oppose any attack on a Secret group. Gives a +6 to any attempt to take control of a Secret group.'
+  }
+};
+const L43_FXN = {};
+for (const k43 in L43_FX) { L43_FXN[norm(k43)] = L43_FX[k43]; }
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
@@ -3584,7 +3607,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

@@ -11947,6 +11947,22 @@ function err26(fn) { return throwMsgL14(fn); }
     var d12 = E.previewStrength();
     ok(d12.defenseBonus === 3, 'L42 Secular +3 (atacante Straight, grupo "other") -> defenseBonus=' + d12.defenseBonus);
   } else { ok(true, 'L42 (Secular) SKIP'); }
+
+  /* ===== L43 — free_interfere (ayudar/oponer sin alineacion) ===== */
+  /* Big Media se opone a un ataque contra otro Media aunque no compartan
+     alineacion (Big Media es Corporate; Tabloids es Weird). */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(1, 'bm43', idxOfId('bigmedia'), 1);
+    plant(1, 'tb43', idxOfId('tabloids'), 1);
+    plant(0, 'am43', anyGroupIdx(), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'am43', uid: 'tb43' });
+    var e43 = '';
+    try { E.addSupport(1, { uid: 'bm43', oppose: true }); }
+    catch (ex43) { e43 = ex43.message; }
+    ok(e43 === '' && E._raw().attack.opposes.length === 1,
+      'L43 Big Media free_interfere: se opone sin alineacion comun -> ' + (e43 || 'ok'));
+  } else { ok(true, 'L43 (Big Media) SKIP'); }
 })();
 
 if (failures.length) {

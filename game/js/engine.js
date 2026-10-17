@@ -3732,6 +3732,10 @@ E.addSupport=function(pid,entry){
       for(var jA=0;jA<tAligns.length;jA++){if(isOpposite(supAligns[iA],tAligns[jA])){eligible=true;break;}}
     }
   }
+  /* L43: free_interfere — este grupo puede entrar aunque las alineaciones no
+     den, si el ataque es de/hacia el tipo que su texto declara. Va DESPUES de
+     las ramas de alineacion porque esas asignan `eligible`. */
+  if(!eligible&&fiMatch43(bonusPart(sc.effect,'fi'),tNode,tCard,entry.uid))eligible=true;
   var pw=(typeof entry.power==='number')?entry.power:curPower(sup);
   if(!eligible){
     var gpE=(typeof sc.globalPower==='number')?sc.globalPower:null;
@@ -3876,10 +3880,26 @@ function bonusPart(e,which){
   if(e.kind==='combo_bonus')return e[which]||null;
   if(which==='atk'&&e.kind==='atk_bonus')return e;
   if(which==='def'&&e.kind==='def_bonus')return e;
+  if(which==='fi'&&e.kind==='free_interfere')return e;
   return null;
 }
-function groupAttackBonus(pid,attNode,attCard,type,tNode,tCard,notes){
-  if(!tCard&&!tNode)return 0;
+/* L43 — free_interfere: "may aid or oppose any attack made by, or against, any X
+   group" (Big Media) / "aid or oppose any attack on a Secret group" (Junk Mail).
+   El calificador mira el ATACANTE o el OBJETIVO segun `side` ('both' = alguno de
+   los dos, "other" excluye al propio participante en el bando que toca). */
+function fiMatch43(fi,tNode,tCard,selfUid){
+  if(!fi)return false;
+  var vs=fi.vs||{};
+  var side=fi.side||'both';
+  var attN=findNode(S.attack?S.attack.attackerUid:null);
+  var attC=attN?card(attN.cardId):null;
+  var hitAtt=attC&&vsMatchQ(vs,attN,attC)&&(!attN||attN.uid!==selfUid);
+  var hitTgt=tCard&&vsMatchQ(vs,tNode,tCard)&&(!tNode||tNode.uid!==selfUid);
+  if(side==='attacker')return hitAtt;
+  if(side==='target')return hitTgt;
+  return hitAtt||hitTgt;
+}
+function groupAttackBonus(pid,attNode,attCard,type,tNode,tCard,notes){  if(!tCard&&!tNode)return 0;
   var st=(pid!=null&&pid>=0&&S.players[pid])?S.players[pid].structure:null;
   if(!st)return 0;
   var v=0;
