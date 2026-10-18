@@ -3468,6 +3468,11 @@ E.declareAttack=function(pid,type,target){
       /* P1-009: la Discordian Society es INMUNE a los ataques de grupos Government
          y Straight. Antes sólo se anotaba una nota en el desglose (la inmunidad no
          se ejecutaba). Ahora es una acción ilegal. */
+      /* L45: inmunidad a ataques por el perfil del atacante (Goldfish Fanciers,
+         Empty Vee...). En Instant Attacks no hay nodo atacante identificado:
+         limitacion declarada (solo ataques normales). */
+      if(attackImmuneBlocked(tgt,tCard,att,attCard,type))
+        throw new Error('La estructura rival es inmune a ataques de este tipo (por su texto impreso)');
       if(discordianBlocks(owner,att,attCard))
         throw new Error('La estructura Discordian es inmune a atacantes Straight/Government');
     }else{
@@ -3737,6 +3742,13 @@ E.addSupport=function(pid,entry){
      las ramas de alineacion porque esas asignan `eligible`. */
   if(!eligible&&fiMatch43(bonusPart(sc.effect,'fi'),tNode,tCard,entry.uid))eligible=true;
   var pw=(typeof entry.power==='number')?entry.power:curPower(sup);
+  if(typeof entry.power!=='number'){var gp45=grantPowerBonus(sup)+ppcSelfBonus(sup);if(gp45)pw+=gp45;}
+  /* L45: aid_power — bono al poder aportado por este apoyo (A.M.A. protect). */
+  var aid45=bonusPart(sc.effect,'aid');
+  if(aid45){
+    var cA45=aid45.clauses||[{vs:aid45.vs,value:aid45.value}];
+    cA45.forEach(function(clA){if(vsMatchQ(clA.vs,tNode,tCard))pw+=(Number(clA.value)||0);});
+  }
   if(!eligible){
     var gpE=(typeof sc.globalPower==='number')?sc.globalPower:null;
     if(gpE!=null&&gpE>0)pw=Math.min(gpE,pw);
@@ -3887,6 +3899,10 @@ function bonusPart(e,which){
   if(which==='atk'&&e.kind==='atk_bonus')return e;
   if(which==='def'&&e.kind==='def_bonus')return e;
   if(which==='fi'&&e.kind==='free_interfere')return e;
+  if(which==='flip'&&e.kind==='atk_flip')return e;
+  if(which==='immune'&&e.kind==='attack_immune')return e;
+  if(which==='grant'&&e.kind==='power_grant')return e;
+  if(which==='aid'&&e.kind==='aid_power')return e;
   return null;
 }
 /* L43 — free_interfere: "may aid or oppose any attack made by, or against, any X
@@ -3909,12 +3925,13 @@ function groupAttackBonus(pid,attNode,attCard,type,tNode,tCard,notes){  if(!tCar
   var st=(pid!=null&&pid>=0&&S.players[pid])?S.players[pid].structure:null;
   if(!st)return 0;
   var v=0;
+  if(typeof DBG45!=='undefined'&&DBG45)console.log('GAB-ANTESWALK st=',st.uid,'kids=',(st.children||[]).length,'walkType=',typeof walk);
   walk(st,function(nd){
-    if(!nd.cardId)return;
+    if(nd.cardId==null)return;
     var c=card(nd.cardId);
     var e=bonusPart(c&&c.effect,'atk');
     if(!e)return;
-    /* Compatibilidad: un efecto sin `clauses` se lee como una sola clausula.
+        /* Compatibilidad: un efecto sin `clauses` se lee como una sola clausula.
        `scope` puede vivir en la clausula (F.B.I.: +10 self y +4 owner en la MISMA
        carta) o en el efecto; por defecto 'self'. */
     var clauses=e.clauses||[{atkType:e.atkType,scope:e.scope,vs:e.vs,value:e.value}];
@@ -3988,7 +4005,69 @@ function groupDefenseBonus(defNode,defCard,mode,notes){
   return v;
 }
 
-/* L44 — FLIP DE LIDER ("+4, rather than the normal -4", The Mafia; "+8, not the
+/* L45 — INMUNIDAD A ATAQUES. `vsAtk` filtra el ATACANTE; `protects` (opcional)
+   filtra a QUIEN protege (Empty Vee solo protege a los Media); `onlyDestroy`
+   limita a ataques a destruir (Offshore Banks). */
+function attackImmuneBlocked(tNode,tCard,attNode,attCard,atkType){
+  if(!tNode)return false;
+  var o=findOwnerPid(tNode.uid);
+  if(o<0)return false;
+  var st=S.players[o]?S.players[o].structure:null;
+  if(!st)return false;
+  var blocked=false;
+  walk(st,function(nd){
+    if(blocked||nd.cardId==null)return;
+    var c=card(nd.cardId);
+    var e=bonusPart(c&&c.effect,'immune');
+    if(!e)return;
+    if(e.onlyDestroy&&atkType!=='destroy')return;
+    if(e.protects&&!vsMatchQ(e.protects,tNode,tCard))return;
+    if(vsMatchQ(e.vsAtk||e.vs||{},attNode,attCard))blocked=true;
+  });
+  return blocked;
+}
+/* L45 — PODER CONCEDIDO A OTROS ("Increase the Power of all your Media
+   Personalities by 2", Recording Industry). Los power_grant de la estructura del
+   dueño que casen con `nd` suman a SU Poder (no a su Resistencia). */
+function grantPowerBonus(nd){
+  if(!nd||nd.cardId==null)return 0;
+  var o=findOwnerPid(nd.uid);
+  if(o<0)return 0;
+  var st=S.players[o]?S.players[o].structure:null;
+  if(!st)return 0;
+  var v=0;
+  walk(st,function(x){
+    if(x.cardId==null)return;
+    var xc=card(x.cardId);
+    var e=bonusPart(xc&&xc.effect,'grant');
+    if(!e)return;
+    var clauses=e.clauses||[{vs:e.vs,value:e.value}];
+    clauses.forEach(function(cl){
+      if(vsMatchQ(cl.vs,nd,card(nd.cardId)))v+=(Number(cl.value)||0);
+    });
+  });
+  return v;
+}
+/* L45 — PODER POR CONTEO ("+1 Power for every other Criminal group in your Power
+   Structure", Loan Sharks; Moral Minority). Sube el Poder DEL PROPIO grupo por
+   cada otro grupo del dueño que cumpla `eachOf`. */
+function ppcSelfBonus(nd){
+  if(!nd||nd.cardId==null)return 0;
+  var c=card(nd.cardId);
+  var e=c&&c.effect&&c.effect.kind==='power_per_count'?c.effect:null;
+  if(!e)return 0;
+  var o=findOwnerPid(nd.uid);
+  if(o<0)return 0;
+  var n=0;
+  walk(S.players[o].structure,function(x){
+    if(x.uid===nd.uid||x.cardId==null)return;
+    var xc=card(x.cardId);
+    if(xc&&vsMatchQ(e.eachOf,x,xc))n++;
+  });
+  return n*(Number(e.v)||0);
+}
+
+/* L44 — FLIP DE LIDER ("+4, rather than the normal -4", The Mafia; "+8, not the/* L44 — FLIP DE LIDER ("+4, rather than the normal -4", The Mafia; "+8, not the
    normal -4", Tobacco; ICC). Cuando el perfil `vs` casa con ATACANTE y OBJETIVO
    (ambos llevan la alineacion/atributo que origina el -4 por compartir), TODAS
    las penalizaciones por alineaciones compartidas del ataque (n*mag) se anulan y
@@ -4054,6 +4133,9 @@ function computeStrength(resolveMode){
   if(alignMag!==4)det.notes.push('Regla de alineaciones alterada por '+S.alignRule.card+': +/-'+alignMag+' por alineacion');
   if(A.type==='control'){
     det.base=curPower(att);
+    /* L45: pasivas de poder del atacante (grant + conteo). */
+    var gb45c=grantPowerBonus(att)+ppcSelfBonus(att);
+    if(gb45c){det.boosts+=gb45c;det.notes.push('Pasivas de poder: +'+gb45c);}
     for(var i=0;i<attAligns.length;i++){ /* leader ±alignMag vs target aligns */
       if(tgtAligns.indexOf(attAligns[i])>=0)det.leaderMod+=alignMag;
       else{var isOpp=false;for(var j=0;j<tgtAligns.length;j++)if(isOpposite(attAligns[i],tgtAligns[j]))isOpp=true;
@@ -4107,6 +4189,9 @@ function computeStrength(resolveMode){
        instantAttack (ataques instantáneos), que no pasan por esta función. */
   }else{ /* destroy */
     det.base=curPower(att);
+    /* L45: pasivas de poder del atacante (grant + conteo). */
+    var gb45d=grantPowerBonus(att)+ppcSelfBonus(att);
+    if(gb45d){det.boosts+=gb45d;det.notes.push('Pasivas de poder: +'+gb45d);}
     for(var k=0;k<attAligns.length;k++){
       if(tgtAligns.indexOf(attAligns[k])>=0)det.leaderMod-=alignMag;
       /* L35 — 385: en destruir, el ajuste opuesto es un BONUS para el atacante;
@@ -4130,6 +4215,9 @@ function computeStrength(resolveMode){
        que la fórmula NO cambia y la invariante que verifica la prueba P1-005 se
        mantiene intacta. */
     det.defenseBase=tNode?defenderPower(tNode,true):0;
+    /* L45: pasivas de poder del OBJETIVO (defiende con su Poder en destroy). */
+    var gd45=grantPowerBonus(tNode)+ppcSelfBonus(tNode);
+    if(gd45)det.defenseBase+=gd45;
     /* L42: bonos de defensa de los grupos del defensor (Poder). */
     var dbDst42=groupDefenseBonus(tNode,tCard,'power',det.notes);
     if(dbDst42)det.defenseBonus+=dbDst42;
@@ -4163,7 +4251,7 @@ function computeStrength(resolveMode){
     var flD44=groupAttackFlip(A.pid,att,attCard,'destroy',tNode,tCard);
     if(flD44){det.leaderMod+=flD44;det.notes.push('Flip de alineaciones: +'+flD44);}
     /* L41: bonos de ataque de los grupos del atacante (Anti-Nuclear, F.B.I....). */
-    var abD41=groupAttackBonus(A.pid,att,attCard,'destroy',tNode,tCard,det.notes);
+    var abD41=groupAttackBonus(A.pid,att,attCard,'destroy',tNode,tCard,det.notes);if(typeof DBG45!=='undefined'&&DBG45)console.log('DBG45CALL pid=',A.pid,'att=',att&&att.uid,'stKids=',(S.players[A.pid].structure.children||[]).length);
     if(abD41)det.cthulhu+=abD41;
     /* P1-016: Bodyguard (+6 "against any Attempt to Destroy, including further
        Assassinations") y Talisman of Ahrimanes (+2 contra cualquier destruccion).
@@ -8047,6 +8135,12 @@ case 'bulk_power':{
       throw new Error(c.name+': habilidad pasiva — sus bonos de defensa se aplican al resolver el ataque enemigo');
     case 'combo_bonus':
       throw new Error(c.name+': habilidad pasiva — sus bonos de ataque y defensa se aplican al resolver ataques');
+    case 'attack_immune':
+      throw new Error(c.name+': habilidad pasiva — su inmunidad se aplica al declarar el ataque enemigo');
+    case 'power_grant':
+      throw new Error(c.name+': habilidad pasiva — su bonus de Poder se aplica a los grupos que protege');
+    case 'power_per_count':
+      throw new Error(c.name+': habilidad pasiva — su Poder se recalcula por cada grupo que cuenta');
     case 'no_goal_destroy':
       throw new Error(c.name+': habilidad pasiva — destruirla no cuenta para ninguna meta');
     case 'weird_refuel':

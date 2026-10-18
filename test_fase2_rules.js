@@ -11620,9 +11620,9 @@ function err26(fn) { return throwMsgL14(fn); }
     E.playPlot(0, tax40, null, null);
     ok40(R40.taxReformActive === true && R40.taxReformOwner === 0, 'L40.S4a Tax Reform continuo con dueno registrado');
     ok40(!logHas40(/el IRS grava 1 Plot del mazo/), 'L40.S4b al jugarla todavia no grava');
-    E.endTurn(); /* beginTurn de P1 */
+    clear24(); E.endTurn(); /* beginTurn de P1 */
     ok40(!logHas40(/el IRS grava 1 Plot del mazo/), 'L40.S4c el turno del rival NO grava');
-    E.endTurn(); /* beginTurn de P0 (dueno) */
+    clear24(); E.endTurn(); /* beginTurn de P0 (dueno) */
     ok40(logHas40(/el IRS grava 1 Plot del mazo/), 'L40.S4d al empezar el turno del dueno el IRS grava');
     var n40 = E._raw().log.filter(function (l40) { return /el IRS grava 1 Plot del mazo/.test(msg40(l40)); }).length;
     ok40(n40 === 1, 'L40.S4e exactamente un gravamen (2 jugadores, 1 rival)');
@@ -11639,7 +11639,7 @@ function err26(fn) { return throwMsgL14(fn); }
     var ar40 = findN40('area');
     ar40.devastated = true;
     ar40.reliefPending = { untilTurn: R40.turn + 1, byPid: 0, byCard: null };
-    E.endTurn(); /* el Relief automatico de 410 llega en expireTurnFlags */
+    clear24(); E.endTurn(); /* el Relief automatico de 410 llega en expireTurnFlags */
     ok40(ar40.devastated === false && !!(R40.lastRelief && R40.lastRelief.areaUid === 'area' && R40.lastRelief.turn === R40.turn), 'L40.S5a el Relief automatico llega y registra S.lastRelief');
     R40.currentPid = 1;
     var cor40 = idx40('corruption'); hand22(1, cor40);
@@ -11648,9 +11648,9 @@ function err26(fn) { return throwMsgL14(fn); }
     ar40.devastated = true;
     ar40.reliefPending = { untilTurn: R40.turn + 1, byPid: 0, byCard: null };
     var mark40 = R40.lastRelief.turn;
-    E.endTurn(); /* turno del dueno: el lock sigue vivo */
+    clear24(); E.endTurn(); /* turno del dueno: el lock sigue vivo */
     ok40(ar40.devastated === true && R40.lastRelief.turn === mark40, 'L40.S5c el Relief bloqueado por reliefLock no llega');
-    E.endTurn(); /* el lock ya caduco */
+    clear24(); E.endTurn(); /* el lock ya caduco */
     ok40(ar40.devastated === false && !!(R40.lastRelief && R40.lastRelief.turn === R40.turn), 'L40.S5d caducado el lock, el area vuelve a recibir Relief');
   })();
 
@@ -11953,22 +11953,67 @@ function err26(fn) { return throwMsgL14(fn); }
   } else { ok(true, 'L42 (Secular) SKIP'); }
 
   /* ===== L43 — free_interfere (ayudar/oponer sin alineacion) ===== */
-  /* Big Media se opone a un ataque contra otro Media aunque no compartan
-     alineacion (Big Media es Corporate; Tabloids es Weird). */
-  fresh(idxOfId(U), idxOfId(V));
-  if (readyToAttack(0) != null) {
-    plant(1, 'bm43', idxOfId('bigmedia'), 1);
-    plant(1, 'tb43', idxOfId('tabloids'), 1);
-    plant(0, 'am43', anyGroupIdx(), 1);
-    E.declareAttack(0, 'control', { attackerUid: 'am43', uid: 'tb43' });
-    var e43 = '';
-    try { E.addSupport(1, { uid: 'bm43', oppose: true }); }
-    catch (ex43) { e43 = ex43.message; }
-    ok(e43 === '' && E._raw().attack.opposes.length === 1,
-      'L43 Big Media free_interfere: se opone sin alineacion comun -> ' + (e43 || 'ok'));
-  } else { ok(true, 'L43 (Big Media) SKIP'); }
+/* Big Media se opone a un ataque contra otro Media aunque no compartan
+   alineacion (Big Media es Corporate; Tabloids es Weird). */
+fresh(idxOfId(U), idxOfId(V));
+if (readyToAttack(0) != null) {
+  plant(1, 'bm43', idxOfId('bigmedia'), 1);
+  plant(1, 'tb43', idxOfId('tabloids'), 1);
+  plant(0, 'am43', anyGroupIdx(), 1);
+  E.declareAttack(0, 'control', { attackerUid: 'am43', uid: 'tb43' });
+  var e43 = '';
+  try { E.addSupport(1, { uid: 'bm43', oppose: true }); }
+  catch (ex43) { e43 = ex43.message; }
+  ok(e43 === '' && E._raw().attack.opposes.length === 1,
+    'L43 Big Media free_interfere: se opone sin alineacion comun -> ' + (e43 || 'ok'));
+} else { ok(true, 'L43 (Big Media) SKIP'); }
 
-  /* ===== L44 — flip de lider, instant attacks, indestructibles, no-goal ===== */
+/* ===== L45 — inmunidad, poder concedido y por conteo, aid ===== */
+fresh(idxOfId(U), idxOfId(V));
+if (readyToAttack(1) != null) {
+  plant(0, 'gf45', idxOfId('goldfishfanciers'), 1);
+  plant(0, 'gz45', idxOfId('algore'), 1);
+  plant(1, 'ez45', idxOfId('eldersofzion'), 1);
+  var m45 = '';
+  try { E.declareAttack(1, 'control', { attackerUid: 'ez45', uid: 'gz45' }); }
+  catch (ex45) { m45 = ex45.message; }
+  ok(/inmune/i.test(m45), 'L45 Goldfish: atacante Fanatic rechazado -> ' + (m45 || 'no lanzo'));
+} else { ok(true, 'L45 (Goldfish) SKIP'); }
+var d45a = plantAtk(0, 'ama45', 'ama', 1, 't45a', 'siliconvalley', 'destroy');
+ok(d45a && d45a.cthulhu === 5, 'L45 A.M.A. +5 (self) al destruir Science -> cthulhu=' + (d45a && d45a.cthulhu));
+fresh(idxOfId(U), idxOfId(V));
+if (readyToAttack(1) != null) {
+  plant(0, 'ama45b', idxOfId('ama'), 1);
+  plant(0, 'sv45', idxOfId('siliconvalley'), 1);
+  plant(1, 'md45', idxOfId('tabloids'), 1);
+  E.declareAttack(1, 'control', { attackerUid: 'md45', uid: 'sv45' });
+  var e45b = '';
+  try { E.addSupport(0, { uid: 'ama45b', oppose: true }); }
+  catch (ex45b) { e45b = ex45b.message; }
+  var o45 = E._raw().attack.opposes[0];
+  ok(e45b === '' && o45 && o45.power === 8,
+    'L45 A.M.A. free_interfere + aid: se opone con P8 (3+5) a un ataque contra Science -> ' + (e45b || ('pw=' + (o45 && o45.power))));
+} else { ok(true, 'L45 (A.M.A. aid) SKIP'); }
+fresh(idxOfId(U), idxOfId(V));
+if (readyToAttack(0) != null) {
+  plant(0, 'ls45', idxOfId('loansharks'), 1);
+  plant(0, 'cr45a', idxOfId('imeldamarcos'), 1);
+  plant(0, 'cr45b', idxOfId('jimmyhoffa'), 1);
+  plant(1, 't45b', idxOfId('batf'), 1);
+  E.declareAttack(0, 'control', { attackerUid: 'ls45', uid: 't45b' });
+  var d45c = E.previewStrength();
+  ok(d45c.boosts === 2, 'L45 Loan Sharks +1 Power por cada otro Criminal (2) -> boosts=' + d45c.boosts);
+} else { ok(true, 'L45 (Loan Sharks) SKIP'); }
+fresh(idxOfId(U), idxOfId(V));
+if (readyToAttack(0) != null) {
+  plant(0, 'ri45', idxOfId('recordingindustry'), 1);
+  plant(0, 'gr45', idxOfId('gordoremora'), 1);
+  plant(1, 't45c', idxOfId('batf'), 1);
+  E.declareAttack(0, 'control', { attackerUid: 'gr45', uid: 't45c' });
+  var d45d = E.previewStrength();
+  ok(d45d.boosts === 2, 'L45 Recording Industry +2 Power al Media Personality atacante -> boosts=' + d45d.boosts);
+} else { ok(true, 'L45 (Recording Industry) SKIP'); }
+/* ===== L44 — flip de lider, instant attacks, indestructibles, no-goal ===== */
   /* The Mafia: flip (+4 en vez de -4 al destruir Criminal) + atk +2 (owner). */
   var d13 = plantAtk(0, 'mf44', 'themafia', 1, 't44a', 'irs', 'destroy');
   ok(d13 && d13.leaderMod === 4 && d13.cthulhu === 2,

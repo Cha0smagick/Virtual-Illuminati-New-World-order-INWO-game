@@ -3369,6 +3369,49 @@ const L44_FX = {
 const L44_FXN = {};
 for (const k44 in L44_FX) { L44_FXN[norm(k44)] = L44_FX[k44]; }
 
+/* L45 — pasivas de poder y de inmunidad (kinds attack_immune, power_grant,
+ * power_per_count, aid_power via combo_bonus). Los helpers viven en engine.js
+ * (attackImmuneBlocked, grantPowerBonus, ppcSelfBonus y el aid en addSupport).
+ * LIMITACION declarada: attack_immune solo se aplica a ataques normales
+ * (declareAttack); los Instant Attacks no tienen nodo atacante identificable. */
+const L45_FX = {
+  'Goldfish Fanciers': {
+    kind: 'attack_immune',
+    vsAtk: { align: 'fanatic' },
+    t: 'Goldfish Fanciers Your entire Power Structure is completely immune to attacks by Fanatic groups. No, were really not going to explain why.'
+  },
+  'A.M.A.': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'self', atkType: 'any', vs: { attr: 'science' }, value: 5 }] },
+    fi: { side: 'both', vs: { attr: 'science' } },
+    aid: { clauses: [{ vs: { attr: 'science' }, value: 5 }] },
+    t: 'A.M.A. The A.M.A. can act to protect any Science group, or to help attack it, regardless of alignments. It gets a +5 bonus to control, destroy or protect a Science group.'
+  },
+  'Loan Sharks': {
+    kind: 'power_per_count',
+    eachOf: { align: 'criminal' },
+    v: 1,
+    t: 'Loan Sharks The Loan Sharks get +1 Power for every other Criminal group in your Power Structure.'
+  },
+  'Moral Minority': {
+    kind: 'power_per_count',
+    eachOf: { align: 'straight' },
+    v: 1,
+    t: 'Moral Minority The power of the Moral Minority is increased by 1 for every other Straight group in your power structure.'
+  },
+  'Recording Industry': {
+    kind: 'power_grant',
+    clauses: [
+      { vs: { attr: 'media', subtype: 'personality' }, value: 2 },
+      { vs: { subtype: 'personality', notAttr: 'media' }, value: 1 }
+    ],
+    t: 'Recording Industry Increase the Power of all your Media Personalities by 2, and all your other Personalities by 1.'
+  }
+};
+const L45_FXN = {};
+for (const k45 in L45_FX) { L45_FXN[norm(k45)] = L45_FX[k45]; }
+
+
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
 
@@ -3658,7 +3701,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

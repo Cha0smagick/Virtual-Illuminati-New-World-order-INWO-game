@@ -1,0 +1,42 @@
+
+/* L45 — pasivas de poder y de inmunidad (kinds attack_immune, power_grant,
+ * power_per_count, aid_power via combo_bonus). Los helpers viven en engine.js
+ * (attackImmuneBlocked, grantPowerBonus, ppcSelfBonus y el aid en addSupport).
+ * LIMITACION declarada: attack_immune solo se aplica a ataques normales
+ * (declareAttack); los Instant Attacks no tienen nodo atacante identificable. */
+const L45_FX = {
+  'Goldfish Fanciers': {
+    kind: 'attack_immune',
+    vsAtk: { align: 'fanatic' },
+    t: 'Goldfish Fanciers Your entire Power Structure is completely immune to attacks by Fanatic groups. No, were really not going to explain why.'
+  },
+  'A.M.A.': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'self', atkType: 'any', vs: { attr: 'science' }, value: 5 }] },
+    fi: { side: 'both', vs: { attr: 'science' } },
+    aid: { clauses: [{ vs: { attr: 'science' }, value: 5 }] },
+    t: 'A.M.A. The A.M.A. can act to protect any Science group, or to help attack it, regardless of alignments. It gets a +5 bonus to control, destroy or protect a Science group.'
+  },
+  'Loan Sharks': {
+    kind: 'power_per_count',
+    eachOf: { align: 'criminal' },
+    v: 1,
+    t: 'Loan Sharks The Loan Sharks get +1 Power for every other Criminal group in your Power Structure.'
+  },
+  'Moral Minority': {
+    kind: 'power_per_count',
+    eachOf: { align: 'straight' },
+    v: 1,
+    t: 'Moral Minority The power of the Moral Minority is increased by 1 for every other Straight group in your power structure.'
+  },
+  'Recording Industry': {
+    kind: 'power_grant',
+    clauses: [
+      { vs: { attr: 'media', subtype: 'personality' }, value: 2 },
+      { vs: { subtype: 'personality', notAttr: 'media' }, value: 1 }
+    ],
+    t: 'Recording Industry Increase the Power of all your Media Personalities by 2, and all your other Personalities by 1.'
+  }
+};
+const L45_FXN = {};
+for (const k45 in L45_FX) { L45_FXN[norm(k45)] = L45_FX[k45]; }
