@@ -98,7 +98,10 @@ Medido por `scripts/audit_syn.cjs`, `audit_mechanics.cjs`, `audit_stats.cjs`:
 
 El "100%" de cobertura se mide con `test_fase4_cards.js` y `scripts/audit_mechanics.cjs`. Estado tras esta sesión:
 
-- **unverified: 142 → 125** (17 cartas implementadas en 3 commits: L41, L41b, L42).
+- **unverified: 142 → 113** (29 cartas implementadas en 6 commits: L41, L41b, L42, L43, L44, L45).
+- `implemented-pending-engine`: 233 → 269. Cartas clasificadas: 252 → 272.
+- Familias de motor montadas: `atk_bonus`, `def_bonus`/`combo_bonus`, `free_interfere`, `atk_flip`, `attack_immune`, `power_grant`, `power_per_count`, `aid_power`, `noGoalOnDestroy`, `noDestroy` — añadir cartas de estas familias es puro dato en `gen_cards.js`.
+- Arnés: `clear24()` antes de cada `endTurn` de `readyToAttack` y de los endTurn directos de L40 (flakes de ventanas de suceso documentados).
 - `implemented-pending-engine`: 233 → 250. Cartas clasificadas: 252 → 265.
 
 Patrones de motor ya montados (añadir cartas de estas familias es ahora puro dato en `gen_cards.js`):
