@@ -1023,6 +1023,21 @@ function attackPanel(st) {
       'Center for Weird Studies: recargar accion (1 vez/turno)</button></div>');
   }
 
+  /* L46 - acciones de GRUPO del humano: un boton por grupo con group_action y ficha. */
+  (function () {
+    var curH = st.players[st.currentPid];
+    if (!curH || !curH.human) return;
+    (function gaW(gn) {
+      if (gn.cardId != null) {
+        var gc = C.cards[gn.cardId];
+        if (gc && gc.effect && gc.effect.kind === 'group_action' && (gn.tokens || 0) >= 1) {
+          $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar"><button data-act="ga" data-uid="' + gn.uid + '">' + esc(gc.name) + ': usar accion</button></div>');
+        }
+      }
+      (gn.children || []).forEach(gaW);
+    })(curH.structure);
+  })();
+
   /* L12 / P1-083 - 378 Suicide Squad. El jugador elige el Resource del rival que
    * va a destruir: el motor NUNCA lo autoelige (DoD 6, y el mismo criterio con el
    * que se escribio la ventana de 332). Se listan uno por uno los Resources de los
@@ -2290,6 +2305,8 @@ var KIND_ES = {
   attack_immune: 'Inmune a ataques de ciertos grupos (o protege a quienes indica)',
   power_grant: 'Concede Poder a los grupos de tu estructura que califican',
   power_per_count: 'Poder creciente por cada grupo aliado que cuenta',
+  group_action: 'Accion de grupo activa (gasta su ficha)',
+  hand_limit_bonus: 'Amplia el limite de Plot en mano mientras se le controle',
   no_goal_destroy: 'Destruirla no cuenta para ninguna meta de victoria',
   weird_refuel: 'Descarta una Plot y recarga la accion de un grupo que ya actuo',
   market_strip: 'Quita las fichas de un grupo Corporate y de los Banks',
@@ -3031,6 +3048,7 @@ function bindEvents() {
       log('📜 PASO 2/2 — clic en el grupo TUYO cuyo nombre ira bajo el Ark of the Covenant.');
       render(curState);
     }
+    else if (act === 'ga') { var gaUid = btn.getAttribute('data-uid'); if (!gaUid) return; CB.onUseGroupAction(gaUid); }
     else if (act === 'gadgetuse') { var guUid = btn.getAttribute('data-uid'); if (!guUid) return; CB.onUseGadgetAction(guUid); }
     else if (act === 'resdestroypick') { sel = { mode: 'resDestroy', data: { resUid: btn.getAttribute('data-uid') } }; log('🎯 Paso 2/2 — elige el Resource objetivo y luego TIRA EL DADO.'); render(curState); }
     else if (act === 'resdestroycancel') { clearSel(); render(curState); }

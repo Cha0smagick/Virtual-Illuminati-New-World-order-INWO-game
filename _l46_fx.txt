@@ -1,0 +1,59 @@
+
+/* L46 — acciones de grupo y pasivas de mano/privilegio:
+ * - group_action: el grupo gasta SU ficha y E.useGroupAction ejecuta el efecto
+ *   (la UI ofrece el boton con el patron pendbar).
+ * - hand_limit_bonus: +N al limite de Plot en mano mientras se controle.
+ * - combo_bonus con breakPrivilege + fi.onlyPrivileged: "can interfere in any
+ *   privileged attack... making that attack no longer privileged".
+ * Israel ademas tiene atk_bonus (control del Mossad). LIMITACION: el fi de
+ * Moonies/Israel es 'any privileged attack' (sin calificador). */
+const L46_FX = {
+  'Conspiracy Theorists': {
+    kind: 'hand_limit_bonus',
+    v: 1,
+    t: 'Conspiracy Theorists While you control this group, you may have one extra Plot card in your hand at all times.'
+  },
+  'Silicon Valley': {
+    kind: 'group_action',
+    act: 'extra_plot_draw',
+    t: 'Silicon Valley On your turn, you can use Silicon Valleys action to draw an extra Plot card.'
+  },
+  'Psychiatrists': {
+    kind: 'group_action',
+    act: 'discard_exposed',
+    exceptGoal: true,
+    t: 'Psychiatrists By using its action, this group may force a rival to discard any one exposed Plot except a Goal.'
+  },
+  'Templars': {
+    kind: 'group_action',
+    act: 'discard_exposed',
+    pickChoice: true,
+    t: 'Templars By using this groups action, you may force any rival to discard one exposed Plot card of your choice.'
+  },
+  'Society for Creative Anarchism': {
+    kind: 'group_action',
+    act: 'discard_groups_top',
+    t: 'Society for Creative Anarchism By using this groups action, you may force a rival to discard the top card from his Groups deck.'
+  },
+  'Moonies': {
+    kind: 'combo_bonus',
+    fi: { onlyPrivileged: true },
+    breakPrivilege: true,
+    t: 'Moonies As their action, the Moonies can interfere in any privileged attack, regardless of alignments, making that attack no longer privileged.'
+  },
+  'Religious Reich': {
+    kind: 'combo_bonus',
+    fi: { onlyPrivileged: true, side: 'attacker', vs: { aligns: ['straight', 'conservative'], match: 'any' } },
+    breakPrivilege: true,
+    t: 'Religious Reich This group can interfere in any privileged attack made by, or with the help of, any Straight or Conservative group. If it does so, that attack is no longer privileged.'
+  },
+  'Israel': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'control', vs: { cardId: 'mossad' }, value: 8 }] },
+    fi: { onlyPrivileged: true },
+    breakPrivilege: true,
+    t: 'Israel Gives +8 on any attempt to control the Mossad. Israel can interfere in any attack, regardless of alignment, even if it was privileged. That negates the privilege.'
+  }
+};
+const L46_FXN = {};
+for (const k46 in L46_FX) { L46_FXN[norm(k46)] = L46_FX[k46]; }

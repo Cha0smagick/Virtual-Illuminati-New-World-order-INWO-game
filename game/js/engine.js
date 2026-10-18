@@ -3648,6 +3648,86 @@ function isMasterOrPuppetOf(uid,tNode){
   return !!(parent&&parent.uid===uid);
 }
 
+/* L46 — CONDUCTOR DE ACCIONES DE GRUPO. Un grupo con {kind:'group_action',
+   act:...} gasta SU ficha y el motor ejecuta el efecto. La UI ofrece el boton
+   (patron pendbar) y pasa opts por accion. Handlers:
+     extra_plot_draw    — el dueno roba una Plot extra (Silicon Valley).
+     discard_exposed    — fuerza a un rival a descartar una Plot expuesta
+                          (Psychiatrists: excepto Goals; Templars: a eleccion
+                          con pickChoice).
+     discard_groups_top — el rival descarta la primera carta de su Groups deck
+                          (Society for Creative Anarchism). */
+E.useGroupAction=function(pid,uid,opts){
+  opts=opts||{};
+  if(S.phase!=='main')throw new Error('Solo en fase principal');
+  var nd=findNode(uid);
+  if(!nd)throw new Error('Grupo inexistente');
+  if(findOwnerPid(uid)!==pid)throw new Error('El grupo no te pertenece');
+  if(nd.paralyzed||nd.zapped||nd.devastated)throw new Error('El grupo no puede actuar');
+  var c=card(nd.cardId);
+  var e=c&&c.effect;
+  if(!e||e.kind!=='group_action')throw new Error(c.name+': no tiene accion de grupo jugable');
+  if(nd.tokens==null||nd.tokens<1)throw new Error(c.name+': sin Action token');
+  if(S.attack&&!S.attack.resolved)throw new Error(c.name+': no durante un ataque');
+  var act=String(e.act||'');
+  var out;
+  if(act==='extra_plot_draw'){
+    if(S.pendingDraw)throw new Error('Primero resuelve la eleccion de robo pendiente');
+    if(plotDrawBlocked(pid))throw new Error('Unlucky 13: no puedes robar Plot cards este turno');
+    var ix=drawFrom(S.plotDeck,S.plotDiscard,'plots');
+    if(ix==null)throw new Error('No quedan Plot cards');
+    S.players[pid].hand.push(ix);
+    log(c.name+': '+S.players[pid].name+' roba una Plot extra');
+    out={idx:ix};
+  }else if(act==='discard_exposed'){
+    var rpid=opts.rivalPid!=null?opts.rivalPid:(pid===0?1:0);
+    var rv=S.players[rpid];
+    if(!rv)throw new Error(c.name+': ese rival no existe');
+    var ex=(rv.exposedPlots||[]).filter(function(ix2){
+      var cc=card(ix2);
+      if(e.exceptGoal&&cc&&cc.subtype==='goal')return false;
+      return true;
+    });
+    if(!ex.length)throw new Error(c.name+': '+rv.name+' no tiene ninguna Plot expuesta'+(e.exceptGoal?' (excepto Goals)':''));
+    var pick=opts.exposedIdx;
+    if(e.pickChoice&&pick!=null&&ex.indexOf(pick)<0)throw new Error(c.name+': esa Plot ya no esta expuesta');
+    if(pick==null||ex.indexOf(pick)<0)pick=ex[0];
+    removeFromHand(rv,pick);discardPlot(pick,rpid);
+    log(c.name+': '+rv.name+' descarta su Plot expuesta '+card(pick).name);
+    out={discarded:pick};
+  }else if(act==='discard_groups_top'){
+    var rpid2=opts.rivalPid!=null?opts.rivalPid:(pid===0?1:0);
+    var rv2=S.players[rpid2];
+    if(!rv2)throw new Error(c.name+': ese rival no existe');
+    if(!S.groupDeck.length)throw new Error(c.name+': el Groups deck del rival esta vacio');
+    var ix3=S.groupDeck.pop();
+    S.groupDiscard.push(ix3);
+    log(c.name+': '+rv2.name+' descarta la primera carta de su Groups deck ('+card(ix3).name+')');
+    out={discarded:ix3};
+  }else{
+    throw new Error(c.name+': accion de grupo desconocida ('+act+')');
+  }
+  nd.tokens--;
+  return out===undefined?publicState():out;
+};
+/* L46 — privilege_break: "can interfere in any privileged attack... making that
+   attack no longer privileged" (Moonies, Religious Reich, Israel). El grupo
+   participante habilita su entrada y DESHACE el privilegio para el resto. */
+function privilegeBreakBy(uid){
+  var nd=findNode(uid);
+  if(!nd||nd.cardId==null)return false;
+  var c=card(nd.cardId);
+  var e=c&&c.effect;
+  if(!e||e.breakPrivilege!==true)return false;
+  var fi=bonusPart(e,'fi');
+  if(fi&&fi.vs&&Object.keys(fi.vs).length){
+    var an=findNode(S.attack?S.attack.attackerUid:null);
+    var ac=an?card(an.cardId):null;
+    if(!ac||!vsMatchQ(fi.vs,an,ac))return false;
+  }
+  return true;
+}
+/* aid/oppose entries: {uid,power} — eligibility checked here */
 /* aid/oppose entries: {uid,power} — eligibility checked here */
 E.addSupport=function(pid,entry){
   if(!S.attack||S.attack.resolved)throw new Error('Sin ataque activo');
@@ -3678,7 +3758,8 @@ E.addSupport=function(pid,entry){
      &&!(S.frogGodOpen&&S.frogGodOpen.pid===pid&&S.frogGodOpen.turn===S.turn)
      /* L38 — 414 Bimbo at Eleven: "Privileged except for Media groups: any Media
         group can interfere on either side." */
-     &&!(A.privilegeMediaFree&&(function(){var sM38=findNode(entry.uid);var cM38=sM38?card(sM38.cardId):null;return !!(cM38&&hasAttr(cM38,'media',sM38));})()))
+     &&!(A.privilegeMediaFree&&(function(){var sM38=findNode(entry.uid);var cM38=sM38?card(sM38.cardId):null;return !!(cM38&&hasAttr(cM38,'media',sM38));})())
+     &&!privilegeBreakBy(entry.uid))
     throw new Error('El ataque es PRIVILEGIADO: solo el atacante y el defensor pueden participar');
   if(entry.selfDefend){
     if(pid!==A.targetPid||!A.targetUid)throw new Error('Solo un defensor de un grupo en juego puede autoprotegerse');
@@ -3760,6 +3841,8 @@ E.addSupport=function(pid,entry){
   }
   spendGroupToken(pid,entry.uid);
   (entry.oppose?A.opposes:A.aids).push({uid:entry.uid,name:sc.name,power:pw});
+  /* L46: el privilegio se deshace para todos. */
+  if(A.privilege&&privilegeBreakBy(entry.uid)){A.privilege=false;log(sc.name+' interfiere y DESHACE el privilegio del ataque');}
   log((entry.oppose?'Se OPONE ':'Ayuda ')+sc.name+' (+'+pw+')');
   return publicState();
 };
@@ -3842,9 +3925,24 @@ function shangriLaBlocksDestroy(defPid,node){
   return nodeAligns(node).indexOf('violent')<0;
 }
 /* Gnomes of Zurich: 6 Plots en mano en lugar de 5. */
+/* L46 — limite de mano ampliado por grupos ("+1 extra Plot card in hand at all
+   times", Conspiracy Theorists). Se suma al limite de la faccion. */
+function handLimitBonusOf(pid){
+  var st=(pid!=null&&pid>=0&&S.players[pid])?S.players[pid].structure:null;
+  if(!st)return 0;
+  var v=0;
+  walk(st,function(nd){
+    if(nd.cardId==null)return;
+    var c=card(nd.cardId);
+    var e=c&&c.effect;
+    if(e&&e.kind==='hand_limit_bonus')v+=(Number(e.v)||0);
+  });
+  return v;
+}
 function plotHandLimitOf(pid){
   var e=illuEff(pid);
-  return (typeof e.plotHandLimit==='number')?e.plotHandLimit:5;
+  var base=(typeof e.plotHandLimit==='number')?e.plotHandLimit:5;
+  return base+handLimitBonusOf(pid);
 }
 
 /* ---------------- strength calc ---------------- */
@@ -3911,6 +4009,8 @@ function bonusPart(e,which){
    los dos, "other" excluye al propio participante en el bando que toca). */
 function fiMatch43(fi,tNode,tCard,selfUid){
   if(!fi)return false;
+  /* L46: fi.onlyPrivileged — solo habilita la entrada en ataques PRIVILEGIADOS. */
+  if(fi.onlyPrivileged&&!(S.attack&&S.attack.privilege))return false;
   var vs=fi.vs||{};
   var side=fi.side||'both';
   var attN=findNode(S.attack?S.attack.attackerUid:null);
@@ -8141,6 +8241,10 @@ case 'bulk_power':{
       throw new Error(c.name+': habilidad pasiva — su bonus de Poder se aplica a los grupos que protege');
     case 'power_per_count':
       throw new Error(c.name+': habilidad pasiva — su Poder se recalcula por cada grupo que cuenta');
+    case 'group_action':
+      throw new Error(c.name+': habilidad activa: se usa con su accion, no jugandola');
+    case 'hand_limit_bonus':
+      throw new Error(c.name+': habilidad pasiva: su bonus de limite se aplica mientras se le controle');
     case 'no_goal_destroy':
       throw new Error(c.name+': habilidad pasiva — destruirla no cuenta para ninguna meta');
     case 'weird_refuel':

@@ -3411,6 +3411,66 @@ const L45_FX = {
 const L45_FXN = {};
 for (const k45 in L45_FX) { L45_FXN[norm(k45)] = L45_FX[k45]; }
 
+/* L46 — acciones de grupo y pasivas de mano/privilegio:
+ * - group_action: el grupo gasta SU ficha y E.useGroupAction ejecuta el efecto
+ *   (la UI ofrece el boton con el patron pendbar).
+ * - hand_limit_bonus: +N al limite de Plot en mano mientras se controle.
+ * - combo_bonus con breakPrivilege + fi.onlyPrivileged: "can interfere in any
+ *   privileged attack... making that attack no longer privileged".
+ * Israel ademas tiene atk_bonus (control del Mossad). LIMITACION: el fi de
+ * Moonies/Israel es 'any privileged attack' (sin calificador). */
+const L46_FX = {
+  'Conspiracy Theorists': {
+    kind: 'hand_limit_bonus',
+    v: 1,
+    t: 'Conspiracy Theorists While you control this group, you may have one extra Plot card in your hand at all times.'
+  },
+  'Silicon Valley': {
+    kind: 'group_action',
+    act: 'extra_plot_draw',
+    t: 'Silicon Valley On your turn, you can use Silicon Valleys action to draw an extra Plot card.'
+  },
+  'Psychiatrists': {
+    kind: 'group_action',
+    act: 'discard_exposed',
+    exceptGoal: true,
+    t: 'Psychiatrists By using its action, this group may force a rival to discard any one exposed Plot except a Goal.'
+  },
+  'Templars': {
+    kind: 'group_action',
+    act: 'discard_exposed',
+    pickChoice: true,
+    t: 'Templars By using this groups action, you may force any rival to discard one exposed Plot card of your choice.'
+  },
+  'Society for Creative Anarchism': {
+    kind: 'group_action',
+    act: 'discard_groups_top',
+    t: 'Society for Creative Anarchism By using this groups action, you may force a rival to discard the top card from his Groups deck.'
+  },
+  'Moonies': {
+    kind: 'combo_bonus',
+    fi: { onlyPrivileged: true },
+    breakPrivilege: true,
+    t: 'Moonies As their action, the Moonies can interfere in any privileged attack, regardless of alignments, making that attack no longer privileged.'
+  },
+  'Religious Reich': {
+    kind: 'combo_bonus',
+    fi: { onlyPrivileged: true, side: 'attacker', vs: { aligns: ['straight', 'conservative'], match: 'any' } },
+    breakPrivilege: true,
+    t: 'Religious Reich This group can interfere in any privileged attack made by, or with the help of, any Straight or Conservative group. If it does so, that attack is no longer privileged.'
+  },
+  'Israel': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'control', vs: { cardId: 'mossad' }, value: 8 }] },
+    fi: { onlyPrivileged: true },
+    breakPrivilege: true,
+    t: 'Israel Gives +8 on any attempt to control the Mossad. Israel can interfere in any attack, regardless of alignment, even if it was privileged. That negates the privilege.'
+  }
+};
+const L46_FXN = {};
+for (const k46 in L46_FX) { L46_FXN[norm(k46)] = L46_FX[k46]; }
+
+
 
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
 
@@ -3701,7 +3761,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key] || L46_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

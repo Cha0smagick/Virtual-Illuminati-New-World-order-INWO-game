@@ -266,6 +266,15 @@ var CB = {
    * PRIMER grupo/resource propio que ya gasto su ficha y se descarta el
    * primer Plot de la mano; el motor valida el resto (laguna UI declarada en
    * plan.md SS82: para elegir el objetivo concreto, usar la API del motor). */
+  /* L46 - accion de grupo: el motor aplica los defaults (primer rival / primera Plot expuesta). */
+  onUseGroupAction: function (uid) {
+    try {
+      var stG = E.getState();
+      E.useGroupAction(stG.currentPid, uid, {});
+      after('Accion de grupo usada');
+    } catch (e) { log("! " + e.message); }
+  },
+
   onCwsRefuel: function () {
     try {
       var stE = E.getState();
