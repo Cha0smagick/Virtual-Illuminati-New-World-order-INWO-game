@@ -1,3 +1,0 @@
-
-const L47_FXN = {};
-for (const k47 in L47_FX) { L47_FXN[norm(k47)] = L47_FX[k47]; }

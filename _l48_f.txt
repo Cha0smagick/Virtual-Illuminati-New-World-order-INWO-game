@@ -1,7 +1,0 @@
-      var sc48=cl.scope||e.scope||'self';
-      if(sc48==='parent'&&nd!==attNode){/* verificado abajo */}
-      if(sc48==='parent'){
-        var oPrt=findOwnerPid(attNode?attNode.uid:null);
-        var par46=(oPrt>=0&&attNode)?findNodeThatHas(S.players[oPrt].structure,attNode.uid):null;
-        if(!par46||par46.uid!==nd.uid)return;
-      }else if(sc48!=='owner'&&nd!==attNode)return;
