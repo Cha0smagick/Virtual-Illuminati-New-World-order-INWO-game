@@ -2309,6 +2309,7 @@ var KIND_ES = {
   hand_limit_bonus: 'Amplia el limite de Plot en mano mientras se le controle',
   undergroundnewspapers: 'Robas una Plot al ayudar a destruir',
   power_if_card: 'Poder alternativo segun otra carta en juego',
+  punk_ban_aids: 'Veta las ayudas Weird/Liberal al objetivo',
   opec_roll: 'Fija su Poder con 2d6-2 al empezar el turno',
   comics_zero: 'Baja a 0 la Resistance del objetivo Weird',
   eff_shield: 'Dobla el Poder de los defensores Computer',

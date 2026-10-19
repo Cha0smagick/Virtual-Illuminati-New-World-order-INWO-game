@@ -8634,6 +8634,8 @@ case 'bulk_power':{
       throw new Error(c.name+': habilidad pasiva — su robo de Plot se aplica al ayudar a destruir');
     case 'power_if_card':
       throw new Error(c.name+': habilidad pasiva — su Poder se recalcula al mirar las cartas en juego');
+    case 'punk_ban_aids':
+      throw new Error(c.name+': habilidad pasiva — ningun Weird o Liberal ayuda al objetivo cuando participa');
     case 'opec_roll':
       throw new Error(c.name+': habilidad pasiva — su Poder se fija al empezar el turno de su dueno');
     case 'comics_zero':
