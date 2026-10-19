@@ -6068,6 +6068,26 @@ function announcePlotInstantAttack(pid,pc,tUid,opts){
 function applyPlotInstantAttack(ann){
   var pc=card(ann.cardIdx),eff=ann.eff,tc=ann.tc;
   var str=ann.str;
+  /* L67 - disasterResist: "+N a resistir cualquier Disaster" de los grupos del
+     DUENO del objetivo. BLINDAJE: el nodo puede no estar ya en la estructura;
+     try/catch + guardas para que un fallo aqui nunca cancele el ataque. */
+  (function(){
+    try{
+      if(eff.kind!=='disaster'||!ann.nd||ann.nd.uid==null)return;
+      var owD67=findOwnerPid(ann.nd.uid);
+      if(owD67<0||!S.players[owD67]||!S.players[owD67].structure)return;
+      walk(S.players[owD67].structure,function(gD67){
+        if(gD67.cardId==null)return;
+        var gcD67=card(gD67.cardId);
+        var drD67=gcD67&&bonusPart(gcD67.effect,'disasterResist');
+        if(drD67&&(!drD67.onlyPlaces||(ann.tc&&ann.tc.subtype==='place'))){
+          var vD67=Number(drD67.value)||0;
+          if(vD67){str+=vD67;ann.notes.push(gcD67.name+': +'+vD67+' a resistir el Disaster');}
+        }
+      });
+    }catch(eD67){}
+  })();
+
   var res={strength:str,power:ann.power,defense:ann.defPower,target:tc.name,plot:pc.name};
   res.notes=ann.notes.slice();
   if(str<2){

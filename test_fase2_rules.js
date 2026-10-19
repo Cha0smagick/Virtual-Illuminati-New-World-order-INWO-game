@@ -12557,6 +12557,21 @@ if (readyToAttack(1) != null) {
     ok(raw66.players[0].destroyedByMe.indexOf(idxOfId('imeldamarcos')) >= 0, 'L66 Imelda destruida cuenta para el objetivo');
     var alive66 = false; (function w66(root) { if (alive66 || !root) return; if (root.cardId === idxOfId('imeldamarcos')) { alive66 = true; return; } (root.children || []).forEach(w66); })(raw66.players[0].structure);
     ok(!alive66, 'L66 Imelda ya no esta en la estructura');
+  /* ===== L67 - International Weather Organization ===== */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(1) != null) {
+    plant(0, 'iw67', idxOfId('internationalweatherorganization'), 1);
+    var raw67 = E._raw();
+    raw67.players[0].structure.children.push({ uid: 'pl67', cardId: idxOfId('dinosaurpark'), children: [], tokens: 1 });
+    var tIdx = idxOfId('tornado');
+    toHandXL13(1, tIdx, 1);
+    var r67 = Math.random; Math.random = function () { return 0.99; };
+    var out67 = E.playPlot(1, tIdx, 'pl67', {});
+    Math.random = r67;
+    var notes67 = (out67 && out67.lastPlotResult && out67.lastPlotResult.notes) || [];
+    ok(notes67.some(function (n67) { return /Weather/.test(n67) && /\+6/.test(n67); }), 'L67 IWO: +6 a defender su Place del Disaster -> ' + notes67.join(' | '));
+  } else { ok(true, "L67 (IWO) SKIP"); }
+
   } else { ok(true, "L66 (Imelda 6) SKIP"); }
 
   } else { ok(true, "L65 (PR sin) SKIP"); }
