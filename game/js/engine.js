@@ -3670,6 +3670,7 @@ E.useGroupAction=function(pid,uid,opts){
   if(nd.tokens==null||nd.tokens<1)throw new Error(c.name+': sin Action token');
   if(S.attack&&!S.attack.resolved)throw new Error(c.name+': no durante un ataque');
   var act=String(e.act||'');
+  var freeLook=(act==='look_hand'&&!opts.expose);
   var out;
   if(act==='extra_plot_draw'){
     if(S.pendingDraw)throw new Error('Primero resuelve la eleccion de robo pendiente');
@@ -3679,6 +3680,45 @@ E.useGroupAction=function(pid,uid,opts){
     S.players[pid].hand.push(ix);
     log(c.name+': '+S.players[pid].name+' roba una Plot extra');
     out={idx:ix};
+  }else if(act==='look_hand'){
+    var what=String(e.what||'group');
+    var cnt=Number(e.count)||2;
+    var rpid3=opts.rivalPid!=null?opts.rivalPid:(pid===0?1:0);
+    var rv3=S.players[rpid3];
+    if(!rv3)throw new Error(c.name+': ese rival no existe');
+    var pool=rv3.hand.filter(function(ix2){
+      var cc=card(ix2);
+      if(!cc)return false;
+      return what==='plot'?cc.type==='plot':cc.type==='group';
+    });
+    if(pool.length<cnt)throw new Error(c.name+': la mano de '+rv3.name+' no tiene '+cnt+' cartas de ese tipo');
+    var picks=[];
+    var pool2=pool.slice();
+    for(var iL=0;iL<cnt&&pool2.length;iL++)picks.push(pool2.splice(Math.floor(Math.random()*pool2.length),1)[0]);
+    var names=picks.map(function(ix5){return card(ix5).name;}).join(', ');
+    if(opts.expose){
+      picks.forEach(function(ix5){if(rv3.exposedPlots.indexOf(ix5)<0)rv3.exposedPlots.push(ix5);});
+      log(c.name+': las cartas de la mano de '+rv3.name+' quedan EXPUESTAS: '+names);
+    }else{
+      log(c.name+': miras '+cnt+' cartas de la mano de '+rv3.name+': '+names);
+    }
+    out={looked:picks};
+  }else if(act==='places_roll_draw'){
+    var nP=0;
+    walk(S.players[pid].structure,function(x46){if(x46.cardId!=null){var cc46=card(x46.cardId);if(cc46&&cc46.subtype==='place')nP++;}});
+    var rl=roll2d6();
+    if(rl<=nP){
+      var got=0;
+      for(var iD=0;iD<rl;iD++){
+        var ixD=drawFrom(S.plotDeck,S.plotDiscard,'plots');
+        if(ixD==null)break;
+        S.players[pid].hand.push(ixD);got++;
+      }
+      log(c.name+': tirada '+rl+' <= '+nP+' Places — robas '+got+' Plot'+(got===1?'':'s'));
+    }else{
+      log(c.name+': tirada '+rl+' > '+nP+' Places — sin botin');
+    }
+    out={roll:rl,places:nP};
   }else if(act==='discard_exposed'){
     var rpid=opts.rivalPid!=null?opts.rivalPid:(pid===0?1:0);
     var rv=S.players[rpid];
@@ -3707,7 +3747,7 @@ E.useGroupAction=function(pid,uid,opts){
   }else{
     throw new Error(c.name+': accion de grupo desconocida ('+act+')');
   }
-  nd.tokens--;
+  if(!freeLook)nd.tokens--;
   return out===undefined?publicState():out;
 };
 /* L46 — privilege_break: "can interfere in any privileged attack... making that

@@ -3470,6 +3470,37 @@ const L46_FX = {
 const L46_FXN = {};
 for (const k46 in L46_FX) { L46_FXN[norm(k46)] = L46_FX[k46]; }
 
+/* L47 — mirar/exponer la mano del rival (Post Office, Phone Company) y la
+ * tirada de Places (Flat Earthers). Handlers en E.useGroupAction:
+ *   look_hand        — mirar es FREE MOVE (sin ficha); con opts.expose se usa
+ *                      la segunda frase del impreso y gasta la ficha.
+ *   places_roll_draw — Flat Earthers: 2d6 <= Places controlados. */
+const L47_FX = {
+  'Post Office': {
+    kind: 'group_action',
+    act: 'look_hand',
+    what: 'group',
+    count: 2,
+    t: 'Post Office During your turn, you may draw any two Group cards randomly from the hand of a rival, and look at them. This is a free move. At any time, the Post Office may use its action to draw any two Group cards randomly from the hand of a rival and show them to all players!'
+  },
+  'Phone Company': {
+    kind: 'group_action',
+    act: 'look_hand',
+    what: 'plot',
+    count: 2,
+    t: 'Phone Company During your turn, you may draw any two hidden Plot cards randomly from the hand of a rival, and look at them. This is a free move. At any time, the Phone Company may use its action to draw any two hidden Plot cards randomly from the hand of a rival and expose them!'
+  },
+  'Flat Earthers': {
+    kind: 'group_action',
+    act: 'places_roll_draw',
+    t: 'Flat Earthers For their action, you may roll 2 dice. If your roll is equal to or less than the number of Places you control, the Flat Earthers weird alternate geology has led them to a gold strike, and you may draw as many Plot cards as the number you rolled.'
+  }
+};
+
+const L47_FXN = {};
+for (const k47 in L47_FX) { L47_FXN[norm(k47)] = L47_FX[k47]; }
+
+
 
 
 const ACTION_COST_KINDS = ['disaster','res_nullify','attack_boost','force_discard_exposed','turn_start_block','disaster_defence','cropcircles'];
@@ -3761,7 +3792,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key] || L46_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key] || L46_FXN[key] || L47_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

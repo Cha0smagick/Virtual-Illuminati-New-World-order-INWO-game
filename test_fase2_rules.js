@@ -12021,6 +12021,16 @@ if (readyToAttack(0) != null) {
     E._raw().players[0].hand = plots46;
     clear24(); E.endTurn();
     ok(E._raw().players[0].hand.length === 6, "L46 Conspiracy Theorists: 6 Plots al fin de turno (limite +1) -> " + E._raw().players[0].hand.length);
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'po46', idxOfId('postoffice'), 1);
+    var hb47 = E._raw().players[1].hand.length;
+    E._raw().players[1].hand.push(idxOfId('canada'), idxOfId('california'));
+    E.useGroupAction(0, 'po46', {});
+    var po46n = null; (function w(n) { if (n.uid === 'po46') po46n = n; (n.children || []).forEach(w); })(E._raw().players[0].structure);
+    ok(po46n && po46n.tokens === 1 && E._raw().players[1].hand.length === hb47 + 2, 'L47 Post Office mirar es free move (sin gastar ficha)');
+  } else { ok(true, 'L47 (PO) SKIP'); }
+
   } else { ok(true, "L46 (CT) SKIP"); }
   fresh(idxOfId(U), idxOfId(V));
   if (readyToAttack(0) != null) {

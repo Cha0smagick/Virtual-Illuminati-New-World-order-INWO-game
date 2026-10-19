@@ -1,0 +1,8 @@
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'po46', idxOfId('postoffice'), 1);
+    E._raw().players[1].hand.push(idxOfId('canada'), idxOfId('california'));
+    E.useGroupAction(0, 'po46', {});
+    var po46n = null; (function w(n) { if (n.uid === 'po46') po46n = n; (n.children || []).forEach(w); })(E._raw().players[0].structure);
+    ok(po46n && po46n.tokens === 1 && E._raw().players[1].hand.length === 2, 'L47 Post Office mirar es free move (sin gastar ficha)');
+  } else { ok(true, 'L47 (PO) SKIP'); }

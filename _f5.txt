@@ -1,0 +1,16 @@
+  }else if(act==='places_roll_draw'){
+    var nP=0;
+    walk(S.players[pid].structure,function(x46){if(x46.cardId!=null){var cc46=card(x46.cardId);if(cc46&&cc46.subtype==='place')nP++;}});
+    var rl=roll2d6();
+    if(rl<=nP){
+      var got=0;
+      for(var iD=0;iD<rl;iD++){
+        var ixD=drawFrom(S.plotDeck,S.plotDiscard,'plots');
+        if(ixD==null)break;
+        S.players[pid].hand.push(ixD);got++;
+      }
+      log(c.name+': tirada '+rl+' <= '+nP+' Places');
+    }else{
+      log(c.name+': tirada '+rl+' > '+nP+' Places, sin botin');
+    }
+    out={roll:rl,places:nP};

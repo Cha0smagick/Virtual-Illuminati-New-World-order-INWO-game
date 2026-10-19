@@ -1,0 +1,22 @@
+
+/* L47 — mirar/exponer la mano del rival (Post Office, Phone Company) y la
+ * tirada de Places (Flat Earthers). Handlers en E.useGroupAction:
+ *   look_hand        — mirar es FREE MOVE (sin ficha); con opts.expose se usa
+ *                      la segunda frase del impreso y gasta la ficha.
+ *   places_roll_draw — Flat Earthers: 2d6 <= Places controlados. */
+const L47_FX = {
+  'Post Office': {
+    kind: 'group_action',
+    act: 'look_hand',
+    what: 'group',
+    count: 2,
+    t: 'Post Office During your turn, you may draw any two Group cards randomly from the hand of a rival, and look at them. This is a free move. At any time, the Post Office may use its action to draw any two Group cards randomly from the hand of a rival and show them to all players!'
+  },
+  'Phone Company': {
+    kind: 'group_action',
+    act: 'look_hand',
+    what: 'plot',
+    count: 2,
+    t: 'Phone Company During your turn, you may draw any two hidden Plot cards randomly from the hand of a rival, and look at them. This is a free move. At any time, the Phone Company may use its action to draw any two hidden Plot cards randomly from the hand of a rival and expose them!'
+  }
+};
