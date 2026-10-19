@@ -3171,26 +3171,6 @@ const L41_FX = {
     clauses: [{ scope: 'self', atkType: 'destroy', vs: { align: 'weird' }, value: 10 }],
     t: 'Gordo Remora Personality He mobilizes hate and fear against fringe groups — anything for a ratings point! Gordo gets a +10 bonus if he makes a direct attack to destroy a Weird group.'
   },
-  'Girlie Magazines': {
-    kind: 'atk_bonus',
-    clauses: [{ scope: 'self', atkType: 'control', vs: { align: 'straight' }, value: 5 }],
-    t: 'Girlie Magazines Has +5 for direct control of any Straight group. But they dont look at the pictures, they just read the articles. Honest!'
-  },
-  'Democrats': {
-    kind: 'atk_bonus',
-    clauses: [{ scope: 'self', atkType: 'control', vs: { align: 'government', notAttr: 'nation' }, value: 4 }],
-    t: 'Democrats The Democrats have an extra +4 for direct control of any Government group that is not a Nation.'
-  },
-  'Federal Reserve': {
-    kind: 'atk_bonus',
-    clauses: [
-      { scope: 'owner', atkType: 'any', vs: { attr: 'bank' }, value: 6 },
-      { scope: 'owner', atkType: 'any', vs: { attr: 'nation' }, value: 2 },
-      { scope: 'owner', atkType: 'any', vs: { align: 'corporate' }, value: 2 }
-    ],
-    pick: 'sum',
-    t: 'Federal Reserve Gives a +6 on any attack against any Bank, and a +2 on any attack against any Nation or Corporate group.'
-  },
   'Anti-Nuclear Activists': {
     kind: 'atk_bonus',
     clauses: [
@@ -3280,12 +3260,6 @@ const L42_FX = {
     def: { clauses: [{ scope: 'owner', mode: 'both', vsAtk: { align: 'liberal' }, value: 4 }] },
     t: 'Black Activists Gives +2 to any attempt to control any Liberal group. Gives +4 to your defense against any attack made, or aided, by a Liberal group.'
   },
-  'Trekkies': {
-    kind: 'combo_bonus',
-    atk: { clauses: [{ scope: 'self', atkType: 'control', vs: { attr: 'media' }, value: 4 }] },
-    def: { clauses: [{ scope: 'self', mode: 'resist', vsAtk: { attr: 'media' }, value: 4 }] },
-    t: 'Trekkies Any Media group gets a +4 on any attack to control the Trekkies, the Trekkies also get a +4 on any direct attack to control any Media group.'
-  },
   'Secular Humanists': {
     kind: 'def_bonus',
     clauses: [{ scope: 'owner', mode: 'both', excludeSelf: true, vsAtk: { aligns: ['straight', 'conservative'], match: 'any' }, value: 3 }],
@@ -3346,7 +3320,6 @@ const L44_FX = {
         { scope: 'owner', atkType: 'control', vs: { puppetOfAttr: 'communist' }, value: 3 }
       ]
     },
-    flip: { clauses: [{ scope: 'self', atkType: 'control', vs: { align: 'fanatic', attr: 'communist' }, value: 4 }] },
     t: 'International Communist Conspiracy +3 on any attempt to control any Communist group, or any puppet of a Communist group. The International Communist Conspiracy also has a +4, rather than a -4, for direct control of any Fanatic Communist group.'
   },
   'Urban Gangs': {
@@ -3786,6 +3759,185 @@ const L55_FX = {
 const L55_FXN = {};
 for (const k55 in L55_FX) { L55_FXN[norm(k55)] = L55_FX[k55]; }
 
+/* L56 — AADA (+4 al destruir Violent, +4 al ayudar) y Fiendish Fluoridators
+ * (+5 al destruir Straight/Conservative y roba una Plot al hacerlo).
+ * Piezas existentes: atk_bonus, aid_power.
+ * Pieza nueva: draw_on_destroy — hook en applyAttackResult: al destruir un
+ * grupo que casa `vs`, el dueno del efecto roba una Plot.
+ * NOTA (AADA): se descarta la lectura "en vez de la penalizacion" porque no
+ * esta en el texto recuperado; se mapea +4 directo + +4 de ayuda. */
+const L56_FX = {
+  'American Autoduel Association': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'self', atkType: 'destroy', vs: { align: 'violent' }, value: 4 }] },
+    aid: { clauses: [{ vs: { align: 'violent' }, value: 4 }] },
+    t: 'American Autoduel Association Gives +4 on any attempt to destroy any Violent group. It can also aid any such attack, with a +4 bonus.'
+  },
+  'Fiendish Fluoridators': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'destroy', vs: { aligns: ['straight', 'conservative'], match: 'any' }, value: 5 }] },
+    drawOnDestroy: { vs: { aligns: ['straight', 'conservative'], match: 'any' } },
+    t: 'Fiendish Fluoridators Gives +5 to any attempt to destroy a Straight or Conservative group. When you do destroy one, draw a Plot card!'
+  }
+};
+const L56_FXN = {};
+for (const k56 in L56_FX) { L56_FXN[norm(k56)] = L56_FX[k56]; }
+
+/* L57 — puras con piezas existentes (0 piezas nuevas):
+ *   Margaret Thatcher  +10 al controlar England.
+ *   Girlie Magazines   +5 al control directo de un Straight.
+ *   Federal Reserve    +6 contra Bank, +2 contra Nation o Corporate.
+ * FUERA declarado: Vampires (solo mapea el +4; la transformacion en Vampiro y
+ * la muerte permanente no tienen pieza). */
+const L57_FX = {
+  'Margaret Thatcher': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'control', vs: { cardId: 'england' }, value: 10 }] },
+    t: 'Margaret Thatcher Gives +10 on any attempt to control England.'
+  },
+  'Girlie Magazines': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'self', atkType: 'control', vs: { align: 'straight' }, value: 5 }] },
+    t: 'Girlie Magazines Has +5 for direct control of any Straight group.'
+  },
+  'Federal Reserve': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'any', vs: { attr: 'bank' }, value: 6 },
+      { scope: 'owner', atkType: 'any', vs: { attr: 'nation' }, value: 2 },
+      { scope: 'owner', atkType: 'any', vs: { align: 'corporate' }, value: 2 }
+    ] },
+    t: 'Federal Reserve Gives a +6 on any attack against any Bank, and a +2 on any attack against any Nation or Corporate group.'
+  }
+};
+const L57_FXN = {};
+for (const k57 in L57_FX) { L57_FXN[norm(k57)] = L57_FX[k57]; }
+
+/* L58 — puppet de X (ICS e ICC) con calificadores nuevos en vsMatchQ:
+ *   masterCard : el MASTER del objetivo es una de esas cartas.
+ *   masterAlign / masterAttr: el MASTER del objetivo tiene esas
+ *                            alineaciones / atributos.
+ * Mas el flip de la ICC (+4 en vez de -4 contra Fanatic Communist). */
+const L58_FX = {
+  'International Cocaine Smugglers': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'control', vs: { cardId: 'punkrockers' }, value: 4 },
+      { scope: 'owner', atkType: 'control', vs: { cardId: 'cyclegangs' }, value: 4 },
+      { scope: 'owner', atkType: 'control', vs: { cardId: 'urbangangs' }, value: 4 },
+      { scope: 'owner', atkType: 'control', vs: { cardId: 'hollywood' }, value: 4 },
+      { scope: 'owner', atkType: 'control', vs: { cardId: 'manuelnoriega' }, value: 4 },
+      { scope: 'owner', atkType: 'control', vs: { masterCard: ['punkrockers', 'cyclegangs', 'urbangangs', 'hollywood', 'manuelnoriega'] }, value: 4 }
+    ], pick: 'best' },
+    t: 'International Cocaine Smugglers Gives +4 on any attempt to control the following groups, or any of their puppets: Punk Rockers, Cycle Gangs, Urban Gangs, Hollywood, Manuel Noriega.'
+  },
+  'International Communist Conspiracy': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'control', vs: { attr: 'communist' }, value: 3 },
+      { scope: 'owner', atkType: 'control', vs: { masterAttr: ['communist'] }, value: 3 }
+    ] },
+    t: 'International Communist Conspiracy +3 on any attempt to control any Communist group, or any puppet of a Communist group. The International Communist Conspiracy also has a +4, rather than a -4, for direct control of any Fanatic Communist group.'
+  }
+};
+const L58_FXN = {};
+for (const k58 in L58_FX) { L58_FXN[norm(k58)] = L58_FX[k58]; }
+
+/* L59 — pieza nueva contraAtk: bonus para los ATACANTES que casen `vs`
+ * contra la carta que la lleva (Tobacco: Green +4 a destruirla; Trekkies:
+ * Media +4 a controlarla). Mas Democrats (puro). */
+const L59_FX = {
+  'Democrats': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'self', atkType: 'control', vs: { align: 'government', notAttr: 'nation' }, value: 4 }] },
+    t: 'Democrats The Democrats have an extra +4 for direct control of any Government group that is not a Nation.'
+  },
+  'Tobacco Companies': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'self', atkType: 'control', vs: { align: 'government' }, value: 8 }] },
+    counterAtk: { clauses: [{ atkType: 'destroy', vs: { attr: 'green' }, value: 4 }] },
+    t: 'Tobacco Companies The Tobacco Companies have a +8, not the normal -4, for direct control of any Government group! Any Green group gets a +4 to destroy the Tobacco Companies.'
+  },
+  'Trekkies': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'self', atkType: 'control', vs: { attr: 'media' }, value: 4 }] },
+    counterAtk: { clauses: [{ atkType: 'control', vs: { attr: 'media' }, value: 4 }] },
+    t: 'Trekkies Any Media group gets a +4 on any attack to control the Trekkies, the Trekkies also get a +4 on any direct attack to control any Media group'
+  }
+};
+const L59_FXN = {};
+for (const k59 in L59_FX) { L59_FXN[norm(k59)] = L59_FX[k59]; }
+
+/* L60 — dos piezas nuevas de accion de grupo (useGroupAction):
+ *   hide_exposed — esconde hasta N Plots expuestas propias (free move).
+ *   give_token   — da su ficha a otro grupo propio que cumpla `attr`.
+ * Mas Fast Food Chains (+6 a destruir un Green) y NASA (+4 a controlar Space). */
+const L60_FX = {
+  'Fast Food Chains': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'destroy', vs: { attr: 'green' }, value: 6 }] },
+    ga: { act: 'hide_exposed', count: 2 },
+    t: 'Fast Food Chains Gives +6 on any attempt to destroy a Green group. The owner of this card can automatically hide two exposed Plots on his turn; no action is required.'
+  },
+  'NASA': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'control', vs: { attr: 'space' }, value: 4 }] },
+    ga: { act: 'give_token', attr: 'government' },
+    t: 'NASA Gives +4 to any attempt to control any Space group. NASA can give its Action token to any other Government group you control, as long as that group currently has no token. It may do this at any time except during an attack.'
+  }
+};
+const L60_FXN = {};
+for (const k60 in L60_FX) { L60_FXN[norm(k60)] = L60_FX[k60]; }
+
+/* L61 — OPEC (opec_roll) e Italy (free_defend). */
+const L61_FX = {
+  'OPEC': {
+    kind: 'opec_roll',
+    t: 'OPEC As oil prices vary, OPECs power also varies. At the beginning of your turn, roll 2 dice, subtracting 2 from the total, to set its power for that turn. If you also control either Texas or the Multinational Oil Companies, OPEC gets +1 power for each.'
+  },
+  'Italy': {
+    kind: 'combo_bonus',
+    freeDefend: { vs: { align: 'weird' }, scope: 'owner' },
+    t: 'Italy Italys Power can be used to defend any Weird group you control, as a free action.'
+  }
+};
+const L61_FXN = {};
+for (const k61 in L61_FX) { L61_FXN[norm(k61)] = L61_FX[k61]; }
+
+/* L62 — Gun Lobby: resistencia absoluta contra ciertos atacantes y robo de Plot
+ * cuando atacan a un Conservativo/Violento propio (aunque el ataque falle). */
+const L62_FX = {
+  'Gun Lobby': {
+    kind: 'combo_bonus',
+    resOverride: { vsAtk: { aligns: ['liberal', 'weird', 'communist'], match: 'any' }, value: 10 },
+    drawWhenAttacked: { vs: { aligns: ['conservative', 'violent'], match: 'any' } },
+    t: 'Gun Lobby Resistance is 3 normally. Against any Liberal, Weird or Communist group, resistance is 10! Any time a Conservative or Violent group in your Power Structure is attacked whether succeeds or fails you may draw a Plot Card as soon as the attack is over, if you still control the Gun Lobby.'
+  }
+};
+const L62_FXN = {};
+for (const k62 in L62_FX) { L62_FXN[norm(k62)] = L62_FX[k62]; }
+
+/* L63 — Gay Activists: invertir una alineacion de cualquier grupo hasta fin de
+ * turno. Reusa la capa TEMPORAL de nodeAligns (alignsTmpAdded/alignsTmpRemoved
+ * con sello de turno), asi que caduca sola. */
+const L63_FX = {
+  'Gay Activists': {
+    kind: 'combo_bonus',
+    ga: { act: 'reverse_align' },
+    t: 'Gay Activists This group can, as its action, reverse any one alignment of any group in play. It may do this at any time except during an attack. The effect lasts only until the end of the current turn.'
+  }
+};
+const L63_FXN = {};
+for (const k63 in L63_FX) { L63_FXN[norm(k63)] = L63_FX[k63]; }
+
+
+
+
+
+
+
+
+
 
 
 
@@ -4086,7 +4238,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key] || L46_FXN[key] || L47_FXN[key] || L48_FXN[key] || L49_FXN[key] || L50_FXN[key] || L51_FXN[key] || L52_FXN[key] || L53_FXN[key] || L54_FXN[key] || L55_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key] || L46_FXN[key] || L47_FXN[key] || L48_FXN[key] || L49_FXN[key] || L50_FXN[key] || L51_FXN[key] || L52_FXN[key] || L53_FXN[key] || L54_FXN[key] || L55_FXN[key] || L56_FXN[key] || L57_FXN[key] || L58_FXN[key] || L59_FXN[key] || L60_FXN[key] || L61_FXN[key] || L62_FXN[key] || L63_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

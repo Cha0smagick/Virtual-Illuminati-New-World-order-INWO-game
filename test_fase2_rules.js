@@ -11908,7 +11908,9 @@ function err26(fn) { return throwMsgL14(fn); }
     plant(1, 'tk42', idxOfId('trekkies'), 1);
     E.declareAttack(0, 'control', { attackerUid: 'md42', uid: 'tk42' });
     var d9 = E.previewStrength();
-    ok(d9.defenseBonus === 4, 'L42 Trekkies +4 de defensa contra un atacante Media -> defenseBonus=' + d9.defenseBonus);
+    /* Corregido en L59: el texto dice que el grupo MEDIA recibe el +4 (lado
+       atacante), no que Trekkies gane defensa. Se afirma por la nota. */
+    ok((d9.notes || []).some(function (n42) { return /Contra-ataque/.test(n42); }), 'L42/L59 Trekkies: el atacante Media recibe +4 -> ' + (d9.notes || []).join(' | '));
   } else { ok(true, 'L42 (Trekkies) SKIP'); }
   /* Black Activists: combo — defiende a SU dueño (+4 vs atacante Government) y
      presta +2 de ataque (owner, control Liberal) a cualquiera de sus grupos.
@@ -12172,6 +12174,318 @@ if (readyToAttack(1) != null) {
     E.declareAttack(0, 'control', { attackerUid: 'at52b', uid: 'tb52' });
     var d52c = E.previewStrength();
     ok(d52c.leaderMod === 0, 'L52 Pollsters anula la penalizacion de alineacion -> leaderMod=' + d52c.leaderMod);
+  /* ===== L56 - AADA y Fiendish Fluoridators ===== */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'aada56', idxOfId('americanautoduelassociation'), 1);
+    plant(1, 'kk56', idxOfId('kkk'), 1);
+    E.declareAttack(0, 'destroy', { attackerUid: 'aada56', uid: 'kk56' });
+    var d56a = E.previewStrength();
+    ok(d56a.cthulhu === 4, 'L56 AADA +4 (self) al destruir un Violent -> cthulhu=' + d56a.cthulhu);
+  } else { ok(true, "L56 (AADA atk) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'tx56', idxOfId('texas'), 1);
+    plant(0, 'aada56b', idxOfId('americanautoduelassociation'), 1);
+    plant(1, 'kk56b', idxOfId('kkk'), 1);
+    (function(){var r56=E._raw().players[1].structure;function f56(n){if(n.uid==='kk56b')return n;for(var i=0;i<(n.children||[]).length;i++){var x=f56(n.children[i]);if(x)return x;}return null;}var n56=f56(r56);if(n56)n56.alignsAdded=['straight'];})();
+    E.declareAttack(0, 'destroy', { attackerUid: 'tx56', uid: 'kk56b' });
+    var d56b0 = E.previewStrength();
+    E.addSupport(0, { uid: 'aada56b', oppose: false });
+    var d56b = E.previewStrength();
+    ok(d56b.aids === d56b0.aids + 5, 'L56 AADA ayuda con +4 (Poder 1 + 4 = 5) -> aids=' + d56b.aids + ' (antes ' + d56b0.aids + ')');
+  } else { ok(true, "L56 (AADA aid) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'ff56', idxOfId('fiendishfluoridators'), 1);
+    plant(0, 'tx56b', idxOfId('texas'), 1);
+    plant(1, 'mm56', idxOfId('moralminority'), 1);
+    E.declareAttack(0, 'destroy', { attackerUid: 'tx56b', uid: 'mm56' });
+    var d56c = E.previewStrength();
+    ok(d56c.cthulhu === 5, 'L56 Fiendish Fluoridators +5 (owner) al destruir Straight/Conservative -> cthulhu=' + d56c.cthulhu);
+  } else { ok(true, "L56 (FF atk) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'ff56b', idxOfId('fiendishfluoridators'), 1);
+    var ffA = plant(0, 'tx56c', idxOfId('texas'), 1);
+    if (ffA) ffA.powerOverride = 60;
+    plant(1, 'mm56b', idxOfId('moralminority'), 1);
+    E.declareAttack(0, 'destroy', { attackerUid: 'tx56c', uid: 'mm56b' });
+    var hb56 = E._raw().players[0].hand.length;
+    var rR56 = Math.random; Math.random = function () { return 0.01; };
+    try { E.resolveAttack(); } catch (e56) { }
+    Math.random = rR56;
+    ok(E._raw().players[0].hand.length === hb56 + 1, 'L56 Fiendish Fluoridators roba una Plot al destruir un Conservative');
+  /* ===== L57 - Thatcher, Girlie Magazines, Federal Reserve ===== */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'mt57', idxOfId('margaretthatcher'), 1);
+    plant(0, 'tx57', idxOfId('texas'), 1);
+    plant(1, 'en57', idxOfId('england'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'tx57', uid: 'en57' });
+    var d57a = E.previewStrength();
+    ok(d57a.cthulhu === 10, 'L57 Margaret Thatcher +10 (owner) al controlar England -> cthulhu=' + d57a.cthulhu);
+  } else { ok(true, "L57 (Thatcher) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'gm57', idxOfId('girliemagazines'), 1);
+    plant(1, 'dt57', idxOfId('dentists'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'gm57', uid: 'dt57' });
+    var d57b = E.previewStrength();
+    ok(d57b.cthulhu === 5, 'L57 Girlie Magazines +5 (self) control Straight -> cthulhu=' + d57b.cthulhu);
+  } else { ok(true, "L57 (GM) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'fr57', idxOfId('federalreserve'), 1);
+    plant(0, 'tx57b', idxOfId('texas'), 1);
+    plant(1, 'bk57', idxOfId('irs'), 1);
+    E.declareAttack(0, 'destroy', { attackerUid: 'tx57b', uid: 'bk57' });
+    var d57c = E.previewStrength();
+    ok(d57c.cthulhu === 6, 'L57 Federal Reserve +6 (owner) contra Bank -> cthulhu=' + d57c.cthulhu);
+  } else { ok(true, "L57 (FR bank) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'fr57b', idxOfId('federalreserve'), 1);
+    plant(0, 'tx57c', idxOfId('texas'), 1);
+    plant(1, 'cn57', idxOfId('canada'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'tx57c', uid: 'cn57' });
+    var d57d = E.previewStrength();
+    ok(d57d.cthulhu === 2, 'L57 Federal Reserve +2 (owner) contra Nation -> cthulhu=' + d57d.cthulhu);
+  /* ===== L58 - ICS e ICC (puppet de X + flip) ===== */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'ics58', idxOfId('internationalcocainesmugglers'), 1);
+    plant(0, 'tx58', idxOfId('texas'), 1);
+    plant(1, 'ug58', idxOfId('urbangangs'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'tx58', uid: 'ug58' });
+    var d58a = E.previewStrength();
+    ok(d58a.cthulhu === 4, 'L58 ICS +4 (owner) control directo Urban Gangs -> cthulhu=' + d58a.cthulhu);
+  } else { ok(true, "L58 (ICS directo) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'ics58b', idxOfId('internationalcocainesmugglers'), 1);
+    plant(0, 'tx58b', idxOfId('texas'), 1);
+    var ugM = plant(1, 'ug58b', idxOfId('urbangangs'), 1);
+    if (ugM) ugM.children.push({ uid: 'ugP58', cardId: idxOfId('cyclegangs'), children: [], tokens: 1 });
+    E.declareAttack(0, 'control', { attackerUid: 'tx58b', uid: 'ugP58' });
+    var d58b = E.previewStrength();
+    ok(d58b.cthulhu === 4, 'L58 ICS +4 (owner) control del TITERE de Urban Gangs -> cthulhu=' + d58b.cthulhu);
+  } else { ok(true, "L58 (ICS titere) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'icc58', idxOfId('internationalcommunistconspiracy'), 1);
+    plant(0, 'tx58c', idxOfId('texas'), 1);
+    plant(1, 'ff58', idxOfId('fiendishfluoridators'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'tx58c', uid: 'ff58' });
+    var d58c = E.previewStrength();
+    ok(d58c.cthulhu === 3, 'L58 ICC +3 (owner) control de un Communist -> cthulhu=' + d58c.cthulhu);
+  } else { ok(true, "L58 (ICC comunista) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'icc58b', idxOfId('internationalcommunistconspiracy'), 1);
+    plant(0, 'tx58d', idxOfId('texas'), 1);
+    var fcM = plant(1, 'fc58', idxOfId('fidelcastro'), 1);
+    if (fcM) fcM.children.push({ uid: 'fcP58', cardId: idxOfId('batf'), children: [], tokens: 1 });
+    E.declareAttack(0, 'control', { attackerUid: 'tx58d', uid: 'fcP58' });
+    var d58d = E.previewStrength();
+    ok(d58d.cthulhu === 3, 'L58 ICC +3 (owner) control del TITERE de un Communist -> cthulhu=' + d58d.cthulhu);
+  } else { ok(true, "L58 (ICC titere) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'icc58c', idxOfId('internationalcommunistconspiracy'), 1);
+    plant(1, 'ff58b', idxOfId('fiendishfluoridators'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'icc58c', uid: 'ff58b' });
+    var d58e = E.previewStrength();
+    ok(d58e.leaderMod === 4, 'L58 ICC: +4 neto por control directo de Fanatic Communist (convencion del motor) -> leaderMod=' + d58e.leaderMod);
+  /* ===== L59 - Democrats, Tobacco (contra-ataque), Trekkies ===== */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'dm59', idxOfId('democrats'), 1);
+    plant(1, 'fb59', idxOfId('fbi'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'dm59', uid: 'fb59' });
+    var d59a = E.previewStrength();
+    ok(d59a.cthulhu === 4, 'L59 Democrats +4 (self) control Gov no-Nation -> cthulhu=' + d59a.cthulhu);
+  } else { ok(true, "L59 (Dem gov) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'dm59b', idxOfId('democrats'), 1);
+    plant(1, 'cn59', idxOfId('canada'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'dm59b', uid: 'cn59' });
+    var d59b = E.previewStrength();
+    ok(d59b.cthulhu === 0, 'L59 Democrats NO bonifica a una Nation -> cthulhu=' + d59b.cthulhu);
+  } else { ok(true, "L59 (Dem nation) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'tb59', idxOfId('tobaccocompanies'), 1);
+    plant(1, 'fb59b', idxOfId('fbi'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'tb59', uid: 'fb59b' });
+    var d59c = E.previewStrength();
+    ok(d59c.cthulhu === 8, 'L59 Tobacco +8 (self) control Gov -> cthulhu=' + d59c.cthulhu);
+  } else { ok(true, "L59 (Tobacco atk) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(1) != null) {
+    plant(0, 'tb59b', idxOfId('tobaccocompanies'), 1);
+    plant(1, 'cn59b', idxOfId('canada'), 1);
+    E.declareAttack(1, 'destroy', { attackerUid: 'cn59b', uid: 'tb59b' });
+    var d59d = E.previewStrength();
+    ok((d59d.notes || []).some(function (n59) { return /Contra-ataque/.test(n59); }), 'L59 Tobacco: un Green +4 a destruirla (contra-ataque) -> ' + (d59d.notes || []).join(' | '));
+  } else { ok(true, "L59 (Tobacco contra) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'tk59', idxOfId('trekkies'), 1);
+    plant(1, 'tb59c', idxOfId('tabloids'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'tk59', uid: 'tb59c' });
+    var d59e = E.previewStrength();
+    ok(d59e.cthulhu === 4, 'L59 Trekkies +4 (self) control de un Media -> cthulhu=' + d59e.cthulhu);
+  } else { ok(true, "L59 (Trekkies atk) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(1) != null) {
+    plant(0, 'tk59b', idxOfId('trekkies'), 1);
+    plant(1, 'tb59d', idxOfId('tabloids'), 1);
+    E.declareAttack(1, 'control', { attackerUid: 'tb59d', uid: 'tk59b' });
+    var d59f = E.previewStrength();
+    ok((d59f.notes || []).some(function (n59) { return /Contra-ataque/.test(n59); }), 'L59 Trekkies: un Media +4 a controlarla (contra-ataque) -> ' + (d59f.notes || []).join(' | '));
+  /* ===== L60 - Fast Food Chains y NASA (acciones de grupo nuevas) ===== */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'ff60', idxOfId('fastfoodchains'), 1);
+    plant(0, 'tx60', idxOfId('texas'), 1);
+    plant(1, 'cn60', idxOfId('canada'), 1);
+    E.declareAttack(0, 'destroy', { attackerUid: 'tx60', uid: 'cn60' });
+    var d60a = E.previewStrength();
+    ok(d60a.cthulhu === 6, 'L60 Fast Food Chains +6 (owner) al destruir un Green -> cthulhu=' + d60a.cthulhu);
+  } else { ok(true, "L60 (FF atk) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (true) {
+    plant(0, 'ff60b', idxOfId('fastfoodchains'), 1);
+    var pl60 = E._raw().players[0];
+    var pd60 = E._raw().plotDeck;
+    pl60.exposedPlots = [pd60[0], pd60[1]];
+    var hb60 = pl60.hand.length;
+    var o60 = E.useGroupAction(0, 'ff60b', {});
+    ok(o60 && o60.hidden === 2 && pl60.exposedPlots.length === 0 && pl60.hand.length === hb60 + 2, 'L60 Fast Food Chains esconde 2 Plots expuestas (gratis) -> hidden=' + (o60 && o60.hidden));
+  } else { ok(true, "L60 (FF hide) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'na60', idxOfId('nasa'), 1);
+    plant(0, 'tx60b', idxOfId('texas'), 1);
+    plant(1, 'mb60', idxOfId('l4society'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'tx60b', uid: 'mb60' });
+    var d60b = E.previewStrength();
+    ok(d60b.cthulhu === 4, 'L60 NASA +4 (owner) al controlar un Space -> cthulhu=' + d60b.cthulhu);
+  } else { ok(true, "L60 (NASA atk) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (true) {
+    var naN = plant(0, 'na60b', idxOfId('nasa'), 1);
+    plant(0, 'bf60', idxOfId('batf'), 0);
+    var o60b = E.useGroupAction(0, 'na60b', { uid: 'bf60' });
+    var naT = E._raw().players[0].structure;
+    function f60(root, uid) { if (!root) return null; if (root.uid === uid) return root; for (var q = 0; q < (root.children || []).length; q++) { var r = f60(root.children[q], uid); if (r) return r; } return null; }
+    var nNAS = f60(naT, 'na60b'), nBF = f60(naT, 'bf60');
+    ok(o60b && o60b.given === 'bf60' && nNAS.tokens === 0 && nBF.tokens === 1, 'L60 NASA da su ficha a un Government sin ficha -> ' + (nNAS.tokens) + '/' + (nBF.tokens));
+  /* ===== L61 - OPEC (roll en beginTurn) e Italy (defensa gratis) ===== */
+  function f61(root, uid) { if (!root) return null; if (root.uid === uid) return root; for (var q = 0; q < (root.children || []).length; q++) { var r = f61(root.children[q], uid); if (r) return r; } return null; }
+  fresh(idxOfId(U), idxOfId(V));
+  plant(0, 'op61', idxOfId('opec'), 1);
+  var r61 = Math.random; Math.random = function () { return 0.5; };
+  for (var w61 = 0; w61 < 8; w61++) {
+    var st61 = E.getState();
+    if (w61 > 0 && st61.phase === 'main' && st61.currentPid === 0) break;
+    try { E.endTurn(); } catch (e61d) { var rr61 = E._raw(); if (rr61.pendingEvent) E.resolvePendingEvent(); else if (rr61.pendingRoll) E.resolvePendingRoll(); }
+    try { E.beginTurn(E.getState().currentPid); } catch (e61e) { }
+  }
+  Math.random = r61;
+  var nOP = f61(E._raw().players[0].structure, 'op61');
+  ok(nOP && nOP.powerOverride === 6, 'L61 OPEC fija su Poder con 2d6-2 (mock 4+4=8 -> 6) -> ' + (nOP && nOP.powerOverride));
+  fresh(idxOfId(U), idxOfId(V));
+  plant(0, 'op61b', idxOfId('opec'), 1);
+  plant(0, 'tx61', idxOfId('texas'), 1);
+  var r61b = Math.random; Math.random = function () { return 0.5; };
+  for (var w61 = 0; w61 < 8; w61++) {
+    var st61 = E.getState();
+    if (w61 > 0 && st61.phase === 'main' && st61.currentPid === 0) break;
+    try { E.endTurn(); } catch (e61d) { var rr61 = E._raw(); if (rr61.pendingEvent) E.resolvePendingEvent(); else if (rr61.pendingRoll) E.resolvePendingRoll(); }
+    try { E.beginTurn(E.getState().currentPid); } catch (e61e) { }
+  }
+  Math.random = r61b;
+  var nOPb = null;
+  (function w61(root) { if (nOPb || !root) return; if (root.cardId === idxOfId('opec')) { nOPb = root; return; } (root.children || []).forEach(w61); })(E._raw().players[0].structure);
+  ok(nOPb && nOPb.powerOverride === 7, 'L61 OPEC +1 por controlar Texas -> ' + (nOPb && nOPb.powerOverride));
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(1) != null) {
+    plant(0, 'it61', idxOfId('italy'), 0);
+    plant(0, 'wk61', idxOfId('california'), 1);
+    plant(1, 'at61', idxOfId('texas'), 1);
+    E.declareAttack(1, 'destroy', { attackerUid: 'at61', uid: 'wk61' });
+    var e61c = '';
+    try { E.addSupport(0, { uid: 'it61', oppose: true }); } catch (ex61) { e61c = ex61.message; }
+    var d61 = E.previewStrength();
+    var nIT = f61(E._raw().players[0].structure, 'it61');
+    ok(e61c === '' && d61.opposes === 3 && nIT.tokens === 0, 'L61 Italy defiende un Weird propio Gratis (sin ficha) -> opposes=' + d61.opposes + ' tokens=' + nIT.tokens);
+  /* ===== L62 - Gun Lobby (resistencia absoluta y robo al ser atacado) ===== */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(1, 'gl62', idxOfId('gunlobby'), 1);
+    plant(0, 'al62', idxOfId('algore'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'al62', uid: 'gl62' });
+    var d62a = E.previewStrength();
+    ok(d62a.defenseBase === 10, 'L62 Gun Lobby resistencia 10 contra Liberal -> defenseBase=' + d62a.defenseBase);
+  } else { ok(true, "L62 (GL liberal) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(1, 'gl62b', idxOfId('gunlobby'), 1);
+    plant(0, 'tx62', idxOfId('texas'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'tx62', uid: 'gl62b' });
+    var d62b = E.previewStrength();
+    ok(d62b.defenseBase === 3, 'L62 Gun Lobby resistencia normal (3) contra Violent -> defenseBase=' + d62b.defenseBase);
+  } else { ok(true, "L62 (GL violent) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(1) != null) {
+    plant(0, 'gl62c', idxOfId('gunlobby'), 1);
+    plant(0, 'kk62', idxOfId('kkk'), 1);
+    plant(1, 'tx62b', idxOfId('texas'), 1);
+    E.declareAttack(1, 'destroy', { attackerUid: 'tx62b', uid: 'kk62' });
+    var hb62 = E._raw().players[0].hand.length;
+    var r62 = Math.random; Math.random = function () { return 0.99; };
+    try { E.resolveAttack(); } catch (e62) { }
+    try { var rrS = E._raw(); if (rrS.pendingRoll) E.resolvePendingRoll(); if (rrS.pendingEvent) E.resolvePendingEvent(); } catch (eS62) { }
+    Math.random = r62;
+    ok(E._raw().players[0].hand.length === hb62 + 1, 'L62 Gun Lobby roba una Plot aunque el ataque falle');
+  /* ===== L63 - Gay Activists (invertir una alineacion) ===== */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'ga63', idxOfId('gayactivists'), 1);
+    plant(0, 'al63', idxOfId('algore'), 1);
+    plant(1, 'mm63', idxOfId('moralminority'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'al63', uid: 'mm63' });
+    var d63a = E.previewStrength();
+    ok(d63a.leaderMod === -4, 'L63 fixture: Liberal vs Conservative son opuestas -> leaderMod=' + d63a.leaderMod);
+  } else { ok(true, "L63 (GA base) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'ga63b', idxOfId('gayactivists'), 1);
+    plant(0, 'al63b', idxOfId('algore'), 1);
+    plant(1, 'mm63b', idxOfId('moralminority'), 1);
+    var o63 = E.useGroupAction(0, 'ga63b', { uid: 'mm63b', align: 'conservative' });
+    E.declareAttack(0, 'control', { attackerUid: 'al63b', uid: 'mm63b' });
+    var d63b = E.previewStrength();
+    ok(o63 && o63.to === 'liberal' && d63b.leaderMod === 4, 'L63 Gay Activists invierte Conservative a Liberal -> shared leaderMod=' + d63b.leaderMod);
+  } else { ok(true, "L63 (GA reverse) SKIP"); }
+
+  } else { ok(true, "L62 (GL robo) SKIP"); }
+
+  } else { ok(true, "L61 (Italy) SKIP"); }
+
+  } else { ok(true, "L60 (NASA token) SKIP"); }
+
+  } else { ok(true, "L59 (Trekkies contra) SKIP"); }
+
+  } else { ok(true, "L58 (ICC flip) SKIP"); }
+
+  } else { ok(true, "L57 (FR gov) SKIP"); }
+
+  } else { ok(true, "L56 (FF draw) SKIP"); }
+
   } else { ok(true, "L52 (Pollsters) SKIP"); }
 
   } else { ok(true, "L51 (LPD) SKIP"); }

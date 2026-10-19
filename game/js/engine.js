@@ -552,6 +552,13 @@ function nodeResistance(node,cardObj){
   if(node&&node.resistanceOverride!=null)return node.resistanceOverride;
   var c=cardObj||(node?card(node.cardId):null);
   var r=(c&&typeof c.resistance==='number')?c.resistance:5;
+  /* L62 — Gun Lobby: "Against any Liberal, Weird or Communist group, resistance
+     is 10". Se evalua contra el bando atacante (atacante o ayudantes). */
+  if(c&&S.attack){
+    var ro62=bonusPart(c.effect,'resOverride');
+    if(ro62&&(!ro62.vsAtk||atkSideMatches(ro62.vsAtk)))r=(Number(ro62.value)||0);
+  }
+
   /* L3a — `resistanceMods`: deltas ADITIVOS y apilables, distintos de
      `resistanceOverride` (que es un valor absoluto, y por eso no admite
      un "+1"). Se anaden DESPUES del override para que el "+1 de cada
@@ -1903,6 +1910,24 @@ E.beginTurn=function(pid,isFirst){
      correcta y no un turno tarde. */
   expireTurnFlags();
   pl.flags.autoTakeover=false;
+  /* L61 — OPEC: 2d6-2 fija su Poder al empezar el turno del dueno (+1 por
+     Texas o Multinational Oil Companies controlados). */
+  walk(pl.structure,function(n61){
+    if(n61.cardId==null)return;
+    var c61=card(n61.cardId);
+    if(c61&&c61.effect&&c61.effect.kind==='opec_roll'){
+      var v61=Math.max(0,roll2d6()-2);
+      var b61=0;
+      ['texas','multinationaloilcompanies'].forEach(function(id61){
+        var has61=false;
+        walk(pl.structure,function(x61){if(has61||x61.cardId==null)return;if(card(x61.cardId).id===id61)has61=true;});
+        if(has61)b61+=1;
+      });
+      n61.powerOverride=v61+b61;
+      log(c61.name+': su Poder se fija en '+n61.powerOverride+' para este turno');
+    }
+  });
+
   /* L6 — 359 Sabotage: "He cannot make an automatic takeover that turn" es de
      ESE turno, asi que caduca con el resto de flags por turno. */
   pl.flags.autoTakeoverBlocked=false;
@@ -3787,6 +3812,46 @@ E.useGroupAction=function(pid,uid,opts){
     E.moveGroup(pid,uidM,newP);
     log(c.name+': mueve '+card(ndM.cardId).name);
     out={moved:uidM};
+  }else if(act==='reverse_align'){
+    /* L63 - Gay Activists: invertir una alineacion hasta fin de turno. */
+    var uidA63=opts.uid;
+    var alA63=String(opts.align||'').toLowerCase();
+    if(uidA63==null||!alA63)throw new Error(c.name+': indica grupo y alineacion (opts.uid, opts.align)');
+    var ndA63=findNode(uidA63);
+    if(!ndA63||ndA63.cardId==null)throw new Error(c.name+': ese grupo no esta en juego');
+    var opp63=OPPOSITES[alA63];
+    if(!opp63)throw new Error(c.name+': esa alineacion no existe');
+    ndA63.alignsTmpTurn=S.turn;
+    ndA63.alignsTmpAdded=[opp63];
+    ndA63.alignsTmpRemoved=[alA63];
+    log(c.name+': invierte '+alA63+' por '+opp63+' en '+card(ndA63.cardId).name+' hasta fin de turno');
+    out={reversed:uidA63,from:alA63,to:opp63};
+  }else if(act==='hide_exposed'){
+    /* L60 - Fast Food Chains: esconder hasta N Plots expuestas propias. */
+    var n60=Number(e.count)||2;
+    var pl60=S.players[pid];
+    var hid60=0;
+    for(var q60=pl60.exposedPlots.length-1;q60>=0&&hid60<n60;q60--){
+      pl60.hand.push(pl60.exposedPlots[q60]);
+      pl60.exposedPlots.splice(q60,1);
+      hid60++;
+    }
+    if(!hid60)throw new Error(c.name+': no tienes Plots expuestas que esconder');
+    log(c.name+': esconde '+hid60+' Plot(s) expuesta(s)');
+    out={hidden:hid60};
+  }else if(act==='give_token'){
+    /* L60 - NASA: dar su ficha a otro grupo propio con `attr` y sin ficha. */
+    var to60=opts.uid;
+    if(to60==null)throw new Error(c.name+': indica el grupo destinatario (opts.uid)');
+    var ndT60=findNode(to60);
+    if(!ndT60||findOwnerPid(to60)!==pid)throw new Error(c.name+': el grupo destinatario debe ser tuyo');
+    var tcT60=card(ndT60.cardId);
+    if(e.attr&&!hasAttr(tcT60,e.attr,ndT60)&&nodeAligns(ndT60,tcT60).indexOf(String(e.attr).toLowerCase())<0)throw new Error(c.name+': solo a grupos '+e.attr);
+    if((ndT60.tokens||0)>=1)throw new Error(c.name+': ese grupo ya tiene ficha');
+    if((nd.tokens||0)<1)throw new Error(c.name+': este grupo no tiene ficha que dar');
+    ndT60.tokens=1;
+    log(c.name+': da su ficha de accion a '+tcT60.name);
+    out={given:to60};
   }else if(act==='discard_exposed'){
     var rpid=opts.rivalPid!=null?opts.rivalPid:(pid===0?1:0);
     var rv=S.players[rpid];
@@ -3888,7 +3953,15 @@ E.addSupport=function(pid,entry){
   if(!sup)throw new Error('Apoyo inexistente');
   if(sup.paralyzed||sup.zapped||sup.devastated)throw new Error('Grupo no puede actuar');
   if(findOwnerPid(entry.uid)!==pid)throw new Error('El grupo no te pertenece');
-  if(sup.tokens==null||sup.tokens<1)throw new Error('Sin Action token');
+  /* L61 - Italy: defender un grupo Weird propio es gratis (free action). */
+  var sc61=card(sup.cardId);
+  var fd61=sc61&&sc61.effect&&bonusPart(sc61.effect,'freeDefend');
+  var freeDef61=false;
+  if(fd61&&A.targetUid&&findOwnerPid(A.targetUid)===pid){
+    var td61=findNode(A.targetUid);
+    if(td61&&vsMatchQ(fd61.vs,td61,card(td61.cardId)))freeDef61=true;
+  }
+  if(!freeDef61&&(sup.tokens==null||sup.tokens<1))throw new Error('Sin Action token');
   var sc=card(sup.cardId);
   if(!sc)throw new Error('El grupo de apoyo no tiene datos válidos');
   /* P2-R7 — "No Duplicates in the Same Attack!" (inwo_rules_extracted.txt:443-446):
@@ -3947,7 +4020,8 @@ E.addSupport=function(pid,entry){
       :(entry.oppose?'Para OPONERSE a destruir hace falta ≥1 alineación común con el objetivo, ser su master/títere o tener Global Power'
                     :'Para ayudar a destruir hace falta ≥1 alineación opuesta al objetivo o Global Power'));
   }
-  spendGroupToken(pid,entry.uid);
+  if(!freeDef61)spendGroupToken(pid,entry.uid);
+  else log(card(sup.cardId).name+': defiende como accion gratis (Italy)');
   (entry.oppose?A.opposes:A.aids).push({uid:entry.uid,name:sc.name,power:pw});
   /* L46: el privilegio se deshace para todos. */
   if(A.privilege&&privilegeBreakBy(entry.uid)){A.privilege=false;log(sc.name+' interfiere y DESHACE el privilegio del ataque');}
@@ -4071,6 +4145,28 @@ E.previewStrength=function(){return computeStrength(false);};
 function vsMatchQ(vs,tNode,tCard){
   if(!vs)return true;
   var al=nodeAligns(tNode,tCard);
+  /* L58 - puppet de X: el MASTER del objetivo casa cardId/align/attr. */
+  if(vs.masterCard||vs.masterAlign||vs.masterAttr){
+    if(!tNode||tNode.uid==null)return false;
+    var ow58=findOwnerPid(tNode.uid);
+    var par58=(ow58>=0)?findNodeThatHas(S.players[ow58].structure,tNode.uid):null;
+    if(!par58||par58.cardId==null)return false;
+    if(vs.masterCard){var pc58=card(par58.cardId);if(!pc58||vs.masterCard.indexOf(pc58.id)<0)return false;}
+    var pcA58=card(par58.cardId);
+    if(vs.masterAlign){
+      var alP58=nodeAligns(par58,pcA58);
+      var wantP=vs.masterAlign.map(function(a){return String(a).toLowerCase();});
+      var hitP=(vs.match==='any')?wantP.some(function(a){return alP58.indexOf(a)>=0;})
+                                  :wantP.every(function(a){return alP58.indexOf(a)>=0;});
+      if(!hitP)return false;
+    }
+    if(vs.masterAttr){
+      var wantA=vs.masterAttr.map(function(a){return String(a).toLowerCase();});
+      var hitA=(vs.match==='any')?wantA.some(function(a){return hasAttr(pcA58,a,par58);})
+                                  :wantA.every(function(a){return hasAttr(pcA58,a,par58);});
+      if(!hitA)return false;
+    }
+  }
   if(vs.align&&al.indexOf(String(vs.align).toLowerCase())<0)return false;
   if(vs.notAlign&&al.indexOf(String(vs.notAlign).toLowerCase())>=0)return false;
   if(Array.isArray(vs.aligns)&&vs.aligns.length){
@@ -4171,6 +4267,23 @@ function groupAttackBonus(pid,attNode,attCard,type,tNode,tCard,notes,instant){  
     var add=(e.pick==='best')?Math.max.apply(null,vals):vals.reduce(function(a,b){return a+b;},0);
     v+=add;if(notes)notes.push(c.name+': +'+add+' al '+type);
   });
+  /* L59 - contra-ataque: bonus para los ATACANTES que casen `vs` contra esta
+     carta (Tobacco: Green +4 a destruirla; Trekkies: Media +4 a controlarla).
+     Solo con atacante real: los instant attacks no entran. */
+  if(attNode&&attCard&&tNode&&tNode.cardId!=null&&tCard){
+    var tc59=card(tNode.cardId);
+    var ca59=tc59&&bonusPart(tc59.effect,'counterAtk');
+    if(ca59){
+      var cl59=ca59.clauses||[{atkType:ca59.atkType,vs:ca59.vs,value:ca59.value}];
+      cl59.forEach(function(cl9){
+        if(cl9.atkType&&cl9.atkType!=='any'&&cl9.atkType!==type)return;
+        if(vsMatchQ(cl9.vs,attNode,attCard)){
+          v+=(Number(cl9.value)||0);
+          if(notes)notes.push('Contra-ataque de '+tc59.name+': +'+(Number(cl9.value)||0));
+        }
+      });
+    }
+  }
   return v;
 }
 
@@ -5253,7 +5366,20 @@ function applyAttackResult(A,det,resultText){
           destroyGroup(A.pid,A.targetUid,{attackerUid:A.attackerUid});
         }
   }else{
-    log(resultText+' — ataque de '+S.players[pid].name+' falló');
+    /* L62 - Gun Lobby: si el objetivo es Conservativo/Violento propio y su dueno
+     controla el Gun Lobby, roba una Plot (el resultado da igual). */
+  (function(){
+    if(!tNode||tNode.cardId==null)return;
+    var tc62=card(tNode.cardId);
+    var al62=nodeAligns(tNode,tc62);
+    if(al62.indexOf('conservative')<0&&al62.indexOf('violent')<0)return;
+    var hasG62=false;
+    walk(S.players[owner].structure,function(g62){if(hasG62||g62.cardId==null)return;var gc62=card(g62.cardId);if(gc62&&gc62.effect&&gc62.effect.kind==='combo_bonus'&&gc62.effect.drawWhenAttacked)hasG62=true;});
+    if(!hasG62)return;
+    var ix62=drawFrom(S.plotDeck,S.plotDiscard,'plots');
+    if(ix62!=null){S.players[owner].hand.push(ix62);log('Gun Lobby: robas una Plot por el ataque a '+tc62.name);}
+  })();
+  log(resultText+' — ataque de '+S.players[pid].name+' falló');
     if(A.type==='control'){
       var list=S.players[owner].immuneFrom[pid]||(S.players[owner].immuneFrom[pid]=[]);
       list.push(A.targetUid);
@@ -5330,6 +5456,25 @@ function destroyGroup(byPid,targetUid,opts){
     });
   })(node);
   node=detach(parent,targetUid);clearL18Extra(node);
+  /* L56 - Fiendish Fluoridators: al destruir un grupo que casa su `vs`, el
+     dueno del efecto roba una Plot. Tras el detach para no tocar estructura
+     a medio desmontar. */
+  (function(){
+    if(noCount||!node||node.cardId==null||byPid==null||byPid<0||byPid===owner)return;
+    var cN56=card(node.cardId);
+    var has56=false;
+    var st56=S.players[byPid]?S.players[byPid].structure:null;
+    if(st56)walk(st56,function(x56){
+      if(has56||x56.cardId==null)return;
+      var xc56=card(x56.cardId);
+      var do56=xc56&&bonusPart(xc56.effect,'drawOnDestroy');
+      if(do56&&(!do56.vs||vsMatchQ(do56.vs,node,cN56)))has56=true;
+    });
+    if(has56){
+      var ix56=drawFrom(S.plotDeck,S.plotDiscard,'plots');
+      if(ix56!=null){S.players[byPid].hand.push(ix56);log('Fiendish Fluoridators: robas una Plot por destruir '+cN56.name);}
+    }
+  })();
   /* L38 — 407 Annual Convention: un Place destruido abre su ventana este turno. */
   if((card(node.cardId)||{}).subtype==='place')S.lastPlaceDown={turn:S.turn,mode:'destroyed'};
   /* L37 — 396 Ark of the Covenant: "If that group is destroyed ... The group that
@@ -8439,6 +8584,12 @@ case 'bulk_power':{
       throw new Error(c.name+': habilidad pasiva — su robo de Plot se aplica al ayudar a destruir');
     case 'power_if_card':
       throw new Error(c.name+': habilidad pasiva — su Poder se recalcula al mirar las cartas en juego');
+    case 'opec_roll':
+      throw new Error(c.name+': habilidad pasiva — su Poder se fija al empezar el turno de su dueno');
+    case 'comics_zero':
+      throw new Error(c.name+': habilidad pasiva — la Resistance del objetivo Weird baja a 0');
+    case 'eff_shield':
+      throw new Error(c.name+': habilidad pasiva — el Poder de los defensores de un Computer se dobla');
     case 'kkk_double':
       throw new Error(c.name+': habilidad pasiva — su bono de Poder se aplica al resolver ataques a destruir');
     case 'pollster_shield':

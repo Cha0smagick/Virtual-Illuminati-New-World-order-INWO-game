@@ -122,6 +122,20 @@
 
   /* reglas para mensajes del motor (fuente ES -> EN por patrones) */
   var LOG_RULES = [
+    [/^(.{1,28}): recupera su Action token tras el intento fallido$/, function (m) { return m[1] + ' recovers its Action token after the failed attempt'; }],
+    [/^(.{1,28}): robas una Plot extra$/, function (m) { return m[1] + ': you draw an extra Plot card'; }],
+    [/^(.{1,28}): robas una Plot por destruir (.+)$/, function (m) { return m[1] + ': you draw a Plot card for destroying ' + m[2]; }],
+    [/^(.{1,28}): robas una Plot por el ataque a (.+)$/, function (m) { return m[1] + ': you draw a Plot card for the attack on ' + m[2]; }],
+    [/^Contra-ataque de (.{1,28}): \+(\d+)$/, function (m) { return 'Counter-attack by ' + m[1] + ': +' + m[2]; }],
+    [/^(.{1,28}): esconde (\d+) Plot\(s\) expuesta\(s\)$/, function (m) { return m[1] + ': hides ' + m[2] + ' exposed Plot card(s)'; }],
+    [/^(.{1,28}): da su ficha de acción a (.+)$/, function (m) { return m[1] + ': gives its Action token to ' + m[2]; }],
+    [/^(.{1,28}): defiende como acción gratis \(Italy\)$/, function (m) { return m[1] + ': defends as a free action (Italy)'; }],
+    [/^(.{1,28}): su Poder se fija en (\d+) para este turno$/, function (m) { return m[1] + ': its Power is set to ' + m[2] + ' for this turn'; }],
+    [/^Comic Books: la Resistance del objetivo es 0$/, function () { return 'Comic Books: the target\'s Resistance becomes 0'; }],
+    [/^EFF: el Poder de los defensores se dobla$/, function () { return 'EFF: the defenders\' Power is doubled'; }],
+    [/^KKK: los grupos Violent del ataque doblan su Poder$/, function () { return 'KKK: Violent groups in the attack have doubled Power'; }],
+    [/^Pollsters: penalizaciones de alineación anuladas$/, function () { return 'Pollsters: alignment penalties nullified'; }],
+
     [/^\u2014 Turno de (.+) \(\+(\d+) acci\u00F3n Illuminati\) \u2014$/, function (m) { return '\u2014 Turn of ' + m[1] + ' (+' + m[2] + ' Illuminati action) \u2014'; }],
     [/^(.{1,28}) toma posesi\u00F3n autom\u00E1tica de (.+)$/, function (m) { return m[1] + ' takes automatic control of ' + m[2]; }],
     [/^(.{1,28}) declara ataque a destroy con (.+) contra (.+)$/, function (m) { return m[1] + ' declares ATTACK TO DESTROY with ' + m[2] + ' against ' + m[3]; }],
