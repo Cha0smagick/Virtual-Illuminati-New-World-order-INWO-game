@@ -3478,6 +3478,12 @@ E.declareAttack=function(pid,type,target){
       var owner=findOwnerPid(target.uid);
       if(owner<0)throw new Error('El objetivo no tiene propietario');
       if(type==='control'&&owner===pid)throw new Error('No puedes tomar control de tu propio grupo');
+      /* L50 - Intellectuals: el master no puede ser CAPTURADO (solo Disaster/Assassination). */
+      (function(){
+        var mp50=false;
+        (tgt.children||[]).forEach(function(k50){if(mp50||k50.cardId==null)return;var kc50=card(k50.cardId);if(kc50&&bonusPart(kc50.effect,'mp'))mp50=true;});
+        if(mp50&&type==='control')throw new Error('Ese grupo controla a los Intellectuals: no puede ser capturado (solo Disaster o Assassination)');
+      })();
       if(owner!==pid&&pl.immuneFrom[owner]&&(pl.immuneFrom[owner].indexOf?pl.immuneFrom[owner].indexOf(target.uid):-1)>=0)
         throw new Error('Tu ataque anterior contra '+S.players[owner].name+' falló: inmune el resto del turno');
       A.targetPid=owner;A.targetUid=target.uid;tn=tCard.name;
@@ -3489,7 +3495,9 @@ E.declareAttack=function(pid,type,target){
          limitacion declarada (solo ataques normales). */
       if(attackImmuneBlocked(tgt,tCard,att,attCard,type))
         throw new Error('La estructura rival es inmune a ataques de este tipo (por su texto impreso)');
-      if(discordianBlocks(owner,att,attCard))
+      /* L51 - Deprogrammers: su texto exime el bloqueo Discordian. */
+      var igD51=(attCard&&attCard.effect&&attCard.effect.ignoreDiscordian===true);
+      if(!igD51&&discordianBlocks(owner,att,attCard))
         throw new Error('La estructura Discordian es inmune a atacantes Straight/Government');
     }else{
       /* attack a card in a rival's HAND (attack-to-control only) */
@@ -4020,7 +4028,9 @@ function handLimitBonusOf(pid){
   var st=(pid!=null&&pid>=0&&S.players[pid])?S.players[pid].structure:null;
   if(!st)return 0;
   var v=0;
+
   walk(st,function(nd){
+
     if(nd.cardId==null)return;
     var c=card(nd.cardId);
     var e=c&&c.effect;
@@ -4091,6 +4101,7 @@ function bonusPart(e,which){
   if(which==='grant'&&e.kind==='power_grant')return e;
   if(which==='aid'&&e.kind==='aid_power')return e;
   if(which==='ga'&&e.kind==='group_action')return e;
+  if(which==='mp'&&e.kind==='master_protect')return e;
   return null;
 }
 /* L43 — free_interfere: "may aid or oppose any attack made by, or against, any X
@@ -4187,6 +4198,10 @@ function groupDefenseBonus(defNode,defCard,mode,notes){
     var c=card(nd.cardId);
     var e=bonusPart(c&&c.effect,'def');
     if(!e)return;
+    /* L48/L51 - def solo a TITERES (Wall Street) o solo al MASTER (Local Police) del grupo con el efecto. */
+    var cl48=(e.clauses||[e])[0];
+    if(cl48.vsDef&&cl48.vsDef.isPuppetOf){var parD48=findNodeThatHas(st,defNode?defNode.uid:null);if(!parD48||parD48.uid!==nd.uid)return;}
+    if(cl48.vsDef&&cl48.vsDef.masterOf===true){var parM48=findNodeThatHas(st,nd.uid);if(!parM48||parM48.uid!==(defNode?defNode.uid:null))return;}
     /* L48 - Wall Street: def solo a los TITERES del grupo con el efecto. */
     var c48=(e.clauses||[e])[0];
     if(c48.vsDef&&c48.vsDef.isPuppetOf){var pD48=findNodeThatHas(st,defNode?defNode.uid:null);if(!pD48||pD48.uid!==nd.uid)return;}
@@ -4194,7 +4209,9 @@ function groupDefenseBonus(defNode,defCard,mode,notes){
     var vals=[];
     clauses.forEach(function(cl){
       var sc=cl.scope||e.scope||'self';
-      if(sc!=='owner'&&(!defNode||nd.uid!==defNode.uid))return;  /* 'self': solo el defensor */
+      /* L48/L51: las clausulas de parentesco (isPuppetOf/masterOf) fijan su destino y NO pasan por el scope. */
+      var kin48=cl.vsDef&&(cl.vsDef.isPuppetOf||cl.vsDef.masterOf===true);
+      if(!kin48&&sc!=='owner'&&(!defNode||nd.uid!==defNode.uid))return;  /* 'self': solo el defensor */
       if(cl.excludeSelf&&defNode&&nd.uid===defNode.uid)return;   /* "your OTHER groups" */
       var md=cl.mode||e.mode||'both';
       if(md!=='both'&&md!==mode)return;
@@ -4247,6 +4264,8 @@ function grantPowerBonus(nd){
     if(!e)return;
     var clauses=e.clauses||[{vs:e.vs,value:e.value}];
     clauses.forEach(function(cl){
+      if(cl.excludeSelf&&x.uid===nd.uid)return;
+      if(cl.vs&&cl.vs.masterOf===true){var pm50=findNodeThatHas(st,x.uid);if(!pm50||pm50.uid!==nd.uid)return;v+=(Number(cl.value)||0);return;}
       if(vsMatchQ(cl.vs,nd,card(nd.cardId)))v+=(Number(cl.value)||0);
     });
   });
@@ -4477,7 +4496,23 @@ function computeStrength(resolveMode){
     if(db){det.defBoosts+=db;det.notes.push('Defensa del Illuminati (Shangri-La): +'+db);}
   }
   A.aids.forEach(function(a){det.aids+=a.power;});
+  /* L52 - Pollsters: si su dueno es atacante o defensor, las penalizaciones de alineacion que irian CONTRA EL se anulan. */
+  (function(){
+    var hasP=false;
+    [A.pid,A.targetPid].forEach(function(q52){if(hasP||q52==null||q52<0||!S.players[q52])return;walk(S.players[q52].structure,function(n52){if(hasP||n52.cardId==null)return;var pc52=card(n52.cardId);if(pc52&&pc52.effect&&pc52.effect.kind==='pollster_shield')hasP=true;});});
+    if(hasP&&det.leaderMod<0){det.notes.push('Pollsters: penalizaciones de alineacion anuladas');det.leaderMod=0;}
+  })();
   A.opposes.forEach(function(o){det.opposes+=o.power;});
+  /* L50 - KKK: si su dueno intenta destruir un Peaceful, TODOS los grupos Violent del ataque (ambos bandos) doblan su Poder. */
+  var kkk50=null;
+  walk(S.players[A.pid].structure,function(n50){if(kkk50||n50.cardId==null)return;var kc50=card(n50.cardId);if(kc50&&kc50.effect&&kc50.effect.kind==='kkk_double')kkk50=kc50.effect;});
+  if(kkk50&&A.type==='destroy'&&tNode&&nodeAligns(tNode,tCard).indexOf('peaceful')>=0){
+    if(nodeAligns(att,attCard).indexOf('violent')>=0)det.base*=2;
+    if(nodeAligns(tNode,tCard).indexOf('violent')>=0)det.defenseBase*=2;
+    A.aids.forEach(function(a50){var an50=findNode(a50.uid);var ac50=an50?card(an50.cardId):null;if(ac50&&nodeAligns(an50,ac50).indexOf('violent')>=0)det.aids+=a50.power;});
+    A.opposes.forEach(function(o50){var on50=findNode(o50.uid);var oc50=on50?card(on50.cardId):null;if(oc50&&nodeAligns(on50,oc50).indexOf('violent')>=0)det.opposes+=o50.power;});
+    det.notes.push('KKK: los grupos Violent del ataque doblan su Poder');
+  }
   A.boosts.forEach(function(b){det.boosts+=b.v;});
   A.defBoosts.forEach(function(b){det.defBoosts+=b.v;});
   ['base','leaderMod','defenseBase','defenseBonus','defBoosts','posBonus','selfDef','aids','opposes','boosts','cthulhu'].forEach(function(k){

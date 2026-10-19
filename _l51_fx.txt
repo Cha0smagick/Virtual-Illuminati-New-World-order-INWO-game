@@ -1,0 +1,61 @@
+
+/* L51 — masivas con piezas existentes + dos piezas menores:
+ *   ignoreDiscordian (Deprogrammers) y def.vsDef.masterOf (Local Police). */
+const L51_FX = {
+  'California': {
+    kind: 'power_grant',
+    clauses: [{ scope: 'owner', vs: { attr: 'media' }, value: 1 }],
+    t: 'California All your Media groups have +1 Power.'
+  },
+  'Cycle Gangs': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'destroy', vs: {}, value: 2 },
+      { scope: 'owner', atkType: 'disaster', vs: { notAttr: 'space' }, value: 4 }
+    ], pick: 'best' },
+    t: 'Cycle Gangs Gives a +2 on any attempt to destroy another group, or a +4 to any Disaster you play (except in Space).'
+  },
+  'Telephone Psychics': {
+    kind: 'atk_bonus',
+    clauses: [
+      { scope: 'self', atkType: 'control', vs: { cardId: 'ronaldreagan' }, value: 6 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'nancyreagan' }, value: 6 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'tabloids' }, value: 6 },
+      { scope: 'self', atkType: 'control', vs: { attr: 'media', maxPower: 2 }, value: 6 }
+    ],
+    pick: 'best',
+    t: 'Telephone Psychics +6 for direct control of either Ronald or Nancy Reagan, for the Tabloids, or for any Media group with a Power of 1 or 2.'
+  },
+  'Hillary Clinton': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'control', vs: { cardId: 'billclinton' }, value: 2 },
+      { scope: 'owner', atkType: 'control', vs: { cardId: 'democrats' }, value: 2 },
+      { scope: 'owner', atkType: 'control', vs: { cardId: 'congressionalwives' }, value: 2 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'billclinton' }, value: 6 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'democrats' }, value: 6 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'congressionalwives' }, value: 6 }
+    ] },
+    t: 'Hillary Clinton Gives +2 to any attempt to control Bill Clinton, Congressional Wives, or Democrats. +6 to take direct control of any of these groups.'
+  },
+  'Deprogrammers': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'destroy', vs: { align: 'weird' }, value: 4 },
+      { scope: 'owner', atkType: 'destroy', vs: { align: 'fanatic' }, value: 4 },
+      { scope: 'owner', atkType: 'destroy', vs: { aligns: ['weird', 'fanatic'], match: 'all' }, value: 8 }
+    ], pick: 'best' },
+    ignoreDiscordian: true,
+    t: 'Deprogrammers Gives a +4 to any attempt to destroy a Weird or Fanatic group, or +8 if the target is both Weird and Fanatic. Discordias immunity to Straight groups does not extend to the Deprogrammers.'
+  },
+  'Local Police Departments': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'destroy', vs: { align: 'criminal' }, value: 4 }] },
+    grant: { clauses: [{ scope: 'owner', vs: { masterOf: true }, value: 1 }] },
+    def: { clauses: [{ scope: 'self', mode: 'resist', vsDef: { masterOf: true }, value: 3 }] },
+    noDestroy: true,
+    t: 'Local Police Departments Gives +4 to any attempt to destroy a Criminal group. This groups master gets +1 Power and +3 Resistance. This group cannot be destroyed.'
+  }
+};
+const L51_FXN = {};
+for (const k51 in L51_FX) { L51_FXN[norm(k51)] = L51_FX[k51]; }

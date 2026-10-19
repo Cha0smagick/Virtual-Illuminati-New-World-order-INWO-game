@@ -3588,6 +3588,125 @@ const L49_FX = {
 const L49_FXN = {};
 for (const k49 in L49_FX) { L49_FXN[norm(k49)] = L49_FX[k49]; }
 
+/* L50 — inmunidades condicionales, doble poder violento (KKK) y proteccion del
+ * master (Intellectuals). Piezas: attack_immune.protects, grant.vs.masterOf,
+ * kkk_double, master_protect (comprueba en declareAttack). */
+const L50_FX = {
+  'Empty Vee': {
+    kind: 'combo_bonus',
+    immune: { vsAtk: { align: 'straight' }, protects: { attr: 'media' } },
+    grant: { clauses: [{ scope: 'owner', vs: { subtype: 'personality' }, value: 1 }] },
+    t: 'Empty Vee This group, and all other Media groups in your Power Structure, are totally immune to attacks from Straight groups. Each Personality you control gets +1 to its own Power.'
+  },
+  'Robot Sea Monsters': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'destroy', vs: { align: 'corporate' }, value: 4 },
+      { scope: 'owner', atkType: 'destroy', vs: { align: 'government' }, value: 4 },
+      { scope: 'owner', atkType: 'destroy', vs: { attr: 'coastal' }, value: 4 },
+      { scope: 'self', atkType: 'destroy', vs: { cardId: 'japan' }, value: 10 },
+      { scope: 'self', atkType: 'destroy', vs: { cardId: 'california' }, value: 10 }
+    ], pick: 'best' },
+    t: 'Robot Sea Monsters Gives +4 to any attempt to destroy any Corporate or Government group, or any Coastal Place, including with a Disaster except in Space. Has +10 to any direct attempt to destroy Japan or California.'
+  },
+  'KKK': {
+    kind: 'kkk_double',
+    t: 'KKK If the KKK makes or aids an attempt to destroy any Peaceful group, all Violent groups in that attack, on both sides, have doubled Power.'
+  },
+  'Intellectuals': {
+    kind: 'combo_bonus',
+    mp: { masterMedia: true },
+    grant: { clauses: [{ scope: 'owner', vs: { masterOf: true }, value: 1 }] },
+    t: 'Intellectuals A Media group which controls the Intellectuals cannot be captured, or destroyed except by a Disaster or Assassination, and its own Power is increased by 1.'
+  }
+};
+const L50_FXN = {};
+for (const k50 in L50_FX) { L50_FXN[norm(k50)] = L50_FX[k50]; }
+
+/* L51 — masivas con piezas existentes + dos piezas menores:
+ *   ignoreDiscordian (Deprogrammers) y def.vsDef.masterOf (Local Police). */
+const L51_FX = {
+  'California': {
+    kind: 'power_grant',
+    clauses: [{ scope: 'owner', vs: { attr: 'media' }, value: 1 }],
+    t: 'California All your Media groups have +1 Power.'
+  },
+  'Cycle Gangs': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'destroy', vs: {}, value: 2 },
+      { scope: 'owner', atkType: 'disaster', vs: { notAttr: 'space' }, value: 4 }
+    ], pick: 'best' },
+    t: 'Cycle Gangs Gives a +2 on any attempt to destroy another group, or a +4 to any Disaster you play (except in Space).'
+  },
+  'Telephone Psychics': {
+    kind: 'atk_bonus',
+    clauses: [
+      { scope: 'self', atkType: 'control', vs: { cardId: 'ronaldreagan' }, value: 6 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'nancyreagan' }, value: 6 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'tabloids' }, value: 6 },
+      { scope: 'self', atkType: 'control', vs: { attr: 'media', maxPower: 2 }, value: 6 }
+    ],
+    pick: 'best',
+    t: 'Telephone Psychics +6 for direct control of either Ronald or Nancy Reagan, for the Tabloids, or for any Media group with a Power of 1 or 2.'
+  },
+  'Hillary Clinton': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'control', vs: { cardId: 'billclinton' }, value: 2 },
+      { scope: 'owner', atkType: 'control', vs: { cardId: 'democrats' }, value: 2 },
+      { scope: 'owner', atkType: 'control', vs: { cardId: 'congressionalwives' }, value: 2 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'billclinton' }, value: 6 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'democrats' }, value: 6 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'congressionalwives' }, value: 6 }
+    ] },
+    t: 'Hillary Clinton Gives +2 to any attempt to control Bill Clinton, Congressional Wives, or Democrats. +6 to take direct control of any of these groups.'
+  },
+  'Deprogrammers': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'destroy', vs: { align: 'weird' }, value: 4 },
+      { scope: 'owner', atkType: 'destroy', vs: { align: 'fanatic' }, value: 4 },
+      { scope: 'owner', atkType: 'destroy', vs: { aligns: ['weird', 'fanatic'], match: 'all' }, value: 8 }
+    ], pick: 'best' },
+    ignoreDiscordian: true,
+    t: 'Deprogrammers Gives a +4 to any attempt to destroy a Weird or Fanatic group, or +8 if the target is both Weird and Fanatic. Discordias immunity to Straight groups does not extend to the Deprogrammers.'
+  },
+  'Local Police Departments': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'destroy', vs: { align: 'criminal' }, value: 4 }] },
+    grant: { clauses: [{ scope: 'owner', vs: { masterOf: true }, value: 1 }] },
+    def: { clauses: [{ scope: 'self', mode: 'resist', vsDef: { masterOf: true }, value: 3 }] },
+    noDestroy: true,
+    t: 'Local Police Departments Gives +4 to any attempt to destroy a Criminal group. This groups master gets +1 Power and +3 Resistance. This group cannot be destroyed.'
+  }
+};
+const L51_FXN = {};
+for (const k51 in L51_FX) { L51_FXN[norm(k51)] = L51_FX[k51]; }
+
+/* L52 — Count Dracula (+10 Resistencia al controlarlo, indestructible salvo
+ * Magic, muerto permanente) y Pollsters (anula penalizaciones de alineacion
+ * cuando su dueno esta en el ataque). LIMITACION: "Magic group or card" se
+ * modela solo por el atributo del atacante. */
+const L52_FX = {
+  'Count Dracula': {
+    kind: 'combo_bonus',
+    def: { clauses: [{ scope: 'self', mode: 'resist', vsAtk: {}, value: 10 }] },
+    immune: { vsAtk: { notAttr: 'magic' }, onlyDestroy: true },
+    stayDead: true,
+    t: 'Count Dracula Dracula has +10 on any direct attempt to control The Count cannot be destroyed unless a Magic group or card is used. But if destroyed, he is permanently dead nothing can bring him back.'
+  },
+  'Pollsters': {
+    kind: 'pollster_shield',
+    t: 'Pollsters If the Pollsters are involved in an attack, you may ignore any bonuses or penalties for the alignments of the attacker and defender, if they work against you. Of course, those bonuses or penalties which help you will still count.'
+  }
+};
+const L52_FXN = {};
+for (const k52 in L52_FX) { L52_FXN[norm(k52)] = L52_FX[k52]; }
+
+
+
+
 
 
 
@@ -3882,7 +4001,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key] || L46_FXN[key] || L47_FXN[key] || L48_FXN[key] || L49_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key] || L46_FXN[key] || L47_FXN[key] || L48_FXN[key] || L49_FXN[key] || L50_FXN[key] || L51_FXN[key] || L52_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

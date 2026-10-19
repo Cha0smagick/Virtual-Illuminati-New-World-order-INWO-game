@@ -13,7 +13,7 @@ const junk = [
 ''].join('\n');
 if (t.includes(junk)) t = t.replace(junk, '');
 if (t.includes('L49 S.M.O.F.:')) { console.log('ya'); process.exit(0); }
-const a = "    ok(e48b === '' && o48 && o48.power === 8,";
+const a = "  ok(e45b === '' && o45 && o45.power === 8,";
 const i = t.indexOf(a);
 if (i < 0) throw new Error('ancla');
 const L = '\n';

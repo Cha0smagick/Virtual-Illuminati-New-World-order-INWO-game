@@ -1,0 +1,20 @@
+
+/* L52 — Count Dracula (+10 Resistencia al controlarlo, indestructible salvo
+ * Magic, muerto permanente) y Pollsters (anula penalizaciones de alineacion
+ * cuando su dueno esta en el ataque). LIMITACION: "Magic group or card" se
+ * modela solo por el atributo del atacante. */
+const L52_FX = {
+  'Count Dracula': {
+    kind: 'combo_bonus',
+    def: { clauses: [{ scope: 'self', mode: 'resist', vsAtk: {}, value: 10 }] },
+    immune: { vsAtk: { notAttr: 'magic' }, onlyDestroy: true },
+    stayDead: true,
+    t: 'Count Dracula Dracula has +10 on any direct attempt to control The Count cannot be destroyed unless a Magic group or card is used. But if destroyed, he is permanently dead nothing can bring him back.'
+  },
+  'Pollsters': {
+    kind: 'pollster_shield',
+    t: 'Pollsters If the Pollsters are involved in an attack, you may ignore any bonuses or penalties for the alignments of the attacker and defender, if they work against you. Of course, those bonuses or penalties which help you will still count.'
+  }
+};
+const L52_FXN = {};
+for (const k52 in L52_FX) { L52_FXN[norm(k52)] = L52_FX[k52]; }

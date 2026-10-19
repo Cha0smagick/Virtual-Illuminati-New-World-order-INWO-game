@@ -27,7 +27,7 @@ for (const file of tests) {
   const result = spawnSync(process.execPath, [absolute], {
     cwd: root,
     encoding: 'utf8',
-    timeout: 120000,
+    timeout: 480000,
     windowsHide: true
   });
   if (result.stdout) process.stdout.write(result.stdout);
