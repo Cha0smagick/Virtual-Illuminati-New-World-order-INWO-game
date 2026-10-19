@@ -1,0 +1,16 @@
+  /* L48 — puppet_align del MASTER (Ross Perot, Saturday Morning Cartoons): los
+     titeres del grupo con el efecto leen sus alineaciones modificadas. */
+  if(node&&S){
+    var oPa=findOwnerPid(node.uid);
+    if(oPa>=0){
+      var parPa=findNodeThatHas(S.players[oPa].structure,node.uid);
+      if(parPa&&parPa.cardId!=null){
+        var pcPa=card(parPa.cardId);
+        var pa=pcPa&&pcPa.effect&&pcPa.effect.kind==='puppet_align'?pcPa.effect:null;
+        if(pa){
+          if(Array.isArray(pa.add))pa.add.forEach(function(a48){var al48=String(a48).toLowerCase();if(base.indexOf(al48)<0)base.push(al48);});
+          if(Array.isArray(pa.remove))pa.remove.forEach(function(r48){var rl48=String(r48).toLowerCase();var k48=base.indexOf(rl48);if(k48>=0)base.splice(k48,1);});
+        }
+      }
+    }
+  }

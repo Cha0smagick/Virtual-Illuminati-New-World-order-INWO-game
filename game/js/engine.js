@@ -723,6 +723,22 @@ function nodeAligns(node,cardObj){
     }
     base=kept;
   }
+  /* L48 — puppet_align del MASTER (Ross Perot, Saturday Morning Cartoons): los
+     titeres del grupo con el efecto leen sus alineaciones modificadas. */
+  if(node&&S){
+    var oPa=findOwnerPid(node.uid);
+    if(oPa>=0){
+      var parPa=findNodeThatHas(S.players[oPa].structure,node.uid);
+      if(parPa&&parPa.cardId!=null){
+        var pcPa=card(parPa.cardId);
+        var pa=pcPa&&pcPa.effect&&pcPa.effect.kind==='puppet_align'?pcPa.effect:null;
+        if(pa){
+          if(Array.isArray(pa.add))pa.add.forEach(function(a48){var al48=String(a48).toLowerCase();if(base.indexOf(al48)<0)base.push(al48);});
+          if(Array.isArray(pa.remove))pa.remove.forEach(function(r48){var rl48=String(r48).toLowerCase();var k48=base.indexOf(rl48);if(k48>=0)base.splice(k48,1);});
+        }
+      }
+    }
+  }
   /* L9 / 332 — Orbital Mind Control Lasers: el cambio "dura solo lo que resta
    * del turno del jugador actual". Las ediciones PERMANENTES viven en
    * alignsAdded/alignsRemoved; las TEMPORALES en alignsTmpAdded/alignsTmpRemoved
@@ -3665,8 +3681,8 @@ E.useGroupAction=function(pid,uid,opts){
   if(findOwnerPid(uid)!==pid)throw new Error('El grupo no te pertenece');
   if(nd.paralyzed||nd.zapped||nd.devastated)throw new Error('El grupo no puede actuar');
   var c=card(nd.cardId);
-  var e=c&&c.effect;
-  if(!e||e.kind!=='group_action')throw new Error(c.name+': no tiene accion de grupo jugable');
+  var e=bonusPart(c&&c.effect,'ga')||c&&c.effect;
+  if(!e||(c.effect.kind!=='group_action'&&!(c.effect.kind==='combo_bonus'&&c.effect.ga)))throw new Error(c.name+': no tiene accion de grupo jugable');
   if(nd.tokens==null||nd.tokens<1)throw new Error(c.name+': sin Action token');
   if(S.attack&&!S.attack.resolved)throw new Error(c.name+': no durante un ataque');
   var act=String(e.act||'');
@@ -3719,6 +3735,39 @@ E.useGroupAction=function(pid,uid,opts){
       log(c.name+': tirada '+rl+' > '+nP+' Places — sin botin');
     }
     out={roll:rl,places:nP};
+  }else if(act==='strip_token'){
+    /* L49 - S.M.O.F.: quita la ficha de accion de un grupo rival del atributo. */
+    var attrS=String(e.attr||'');
+    var rpidS=opts.rivalPid!=null?opts.rivalPid:(pid===0?1:0);
+    var rvS=S.players[rpidS];
+    if(!rvS)throw new Error(c.name+': ese rival no existe');
+    var targetS=null;
+    if(opts.targetUid){
+      targetS=findNode(opts.targetUid);
+      if(!targetS||findOwnerPid(targetS.uid)!==rpidS)throw new Error(c.name+': ese grupo no es del rival');
+      if(!targetS.cardId||!hasAttr(card(targetS.cardId),attrS,targetS))throw new Error(c.name+': el objetivo no tiene el atributo '+attrS);
+    }else{
+      walk(rvS.structure,function(nS){if(targetS||nS.cardId==null)return;var cs2=card(nS.cardId);if(cs2&&hasAttr(cs2,attrS,nS)&&(nS.tokens||0)>=1)targetS=nS;});
+    }
+    if(!targetS)throw new Error(c.name+': el rival no tiene ningun grupo '+attrS+' con ficha');
+    if((targetS.tokens||0)<1)throw new Error(c.name+': ese grupo no tiene Action token');
+    targetS.tokens--;
+    log(c.name+': le quita la ficha de accion a '+card(targetS.cardId).name+' de '+rvS.name);
+    out={stripped:targetS.uid};
+  }else if(act==='move_free'||act==='reorg'){
+    /* L49 - mover gratis una vez por turno (Offshore Banks, Phone Phreaks) o
+       reorganizar (Elders of Zion, que ademas paga una accion Illuminati). */
+    var uidM=opts.uid;
+    var newP=opts.newParentUid;
+    if(uidM==null||newP==null)throw new Error(c.name+': indica grupo y nuevo padre (opts.uid, opts.newParentUid)');
+    var ndM=findNode(uidM);
+    if(!ndM)throw new Error(c.name+': el grupo no existe');
+    if(!e.anyGroup&&findOwnerPid(uidM)!==pid)throw new Error(c.name+': solo puedes mover grupos de tu estructura');
+    if(findNode(newP)==null&&newP!=='root')throw new Error(c.name+': el nuevo padre no existe');
+    if(e.illumCost){if(S.players[pid].illumTokens<1)throw new Error(c.name+': requiere una accion de tu Illuminati');S.players[pid].illumTokens--;}
+    E.moveGroup(pid,uidM,newP);
+    log(c.name+': mueve '+card(ndM.cardId).name);
+    out={moved:uidM};
   }else if(act==='discard_exposed'){
     var rpid=opts.rivalPid!=null?opts.rivalPid:(pid===0?1:0);
     var rv=S.players[rpid];
@@ -4041,6 +4090,7 @@ function bonusPart(e,which){
   if(which==='immune'&&e.kind==='attack_immune')return e;
   if(which==='grant'&&e.kind==='power_grant')return e;
   if(which==='aid'&&e.kind==='aid_power')return e;
+  if(which==='ga'&&e.kind==='group_action')return e;
   return null;
 }
 /* L43 — free_interfere: "may aid or oppose any attack made by, or against, any X
@@ -4052,6 +4102,11 @@ function fiMatch43(fi,tNode,tCard,selfUid){
   /* L46: fi.onlyPrivileged — solo habilita la entrada en ataques PRIVILEGIADOS. */
   if(fi.onlyPrivileged&&!(S.attack&&S.attack.privilege))return false;
   var vs=fi.vs||{};
+  /* L48 - fi.vsList: calificadores alternativos (Dinosaur Park). */
+  if(Array.isArray(fi.vsList)&&fi.vsList.length){
+    var okL=fi.vsList.some(function(vL){return vsMatchQ(vL,findNode(S.attack?S.attack.attackerUid:null),card((S.attack&&findNode(S.attack.attackerUid))?findNode(S.attack.attackerUid).cardId:null))&&vsMatchQ(vL,tNode,tCard);});
+    if(!okL)return false;
+  }
   var side=fi.side||'both';
   var attN=findNode(S.attack?S.attack.attackerUid:null);
   var attC=attN?card(attN.cardId):null;
@@ -4077,7 +4132,13 @@ function groupAttackBonus(pid,attNode,attCard,type,tNode,tCard,notes){  if(!tCar
     var clauses=e.clauses||[{atkType:e.atkType,scope:e.scope,vs:e.vs,value:e.value}];
     var vals=[];
     clauses.forEach(function(cl){
-      if((cl.scope||e.scope||'self')!=='owner'&&nd!==attNode)return; /* 'self': solo el atacante */
+      var sc46=cl.scope||e.scope||'self';
+      if(sc46==='parent'&&nd!==attNode){/* verificado abajo */}
+      if(sc46==='parent'){
+        /* L48 - 'parent': el grupo con el efecto es TIete del atacante (su master
+           ataca: 'Gives its master +6 to any such attempt', Science Fiction Fans). */
+        if(!attNode||!(attNode.children||[]).some(function(k48){return k48.uid===nd.uid;}))return;
+      }else if(sc46!=='owner'&&nd!==attNode)return; /* 'self': solo el atacante */
       if(cl.atkType&&cl.atkType!=='any'&&cl.atkType!==type)return;
       if(!vsMatchQ(cl.vs,tNode,tCard))return;
       var val=Number(cl.value)||0;
@@ -4126,6 +4187,9 @@ function groupDefenseBonus(defNode,defCard,mode,notes){
     var c=card(nd.cardId);
     var e=bonusPart(c&&c.effect,'def');
     if(!e)return;
+    /* L48 - Wall Street: def solo a los TITERES del grupo con el efecto. */
+    var c48=(e.clauses||[e])[0];
+    if(c48.vsDef&&c48.vsDef.isPuppetOf){var pD48=findNodeThatHas(st,defNode?defNode.uid:null);if(!pD48||pD48.uid!==nd.uid)return;}
     var clauses=e.clauses||[{atkType:e.atkType,scope:e.scope,vsAtk:e.vsAtk,value:e.value}];
     var vals=[];
     clauses.forEach(function(cl){
@@ -4261,6 +4325,10 @@ function computeStrength(resolveMode){
      'violent' anadido por Dictatorship (239) cuenta como violent para los +4/-4
      de esta funcion, para la defensa del master y para la ayuda/oposicion. */
   var attAligns=nodeAligns(att,attCard),tgtAligns=nodeAligns(tNode,tCard);
+  /* L48 - Wall Street: tratar Corporate como Government (o al reves) al atacar. */
+  var swA=null;
+  walk(S.players[A.pid].structure,function(n48){if(swA||n48.cardId==null)return;var cc48=card(n48.cardId);if(cc48&&cc48.effect&&cc48.effect.kind==='align_swap')swA=cc48.effect;});
+  if(swA&&Array.isArray(swA.swap)&&swA.swap.length===2){var mp48={};mp48[swA.swap[0]]=swA.swap[1];mp48[swA.swap[1]]=swA.swap[0];attAligns=attAligns.map(function(ax48){return mp48[ax48]||ax48;});}
   /* L5b — 255 Fear and Loathing: "Identical alignments NOW give +8 on any
      attempt to control, and -8 on any attempt to destroy. The reverse is true
      for opposed alignments." La regla oficial (inwo_rules_extracted.txt:487-493)

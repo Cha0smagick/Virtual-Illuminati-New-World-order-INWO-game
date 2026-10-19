@@ -119,7 +119,7 @@ function readyToAttack(pid) {
        rival puede abrir una ventana de suceso (Embezzlement al robar) y el
        endTurn siguiente la rechaza, matando el bloque con throw. */
     clear24();
-    E.endTurn();
+    clear24(); E.endTurn();
   }
   return null;
 }
@@ -221,7 +221,7 @@ function readyToAttack(pid) {
   var h4 = S4.players[up4].hand;
   /* endTurn() acts on S.currentPid, so we must wait for that player's turn */
   var guard4 = 0;
-  while (S4.currentPid !== up4 && S4.phase !== 'gameover' && guard4++ < 8) E.endTurn();
+  while (S4.currentPid !== up4 && S4.phase !== 'gameover' && guard4++ < 8) clear24(); E.endTurn();
   ok(S4.currentPid === up4, 'fixture: es el turno del jugador UFOs -> currentPid=' + S4.currentPid);
   /* P1-078 (CUARTA aparicion del mismo defecto; esta es la mas antigua: L165 del
    * bloque P1-001). El reparto inicial es ALEATORIO y el jugador de las metas (UFOs)
@@ -239,7 +239,7 @@ function readyToAttack(pid) {
   });
   h4.push(byName['Fratricide'], byName['Hail Eris!'], byName['Criminal Overlords']);
   var goalsBefore = h4.filter(function (ix) { return C.cards[ix].effect && C.cards[ix].effect.kind === 'goal'; }).length;
-  E.endTurn();
+  clear24(); E.endTurn();
   var namesLeft = S4.players[up4].hand.filter(function (ix) {
     return C.cards[ix].effect && C.cards[ix].effect.kind === 'goal';
   }).map(function (ix) { return C.cards[ix].name; });
@@ -256,7 +256,7 @@ function readyToAttack(pid) {
     var nd = findNode(E._raw().players[0].structure, 'g-tok');
     if (nd) maxSeen = Math.max(maxSeen, nd.tokens || 0);
     try { E.moveGroup(0, 'g-tok', E._raw().players[0].structure.uid); } catch (e) { /* posicion */ }
-    E.endTurn();
+    clear24(); E.endTurn();
   }
   ok(maxSeen <= 1, 'los tokens de accion de grupo nunca superan 1 (max ' + maxSeen + ')');
 })();
@@ -300,7 +300,7 @@ function readyToAttack(pid) {
   E._raw().players[p].hand = plotIdx.slice(0, 6);
   E._raw().players[p].exposedPlots = [];
   E._raw().players[p].discards = [];
-  E.endTurn();
+  clear24(); E.endTurn();
   ok(totalPlots(p) <= 5, '6 plots, 0 expuestos -> quedan ' + totalPlots(p) + ' (<=5)');
 
   /* 6 plots en mano + 3 expuestos = 9 -> debe bajar a 5 */
@@ -634,18 +634,18 @@ function readyToAttack(pid) {
   function fillPlots(pid, n) { for (var k = 0; k < n; k++) E._raw().players[pid].hand.push(PLOT_IDX[k]); }
   fresh('gnomesofzurich1', 'bavarianilluminati1');
   var gn = pidOf('gnomesofzurich');
-  while (E.getState().currentPid !== gn && !E.getState().gameover) E.endTurn();
+  while (E.getState().currentPid !== gn && !E.getState().gameover) clear24(); E.endTurn();
   plant(gn, 'gk', ANY.idx, 1);
   fillPlots(gn, 7);
   var gnBefore = plotsOf(gn);
-  E.endTurn();
+  clear24(); E.endTurn();
   ok(plotsOf(gn) === 6, 'P1-009 Gnomes de Zurich admite 6 Plots (no 5) -> ' + gnBefore + ' -> ' + plotsOf(gn));
   fresh('bavarianilluminati1', 'shangrila1');
   var bv = pidOf('bavarianilluminati');
-  while (E.getState().currentPid !== bv && !E.getState().gameover) E.endTurn();
+  while (E.getState().currentPid !== bv && !E.getState().gameover) clear24(); E.endTurn();
   plant(bv, 'bk', ANY.idx, 1);
   fillPlots(bv, 7);
-  E.endTurn();
+  clear24(); E.endTurn();
   ok(plotsOf(bv) === 5, 'P1-009 control: el resto de facciones sigue con el límite de 5 -> ' + plotsOf(bv));
 
   /* ---- 2) The Network: roba 2 Plot al inicio del turno ---- */
@@ -697,7 +697,7 @@ function readyToAttack(pid) {
     if (E.getState().gameover || stepsF6++ > 8) break;
     var curF6 = E.getState().currentPid;
     if (handAtTurn[curF6] == null) handAtTurn[curF6] = plotsOf(curF6);
-    E.endTurn();
+    clear24(); E.endTurn();
   }
   ok(handAtTurn[netPid] != null && handAtTurn[rivalPid] != null,
     'F6 se entro en el primer turno de los dos -> ' + JSON.stringify(handAtTurn));
@@ -818,7 +818,7 @@ function readyToAttack(pid) {
   /* ---- 10) Bermuda Triangle: reorganización gratuita ---- */
   fresh('bermudatriangle1', 'bavarianilluminati1');
   var bm = pidOf('bermudatriangle');
-  while (E.getState().currentPid !== bm && !E.getState().gameover) E.endTurn();
+  while (E.getState().currentPid !== bm && !E.getState().gameover) clear24(); E.endTurn();
   plant(bm, 'x1', ANY.idx, 1);
   plant(bm, 'x2', OTHER.idx, 1);
   E.organize(bm, [{ uid: 'x2', newParentUid: 'x1' }]);
@@ -827,7 +827,7 @@ function readyToAttack(pid) {
     /dentro de sí mismo/i, 'P1-009 Bermuda no permite mover un grupo dentro de sí mismo');
   fresh('bavarianilluminati1', 'bermudatriangle1');
   var nb = 1 - pidOf('bermudatriangle');
-  while (E.getState().currentPid !== nb && !E.getState().gameover) E.endTurn();
+  while (E.getState().currentPid !== nb && !E.getState().gameover) clear24(); E.endTurn();
   plant(nb, 'y1', ANY.idx, 1);
   plant(nb, 'y2', OTHER.idx, 1);
   throws(function () { E.organize(nb, [{ uid: 'y2', newParentUid: 'y1' }]); },
@@ -1510,7 +1510,7 @@ function readyToAttack(pid) {
   var S5b = E.getState();
   if (S5b.currentPid === me) {
     /* el reparto aleatorio dio mi turno: se lo cedemos al rival */
-    try { E.endTurn(); } catch (e) { }
+    try { clear24(); E.endTurn(); } catch (e) { }
   }
   var S5c = E.getState();
   ok(S5c.currentPid !== me, 'P1-014 fixture: ahora es el turno del rival -> ' + S5c.currentPid);
@@ -1649,7 +1649,7 @@ function readyToAttack(pid) {
   plant(me4, 'm15-p4', personality.idx, 0);
   give(me4, MESSIAH);
   var s4 = E.getState();
-  if (s4.currentPid === me4) { try { E.endTurn(); } catch (e) { } }
+  if (s4.currentPid === me4) { try { clear24(); E.endTurn(); } catch (e) { } }
   var s4b = E.getState();
   var outOfTurnThrew = false, outOfTurnErr = '';
   try { E.playPlot(me4, MESSIAH.idx, 'm15-p4'); } catch (e) { outOfTurnThrew = true; outOfTurnErr = e.message; }
@@ -2014,7 +2014,7 @@ function readyToAttack(pid) {
      anade la misma guarda de ocho que usan el resto de bloques. La lesson
      general: un while en una prueba necesita SIEMPRE un contador de guardia. */
   var guard5 = 0;
-  while (E._raw().currentPid !== me5 && E._raw().phase !== 'gameover' && guard5++ < 8) E.endTurn();
+  while (E._raw().currentPid !== me5 && E._raw().phase !== 'gameover' && guard5++ < 8) clear24(); E.endTurn();
   E._raw().players[me5].hand.push(DICT.idx);
 
   var NOTNAT = C.cards.filter(function (c) {
@@ -2050,10 +2050,10 @@ function readyToAttack(pid) {
      leer E._raw() para el turno. Es la misma clase que el fallo de P1-014
      ("la carta sale de la mano"), que leia S2.players en vez de E._raw(). */
   var guard6 = 0;
-  while (E._raw().currentPid !== me6 && E._raw().phase !== 'gameover' && guard6++ < 8) E.endTurn();
+  while (E._raw().currentPid !== me6 && E._raw().phase !== 'gameover' && guard6++ < 8) clear24(); E.endTurn();
   E._raw().players[me6].hand.push(DICT.idx);
   plant(me6, 'd17-turn', NATION.idx, 1);
-  E.endTurn();                                  /* ahora el turno es del rival */
+  clear24(); E.endTurn();                                  /* ahora el turno es del rival */
   ok(E._raw().currentPid === op6, 'P1-017 fixture: ahora es el turno del rival (turno ' +
      E._raw().currentPid + ')');
   /* Se juega con el PID DEL DUENO mientras el turno es del rival: si se pasara
@@ -2365,7 +2365,7 @@ function readyToAttack(pid) {
   function readyBoth(pid) {
     var g = 0, S = E._raw();
     while ((S.currentPid !== pid || S.players[0].turnsCompleted < 1 || S.players[1].turnsCompleted < 1)
-      && S.phase !== 'gameover' && g++ < 8) E.endTurn();
+      && S.phase !== 'gameover' && g++ < 8) clear24(); E.endTurn();
   }
   function strengthCopy() { return JSON.parse(JSON.stringify(E.previewStrength())); }
   function duel(attackerIdx, targetIdx, type) {
@@ -2854,7 +2854,7 @@ function readyToAttack(pid) {
       var ready = s.currentPid === pid;
       for (var k = 0; k < n; k++) if (s.players[k].turnsCompleted < 1) ready = false;
       if (ready) return true;
-      E.endTurn();
+      clear24(); E.endTurn();
     }
     return false;
   }
@@ -3824,7 +3824,7 @@ function readyToAttack(pid) {
   function advance(n) {
     for (var i = 0; i < n; i++) {
       var t0 = E._raw().turn;
-      E.endTurn();
+      clear24(); E.endTurn();
       if (E._raw().turn <= t0) return false;
     }
     return true;
@@ -4354,8 +4354,8 @@ function readyToAttack(pid) {
 
   /* 3) La regla dura mas de un turno: no caduca con el cambio de turno. */
   E.resolveAttack();
-  E.endTurn();
-  E.endTurn();
+  clear24(); E.endTurn();
+  clear24(); E.endTurn();
   ok(E._raw().alignRule && E._raw().alignRule.mag === 8, 'L5b la regla sigue puesta tras dos turnos -> ' +
     JSON.stringify(E._raw().alignRule));
 
@@ -4552,7 +4552,7 @@ function readyToAttack(pid) {
   ok(nodeOf(1, 'vic') !== null, 'L5c el fallo automatico deja al Weird con su dueno');
   ok(tbOf(1, 'vic') !== null, 'L5c el bonus defensivo NO se consume al resolver el ataque');
   /* La caducidad: al empezar el turno siguiente se va. */
-  E.endTurn(); E.beginTurn(1); E.endTurn(); E.beginTurn(0);
+  clear24(); E.endTurn(); E.beginTurn(1); clear24(); E.endTurn(); E.beginTurn(0);
   ok(E._raw().turn >= 1, 'L5c el turno avanzo -> ' + E._raw().turn);
   ok(tbOf(1, 'vic') === null, 'L5c el bonus DEFENSA caduco al empezar el turno siguiente');
   ok(resOf(1, 'vic') === vicR, 'L5c la Resistencia vuelve a la impresa -> ' + resOf(1, 'vic'));
@@ -5160,7 +5160,7 @@ function readyToAttack(pid) {
       var s = E.getState();
       if (s.gameover) return false;
       if (s.phase === 'main' && s.currentPid === pid) return true;
-      E.endTurn();
+      clear24(); E.endTurn();
     }
     return false;
   }
@@ -5222,8 +5222,8 @@ function readyToAttack(pid) {
   /* --- S4: el token extra caduca al empezar el turno del dueno ------------- */
   var antes = nodeOf(0, 'gV').tokens;
   ok(antes === 4, 'S4 fixture: el token extra sigue vivo en el turno en que se coloco');
-  E.endTurn();
-  E.endTurn();
+  clear24(); E.endTurn();
+  clear24(); E.endTurn();
   ok(nodeOf(0, 'gV').bonusAction.length === 0,
     'S4 el token extra de 411 caduca al empezar de nuevo el turno del dueno');
   ok(nodeOf(0, 'gV').tokens === antes - 1,
@@ -5384,7 +5384,7 @@ function readyToAttack(pid) {
       var s = E.getState();
       if (s.gameover) return false;
       if (s.phase === 'main' && s.currentPid === pid) return true;
-      E.endTurn();
+      clear24(); E.endTurn();
     }
     return false;
   }
@@ -5486,7 +5486,7 @@ function readyToAttack(pid) {
   placeHook(0, SKULL);
   E.drawPlot(0);
   ok(raw().currentPid === 0, 'L8b S4 antes de intentar nada el turno es del jugador 0');
-  throws(function () { E.endTurn(); }, /sin resolver tu eleccion de robo/,
+  throws(function () { clear24(); E.endTurn(); }, /sin resolver tu eleccion de robo/,
     'L8b S4 no se puede terminar el turno con la eleccion de robo abierta');
   ok(raw().currentPid === 0, 'L8b S4 el turno NO avanza: las cartas ya salieron del mazo');
   E.resolvePendingDraw({ pick: 0, rest: 'top' });
@@ -5563,7 +5563,7 @@ function readyToAttack(pid) {
     for(var g=0;g<12;g++){
       var st=E.getState();
       if(st.phase==='main'&&st.currentPid===0)return;
-      E.endTurn();
+      clear24(); E.endTurn();
       /* L31: senateinvestigatingcommittee se unio a unlucky13/seizethetime como
          disparador de la ventana; si P0 la tiene al azar en mano, hay que pasar
          la ventana o el siguiente endTurn revienta (fase 'begin'). */
@@ -5674,21 +5674,21 @@ function readyToAttack(pid) {
      * varios ids (asi se reescribio en P1-099), asi que solo hay que pasarle los dos. */
     deckOnlyL8c(idxOfId('unlucky13'), idxOfId('seizethetime'));
     var tS0=rawL8c().turn;
-    E.endTurn();
+    clear24(); E.endTurn();
     ok(E.getState().phase==='main'&&!E.getState().pendingTurnStart&&rawL8c().turn===tS0+1,
       'L8c S1 sin 405 en ninguna mano: endTurn corre beginTurn sincrono, sin ventana');
     toHumanTurnL8c();
     var ixU1=idxOfId('unlucky13');
     pullPlotL8c(0,ixU1);
     var tS1=rawL8c().turn;
-    E.endTurn();
+    clear24(); E.endTurn();
     ok(!!E.getState().pendingTurnStart&&E.getState().pendingTurnStart.forPid===1,
       'L8c S1 el humano con 405 abre la ventana para el rival (forPid=1)');
     ok(E.getState().phase==='begin'&&E.getState().currentPid===1&&rawL8c().turn===tS1,
       'L8c S1 la ventana bloquea: phase=begin, currentPid=1, el turno NO avanzo');
     /* S1b: el humano NO puede bloquear el comienzo de su PROPIO turno. */
     E.resolvePendingTurnStart({pass:true});
-    E.endTurn();
+    clear24(); E.endTurn();
     ok(E.getState().phase==='main'&&E.getState().currentPid===0&&!E.getState().pendingTurnStart,
       'L8c S1b el comienzo del turno del humano no abre ventana (no auto-bloqueo)');
 
@@ -5697,7 +5697,7 @@ function readyToAttack(pid) {
     toHumanTurnL8c();
     plant(0,'nL8cMG',mgIdxL8c,1);
     pullPlotL8c(0,idxOfId('unlucky13'));
-    E.endTurn();
+    clear24(); E.endTurn();
     ok(!!E.getState().pendingTurnStart,'L8c S2 la ventana esta abierta tras endTurn');
     /* el jugador inicial de startGame es ALEATORIO: los valores de turno son
        relativos al turno de la ventana (tw), nunca absolutos. */
@@ -5720,7 +5720,7 @@ function readyToAttack(pid) {
     freshL8c();
     toHumanTurnL8c();
     pullPlotL8c(0,idxOfId('unlucky13'));
-    E.endTurn();
+    clear24(); E.endTurn();
     var twS3=rawL8c().turn;
     E.resolvePendingTurnStart({pass:true});
     var stS3=E.getState(), trS3=rawL8c().turn;
@@ -5737,14 +5737,14 @@ function readyToAttack(pid) {
     toHumanTurnL8c();
     plant(0,'nL8cMG',mgIdxL8c,1);
     pullPlotL8c(0,idxOfId('unlucky13'));
-    E.endTurn();
+    clear24(); E.endTurn();
     E.playPlot(0,idxOfId('unlucky13'),null,{});
-    E.endTurn();
+    clear24(); E.endTurn();
     ok(rawL8c().players[1].flags.noPlotUntilTurnEnd===0,
       'L8c S4 la bandera se limpio al empezar el turno siguiente');
     ok(saidL8c(/puede volver a robar Plot cards/),
       'L8c S4 el log declara la caducidad');
-    E.endTurn();
+    clear24(); E.endTurn();
     /* P1-118 (FLAKE MEDIDO): freshL8c() marca a P0 como humano, asi que E.endTurn
      * puede dejar ABIERTA la ventana de comienzo de turno (phase='begin'). Con la
      * ventana abierta, E.drawPlot(1) revienta con "Fuera de la fase principal",
@@ -5756,7 +5756,7 @@ function readyToAttack(pid) {
       var s18 = E.getState();
       if (s18.pendingTurnStart) { E.resolvePendingTurnStart({ pass: true }); continue; }
       if (s18.phase === 'main' && s18.currentPid === 1) break;
-      E.endTurn();
+      clear24(); E.endTurn();
     }
     E.drawPlot(1);
     ok(rawL8c().players[1].flags.plotDrawn===true,
@@ -5780,7 +5780,7 @@ function readyToAttack(pid) {
     plant(0,'nL8cMG',mgIdxL8c,1);
     plant(1,'nL8cR1',mg2IdxL8c,1);
     pullPlotL8c(0,idxOfId('unlucky13'));
-    E.endTurn();
+    clear24(); E.endTurn();
     E.playPlot(0,idxOfId('unlucky13'),null,{});
     var ix361=idxOfId('savingsloanscam');
     pullPlotL8c(1,ix361);
@@ -5812,7 +5812,7 @@ function readyToAttack(pid) {
      * endTurn de este bloque es determinista. Es el mismo patron que P1-078. */
     deckOnlyL8c(idxOfId('unlucky13'), idxOfId('seizethetime'));
     if(E.getState().pendingTurnStart) E.resolvePendingTurnStart({ pass: true });
-    E.endTurn();
+    clear24(); E.endTurn();
     ok(saidL8c(/Plot cards al inicio del turno \(The Network\)/),
       'L8c S7 control positivo: el turno de R1 robo 2 Plots al inicio');
     var rL8c=rawL8c();
@@ -5835,12 +5835,12 @@ function readyToAttack(pid) {
        reparto dejo el turno en PID0, se normaliza aqui (la ventana que abra se
        pasa). */
     for(var gS7=0;gS7<4&&E.getState().currentPid!==1;gS7++){
-      E.endTurn();
+      clear24(); E.endTurn();
       if(E.getState().pendingTurnStart)E.resolvePendingTurnStart({pass:true});
     }
     pullPlotL8c(0,idxOfId('unlucky13'));
-    E.endTurn();
-    E.endTurn();
+    clear24(); E.endTurn();
+    clear24(); E.endTurn();
     E.playPlot(0,idxOfId('unlucky13'),null,{});
     ok(plotsOfL8c(1)===basePlotsL8c,
       'L8c S7 el autoDraw de Network quedo BLOQUEADO ('+basePlotsL8c+' -> '+plotsOfL8c(1)+'; sin bandera seria '+basePlotsL8c+' -> '+(basePlotsL8c+2)+')');
@@ -5978,7 +5978,7 @@ ok(!!L9c332 && !!L9c357 &&
   for (var kL9 = 0; kL9 < 12; kL9++) {
     var stL9 = E.getState();
     if (stL9.phase === 'main' && stL9.currentPid === 0) break;
-    E.endTurn();
+    clear24(); E.endTurn();
   }
   ok(E.getState().phase === 'main' && E.getState().currentPid === 0,
      'L9 el fixture deja a P0 en su turno principal (control del camino feliz)');
@@ -6005,7 +6005,7 @@ ok(!!L9c332 && !!L9c357 &&
   /* Caducidad por turno: el sello alignsTmpTurn ya no coincide con S.turn, asi que
    * la alineacion vuelve sola. No hace falta ningun barrido en endTurn. */
   var tw0 = E._raw().turn;
-  for (var eL9 = 0; eL9 < 12 && E._raw().turn === tw0; eL9++) E.endTurn();
+  for (var eL9 = 0; eL9 < 12 && E._raw().turn === tw0; eL9++) clear24(); E.endTurn();
   var a3 = E.alignsOfNode('nL9grp') || [];
   ok(E._raw().turn > tw0 && a3.indexOf('violent') >= 0,
      'L9 el cambio de 332 es TEMPORAL: caduca al empezar el turno siguiente -> ' + a2.join(',') + ' | vuelve ' + a3.join(','));
@@ -6015,7 +6015,7 @@ ok(!!L9c332 && !!L9c357 &&
   for (var wL9 = 0; wL9 < 12; wL9++) {
     var s2 = E.getState();
     if (s2.phase === 'main' && s2.currentPid === 0) break;
-    E.endTurn();
+    clear24(); E.endTurn();
   }
   var rawL9 = E._raw();
   rawL9.attack = { groupUid: 'nL9grp', targetUid: 'x', power: 1 };
@@ -6030,7 +6030,7 @@ ok(!!L9c332 && !!L9c357 &&
   for (var k2L9 = 0; k2L9 < 12; k2L9++) {
     var s3L9 = E.getState();
     if (s3L9.phase === 'main' && s3L9.currentPid === 0) break;
-    E.endTurn();
+    clear24(); E.endTurn();
   }
   var noDest = true, whyDest = '';
   var rawND = E._raw();
@@ -6154,7 +6154,7 @@ ok(!!L9c332 && !!L9c357 &&
   for (var w = 0; w < 8; w++) {
     var st = E.getState();
     if (st.phase === 'main' && st.currentPid === 0) break;
-    E.endTurn();
+    clear24(); E.endTurn();
   }
   var ill0 = rawL10().players[0].illumTokens;
   ok(E.getState().phase === 'main' && E.getState().currentPid === 0, 'L10 el fixture deja a P0 en su turno principal');
@@ -6609,7 +6609,7 @@ function ownMainTurnL12() {
   for (var k = 0; k < 14; k++) {
     var s = E.getState();
     if (s.phase === 'main' && s.currentPid === 0) return true;
-    E.endTurn();
+    clear24(); E.endTurn();
   }
   var s2 = E.getState();
   return s2.phase === 'main' && s2.currentPid === 0;
@@ -6786,7 +6786,7 @@ ok(copiesInHandL12(0, IX.weaklink) === 1 && E._raw().players[0].resources.length
    * por eso no avanza nada. Para el Relief de 410 hace falta pasar por el turno del
    * rival y volver: hasta que S.turn no llega a reliefPending.untilTurn (= el turno en
    * que se creo + 1) el Relief no puede dispararse. Este ayudante FUERZA ese ciclo. */
-  function nextOwnTurnL13() { E.endTurn(); return ownMainTurnL12(); }
+  function nextOwnTurnL13() { clear24(); E.endTurn(); return ownMainTurnL12(); }
   /* Un Disaster que ACIERTA puede abrir VENTANA DE REACCION (reactionWindowOpen):
    * E.playPlot guarda S.pendingAttack y NO aplica nada hasta que alguien la cierre.
    * Sin este ayudante, leer nd.devastated justo despues de jugar el Disaster es una
@@ -7064,7 +7064,7 @@ function ownTurnL14() {
     var s14 = E.getState();
     if (s14.pendingTurnStart) E.resolvePendingTurnStart({ pass: true });
     if (s14.phase === 'main' && s14.currentPid === 0 && !E.getState().pendingTurnStart) return true;
-    E.endTurn();
+    clear24(); E.endTurn();
   }
   var s2 = E.getState();
   return s2.phase === 'main' && s2.currentPid === 0 && !s2.pendingTurnStart;
@@ -7110,7 +7110,7 @@ plant(0, 'a1L14', C14.grp, 0);
  * no hay ventana y no hay nada que robar. Por eso esta llamada va aqui y no despues. */
 toHandL14(0, C14.seize);
 plant(0, 'a2L14', C14.grp, 1);
-E.endTurn();
+clear24(); E.endTurn();
 var winL14 = E.getState().pendingTurnStart;
 var turnWin = E._raw().turn;
 ok(!!winL14 && winL14.forPid === 1, 'L14 S1 E.endTurn abre la ventana de comienzo de turno del rival -> ' + JSON.stringify(winL14));
@@ -7135,11 +7135,11 @@ ok(E.getState().log.some(function (x) { return /Seize the Time!: el turno pasa a
 
 /* ---- ESCENARIO 2 (retorno): al terminar el turno especial, el turno vuelve a B ---- */
 var turnAfter = E._raw().turn;
-E.endTurn();
+clear24(); E.endTurn();
 ok(E.getState().currentPid === 1, 'L14 S2 al terminar el turno especial el turno vuelve al interrumpido -> currentPid=' + E.getState().currentPid);
 ok(E._raw().turn === turnAfter + 1, 'L14 S2 el turno del interrumpido arranca UNA sola vez -> S.turn ' + turnAfter + ' -> ' + E._raw().turn);
 ok(E._raw().returnTurnTo == null, 'L14 S2 ya no queda ningun turno pendiente de devolver');
-E.endTurn();
+clear24(); E.endTurn();
 ok(E.getState().currentPid === 0, 'L14 S2 el interrumpido juega EXACTAMENTE un turno: al terminarlo vuelve el actor -> currentPid=' + E.getState().currentPid);
 
 /* ---- NEGATIVO 1: sin la ventana de comienzo de turno abierta ---- */
@@ -7171,7 +7171,7 @@ ok(freshL14(), 'L14 N3 fixture otra vez');
    * Sin estas dos lineas el playPlot de este negativo se ejecutaba SIN ventana (y
    * en N3 ademas sin la carta en la mano), asi que el negativo no probaba nada. */
   toHandL14(0, C14.seize);
-  E.endTurn();
+  clear24(); E.endTurn();
   ok(!!E.getState().pendingTurnStart, 'L14 fixture: la ventana de comienzo de turno esta abierta para N3/N4');
 plant(1, 'bL14', C14.grp, 0);
 var n3aL14 = throwMsgL14(function () { E.playPlot(0, C14.seize, null, {}); });
@@ -7194,7 +7194,7 @@ ok(freshL14(), 'L14 N4 fixture otra vez');
    * Sin estas dos lineas el playPlot de este negativo se ejecutaba SIN ventana (y
    * en N3 ademas sin la carta en la mano), asi que el negativo no probaba nada. */
   toHandL14(0, C14.seize);
-  E.endTurn();
+  clear24(); E.endTurn();
   ok(!!E.getState().pendingTurnStart, 'L14 fixture: la ventana de comienzo de turno esta abierta para N3/N4');
 plant(1, 'bL14', C14.grp, 0);
 throwMsgL14(function () { E.playPlot(0, C14.seize, null, {}); });
@@ -7206,7 +7206,7 @@ ok(!!n4pL14 && /no puedes robar Plot/.test(n4pL14),
 ok(!!n4gL14 && /no puedes robar Group/.test(n4gL14),
    'L14 N4 RECHAZA robar un Group -> ' + (n4gL14 || 'NO RECHAZO'));
 /* Y la RECUPERACION: el veto es de ESE turno, no permanente. */
-E.endTurn();
+clear24(); E.endTurn();
 E.resolvePendingTurnStart({ pass: true });
 ok(ownTurnL14(), 'L14 N4 vuelve a ser el turno del actor tras el turno especial');
 ok(!throwMsgL14(function () { E.drawPlot(0); }), 'L14 N4 en su turno normal el actor vuelve a poder robar Plot');
@@ -7307,7 +7307,7 @@ function endTurnOfL15(pid) {
     var sL = E.getState();
     if (sL.gameover) return false;
     if (sL.currentPid === pid) return true;   // NO lo cierra: solo lo localiza
-    E.endTurn();                                 // cierra los turnos ajenos
+    clear24(); E.endTurn();                                 // cierra los turnos ajenos
   }
   return false;
 }
@@ -7416,7 +7416,7 @@ h15a.push(C15.alt);
 h15a.push(C15.kill);
 ok(goalsInHandL15(0).length === 2, 'L15 S6 A tiene Alternate Goals + 294 en mano antes de resolver el limite');
 ok(endTurnOfL15(0), 'L15 S6 se cierra el turno de A (no el que toque por el reparto inicial)');
-E.endTurn();
+clear24(); E.endTurn();
 ok(goalsInHandL15(0).length === 1,
   'L15 S6 "cannot be combined with other Goals in any way": con 294 en mano el limite sigue siendo 1 -> ' +
   goalsInHandL15(0).length + ' Goal card(s) en mano');
@@ -7430,7 +7430,7 @@ h15b.push(C15.alt);
 h15b.push(C15.fratr);
 ok(goalsInHandL15(0).length === 2, 'L15 S6 contraste: Alternate Goals + Fratricide en mano');
 ok(endTurnOfL15(0), 'L15 S6 contraste: se cierra el turno de A');
-E.endTurn();
+clear24(); E.endTurn();
 ok(goalsInHandL15(0).length === 2,
   'L15 S6 contraste: con Fratricide (Goal combinable) el limite SI es 2 y no se descarta nada -> ' +
   goalsInHandL15(0).length + ' Goal card(s) en mano');
@@ -7547,7 +7547,7 @@ for (var t19 = 0; t19 < 8; t19++) {
   var s19 = E.getState();
   if (s19.gameover) break;
   if (s19.currentPid === 1) { rivalTurn19 = true; break; }
-  E.endTurn();
+  clear24(); E.endTurn();
 }
 ok(rivalTurn19, 'L19 S2 el fixture localiza el TURNO DEL RIVAL (pid 1) sin depender de la tirada inicial');
 if (rivalTurn19) {
@@ -7704,7 +7704,7 @@ for (var t20 = 0; t20 < 8; t20++) {
   var s20 = E.getState();
   if (s20.gameover) break;
   if (s20.currentPid === 1) { itIsB20 = true; break; }
-  E.endTurn();
+  clear24(); E.endTurn();
 }
 ok(itIsB20, 'L20 S2 el fixture localiza el turno del rival (pid 1)');
 if (itIsB20) {
@@ -8690,7 +8690,7 @@ function turn24(pid) {
     clear24();
     var s = E._raw();
     if (s.currentPid === pid && s.phase === 'main') return true;
-    E.endTurn();
+    clear24(); E.endTurn();
   }
   clear24();
   var f = E._raw();
@@ -8812,7 +8812,7 @@ function turn25(pid) {
       }
     }
     if (listo) return true;
-    E.endTurn();
+    clear24(); E.endTurn();
   }
   return false;
 }
@@ -9777,8 +9777,8 @@ function err26(fn) { return throwMsgL14(fn); }
     readyToAttack(0);
     E.playResource(0, PMM, 'g1');
     ok(E._raw().players[0].resources.some(function (r) { return r.cardId === PMM && r.linkedTo === 'g1'; }), 'S3a resource ligado a g1');
-    E.endTurn(); passTS();
-    E.endTurn(); passTS();
+    clear24(); E.endTurn(); passTS();
+    clear24(); E.endTurn(); passTS();
     var tg1 = 0;
     E._raw().players[0].structure.children.forEach(function (n) { if (n.uid === 'g1') tg1 = n.tokens || 0; });
     ok(tg1 === 2, 'S3b fichas de g1 = 2 (reparto normal + PMM), hay ' + tg1);
@@ -9838,7 +9838,7 @@ function err26(fn) { return throwMsgL14(fn); }
     hand22(0, SEN);
     readyToAttack(0);
     E._raw().players[0].human = true; /* la ventana de turno solo abre para holders HUMANOS (contrato L8c/P1-098) */
-    E.endTurn();
+    clear24(); E.endTurn();
     ok(!!E._raw().pendingTurnStart && E._raw().pendingTurnStart.forPid === 1, 'S5a ventana del comienzo del turno de 1');
     E.playPlot(0, SEN);
     ok(E._raw().pendingTurnStart === null, 'S5b ventana cerrada');
@@ -9856,7 +9856,7 @@ function err26(fn) { return throwMsgL14(fn); }
     clear24(); E.endTurn(); passTS(); /* turno de 0 */
     var lockBefore = E._raw().players[1].flags.senateLock;
     hand22(0, SEN); /* ANTES del endTurn: la ventana solo abre si un humano tiene la carta en mano */
-    E.endTurn(); /* ventana del turno de 1, SIN pasar: aqui se juega la 2ª Senate */
+    clear24(); E.endTurn(); /* ventana del turno de 1, SIN pasar: aqui se juega la 2ª Senate */
     E.playPlot(0, SEN); /* 2ª vez: "the card has no effect and is discarded" */
     ok(E._raw().players[1].senateHits === 1, 'S5h senateHits sigue 1');
     ok(E._raw().players[1].flags.senateLock === lockBefore, 'S5i senateLock sin cambiar');
@@ -9877,7 +9877,7 @@ function err26(fn) { return throwMsgL14(fn); }
       hand22(0, SEN);
       readyToAttack(0);
       E._raw().players[0].human = true;
-      E.endTurn();
+      clear24(); E.endTurn();
       var msg = tMsg(function () { E.playPlot(0, SEN); });
       ok(msg.indexOf('Discordian') >= 0, 'S5l Discordianos inmunes: "' + msg + '"');
       ok(E._raw().players[1].senateHits === 0, 'S5m sin registrar golpe');
@@ -10111,8 +10111,8 @@ function err26(fn) { return throwMsgL14(fn); }
     ok(m7b.indexOf('+4 o -2') >= 0, 'S7e valor invalido para no-Disaster: "' + m7b + '"');
     R.attack = null;
     /* S7f: al proximo beginTurn el Satellite amanece con 2 fichas. */
-    E.endTurn();
-    E.endTurn();
+    clear24(); E.endTurn();
+    clear24(); E.endTurn();
     ok(R.currentPid === 0, 'S7f-pre vuelta a pid0 (currentPid=' + R.currentPid + ')');
     var wsR2 = R.players[0].resources.filter(function (r) { return r.cardId === WS; })[0];
     ok(wsR2 && wsR2.tokens === 2, 'S7f Satellite con 2 fichas tras beginTurn (tiene ' + (wsR2 ? wsR2.tokens : '?') + ')');
@@ -10195,7 +10195,7 @@ function err26(fn) { return throwMsgL14(fn); }
          destroyAfterAction (parche D). Fixture directa del flag resultante. */
       n3.burstMul = null; n3.destroyAfterAction = true;
       ok(!n3.burstMul && n3.destroyAfterAction === true, 'S3b gasto la accion: marcado para destruir');
-      E.endTurn(); tsSafe();
+      clear24(); E.endTurn(); tsSafe();
       R = E._raw();
       ok(R.groupDiscard.indexOf(G) >= 0, 'S3c grupo en el descarte de Groups');
       ok(R.players[0].destroyedByMe.indexOf(G) < 0, 'S3d NO cuenta como destruido (noCount)');
@@ -10368,7 +10368,7 @@ function err26(fn) { return throwMsgL14(fn); }
     plant(1, 'atk', idxOfId((atk || anyGroupIdx() && C.cards[anyGroupIdx()] || secret).id), 2);
     findN37('atk').powerOverride = 15;
     hand22(0, idx37('coverup'));
-    readyToAttack(0); E.endTurn(); /* turno de P1 (atacante), forzado */
+    readyToAttack(0); clear24(); E.endTurn(); /* turno de P1 (atacante), forzado */
     E._raw().currentPid = 1;
     E._raw().players[0].flags.privilegedUsed = 0;
     E.declareAttack(1, 'destroy', { attackerUid: 'atk', uid: 'sec' });
@@ -10396,7 +10396,7 @@ function err26(fn) { return throwMsgL14(fn); }
     /* destruccion por grupo rival -> credito + represalia */
     plant(1, 'arkA', idxOfId(g37.id), 2);
     findN37('arkA').powerOverride = 15;
-    E.endTurn(); /* turno de P1 (atacante), forzado */
+    clear24(); E.endTurn(); /* turno de P1 (atacante), forzado */
     E._raw().currentPid = 1;
     E.declareAttack(1, 'destroy', { attackerUid: 'arkA', uid: 'ag' });
     E._raw().attack.boosts.push({ name: 'test37', v: 50 }); /* garantiza exito ante la defensa maestra */
@@ -10417,7 +10417,7 @@ function err26(fn) { return throwMsgL14(fn); }
     var g37 = firstBy37(function (c37) { return c37.type === 'group' && (c37.power || 0) >= 6 && !attr37(c37, 'peaceful'); });
     plant(1, 'gA', idxOfId((g37 || { id: C.cards[anyGroupIdx()].id }).id), 2);
     findN37('gA').powerOverride = 15;
-    readyToAttack(0); E.endTurn(); /* turno de P1 (atacante), forzado */
+    readyToAttack(0); clear24(); E.endTurn(); /* turno de P1 (atacante), forzado */
     E._raw().currentPid = 1;
     E.declareAttack(1, 'destroy', { attackerUid: 'gA', uid: 'site' });
     E._raw().attack.boosts.push({ name: 'test37', v: 50 }); /* garantiza exito ante la defensa maestra */
@@ -10436,7 +10436,7 @@ function err26(fn) { return throwMsgL14(fn); }
     var g37 = firstBy37(function (c37) { return c37.type === 'group' && (c37.power || 0) >= 6 && !attr37(c37, 'peaceful'); });
     plant(1, 'sA', idxOfId((g37 || { id: C.cards[anyGroupIdx()].id }).id), 2);
     findN37('sA').powerOverride = 15;
-    readyToAttack(0); E.endTurn(); /* turno de P1 (atacante), forzado */
+    readyToAttack(0); clear24(); E.endTurn(); /* turno de P1 (atacante), forzado */
     E._raw().currentPid = 1;
     E.declareAttack(1, 'destroy', { attackerUid: 'sA', uid: 'per' });
     E._raw().attack.boosts.push({ name: 'test37', v: 50 }); /* garantiza exito ante la defensa maestra */
@@ -10463,7 +10463,7 @@ function err26(fn) { return throwMsgL14(fn); }
     var g37 = firstBy37(function (c37) { return c37.type === 'group' && !attr37(c37, 'peaceful'); });
     plant(0, 'sbT', idxOfId(g37.id), 1);
     addRes37(0, idx37('soulburner'), null);
-    E.endTurn(); /* turno de P1 (atacante), forzado */
+    clear24(); E.endTurn(); /* turno de P1 (atacante), forzado */
     E._raw().currentPid = 1;
     var h0 = handLen37(0);
     plant(1, 'sbA', idxOfId(g37.id), 2);
@@ -10483,7 +10483,7 @@ function err26(fn) { return throwMsgL14(fn); }
     plant(1, 'hbT', idxOfId(g37.id), 1);
     plant(0, 'hbA', idxOfId(g37.id), 2);
     findN37('hbA').powerOverride = 15;
-    E.endTurn(); E.endTurn();
+    clear24(); E.endTurn(); clear24(); E.endTurn();
     E._raw().currentPid = 0;
     var h0 = handLen37(0);
     E.declareAttack(0, 'destroy', { attackerUid: 'hbA', uid: 'hbT' });
@@ -10584,7 +10584,7 @@ function err26(fn) { return throwMsgL14(fn); }
         hand22(0, AF);
         E.playResource(0, AF, 'pac2'); /* angel del DEFENSOR, linkeado a su Peaceful */
         findN34('at2').powerOverride = cal2.ov;
-        E.endTurn(); /* ceder el turno al rival atacante */
+        clear24(); E.endTurn(); /* ceder el turno al rival atacante */
         withMock34([0.0, 0.99, 0.99, 0.99], function () {
           E.declareAttack(1, 'control', { attackerUid: 'at2', uid: 'pac2' });
           E.resolveAttack();
@@ -10688,14 +10688,14 @@ function err26(fn) { return throwMsgL14(fn); }
     findN36('pp').tokensAtTurnStart = 2;
     readyToAttack(0);
     addRes36(0, idx36('bigfoot'));
-    E.endTurn(); E.endTurn(); /* beginTurn: ficha de accion para Bigfoot */
+    clear24(); E.endTurn(); clear24(); E.endTurn(); /* beginTurn: ficha de accion para Bigfoot */
     var re = res36(0, 'bigfoot_cancel');
     ok36(re && (re.tokens || 0) >= 1, 'L36.S1a Bigfoot recibe ficha de accion (texto con "action")');
     findN36('pp').tokens = 1; /* Bigfoot cancela el gasto de ESTE turno */
     ok36(tMsg36(function () { E.useBigfoot(0, { resourceUid: re.uid, mode: 'cancel', targetUid: 'pp' }); }) === null, 'L36.S1b Bigfoot cancela accion de grupo Media');
     ok36(findN36('pp').tokens === 2, 'L36.S1c la ficha gastada vuelve (tokens 1 -> 2)');
     ok36((res36(0, 'bigfoot_cancel').tokens || 0) === 0, 'L36.S1d Bigfoot gasta SU ficha al cancelar');
-    E.endTurn(); E.endTurn();
+    clear24(); E.endTurn(); clear24(); E.endTurn();
     var re2 = res36(0, 'bigfoot_cancel');
     ok36((re2.tokens || 0) >= 1, 'L36.S1e Bigfoot recibe ficha cada turno (texto con "action")');
     var other = firstBy36(function (c36) { return c36.type === 'group' && !attr36(c36, 'media'); });
@@ -10718,7 +10718,7 @@ function err26(fn) { return throwMsgL14(fn); }
     plant(1, 'pe', idxOfId(per.id), 2); findN36('pe').tokensAtTurnStart = 2;
     readyToAttack(0);
     addRes36(0, idx36('hallucinations'));
-    E.endTurn(); E.endTurn();
+    clear24(); E.endTurn(); clear24(); E.endTurn();
     var re = res36(0, 'hallu_cancel');
     findN36('pe').tokens = 1; /* gasto de ESTE turno tras el snapshot */
     ok36(tMsg36(function () { E.useHallucinations(0, { resourceUid: re.uid, mode: 'cancel', targetUid: 'pe' }); }) === null, 'L36.S2a Hallucinations cancela accion de Personality');
@@ -10738,7 +10738,7 @@ function err26(fn) { return throwMsgL14(fn); }
       plant(1, 'co', idxOfId(coast.id), 2); findN36('co').tokensAtTurnStart = 2;
       readyToAttack(0);
       addRes36(0, idx36('lochnessmonster'));
-      E.endTurn(); E.endTurn();
+      clear24(); E.endTurn(); clear24(); E.endTurn();
       var re = res36(0, 'ness_cancel');
       findN36('co').tokens = 1; /* gasto de ESTE turno tras el snapshot */
       ok36(tMsg36(function () { E.useLochNess(0, { resourceUid: re.uid, mode: 'cancel', targetUid: 'co' }); }) === null, 'L36.S3a Loch Ness cancela accion de Coastal');
@@ -10749,7 +10749,7 @@ function err26(fn) { return throwMsgL14(fn); }
       ok36(E._raw().attack.boosts.some(function (b36) { return b36.name === 'Loch Ness' && b36.v === 4; }), 'L36.S3b +4 al Destruir Coastal');
       /* modo disaster: el motor de Disasters usa instantAttack; aqui se prueba el gate con un ataque simulado */
       E._raw().attack = null; /* el ataque S3b queda sin resolver: se cierra para poder pasar turno */
-      E.endTurn(); E.endTurn();
+      clear24(); E.endTurn(); clear24(); E.endTurn();
       var re2 = res36(0, 'ness_cancel');
       E._raw().attack = { pid: 0, type: 'disaster', attackerUid: 'ag', targetUid: 'co', targetPid: 1, privilege: false, resolved: false, boosts: [], aids: [], opposes: [] };
       E.useLochNess(0, { resourceUid: re2.uid, mode: 'disaster' });
@@ -10763,7 +10763,7 @@ function err26(fn) { return throwMsgL14(fn); }
     fresh(idx36('bavarianilluminati1'), idx36('servantsofcthulhu1'));
     readyToAttack(0);
     addRes36(0, idx36('thefroggod'));
-    E.endTurn(); E.endTurn();
+    clear24(); E.endTurn(); clear24(); E.endTurn();
     var re = res36(0, 'froggod_interfere');
     ok36(/no hay ataque/.test(tMsg36(function () { E.useFrogGod(0, { resourceUid: re.uid }); }) || ''), 'L36.S4a sin ataque en curso lanza');
     var g1 = firstBy36(function (c36) { return c36.type === 'group' && !attr36(c36, 'peaceful'); });
@@ -10992,7 +10992,7 @@ function err26(fn) { return throwMsgL14(fn); }
       E.playResource(0, TH); /* el defensor coloca el artefacto en SU turno */
       var thU = null;
       E._raw().players[0].resources.forEach(function (r) { if (r.cardId === TH) { thU = r.uid; r.tokens = 1; } });
-      E.endTurn(); /* ceder el turno al atacante rival */
+      clear24(); E.endTurn(); /* ceder el turno al atacante rival */
       E.declareAttack(1, 'destroy', { attackerUid: 'at7', uid: 'gv7b' });
       E.thorBoost(0, thU);
       ok(E._raw().attack.boosts.some(function (b) { return b.name === 'Hammer of Thor' && b.v === -2; }), 'S7e -2 defendiendo contra un Attack to Destroy');
@@ -11085,7 +11085,7 @@ function err26(fn) { return throwMsgL14(fn); }
       });
       return t;
     };
-    var go35 = function (pid) { for (var g = 0; g < 10; g++) { if (E._raw().currentPid === pid) return true; E.endTurn(); } return false; };
+    var go35 = function (pid) { for (var g = 0; g < 10; g++) { if (E._raw().currentPid === pid) return true; clear24(); E.endTurn(); } return false; };
     var I0 = idxOfId('bavarianilluminati1'), I1 = idxOfId('servantsofcthulhu1');
 
     /* S1 Clipper Chip (379): entra; sin Government se descarta al beginTurn. */
@@ -11100,7 +11100,7 @@ function err26(fn) { return throwMsgL14(fn); }
       fresh(I0, I1); readyToAttack(0);
       hand22(0, CL);
       E.playResource(0, CL, null);
-      E.endTurn(); E.endTurn(); /* transicion real de turno: beginTurn directo es no-op en fase main */
+      clear24(); E.endTurn(); clear24(); E.endTurn(); /* transicion real de turno: beginTurn directo es no-op en fase main */
       ok(!E._raw().players[0].resources.some(function (r) { return r.cardId === CL; }), 'S1b sin Government groups se descarta');
       ok(E._raw().groupDiscard.indexOf(CL) >= 0, 'S1c el chip va al descarte');
     })();
@@ -11145,7 +11145,7 @@ function err26(fn) { return throwMsgL14(fn); }
       hand22(0, BK);
       E.playResource(0, BK, 'mg3');
       ok(E._raw().players[0].resources.some(function (r) { return r.cardId === BK && r.linkedTo === 'mg3'; }), 'S3b enlazado al grupo Magic');
-      E.endTurn(); E.endTurn(); /* transicion real de turno */
+      clear24(); E.endTurn(); clear24(); E.endTurn(); /* transicion real de turno */
       var nd3 = findN35('mg3');
       ok(nd3.bonusAction && nd3.bonusAction.some(function (b) { return b.from === 'Book of Kells'; }), 'S3c ficha extra cada turno');
       var T3 = byAl35('peaceful');
@@ -11340,7 +11340,7 @@ function err26(fn) { return throwMsgL14(fn); }
     plant(1, 'aA', idxOfId(org.id), 2);
     findN38('aA').powerOverride = 15;
     readyToAttack(0);
-    E.endTurn(); E._raw().currentPid = 1;
+    clear24(); E.endTurn(); E._raw().currentPid = 1;
     E.declareAttack(1, 'destroy', { attackerUid: 'aA', uid: 'site' });
     E._raw().attack.boosts.push({ name: 'test38', v: 50 });
     withMock38([0.01, 0.01], function () { E.resolveAttack(); });
@@ -11461,7 +11461,7 @@ function err26(fn) { return throwMsgL14(fn); }
     plant(0, 'cg', idxOfId(comp.id), 1);
     addRes39(0, idx39('eliza'), 'cg');
     ok39(res39(0, 'eliza_link') !== null, 'L39.S1a Eliza enlazada al grupo Computer');
-    readyToAttack(0); E.endTurn(); E.endTurn();
+    readyToAttack(0); clear24(); E.endTurn(); clear24(); E.endTurn();
     var cg39 = findN39('cg');
     ok39(Array.isArray(cg39.bonusAction) && cg39.bonusAction.some(function (b39) { return b39.from === 'Eliza'; }), 'L39.S1b Eliza da ficha de accion extra cada turno');
     var g39 = firstBy39(function (c39) { return c39.type === 'group' && (c39.power || 0) < 5 && !attr39(c39, 'peaceful'); });
@@ -12029,6 +12029,55 @@ if (readyToAttack(0) != null) {
     E.useGroupAction(0, 'po46', {});
     var po46n = null; (function w(n) { if (n.uid === 'po46') po46n = n; (n.children || []).forEach(w); })(E._raw().players[0].structure);
     ok(po46n && po46n.tokens === 1 && E._raw().players[1].hand.length === hb47 + 2, 'L47 Post Office mirar es free move (sin gastar ficha)');
+  /* ===== L48 - pasivas de alineacion/poder de grupo ===== */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    var sffRoot = E._raw().players[0].structure;
+    var mast = { uid: 'ma48', cardId: idxOfId('texas'), children: [], tokens: 1 };
+    mast.children.push({ uid: 'sff48', cardId: idxOfId('sciencefictionfans'), children: [], tokens: 1 });
+    sffRoot.children.push(mast);
+    plant(1, 'cmp48', idxOfId('siliconvalley'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'ma48', uid: 'cmp48' });
+    var d48a = E.previewStrength();
+    ok(d48a.cthulhu === 8, 'L48 S.F.F. scope parent + owner: el master ataca Computer -> cthulhu=' + d48a.cthulhu + ' (6+2)');
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(1) != null) {
+    var ws48 = plant(0, 'ws48', idxOfId('wallstreet'), 1);
+    ws48.children.push({ uid: 'pu48', cardId: idxOfId('batf'), children: [], tokens: 1 });
+    plant(1, 'at48', idxOfId('dentists'), 1);
+    E.declareAttack(1, 'control', { attackerUid: 'at48', uid: 'pu48' });
+    var d48b = E.previewStrength();
+    ok(d48b.defenseBonus === 10, 'L48 Wall Street: titere +10 Resistencia -> ' + d48b.defenseBonus);
+  } else { ok(true, 'L48 (WS titere) SKIP'); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(1) != null) {
+    var ws48b = plant(0, 'ws48b', idxOfId('wallstreet'), 1);
+    plant(1, 'at48b', idxOfId('dentists'), 1);
+    E.declareAttack(1, 'control', { attackerUid: 'at48b', uid: 'ws48b' });
+    var d48c2 = E.previewStrength();
+    ok(d48c2.defenseBonus === 0, 'L48 Wall Street: el grupo NO recibe su propio +10 -> ' + d48c2.defenseBonus);
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'pd48', idxOfId('princessdi'), 1);
+    plant(0, 'al48', idxOfId('algore'), 1);
+    plant(1, 'tg48', idxOfId('batf'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'al48', uid: 'tg48' });
+    var d48d = E.previewStrength();
+    ok(d48d.boosts === 1, 'L48 Princess Di: +1 Power al otro grupo Liberal -> boosts=' + d48d.boosts);
+    fresh(idxOfId(U), idxOfId(V));
+    if (readyToAttack(1) != null) {
+      plant(0, 'pd48b', idxOfId('princessdi'), 1);
+      plant(1, 'it48', idxOfId('italy'), 1);
+      var m48 = '';
+      try { E.declareAttack(1, 'control', { attackerUid: 'it48', uid: 'pd48b' }); } catch (ex48) { m48 = ex48.message; }
+      ok(/inmune/i.test(m48), 'L48 Princess Di inmune a ataques Liberal/Peaceful -> ' + (m48 || 'no lanzo'));
+    } else { ok(true, 'L48 (PD inmune) SKIP'); }
+  } else { ok(true, "L48 (PD) SKIP"); }
+
+  } else { ok(true, "L48 (WS) SKIP"); }
+
+  } else { ok(true, "L48 (SFF) SKIP"); }
+
   } else { ok(true, 'L47 (PO) SKIP'); }
 
   } else { ok(true, "L46 (CT) SKIP"); }

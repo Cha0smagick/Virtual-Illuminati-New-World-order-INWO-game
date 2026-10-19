@@ -3500,6 +3500,96 @@ const L47_FX = {
 const L47_FXN = {};
 for (const k47 in L47_FX) { L47_FXN[norm(k47)] = L47_FX[k47]; }
 
+/* L48 — pasivas de alineacion/poder de grupo (6 cartas):
+ *   puppet_align — los titeres del grupo con el efecto leen sus alineaciones
+ *                  modificadas (Ross Perot, Saturday Morning Cartoons).
+ *   align_swap   — el atacante de su dueño cambia un par de alineaciones
+ *                  (Wall Street: Corporate <-> Government).
+ *   vsList en fi — calificadores alternativos (Dinosaur Park: Corporate O Science).
+ *   scope 'parent' — el grupo con el efecto es TIETE del atacante (S.F.F.).
+ *   grant.excludeSelf / attack_immune.notAttr — Princess Di. */
+const L48_FX = {
+  'Science Fiction Fans': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'any', vs: { attr: 'computer' }, value: 2 },
+      { scope: 'owner', atkType: 'control', vs: { align: 'weird' }, value: 2 },
+      { scope: 'parent', atkType: 'any', vs: { attr: 'computer' }, value: 6 }
+    ] },
+    t: 'Science Fiction Fans Gives +2 to any attempt to control or destroy any Computer group. Gives its master +6 to any such attempt. Gives +2 to any attempt to control any Weird group.'
+  },
+  'Princess Di': {
+    kind: 'combo_bonus',
+    grant: { clauses: [{ scope: 'owner', align: 'liberal', excludeSelf: true, value: 1 }] },
+    immune: { vsAtk: { aligns: ['peaceful', 'liberal'], match: 'any', notAttr: 'media' } },
+    t: 'Princess Di All your other Liberal groups get +1 Power. Princess Di, and her puppets, are immune to attack by your rivals Peaceful or Liberal groups except for Media.'
+  },
+  'Ross Perot': {
+    kind: 'puppet_align',
+    add: ['straight', 'conservative'],
+    remove: ['weird', 'liberal'],
+    t: 'Ross Perot Any group controlled by Perot immediately becomes Straight and Conservative, losing any Weird or Liberal alignments it had. This is a permanent change, but the alignments will revert to normal if the group gets another master.'
+  },
+  'Saturday Morning Cartoons': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'control', vs: { align: 'violent' }, value: 2 }] },
+    puppet_align: { add: ['violent'] },
+    t: 'Saturday Morning Cartoons Gives +2 to any attempt to control any Violent group. The Cartoons also have the power to make other groups violent. Any puppet of the Cartoons becomes Violent.'
+  },
+  'Wall Street': {
+    kind: 'combo_bonus',
+    align_swap: { swap: ['corporate', 'government'] },
+    def: { clauses: [{ scope: 'self', mode: 'resist', vsDef: { isPuppetOf: true }, value: 10 }] },
+    t: 'Wall Street Always has the option to treat any Corporate group as though it was Government, or vice versa, when it makes or aids an attack. Any puppet of Wall Street has an extra +10 Resistance.'
+  }
+};
+const L48_FXN = {};
+for (const k48 in L48_FX) { L48_FXN[norm(k48)] = L48_FX[k48]; }
+
+/* L49 — acciones de mover/quitar ficha (combo con ga) + inmunidades:
+ *   act strip_token  - S.M.O.F. (Weird rival).
+ *   act move_free    - Offshore Banks (propios), Phone Phreaks (cualquiera).
+ *   act reorg        - Elders of Zion (move + coste Illuminati).
+ * LIMITACION declarada (reorg): un movimiento por uso; reorganizar la estructura
+ * entera son N usos de la misma accion (el impreso lo permite, la UI no tiene
+ * modo multi-movimiento). */
+const L49_FX = {
+  'S.M.O.F.': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'control', vs: { align: 'weird' }, value: 2 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'sciencefictionfans' }, value: 4 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'trekkies' }, value: 4 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'wargamers' }, value: 4 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'comicbooks' }, value: 4 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'tradingcardgames' }, value: 4 }
+    ] },
+    ga: { act: 'strip_token', attr: 'weird' },
+    t: 'S.M.O.F. Has +2 for any attempt to control any Weird group. An extra +4 for direct control of SF Fans, Trekkies, Wargamers, Comic Books or Trading Card Games. Once per turn, on the owning players turn, SMOF can remove the Action token from one Weird group owned by any rival. This is a free action.'
+  },
+  'Offshore Banks': {
+    kind: 'combo_bonus',
+    immune: { vsAtk: { aligns: ['government', 'corporate', 'criminal'], match: 'any' }, onlyDestroy: true },
+    ga: { act: 'move_free', own: true },
+    t: 'Offshore Banks This group is immune to any Attack to Destroy by Government, Corporate or Criminal groups! The Offshore Banks are used to reorganizing phony corporations often twice a day. You may move any group you control to any other legal position in your Power Structure once per turn, on your turn, as a free action.'
+  },
+  'Phone Phreaks': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'any', vs: { attr: 'computer' }, value: 6 }] },
+    ga: { act: 'move_free', anyGroup: true },
+    t: 'Phone Phreaks Gives +6 on any attempt to control or destroy any Computer group. By using this groups action, you may move any group belonging to any player except puppets of rival Illuminati groups to any other control arrow in their same Power Structure, at any time except during an attack.'
+  },
+  'Elders of Zion': {
+    kind: 'combo_bonus',
+    ga: { act: 'reorg', illumCost: true },
+    t: 'Elders of Zion An ancient and subtle brotherhood, the Elders know well the art of conspiracy. They can reorganize your entire Power Structure. This must take place on your turn, and requires their action and an action from your Illuminati.'
+  }
+};
+const L49_FXN = {};
+for (const k49 in L49_FX) { L49_FXN[norm(k49)] = L49_FX[k49]; }
+
+
+
 
 
 
@@ -3792,7 +3882,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key] || L46_FXN[key] || L47_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key] || L46_FXN[key] || L47_FXN[key] || L48_FXN[key] || L49_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

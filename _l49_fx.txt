@@ -1,0 +1,42 @@
+
+/* L49 — acciones de mover/quitar ficha (combo con ga) + inmunidades:
+ *   act strip_token  - S.M.O.F. (Weird rival).
+ *   act move_free    - Offshore Banks (propios), Phone Phreaks (cualquiera).
+ *   act reorg        - Elders of Zion (move + coste Illuminati).
+ * LIMITACION declarada (reorg): un movimiento por uso; reorganizar la estructura
+ * entera son N usos de la misma accion (el impreso lo permite, la UI no tiene
+ * modo multi-movimiento). */
+const L49_FX = {
+  'S.M.O.F.': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'control', vs: { align: 'weird' }, value: 2 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'sciencefictionfans' }, value: 4 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'trekkies' }, value: 4 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'wargamers' }, value: 4 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'comicbooks' }, value: 4 },
+      { scope: 'self', atkType: 'control', vs: { cardId: 'tradingcardgames' }, value: 4 }
+    ] },
+    ga: { act: 'strip_token', attr: 'weird' },
+    t: 'S.M.O.F. Has +2 for any attempt to control any Weird group. An extra +4 for direct control of SF Fans, Trekkies, Wargamers, Comic Books or Trading Card Games. Once per turn, on the owning players turn, SMOF can remove the Action token from one Weird group owned by any rival. This is a free action.'
+  },
+  'Offshore Banks': {
+    kind: 'combo_bonus',
+    immune: { vsAtk: { aligns: ['government', 'corporate', 'criminal'], match: 'any' }, onlyDestroy: true },
+    ga: { act: 'move_free', own: true },
+    t: 'Offshore Banks This group is immune to any Attack to Destroy by Government, Corporate or Criminal groups! The Offshore Banks are used to reorganizing phony corporations often twice a day. You may move any group you control to any other legal position in your Power Structure once per turn, on your turn, as a free action.'
+  },
+  'Phone Phreaks': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'owner', atkType: 'any', vs: { attr: 'computer' }, value: 6 }] },
+    ga: { act: 'move_free', anyGroup: true },
+    t: 'Phone Phreaks Gives +6 on any attempt to control or destroy any Computer group. By using this groups action, you may move any group belonging to any player except puppets of rival Illuminati groups to any other control arrow in their same Power Structure, at any time except during an attack.'
+  },
+  'Elders of Zion': {
+    kind: 'combo_bonus',
+    ga: { act: 'reorg', illumCost: true },
+    t: 'Elders of Zion An ancient and subtle brotherhood, the Elders know well the art of conspiracy. They can reorganize your entire Power Structure. This must take place on your turn, and requires their action and an action from your Illuminati.'
+  }
+};
+const L49_FXN = {};
+for (const k49 in L49_FX) { L49_FXN[norm(k49)] = L49_FX[k49]; }
