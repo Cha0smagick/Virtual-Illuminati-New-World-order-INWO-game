@@ -98,7 +98,22 @@ Medido por `scripts/audit_syn.cjs`, `audit_mechanics.cjs`, `audit_stats.cjs`:
 
 El "100%" de cobertura se mide con `test_fase4_cards.js` y `scripts/audit_mechanics.cjs`. Estado tras esta sesión:
 
-- **unverified: 142 → 94** (48 cartas implementadas en 9 commits: L41, L41b, L42, L43, L44, L45, L46, L47, L48, L49).
+- **unverified: 142 → 67** (75 cartas implementadas en 15 commits: L41..L63).
+- Piezas de motor nuevas: def.vsDef.isPuppetOt/masterOf, grant.vs.masterOf,
+  kkk_double, master_protect, power_if_card, undergroundnewspapers,
+  pollster_shield, align_swap, hide_exposed, give_token, free_defend,
+  opec_roll, resOverride, drawWhenAttacked, draw_on_destroy, contraAtk,
+  reverse_align y los calificadores vsMatchQ masterCard/masterAlign/masterAttr.
+- i18n: 13 reglas LOG_RULES nuevas (gate pass-through a 0).
+- Deuda declarada: Evil Geniuses (el dataset no tiene Recursos Gadget),
+  Dinosaur Park (su +4 al Disaster es accion, no pasiva), Triliberal Commission
+  (su doble solo aplica a metas Illuminated), Global Power ausente (#10),
+  #8 (atacar la propia mano) y #11 (area neutral) como rediseños pendientes.
+- Fuera por texto corrupto/truncado: Bank of England, Bjorne, Cattle Mutilators,
+  CFL-AIO, Eco-Guerillas, Feminists, Liquor Companies, NATO, Nancy Reagan,
+  Ollie North, Pyramid Marketing, Secret Service, The Great Pyramid, China,
+  y las cartas de "cancelar acciones" (Dan Quayle, Dentists, Elvis, MI-5,
+  Supreme Court) porque el motor no tiene pila de acciones.
 - `implemented-pending-engine`: 233 → 282. Cartas clasificadas: 252 → 277.
 - Fuera declarado: Dinosaur Park (su +4 al Disaster es ACCION, no pasiva; mapearla automática rompía la matemática de L13).
 - Arnés: drenaje global `clear24()` antes de CADA `endTurn` de `test_fase2_rules.js` (elimina los flakes de ventanas de suceso).
