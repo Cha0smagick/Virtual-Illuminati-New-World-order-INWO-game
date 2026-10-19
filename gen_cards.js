@@ -3930,6 +3930,44 @@ const L63_FX = {
 const L63_FXN = {};
 for (const k63 in L63_FX) { L63_FXN[norm(k63)] = L63_FX[k63]; }
 
+/* L64 — piezas nuevas:
+ *   structure_guard — mientras el dueno controle la carta, los ataques que
+ *     casen `vsAtk` (atacante o ayudantes) contra OTROS grupos de su estructura
+ *     se rechazan; `controlOnlyDestroy` limita ademas el ataque contra la propia
+ *     carta a destruir (Reformed Church of Satan).
+ *   hidden_plot — accion de grupo: liga una Plot de la mano al grupo, fuera del
+ *     alcance de exposicion (Fidel Castro).
+ * LIMITACION (Fidel Castro): "si la Plot se usa puedes ligar otra" exige
+ * marcado de consumo; se documenta como pendiente. */
+const L64_FX = {
+  'Reformed Church of Satan': {
+    kind: 'combo_bonus',
+    structureGuard: { vsAtk: { align: 'straight' }, controlOnlyDestroy: true },
+    def: { clauses: [{ scope: 'self', mode: 'both', vsAtk: { align: 'straight' }, value: 8 }] },
+    t: 'Reformed Church of Satan While you control it, no Straight group can attack, or help attack, any part of your power structure except this group! They can attack only to destroy, not to control.'
+  },
+  'Fidel Castro': {
+    kind: 'combo_bonus',
+    ga: { act: 'link_hidden_plot' },
+    t: 'Fidel Castro Link this card to one hidden Plot (put is upside-down on the table). Nothing can expose that Plot while Fidel remains in play.'
+  }
+};
+const L64_FXN = {};
+for (const k64 in L64_FX) { L64_FXN[norm(k64)] = L64_FX[k64]; }
+
+/* L65 — Punk Rockers: si usa su Poder en un ataque (en cualquier bando), ningun
+ * grupo Weird o Liberal puede AYUDAR al objetivo (lado defensor). */
+const L65_FX = {
+  'Punk Rockers': {
+    kind: 'punk_ban_aids',
+    t: 'Punk Rockers If this group uses its Power in an attack (on either side), no Weird or Liberal groups may aid the target in any way. (The attacker or defender may still be Weird or Liberal; this is not affected.)'
+  }
+};
+const L65_FXN = {};
+for (const k65 in L65_FX) { L65_FXN[norm(k65)] = L65_FX[k65]; }
+
+
+
 
 
 
@@ -4238,7 +4276,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key] || L46_FXN[key] || L47_FXN[key] || L48_FXN[key] || L49_FXN[key] || L50_FXN[key] || L51_FXN[key] || L52_FXN[key] || L53_FXN[key] || L54_FXN[key] || L55_FXN[key] || L56_FXN[key] || L57_FXN[key] || L58_FXN[key] || L59_FXN[key] || L60_FXN[key] || L61_FXN[key] || L62_FXN[key] || L63_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key] || L46_FXN[key] || L47_FXN[key] || L48_FXN[key] || L49_FXN[key] || L50_FXN[key] || L51_FXN[key] || L52_FXN[key] || L53_FXN[key] || L54_FXN[key] || L55_FXN[key] || L56_FXN[key] || L57_FXN[key] || L58_FXN[key] || L59_FXN[key] || L60_FXN[key] || L61_FXN[key] || L62_FXN[key] || L63_FXN[key] || L64_FXN[key] || L65_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias

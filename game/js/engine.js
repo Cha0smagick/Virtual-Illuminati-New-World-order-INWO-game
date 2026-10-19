@@ -3514,6 +3514,30 @@ E.declareAttack=function(pid,type,target){
       var owner=findOwnerPid(target.uid);
       if(owner<0)throw new Error('El objetivo no tiene propietario');
       if(type==='control'&&owner===pid)throw new Error('No puedes tomar control de tu propio grupo');
+      /* L64 - estructura protegida (Reformed Church of Satan): los ataques que
+         casen vsAtk (atacante) contra OTROS grupos de la estructura del objetivo
+         se rechazan; contra la propia carta solo se puede destruir. */
+      (function(){
+        if(owner===pid)return;
+        var guard64=null;
+        walk(S.players[owner].structure,function(g64){
+          if(guard64||g64.cardId==null)return;
+          var gc64=card(g64.cardId);
+          if(gc64&&bonusPart(gc64.effect,'structureGuard'))guard64=g64;
+        });
+        if(!guard64)return;
+        var sg64=bonusPart(card(guard64.cardId).effect,'structureGuard');
+        var atc64=attCard;
+        var isSide64=!sg64.vsAtk||(atc64&&vsMatchQ(sg64.vsAtk,att,atc64));
+        if(!isSide64)return;
+        var gName64=card(guard64.cardId).name;
+        if(target.uid===guard64.uid){
+          if(type==='control')throw new Error(gName64+' solo puede ser atacada para DESTRUIR, no para controlar');
+        }else{
+          throw new Error(gName64+': los '+(sg64.vsAtk&&sg64.vsAtk.align?sg64.vsAtk.align+'s':'atacantes de ese tipo')+' no pueden atacar el resto de tu estructura');
+        }
+      })();
+
       /* L50 - Intellectuals: el master no puede ser CAPTURADO (solo Disaster/Assassination). */
       (function(){
         var mp50=false;
@@ -3826,6 +3850,17 @@ E.useGroupAction=function(pid,uid,opts){
     ndA63.alignsTmpRemoved=[alA63];
     log(c.name+': invierte '+alA63+' por '+opp63+' en '+card(ndA63.cardId).name+' hasta fin de turno');
     out={reversed:uidA63,from:alA63,to:opp63};
+  }else if(act==='link_hidden_plot'){
+    /* L64 - Fidel Castro: ligar una Plot de la mano al grupo (fuera de exposicion). */
+    var plH64=S.players[pid];
+    if(!plH64.hand.length)throw new Error(c.name+': no tienes Plots en la mano');
+    var idxH64=opts.plot!=null?opts.plot:plH64.hand[plH64.hand.length-1];
+    var posH64=plH64.hand.indexOf(idxH64);
+    if(posH64<0)throw new Error(c.name+': esa Plot no esta en tu mano');
+    plH64.hand.splice(posH64,1);
+    nd.hiddenPlot=idxH64;
+    log(c.name+': liga una Plot oculta ('+card(idxH64).name+')');
+    out={hidden:idxH64};
   }else if(act==='hide_exposed'){
     /* L60 - Fast Food Chains: esconder hasta N Plots expuestas propias. */
     var n60=Number(e.count)||2;
@@ -4019,6 +4054,21 @@ E.addSupport=function(pid,entry){
                     :'Para ayudar a controlar hace falta ≥1 alineación común con el objetivo o Global Power')
       :(entry.oppose?'Para OPONERSE a destruir hace falta ≥1 alineación común con el objetivo, ser su master/títere o tener Global Power'
                     :'Para ayudar a destruir hace falta ≥1 alineación opuesta al objetivo o Global Power'));
+  }
+  /* L65 - Punk Rockers: si participa (cualquier bando), ningun Weird o Liberal
+     puede ayudar al objetivo. */
+  if(entry.oppose){
+    var pr65=false;
+    A.aids.concat(A.opposes).forEach(function(p65){
+      if(pr65)return;
+      var n65=findNode(p65.uid);
+      if(n65&&n65.cardId!=null){var c65=card(n65.cardId);if(c65&&c65.effect&&c65.effect.kind==='punk_ban_aids')pr65=true;}
+    });
+    if(pr65){
+      var al65=nodeAligns(sup,sc);
+      if(al65.indexOf('weird')>=0||al65.indexOf('liberal')>=0)
+        throw new Error('Punk Rockers: ningun grupo Weird o Liberal puede ayudar al objetivo');
+    }
   }
   if(!freeDef61)spendGroupToken(pid,entry.uid);
   else log(card(sup.cardId).name+': defiende como accion gratis (Italy)');

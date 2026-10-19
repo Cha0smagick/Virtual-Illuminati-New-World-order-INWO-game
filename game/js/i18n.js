@@ -122,6 +122,8 @@
 
   /* reglas para mensajes del motor (fuente ES -> EN por patrones) */
   var LOG_RULES = [
+    [/^(.{1,28}): liga una Plot oculta \((.+)\)$/, function (m) { return m[1] + ': links a hidden Plot card (' + m[2] + ')'; }],
+
     [/^(.{1,28}): recupera su Action token tras el intento fallido$/, function (m) { return m[1] + ' recovers its Action token after the failed attempt'; }],
     [/^(.{1,28}): robas una Plot extra$/, function (m) { return m[1] + ': you draw an extra Plot card'; }],
     [/^(.{1,28}): robas una Plot por destruir (.+)$/, function (m) { return m[1] + ': you draw a Plot card for destroying ' + m[2]; }],

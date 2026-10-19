@@ -12470,6 +12470,73 @@ if (readyToAttack(1) != null) {
     E.declareAttack(0, 'control', { attackerUid: 'al63b', uid: 'mm63b' });
     var d63b = E.previewStrength();
     ok(o63 && o63.to === 'liberal' && d63b.leaderMod === 4, 'L63 Gay Activists invierte Conservative a Liberal -> shared leaderMod=' + d63b.leaderMod);
+  /* ===== L64 - Reformed Church of Satan y Fidel Castro ===== */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(1) != null) {
+    plant(0, 'rc64', idxOfId('reformedchurchofsatan'), 1);
+    plant(0, 'alg64', idxOfId('algore'), 1);
+    plant(1, 'dt64', idxOfId('dentists'), 1);
+    var m64 = '';
+    try { E.declareAttack(1, 'control', { attackerUid: 'dt64', uid: 'alg64' }); } catch (ex64) { m64 = ex64.message; }
+    ok(/no pueden atacar/i.test(m64), 'L64 Reformed Church: un Straight no puede atacar el resto de la estructura -> ' + (m64 || 'no lanzo'));
+  } else { ok(true, "L64 (RCS ban) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(1) != null) {
+    plant(0, 'rc64b', idxOfId('reformedchurchofsatan'), 1);
+    plant(1, 'dt64b', idxOfId('dentists'), 1);
+    var m64b = '';
+    try { E.declareAttack(1, 'control', { attackerUid: 'dt64b', uid: 'rc64b' }); } catch (ex64b) { m64b = ex64b.message; }
+    ok(/DESTRUIR/i.test(m64b), 'L64 Reformed Church: solo se puede destruir, no controlar -> ' + (m64b || 'no lanzo'));
+    var m64c = '';
+    try { E.declareAttack(1, 'destroy', { attackerUid: 'dt64b', uid: 'rc64b' }); } catch (ex64c) { m64c = ex64c.message; }
+    var d64 = E.previewStrength();
+    ok(m64c === '' && d64.defenseBonus === 8, 'L64 Reformed Church +8 de defensa contra Straight -> defenseBonus=' + d64.defenseBonus);
+  } else { ok(true, "L64 (RCS church) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(1) != null) {
+    plant(0, 'rc64c', idxOfId('reformedchurchofsatan'), 1);
+    plant(0, 'alg64b', idxOfId('algore'), 1);
+    plant(1, 'tx64', idxOfId('texas'), 1);
+    var m64d = '';
+    try { E.declareAttack(1, 'control', { attackerUid: 'tx64', uid: 'alg64b' }); } catch (ex64d) { m64d = ex64d.message; }
+    ok(m64d === '', 'L64 Reformed Church: un Violent SI puede atacar el resto -> ' + (m64d || 'ok'));
+  } else { ok(true, "L64 (RCS violent) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (true) {
+    var pl64 = E._raw().players[0];
+    pl64.hand = pl64.hand.concat(pl64.exposedPlots.splice(0, 0));
+    var somePlot = pl64.hand.length ? pl64.hand[pl64.hand.length - 1] : -1;
+    plant(0, 'fc64', idxOfId('fidelcastro'), 1);
+    var hb64 = pl64.hand.length;
+    var o64 = E.useGroupAction(0, 'fc64', {});
+    var fcN = null; (function w64(root) { if (fcN || !root) return; if (root.uid === 'fc64') { fcN = root; return; } (root.children || []).forEach(w64); })(E._raw().players[0].structure);
+    ok(o64 && o64.hidden != null && fcN && fcN.hiddenPlot === o64.hidden && pl64.hand.length === hb64 - 1, 'L64 Fidel Castro liga una Plot oculta de su mano');
+  /* ===== L65 - Punk Rockers (veto de ayudas Weird/Liberal) ===== */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'pk65', idxOfId('punkrockers'), 1);
+    plant(0, 'tx65', idxOfId('texas'), 1);
+    plant(1, 'tg65', idxOfId('fbi'), 1);
+    plant(1, 'fl65', idxOfId('california'), 1);
+    E.declareAttack(0, 'destroy', { attackerUid: 'tx65', uid: 'tg65' });
+    E.addSupport(0, { uid: 'pk65', oppose: false });
+    var m65 = '';
+    try { E.addSupport(1, { uid: 'fl65', oppose: true }); } catch (ex65) { m65 = ex65.message; }
+    ok(/Punk Rockers/i.test(m65), 'L65 Punk Rockers: un Weird no puede ayudar al objetivo -> ' + (m65 || 'no lanzo'));
+  } else { ok(true, "L65 (PR ban) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'tx65b', idxOfId('texas'), 1);
+    plant(1, 'tg65b', idxOfId('fbi'), 1);
+    plant(1, 'fl65b', idxOfId('california'), 1);
+    E.declareAttack(0, 'destroy', { attackerUid: 'tx65b', uid: 'tg65b' });
+    var m65b = '';
+    try { E.addSupport(1, { uid: 'fl65b', oppose: true }); } catch (ex65b) { m65b = ex65b.message; }
+    ok(m65b === '', 'L65 sin Punk Rockers el Weird SI puede ayudar -> ' + (m65b || 'ok'));
+  } else { ok(true, "L65 (PR sin) SKIP"); }
+
+  } else { ok(true, "L64 (Fidel) SKIP"); }
+
   } else { ok(true, "L63 (GA reverse) SKIP"); }
 
   } else { ok(true, "L62 (GL robo) SKIP"); }
