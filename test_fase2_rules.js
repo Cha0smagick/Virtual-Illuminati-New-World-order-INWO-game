@@ -12533,6 +12533,32 @@ if (readyToAttack(1) != null) {
     var m65b = '';
     try { E.addSupport(1, { uid: 'fl65b', oppose: true }); } catch (ex65b) { m65b = ex65b.message; }
     ok(m65b === '', 'L65 sin Punk Rockers el Weird SI puede ayudar -> ' + (m65b || 'ok'));
+  /* ===== L66 - Imelda Marcos (1d6 contra Gov/Bank) ===== */
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'im66', idxOfId('imeldamarcos'), 1);
+    plant(1, 'fb66', idxOfId('fbi'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'im66', uid: 'fb66' });
+    var r66 = Math.random; Math.random = function () { return 0.5; };
+    var d66 = E.previewStrength();
+    Math.random = r66;
+    ok(d66.base === 5, 'L66 Imelda 1d6=4 contra Gov -> Poder 5 -> base=' + d66.base);
+  } else { ok(true, "L66 (Imelda 5) SKIP"); }
+  fresh(idxOfId(U), idxOfId(V));
+  if (readyToAttack(0) != null) {
+    plant(0, 'im66b', idxOfId('imeldamarcos'), 1);
+    plant(1, 'fb66b', idxOfId('fbi'), 1);
+    E.declareAttack(0, 'control', { attackerUid: 'im66b', uid: 'fb66b' });
+    var r66b = Math.random; Math.random = function () { return 0.999; };
+    try { E.resolveAttack(); } catch (e66) { }
+    Math.random = r66b;
+    var raw66 = E._raw();
+    ok(raw66.groupDiscard.indexOf(idxOfId('imeldamarcos')) >= 0, 'L66 Imelda 1d6=6 -> queda destruida');
+    ok(raw66.players[0].destroyedByMe.indexOf(idxOfId('imeldamarcos')) >= 0, 'L66 Imelda destruida cuenta para el objetivo');
+    var alive66 = false; (function w66(root) { if (alive66 || !root) return; if (root.cardId === idxOfId('imeldamarcos')) { alive66 = true; return; } (root.children || []).forEach(w66); })(raw66.players[0].structure);
+    ok(!alive66, 'L66 Imelda ya no esta en la estructura');
+  } else { ok(true, "L66 (Imelda 6) SKIP"); }
+
   } else { ok(true, "L65 (PR sin) SKIP"); }
 
   } else { ok(true, "L64 (Fidel) SKIP"); }

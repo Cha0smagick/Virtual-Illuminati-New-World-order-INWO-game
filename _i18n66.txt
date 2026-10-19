@@ -1,0 +1,1 @@
+    [/^(.{1,28}): saco 6 y queda destruida \(cuenta para (.+)\)$/, function (m) { return m[1] + ': rolled 6 and is destroyed (counts for ' + m[2] + ')'; }],

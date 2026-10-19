@@ -4535,6 +4535,19 @@ function computeStrength(resolveMode){
   if(alignMag!==4)det.notes.push('Regla de alineaciones alterada por '+S.alignRule.card+': +/-'+alignMag+' por alineacion');
   if(A.type==='control'){
     det.base=curPower(att);
+    /* L66 - Imelda Marcos: 1d6 contra Gov/Bank (1-5 -> Poder 5; 6 -> muerte). */
+    (function(){
+      if(!attCard||!attCard.effect)return;
+      var ir66=bonusPart(attCard.effect,'imeldaRoll');
+      if(!ir66||!tNode||!tCard)return;
+      if(det.base>=(Number(ir66.power)||5))return;
+      var hit66=!ir66.vsList||ir66.vsList.some(function(v66){return vsMatchQ(v66,tNode,tCard);});
+      if(!hit66)return;
+      var d66=1+Math.floor(Math.random()*6);
+      if(d66>=6){A.imeldaDoomed=true;det.base=(Number(ir66.power)||5);det.notes.push('Imelda Marcos: 6 — sera destruida');}
+      else{det.base=(Number(ir66.power)||5);det.notes.push('Imelda Marcos: '+d66+' — Poder 5');}
+    })();
+
     /* L45: pasivas de poder del atacante (grant + conteo). */
     var gb45c=grantPowerBonus(att)+ppcSelfBonus(att);
     if(gb45c){det.boosts+=gb45c;det.notes.push('Pasivas de poder: +'+gb45c);}
@@ -4597,6 +4610,19 @@ function computeStrength(resolveMode){
        instantAttack (ataques instantáneos), que no pasan por esta función. */
   }else{ /* destroy */
     det.base=curPower(att);
+    /* L66 - Imelda Marcos: 1d6 contra Gov/Bank (1-5 -> Poder 5; 6 -> muerte). */
+    (function(){
+      if(!attCard||!attCard.effect)return;
+      var ir66=bonusPart(attCard.effect,'imeldaRoll');
+      if(!ir66||!tNode||!tCard)return;
+      if(det.base>=(Number(ir66.power)||5))return;
+      var hit66=!ir66.vsList||ir66.vsList.some(function(v66){return vsMatchQ(v66,tNode,tCard);});
+      if(!hit66)return;
+      var d66=1+Math.floor(Math.random()*6);
+      if(d66>=6){A.imeldaDoomed=true;det.base=(Number(ir66.power)||5);det.notes.push('Imelda Marcos: 6 — sera destruida');}
+      else{det.base=(Number(ir66.power)||5);det.notes.push('Imelda Marcos: '+d66+' — Poder 5');}
+    })();
+
     /* L45: pasivas de poder del atacante (grant + conteo). */
     var gb45d=grantPowerBonus(att)+ppcSelfBonus(att);
     if(gb45d){det.boosts+=gb45d;det.notes.push('Pasivas de poder: +'+gb45d);}
@@ -5433,6 +5459,19 @@ function applyAttackResult(A,det,resultText){
     if(A.type==='control'){
       var list=S.players[owner].immuneFrom[pid]||(S.players[owner].immuneFrom[pid]=[]);
       list.push(A.targetUid);
+    }
+  }
+  /* L66 - Imelda Marcos: si saco 6, cae destruida y cuenta para el objetivo. */
+  if(A.imeldaDoomed){
+    A.imeldaDoomed=false;
+    var atI66=findNode(A.attackerUid);
+    if(atI66&&atI66.cardId!=null){
+      var ownI66=findOwnerPid(atI66.uid);
+      S.groupDiscard.push(atI66.cardId);
+      S.players[pid].destroyedByMe.push(atI66.cardId);
+      var parI66=ownI66>=0?findNodeThatHas(S.players[ownI66].structure,atI66.uid):null;
+      if(parI66)detach(parI66,atI66.uid);
+      log('Imelda Marcos: saco 6 y queda destruida (cuenta para '+S.players[pid].name+')');
     }
   }
   S.attack=null;

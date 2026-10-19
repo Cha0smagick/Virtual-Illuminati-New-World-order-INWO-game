@@ -3966,6 +3966,25 @@ const L65_FX = {
 const L65_FXN = {};
 for (const k65 in L65_FX) { L65_FXN[norm(k65)] = L65_FX[k65]; }
 
+/* L66 — Imelda Marcos: "Whenever Imelda uses her Power against a Government
+ * group or Bank, you may choose to roll 1 die. If the result is 1 through 5, her
+ * Power for the attack is 5. On a 6, she is destroyed, and counts as a destroyed
+ * group for the target of the attack."
+ * Pieza imeldaRoll: fija el Poder del ataque en 5 (1-5) o marca la muerte de la
+ * atacante (6). LIMITACION declarada: la eleccion del jugador no existe en el
+ *motor headless, asi que el roll se ejerce siempre que el objetivo casa `vsList`
+ * y el Poder actual sea menor que 5. */
+const L66_FX = {
+  'Imelda Marcos': {
+    kind: 'combo_bonus',
+    imeldaRoll: { vsList: [{ align: 'government' }, { attr: 'bank' }], power: 5 },
+    t: 'Imelda Marcos Whenever Imelda uses her Power against a Government group or Bank, you may choose to roll 1 die. If the result is 1 through 5, her Power for the attack is 5. On a 6, she is destroyed, and counts as a destroyed group for the target of the attack.'
+  }
+};
+const L66_FXN = {};
+for (const k66 in L66_FX) { L66_FXN[norm(k66)] = L66_FX[k66]; }
+
+
 
 
 
@@ -4276,7 +4295,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key] || L46_FXN[key] || L47_FXN[key] || L48_FXN[key] || L49_FXN[key] || L50_FXN[key] || L51_FXN[key] || L52_FXN[key] || L53_FXN[key] || L54_FXN[key] || L55_FXN[key] || L56_FXN[key] || L57_FXN[key] || L58_FXN[key] || L59_FXN[key] || L60_FXN[key] || L61_FXN[key] || L62_FXN[key] || L63_FXN[key] || L64_FXN[key] || L65_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key] || L46_FXN[key] || L47_FXN[key] || L48_FXN[key] || L49_FXN[key] || L50_FXN[key] || L51_FXN[key] || L52_FXN[key] || L53_FXN[key] || L54_FXN[key] || L55_FXN[key] || L56_FXN[key] || L57_FXN[key] || L58_FXN[key] || L59_FXN[key] || L60_FXN[key] || L61_FXN[key] || L62_FXN[key] || L63_FXN[key] || L64_FXN[key] || L65_FXN[key] || L66_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias
