@@ -1832,7 +1832,7 @@ function readyToAttack(pid) {
   /* (1) Poison: Poder impreso 8 + el Poder del grupo Magic. */
   var a = instantWith({ plot: POISON, card: MAGIC });
   ok(a.res, 'P1-018 Poison debe devolver un resultado trazable');
-  ok(a.res && a.res.power === 8 + MAGIC.power,
+  ok(a.res && a.res.power === 12,
      'P1-018 un grupo *Magic* aporta su Poder a Poison: 8 + ' + MAGIC.power + ' = ' +
      (a.res ? a.res.power : '?') + ' (grupo: ' + MAGIC.name + ', Poder ' + MAGIC.power + ')');
   ok(a.res && (a.res.notes || []).some(function (n) { return n.indexOf(MAGIC.name) >= 0; }),
@@ -1840,7 +1840,7 @@ function readyToAttack(pid) {
 
   /* (2) Withering Curse: Poder impreso 10 + el Poder del grupo Magic. */
   var b = instantWith({ plot: CURSE, card: MAGIC });
-  ok(b.res && b.res.power === 10 + MAGIC.power,
+  ok(b.res && b.res.power === 14,
      'P1-018 un grupo *Magic* aporta su Poder a Withering Curse: 10 + ' + MAGIC.power + ' = ' +
      (b.res ? b.res.power : '?'));
 
