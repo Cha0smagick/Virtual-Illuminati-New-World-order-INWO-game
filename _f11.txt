@@ -1,0 +1,25 @@
+
+/* L54 — power_if_card (Church of Elvis): el Poder del grupo depende de otra
+ * carta en juego. `power` base, y `alt` si `cardId` esta en juego (y `ctrl`
+ * si la controla el dueño). South American Nazis: atk + grant con piezas ya
+ * existentes.
+ * INTERPRETACION declarada (Church of Elvis): "Power becomes 4 if Elvis is in
+ * play, or 8 if you control him" se modela como alt=4/ctrl=8 sobre el Poder
+ * impreso 1; los boosts normales de Poder siguen sumando despues. */
+const L54_FX = {
+  'Church of Elvis': {
+    kind: 'power_if_card',
+    cardId: 'elvis',
+    alt: 4,
+    ctrl: 8,
+    t: 'Church of Elvis He isnt dead! I saw him last week at the gas station! Praise Elvis! Power of this group becomes 4 if Elvis is in play, or 8 if you control him.'
+  },
+  'South American Nazis': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'self', atkType: 'control', vs: { align: 'weird', attr: 'science' }, value: 6 }] },
+    grant: { clauses: [{ scope: 'owner', vs: { align: 'weird', attr: 'science' }, value: 3 }] },
+    t: 'South American Nazis Has a +6 for direct control of any Weird Science group, and gives +3 Power to any Weird Science group it controls!'
+  }
+};
+const L54_FXN = {};
+for (const k54 in L54_FX) { L54_FXN[norm(k54)] = L54_FX[k54]; }

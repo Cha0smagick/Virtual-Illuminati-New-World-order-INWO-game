@@ -1,0 +1,28 @@
+
+/* L56 — AADA (flip + aid) y Fiendish Fluoridators (atk + hook de robo).
+ * Piezas ya existentes: atk_flip, aid, atk_bonus, tokensStripAligned...
+ * Pieza nueva: draw_on_destroy (hook en applyAttackResult): se lee en
+ * destroyGroup (byPid) para grupos que roben al destruir un alineado concreto
+ * (Fiendish Fluoridators: "When you do destroy one, draw a Plot card").
+ * INTERPRETACION declarada (AADA): "can also aid any such attack, with a +4
+ * bonus" se modela como aid {vs:{align:'violent'},value:4}; la participacion
+ * sigue exigiendo alineacion opuesta al objetivo (el AADA ya es Violent). */
+const L56_FX = {
+  'American Autoduel Association': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'self', atkType: 'destroy', vs: { align: 'violent' }, value: 4 }] },
+    flip: { clauses: [{ scope: 'self', atkType: 'destroy', vs: { align: 'violent' }, value: 4 }] },
+    aid: { clauses: [{ vs: { align: 'violent' }, value: 4 }] },
+    t: 'American Autoduel Association The AADA gets a +4 bonus (instead of a penalty) for any attack to destroy a Violent group. It can also aid any such attack, with a +4 bonus.'
+  },
+  'Fiendish Fluoridators': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'destroy', vs: { aligns: ['straight', 'conservative'], match: 'any' }, value: 5 }
+    ] },
+    drawOnDestroy: { vs: { aligns: ['straight', 'conservative'], match: 'any' } },
+    t: 'Fiendish Fluoridators Gives +5 to any attempt to destroy a Straight or Conservative group. When you do destroy one, draw a Plot card!'
+  }
+};
+const L56_FXN = {};
+for (const k56 in L56_FX) { L56_FXN[norm(k56)] = L56_FX[k56]; }

@@ -1,0 +1,35 @@
+
+/* L53 — hooks de resultado (engine.resolveAttack):
+ *   tokenOnFail        - Ninjas: recupera su ficha tras un intento fallado.
+ *   undergroundnewspapers - su dueno roba una Plot al ayudar a destruir un
+ *                          Corporate/Straight/Government.
+ * LIMITACION declarada (Lawyers): "defend against any attack involving either a
+ * Government or a Corporate group" se modela con dos clausulas (atacante o
+ * ayudantes de ese alineamiento); "involving" incluye AYUDANTES, no al defensor.
+ */
+const L53_FX = {
+  'Ninjas': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'assassination', vs: {}, value: 4 },
+      { scope: 'owner', atkType: 'destroy', vs: {}, value: 2 }
+    ] },
+    def: { clauses: [{ scope: 'self', mode: 'power', vsAtk: {}, value: 10 }] },
+    tokenOnFail: true,
+    t: 'Ninjas Gives a +4 on any Assassination attempt, and a +2 on any nonInstant Attack to Destroy. Any attempt to destroy the Ninjas is at a -10 penalty, and any failed attempt to control or destroy them gives them an Action token.'
+  },
+  'Underground Newspapers': {
+    kind: 'undergroundnewspapers',
+    t: 'Underground Newspapers Whenever this group helps to destroy a Corporate, Straight or Government group, draw an extra Plot card.'
+  },
+  'Lawyers': {
+    kind: 'combo_bonus',
+    def: { clauses: [
+      { scope: 'owner', mode: 'both', vsAtk: { align: 'government' }, value: 4 },
+      { scope: 'owner', mode: 'both', vsAtk: { align: 'corporate' }, value: 4 }
+    ] },
+    t: 'Lawyers You automatically get a +4 bonus to defend against any attack involving either a Government or a Corporate group.'
+  }
+};
+const L53_FXN = {};
+for (const k53 in L53_FX) { L53_FXN[norm(k53)] = L53_FX[k53]; }

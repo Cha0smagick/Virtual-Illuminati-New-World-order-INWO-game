@@ -444,6 +444,17 @@ function curPower(node){
   var c=card(node.cardId);if(!c)return 0;
   var p=(typeof c.power==='number')?c.power:0;
   if(node.powerOverride!=null)p=node.powerOverride;
+  /* L54 power_if_card (Church of Elvis). */
+  if(c.effect&&c.effect.kind==='power_if_card'&&node.uid){
+    var oP54=findOwnerPid(node.uid),hasP54=false,mineP54=false;
+    for(var s54=0;s54<S.players.length;s54++){
+      walk(S.players[s54].structure,function(x54){
+        if(!hasP54&&x54.cardId!=null&&card(x54.cardId).id===c.effect.cardId){hasP54=true;if(s54===oP54)mineP54=true;}
+      });
+    }
+    if(mineP54&&typeof c.effect.ctrl==='number')p=c.effect.ctrl;
+    else if(hasP54&&typeof c.effect.alt==='number')p=c.effect.alt;
+  }
   /* L2 / P1-028 — `powerMods`: modificadores ADITIVOS y apilables, distintos de
      `powerOverride` (que es un valor absoluto y por eso no admite "+2"). Se aplican
      DESPUES del override para que un "+2 de Dictatorship" sobreviva a un Anguish que
@@ -4127,7 +4138,7 @@ function fiMatch43(fi,tNode,tCard,selfUid){
   if(side==='target')return hitTgt;
   return hitAtt||hitTgt;
 }
-function groupAttackBonus(pid,attNode,attCard,type,tNode,tCard,notes){  if(!tCard&&!tNode)return 0;
+function groupAttackBonus(pid,attNode,attCard,type,tNode,tCard,notes,instant){  if(!tCard&&!tNode)return 0;
   var st=(pid!=null&&pid>=0&&S.players[pid])?S.players[pid].structure:null;
   if(!st)return 0;
   var v=0;
@@ -4143,7 +4154,8 @@ function groupAttackBonus(pid,attNode,attCard,type,tNode,tCard,notes){  if(!tCar
     var clauses=e.clauses||[{atkType:e.atkType,scope:e.scope,vs:e.vs,value:e.value}];
     var vals=[];
     clauses.forEach(function(cl){
-      var sc46=cl.scope||e.scope||'self';
+      if(instant && cl.nonInstant === true) return;
+      var sc46 = cl.scope || e.scope || 'self';
       if(sc46==='parent'&&nd!==attNode){/* verificado abajo */}
       if(sc46==='parent'){
         /* L48 - 'parent': el grupo con el efecto es TIete del atacante (su master
@@ -4390,6 +4402,12 @@ function computeStrength(resolveMode){
     /* L42: bonos de defensa de los grupos del defensor (Resistencia). */
     var dbCtl42=groupDefenseBonus(tNode,tCard,'resist',det.notes);
     if(dbCtl42)det.defenseBonus+=dbCtl42;
+    /* L55 Comic Books: ataque de control sobre Weird -> Resistance 0. */
+    if(A.type==='control'&&tNode&&tCard&&nodeAligns(tNode,tCard).indexOf('weird')>=0){
+      var hasCB55=attCard&&attCard.effect&&attCard.effect.kind==='comics_zero';
+      if(!hasCB55){A.aids.forEach(function(aCB){if(hasCB55)return;var nCB=findNode(aCB.uid);if(nCB&&nCB.cardId!=null){var cCB=card(nCB.cardId);if(cCB&&cCB.effect&&cCB.effect.kind==='comics_zero')hasCB55=true;}});}
+      if(hasCB55){det.defenseBase=0;det.notes.push('Comic Books: la Resistance del objetivo es 0');}
+    }
     if(tNode&&tNode.resistanceOverride!=null)
       det.notes.push('Resistencia fijada en '+R+' por un link permanente');
     /* L3b — 268 Good Polls: "the Power and Resistance ... is tripled, FOR
@@ -4503,6 +4521,13 @@ function computeStrength(resolveMode){
     if(hasP&&det.leaderMod<0){det.notes.push('Pollsters: penalizaciones de alineacion anuladas');det.leaderMod=0;}
   })();
   A.opposes.forEach(function(o){det.opposes+=o.power;});
+  /* L55 EFF: si el dueno del defensor controla EFF y el objetivo es Computer,
+     el Poder total gastado por los defensores se dobla. */
+  if(A.targetPid!=null&&A.targetUid&&tNode&&tCard&&hasAttr(tCard,'computer',tNode)){
+    var hasE55=false;
+    walk(S.players[A.targetPid].structure,function(n55){if(hasE55||n55.cardId==null)return;var cc55=card(n55.cardId);if(cc55&&cc55.effect&&cc55.effect.kind==='eff_shield')hasE55=true;});
+    if(hasE55&&det.opposes>0){det.opposes*=2;det.notes.push('EFF: el Poder de los defensores se dobla');}
+  }
   /* L50 - KKK: si su dueno intenta destruir un Peaceful, TODOS los grupos Violent del ataque (ambos bandos) doblan su Poder. */
   var kkk50=null;
   walk(S.players[A.pid].structure,function(n50){if(kkk50||n50.cardId==null)return;var kc50=card(n50.cardId);if(kc50&&kc50.effect&&kc50.effect.kind==='kkk_double')kkk50=kc50.effect;});
@@ -5012,7 +5037,33 @@ E.resolveAttack=function(){
         return publicState();
       }
     }
-    applyAttackResult(A,det,result);
+    /* L53 Hooks: resultado del ataque. */
+  (function(){
+    var tn53=findNode(A.targetUid);
+    if(!tn53||tn53.cardId==null)return;
+    var tc53=card(tn53.cardId);
+    var e53=tc53&&tc53.effect;
+    var tf53=e53&&e53.tokenOnFail===true;
+    if(!tf53&&e53&&e53.kind==="combo_bonus"&&e53.ga&&e53.ga.tokenOnFail===true)tf53=true;
+    if(tf53&&result!=="ÉXITO"&&result!=="ÉXITO (11-12)"&&(tn53.tokens==null||tn53.tokens<1)){
+      tn53.tokens=1;log("Ninjas: recupera su Action token tras el intento fallido");
+    }
+    if(result==="ÉXITO"&&A.type==="destroy"){
+      var hitU=nodeAligns(tn53,tc53);
+      if(hitU.indexOf("corporate")>=0||hitU.indexOf("straight")>=0||hitU.indexOf("government")>=0){
+        var aidUN=false;
+        var anA53=findNode(A.attackerUid);
+        if(anA53&&anA53.cardId!=null){var acA53=card(anA53.cardId);if(acA53&&acA53.effect&&acA53.effect.kind==="undergroundnewspapers")aidUN=true;}
+        if(!aidUN)A.aids.forEach(function(a53){
+          if(aidUN)return;
+          var an53=findNode(a53.uid);
+          if(an53&&an53.cardId!=null){var ac53=card(an53.cardId);if(ac53&&ac53.effect&&ac53.effect.kind==="undergroundnewspapers")aidUN=true;}
+        });
+        if(aidUN){var ix53=drawFrom(S.plotDeck,S.plotDiscard,"plots");if(ix53!=null){S.players[A.pid].hand.push(ix53);log("Underground Newspapers: robas una Plot extra");}}
+      }
+    }
+  })();
+  applyAttackResult(A,det,result);
     /* L33 — hooks de destruccion-proteccion (Sucked no cuenta; WW3 y Necro si). */
     var anF=findNode(A.attackerUid);
     if(anF&&anF.destroyAfterAction){
@@ -5679,10 +5730,10 @@ function announcePlotInstantAttack(pid,pc,tUid,opts){
      Dos lecturas: la generica de "attempt to destroy" y la especifica del kind
      (Assassination/Disaster), para textos como "+2 on any Assassination attempt"
      (Joggers). NOTA: un atkType:'destroy' casa en ambos. */
-  var gAB44a=groupAttackBonus(pid,null,null,'destroy',nd,tc,notes);
+  var gAB44a=groupAttackBonus(pid,null,null,'destroy',nd,tc,notes,true);
   if(gAB44a)power+=gAB44a;
   if(eff.kind==='assassination'||eff.kind==='disaster'){
-    var gAB44b=groupAttackBonus(pid,null,null,eff.kind,nd,tc,notes);
+    var gAB44b=groupAttackBonus(pid,null,null,eff.kind,nd,tc,notes,true);
     if(gAB44b)power+=gAB44b;
   }
 
@@ -8384,6 +8435,16 @@ case 'bulk_power':{
       throw new Error(c.name+': habilidad pasiva — su bonus de Poder se aplica a los grupos que protege');
     case 'power_per_count':
       throw new Error(c.name+': habilidad pasiva — su Poder se recalcula por cada grupo que cuenta');
+    case 'undergroundnewspapers':
+      throw new Error(c.name+': habilidad pasiva — su robo de Plot se aplica al ayudar a destruir');
+    case 'power_if_card':
+      throw new Error(c.name+': habilidad pasiva — su Poder se recalcula al mirar las cartas en juego');
+    case 'kkk_double':
+      throw new Error(c.name+': habilidad pasiva — su bono de Poder se aplica al resolver ataques a destruir');
+    case 'pollster_shield':
+      throw new Error(c.name+': habilidad pasiva — anula las penalizaciones de alineacion que van contra su dueno');
+    case 'puppet_align':
+      throw new Error(c.name+': habilidad pasiva — sus titeres leen alineaciones modificadas');
     case 'group_action':
       throw new Error(c.name+': habilidad activa: se usa con su accion, no jugandola');
     case 'hand_limit_bonus':

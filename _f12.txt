@@ -1,0 +1,13 @@
+
+/* L54b — OPEC: al empezar el turno del dueno, 2d6-2 fija su Poder (override).
+ * +1 por cada Texas o Multinational Oil Companies que controle. Pieza
+ * 'opec_power' leida en beginTurn por walk de estructuras.
+ * LIMITACION: el override solo dura hasta el proximo beginTurn (se pisa). */
+const L54B_FX = {
+  'OPEC': {
+    kind: 'opec_power',
+    t: 'OPEC As oil prices vary, OPECs power also varies. At the beginning of your turn, roll 2 dice, subtracting 2 from the total, to set its power for that turn. (That is the Power of its Action token, even if you use it later.) If you also control either Texas or the Multinational Oil Companies, OPEC gets +1 power for each.'
+  }
+};
+const L54B_FXN = {};
+for (const k in L54B_FX) { L54B_FXN[norm(k)] = L54B_FX[k]; }

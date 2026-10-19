@@ -1,0 +1,22 @@
+
+/* L55 — EFF (defensa doblada de Computer) y Comic Books (Resistance 0).
+ * Piezas engine:
+ *   eff_shield: si el dueno del DEFENSOR controla EFF y el objetivo es Computer,
+ *               los opposes se doblan (regla impresa "total Power spent by all
+ *               defending groups is doubled").
+ *   comics_zero: si el ATACANTE es Comic Books (o lo ayuda) y el objetivo es
+ *               Weird en un ataque a control, su Resistance pasa a 0.
+ * INTERPRETACION declarada (EFF): "helps to defend" se modela como dueño del
+ * defensor con EFF en juego; no exige que el EFF gaste ficha. */
+const L55_FX = {
+  'EFF': {
+    kind: 'eff_shield',
+    t: 'EFF Has +4 for direct control of any Computer group. If the EFF helps to defend a Computer group against attack, the total Power spent by all defending groups is doubled.'
+  },
+  'Comic Books': {
+    kind: 'comics_zero',
+    t: 'Comic Books If the Comic Books attack to control a Weird group, or help the attack, the targets printed Resistance becomes 0 against that attack, and it gets no Resistance bonus for the Weirdness of its own master.'
+  }
+};
+const L55_FXN = {};
+for (const k55 in L55_FX) { L55_FXN[norm(k55)] = L55_FX[k55]; }

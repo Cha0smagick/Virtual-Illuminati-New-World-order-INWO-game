@@ -3351,7 +3351,7 @@ const L44_FX = {
   },
   'Urban Gangs': {
     kind: 'atk_bonus',
-    clauses: [{ scope: 'owner', atkType: 'destroy', vs: {}, value: 2 }],
+    clauses: [{ scope: 'owner', atkType: 'destroy', nonInstant: true, vs: {}, value: 2 }],
     t: 'Urban Gangs Gives +2 on any attempt to destroy another group, including Assassinations.'
   },
   'Joggers': {
@@ -3634,7 +3634,7 @@ const L51_FX = {
   'Cycle Gangs': {
     kind: 'combo_bonus',
     atk: { clauses: [
-      { scope: 'owner', atkType: 'destroy', vs: {}, value: 2 },
+      { scope: 'owner', atkType: 'destroy', nonInstant: true, vs: {}, value: 2 },
       { scope: 'owner', atkType: 'disaster', vs: { notAttr: 'space' }, value: 4 }
     ], pick: 'best' },
     t: 'Cycle Gangs Gives a +2 on any attempt to destroy another group, or a +4 to any Disaster you play (except in Space).'
@@ -3703,6 +3703,91 @@ const L52_FX = {
 };
 const L52_FXN = {};
 for (const k52 in L52_FX) { L52_FXN[norm(k52)] = L52_FX[k52]; }
+
+/* L53 — hooks de resultado (engine.resolveAttack):
+ *   tokenOnFail        - Ninjas: recupera su ficha tras un intento fallado.
+ *   undergroundnewspapers - su dueno roba una Plot al ayudar a destruir un
+ *                          Corporate/Straight/Government.
+ * LIMITACION declarada (Lawyers): "defend against any attack involving either a
+ * Government or a Corporate group" se modela con dos clausulas (atacante o
+ * ayudantes de ese alineamiento); "involving" incluye AYUDANTES, no al defensor.
+ */
+const L53_FX = {
+  'Ninjas': {
+    kind: 'combo_bonus',
+    atk: { clauses: [
+      { scope: 'owner', atkType: 'assassination', vs: {}, value: 4 },
+      { scope: 'owner', atkType: 'destroy', nonInstant: true, vs: {}, value: 2 }
+    ] },
+    def: { clauses: [{ scope: 'self', mode: 'power', vsAtk: {}, value: 10 }] },
+    tokenOnFail: true,
+    t: 'Ninjas Gives a +4 on any Assassination attempt, and a +2 on any nonInstant Attack to Destroy. Any attempt to destroy the Ninjas is at a -10 penalty, and any failed attempt to control or destroy them gives them an Action token.'
+  },
+  'Underground Newspapers': {
+    kind: 'undergroundnewspapers',
+    t: 'Underground Newspapers Whenever this group helps to destroy a Corporate, Straight or Government group, draw an extra Plot card.'
+  },
+  'Lawyers': {
+    kind: 'combo_bonus',
+    def: { clauses: [
+      { scope: 'owner', mode: 'both', vsAtk: { align: 'government' }, value: 4 },
+      { scope: 'owner', mode: 'both', vsAtk: { align: 'corporate' }, value: 4 }
+    ] },
+    t: 'Lawyers You automatically get a +4 bonus to defend against any attack involving either a Government or a Corporate group.'
+  }
+};
+const L53_FXN = {};
+for (const k53 in L53_FX) { L53_FXN[norm(k53)] = L53_FX[k53]; }
+
+/* L54 — power_if_card (Church of Elvis): el Poder del grupo depende de otra
+ * carta en juego. `power` base, y `alt` si `cardId` esta en juego (y `ctrl`
+ * si la controla el dueño). South American Nazis: atk + grant con piezas ya
+ * existentes.
+ * INTERPRETACION declarada (Church of Elvis): "Power becomes 4 if Elvis is in
+ * play, or 8 if you control him" se modela como alt=4/ctrl=8 sobre el Poder
+ * impreso 1; los boosts normales de Poder siguen sumando despues. */
+const L54_FX = {
+  'Church of Elvis': {
+    kind: 'power_if_card',
+    cardId: 'elvis',
+    alt: 4,
+    ctrl: 8,
+    t: 'Church of Elvis He isnt dead! I saw him last week at the gas station! Praise Elvis! Power of this group becomes 4 if Elvis is in play, or 8 if you control him.'
+  },
+  'South American Nazis': {
+    kind: 'combo_bonus',
+    atk: { clauses: [{ scope: 'self', atkType: 'control', vs: { align: 'weird', attr: 'science' }, value: 6 }] },
+    grant: { clauses: [{ scope: 'owner', vs: { align: 'weird', attr: 'science' }, value: 3 }] },
+    t: 'South American Nazis Has a +6 for direct control of any Weird Science group, and gives +3 Power to any Weird Science group it controls!'
+  }
+};
+const L54_FXN = {};
+for (const k54 in L54_FX) { L54_FXN[norm(k54)] = L54_FX[k54]; }
+
+/* L55 — EFF (defensa doblada de Computer) y Comic Books (Resistance 0).
+ * Piezas engine:
+ *   eff_shield: si el dueno del DEFENSOR controla EFF y el objetivo es Computer,
+ *               los opposes se doblan (regla impresa "total Power spent by all
+ *               defending groups is doubled").
+ *   comics_zero: si el ATACANTE es Comic Books (o lo ayuda) y el objetivo es
+ *               Weird en un ataque a control, su Resistance pasa a 0.
+ * INTERPRETACION declarada (EFF): "helps to defend" se modela como dueño del
+ * defensor con EFF en juego; no exige que el EFF gaste ficha. */
+const L55_FX = {
+  'EFF': {
+    kind: 'eff_shield',
+    t: 'EFF Has +4 for direct control of any Computer group. If the EFF helps to defend a Computer group against attack, the total Power spent by all defending groups is doubled.'
+  },
+  'Comic Books': {
+    kind: 'comics_zero',
+    t: 'Comic Books If the Comic Books attack to control a Weird group, or help the attack, the targets printed Resistance becomes 0 against that attack, and it gets no Resistance bonus for the Weirdness of its own master.'
+  }
+};
+const L55_FXN = {};
+for (const k55 in L55_FX) { L55_FXN[norm(k55)] = L55_FX[k55]; }
+
+
+
 
 
 
@@ -4001,7 +4086,7 @@ for (const m of manifest) {
    * printed rules have been confirmed word-for-word, so they are the only
    * ones that may claim implemented:true. P2-DATA-02 adds the 15 "+10 Plots"
    * in BOOST10_FX, transcribed the same way off the same card faces. */
-    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key] || L46_FXN[key] || L47_FXN[key] || L48_FXN[key] || L49_FXN[key] || L50_FXN[key] || L51_FXN[key] || L52_FXN[key];
+    const pfx = PLOT_FXN[key] || BOOST10_FXN[key] || POWERINC_FXN[key] || RESINC_FXN[key] || MESSIAH_FXN[key] || ANGST_FXN[key] || DICTATORSHIP_FXN[key] || BODYGUARD_FXN[key] || TALISMAN_FXN[key] || ROLL_FXN[key] || EVENT_FXN[key] || TOKEN_FXN[key] || FORCE_FXN[key] || BULK_FXN[key] || L3B_FXN[key] || L4_FXN[key] || L5_FXN[key] || L5B_FXN[key] || L5C_FXN[key] || L6_FXN[key] || L7_FXN[key] || L8A_FXN[key] || L8B_FXN[key] || L8C_FXN[key] || L9_FXN[key] || L10_FXN[key] || L11_FXN[key] || L12_FXN[key] || L13_FXN[key] || L14_FXN[key] || L15_FXN[key] || L18_FXN[key] || L22_FXN[key] || L23_FXN[key] || L24_FXN[key] || L25_FXN[key] || L26_FXN[key] || L16_FXN[key] || L19_FXN[key] || L20_FXN[key] || L29_FXN[key] || L30_FXN[key] || L31_FXN[key] || L32_FXN[key] || L33_FXN[key] || L34_FXN[key] || L35_FXN[key] || L36_FXN[key] || L37_FXN[key] || L38_FXN[key] || L39_FXN[key] || L40_FXN[key] || L41_FXN[key] || L42_FXN[key] || L43_FXN[key] || L44_FXN[key] || L45_FXN[key] || L46_FXN[key] || L47_FXN[key] || L48_FXN[key] || L49_FXN[key] || L50_FXN[key] || L51_FXN[key] || L52_FXN[key] || L53_FXN[key] || L54_FXN[key] || L55_FXN[key];
   if (pfx) {
     /* P1-055 — red de generación: imposible que una carta con coste por atributo
      * llegue al catálogo sin gate que lo cobre. El motor además acepta el alias
