@@ -6143,6 +6143,28 @@ function applyPlotInstantAttackRoll(ann,roll,total,forcedFail,byCard){
   if((card(nd.cardId)||{}).subtype==='place')S.lastPlaceDown={turn:S.turn,mode:'devastated'};
   subtreeList(nd).forEach(function(n){n.devastated=true;n.tokens=0;});
   log(pc.name+' devasta '+tc.name+(ann.notes.length?' ('+ann.notes.join(', ')+')':''));
+  /* L68 - Survivalists: master y titeres reciben Relief al turno siguiente de
+     cualquier Devastacion (patron reliefPending que resuelve expireTurnFlags). */
+  (function(){
+    try{
+      var ownS=findOwnerPid(nd.uid);
+      if(ownS<0||!S.players[ownS]||!S.players[ownS].structure)return;
+      var sv=null;
+      walk(S.players[ownS].structure,function(g){
+        if(sv||g.cardId==null)return;
+        var gc=card(g.cardId);
+        if(gc&&bonusPart(gc.effect,'reliefAuto'))sv=g;
+      });
+      if(!sv)return;
+      var nm=card(sv.cardId).name;
+      var rp={byPid:ownS,byCard:sv.cardId,untilTurn:S.turn+1};
+      var parS=findNodeThatHas(S.players[ownS].structure,sv.uid);
+      if(parS){parS.reliefPending=rp;log(nm+': su master recibe Relief el turno que viene');}
+      walk(sv,function(k){ if(k!==sv)k.reliefPending=rp; });
+      log(nm+': sus titeres reciben Relief el turno que viene');
+    }catch(eS){}
+  })();
+
 
   if(eff.onPlay&&Array.isArray(eff.onPlay.stripActionFromNames)&&victim>=0){
     var vroot=S.players[victim].structure;

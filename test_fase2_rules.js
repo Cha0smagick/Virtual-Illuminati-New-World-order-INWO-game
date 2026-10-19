@@ -12570,6 +12570,27 @@ if (readyToAttack(1) != null) {
     Math.random = r67;
     var notes67 = (out67 && out67.lastPlotResult && out67.lastPlotResult.notes) || [];
     ok(notes67.some(function (n67) { return /Weather/.test(n67) && /\+6/.test(n67); }), 'L67 IWO: +6 a defender su Place del Disaster -> ' + notes67.join(' | '));
+    ok(notes67.some(function (n67) { return /Weather/.test(n67) && /\+6/.test(n67); }), 'L67 IWO: +6 a defender su Place del Disaster -> ' + notes67.join(' | '));
+  /* ===== L68 - Survivalists (reliefAuto) ===== */
+  ok(beginL13(), 'L68 A el fixture deja a P0 en su turno principal');
+  stageL13(C13.placeSoft, 'pA');
+  E._raw().players[0].structure.children.push({ uid: 'ms68', cardId: idxOfId('texas'), tokens: 1, children: [{ uid: 'sv68', cardId: idxOfId('survivalists'), tokens: 1, children: [{ uid: 'tt68', cardId: idxOfId('batf'), tokens: 1, children: [] }] }] });
+  toHandXL13(0, C13.tornado, 1);
+  var rst68 = force2d6L13(0.75);
+  E.playPlot(0, C13.tornado, 'pA', {});
+  settleL13();
+  rst68();
+  function fnd68(root, uid) { if (!root) return null; if (root.uid === uid) return root; for (var q = 0; q < (root.children || []).length; q++) { var r = fnd68(root.children[q], uid); if (r) return r; } return null; }
+  var mM68 = fnd68(E._raw().players[0].structure, 'ms68');
+  var tM68 = fnd68(E._raw().players[0].structure, 'tt68');
+  var pA68 = nodeByUidL13(0, 'pA');
+  ok(pA68 && pA68.devastated === true, 'L68 A el Tornado DEVASTA el Place (control)');
+  ok(mM68 && mM68.reliefPending && mM68.reliefPending.untilTurn === E._raw().turn + 1, 'L68 Survivalists: el master recibe Relief automatico');
+  ok(tM68 && tM68.reliefPending && tM68.reliefPending.untilTurn === E._raw().turn + 1, 'L68 Survivalists: sus titeres reciben Relief automatico');
+  nextOwnTurnL13();
+  var mM68b = fnd68(E._raw().players[0].structure, 'ms68');
+  ok(mM68b && mM68b.reliefPending == null && logHasL13(/Relief/i), 'L68 Survivalists: el Relief se aplica al turno siguiente');
+
   } else { ok(true, "L67 (IWO) SKIP"); }
 
   } else { ok(true, "L66 (Imelda 6) SKIP"); }
