@@ -9246,3 +9246,145 @@ tienen EOL mixto en el arbol de trabajo.
 
 **Estado**: cerrado para el corpus declarado, con gate permanente (13 suites). La familia de excepciones del motor queda documentada como backlog natural si el Maestro de forja quiere 0 pass-through tambien en los avisos de accion invalida.
 
+
+
+## 91. L69 - FAMILIA RELIEF: RED CROSS, CENTER FOR DISEASE CONTROL, BOY SPROUTS (P1-172..P1-179)
+
+Cierra la familia A de `docs/audit/ROADMAP_RESTANTE.md`: las 3 cartas que quedaban
+tras L67 (IWO) y L68 (Survivalists). Texto impreso leido VERBATIM de las tres
+caras (`Groups/INWO - Red Cross.png`, `- Center for Disease Control.png`,
+`- Boy Sprouts.png`); el OCR de las tres estaba truncado (Red Cross daba solo
+la mitad, CDC solo "Center for Disease", Boy Sprouts cortaba el "12").
+
+**Regla oficial que las sostiene** (inwo_rules_extracted.txt:690-694, WDH v1.2
+"Devastation and Relief"): "Relief restores a Devastated Place to normal. The
+Place (and its puppets, and their puppets, etc.) will once again count toward
+victory and be able to get Action tokens. To give Relief, spend actions with a
+total Power three times the printed Power of the Devastated Place. These actions
+can be spent at any time by one or more players, as long as they are all spent
+at the same time." El motor NO tenia ninguna ejecucion de Relief: solo los flags
+`reliefPending`/`reliefLock` creados por 410 (L13) y 375 (L40).
+
+### Hallazgo
+
+- **P1-172 - Relief no existia como accion.** Las tres cartas hablan de Relief y
+  el motor solo sabia concederlo como consecuencia de otras cartas. Se crea
+  `E.giveRelief(pid,uids,targetUid,opts)` (engine.js L3777): valida objetivo
+  (Place, Devastado), cobra el 3x del Poder IMPRESO salvo `opts.free`, gasta una
+  ficha por grupo aportante, restaura el subarbol ENTERO (misma pasada que
+  reliefPending en expireTurnFlags, P1-011) y publica `S.lastRelief`, que es lo
+  que consume la Corruption de 375 (L40). Rampa nueva `act==='bring_relief'` en
+  `E.useGroupAction`.
+- **P1-173 - la ficha de Relief la gasta la REGLA, no la carta.** El generico de
+  `useGroupAction` hacia `nd.tokens--` al salir; para `bring_relief` eso seria
+  gastarla dos veces (la regla ya la gasto). Se anade `act!=='bring_relief'` a
+  esa condicion. Verificado por asercion (ficha 1 -> 0, no -2).
+- **P1-174 - `reliefController` (Red Cross) es distinta de `reliefAuto` (L68).**
+  L68 da Relief al MASTER de la carta que lleva el efecto y a sus titeres; la
+  Red Cross lo da "al grupo que la controla DIRECTAMENTE", que puede no ser el
+  master. Segundo bloque en `applyPlotInstantAttackRoll`, junto al de L68, con
+  el destinatario fijado por el nodo devastado (padre de la carta).
+- **P1-175 - `destroyPenalty` (Red Cross, -15) se lee del NODO en el momento de
+  defender.** No es un link que alguien juegue encima (como el destroyBonus de
+  Bodyguard/Talisman, P1-016): es una propiedad de la carta mientras este en
+  juego. Se pliego con signo negativo en `destroyDefenseBonus()`, que ya suman
+  `det.defBoosts` (la formula de 12 campos no cambia, P1-005 intacta). La nota
+  imprime "-15" y no "+-15".
+- **P1-176 - el "+15 (!!)" del CDC NO necesito pieza nueva.** Viaja como clausula
+  `atk` normal (scope self, atkType destroy, vs subtype place) y la ejecuta
+  `groupAttackBonus` (L41). Lo unico que hizo falta es el calificador
+  `vs.subtype` en `vsMatchQ`, que no existia.
+- **P1-177 - `bioRisk` (CDC): si el ataque falla, lo destruye el DUENO del
+  Place.** `destroyGroup(ownPidDelPlace, atacante)`, no el atacante: la carta
+  cuenta para las metas del dueno. Se resuelve en `applyAttackResult`, junto al
+  bloque de Imelda (L66), guardado por `!success && A.type==='destroy'` y por
+  `!neutralTarget && !handTarget` (ataque DIRECTO).
+- **P1-178 - `reliefPower`/`reliefDraw` (Boy Sprouts).** "For purposes of
+  bringing Relief, they have a Power of 12" y "you may draw a Plot card" al
+  AYUDAR. Boy Sprouts NO lleva la frase "As its action": gasta su accion dentro
+  de la regla general y paga el 3x, asi que su carta NO declara `ga.free`.
+  DESVIACION: "you may" es decision del jugador y el motor headless no pregunta;
+  se roba siempre.
+- **P1-179 - el +13 de vsMatchQ activo dos bonus que estaban MAL desde L45/L50.**
+  `Recording Industry` ("all your Media Personalities by 2, and all your other
+  Personalities by 1") y `Empty Vee` ("Each Personality you control gets +1")
+  ya declaraban `vs:{subtype:'personality'}`, pero `vsMatchQ` ignoraba la clave:
+  el grant se aplicaba a TODOS los grupos del dueno. Medido tras el cambio:
+  Recording Industry Media Personality +2 / Media organizacion 0 / sin-media 0
+  (antes 2/1 en todos); Empty Vee Personality +1 / resto 0. No es una regresion:
+  es el texto impreso, que hasta hoy no se cumplia.
+
+### Correcciones
+
+- `game/js/engine.js`: `vsMatchQ` (+vs.subtype), `destroyDefenseBonus`
+  (+destroyPenalty del nodo), `E.giveRelief` (nueva), rama `bring_relief` en
+  `useGroupAction` + guard de doble gasto, bloque `reliefController` en
+  `applyPlotInstantAttackRoll`, bloque `bioRisk` en `applyAttackResult`, y la
+  nota de `pgB` con signo explicito.
+- `gen_cards.js`: familia `L69_FX` con las 3 cartas y su `t:` verbatim +
+  `L69_FXN[key]` en la cadena de `pfx`. `game/js/cards.js` regenerado.
+- `game/js/ui.js`: el boton de accion de grupo tambien sale para
+  `kind==='combo_bonus'` con `ga` (hueco previo: Fidel Castro, L64, tenia
+  rama en el motor y ningun boton), y modo de seleccion `reliefTarget` (PASO
+  2/2, clic en el Place Devastado) para que el objetivo se ELIJA.
+- `game/js/app.js`: `onUseGroupAction(uid,opts)` reenvia los opts.
+- `game/js/i18n.js`: 6 reglas nuevas en `LOG_RULES` para los mensajes de
+  Relief (gate `test_i18n_logrules.js` los detecto como pass-through en cuanto
+  la IA uso una de las tres cartas: 1-2 PT por corrida antes del fix).
+- `game/js/i18n.js`: arreglada la regla de ITALY, que pedia "defiende como
+  acci**ó**n gratis" y el motor emite "defiende como acci**o**n gratis"
+  (engine.js, `addSupport`): NUNCA casaba, asi que el gate se ponia rojo en
+  cuanto la IA usaba la defensa gratis de Italy. Defecto PREEXISTENTE (nada de
+  L69 lo toca), de la misma clase que el typo "STOLING THE PLANS" de §90: la
+  regla debe casar con lo EMITIDO. Medido: 1/30 corridas antes, 0/25 despues.
+
+### Verificacion
+
+- `node --check` limpio en los 5 JS tocados.
+- `npm test` -> ALL TESTS PASSED (13).
+- `node test_fase4_cards.js` -> FASE 4 COVERAGE PASSED, cartas clasificadas
+  336 -> **339** (+3, exactamente el lote), `implemented-pending-engine` 317 ->
+  320, Groups `unverified` 75 -> 72. "Plots/Resources sin mecanica" sigue en 4:
+  el lote es de GROUPS, que P1-019 saco de la cuenta de deuda.
+- Regresion `L69` en `test_fase2_rules.js` (6 escenarios): A Relief con la
+  accion de la carta (bucle entero Disaster -> Devastado -> Relief -> restaurado,
+  mas `lastRelief` y que la ficha se gaste UNA vez), A2 Relief sobre un Place ya
+  restaurado (rechazo con motivo oficial y SIN gasto), B `reliefController`
+  (reliefPending en el controlador directo), C el -15 de la Red Cross
+  (`defBoosts === -15` + nota), D el +15 y la muerte del CDC a manos del dueno
+  del Place, E Boy Sprouts con Poder 12 y robo de Plot, F el 3x rechazado sobre
+  Brazil (Poder 5 -> exige 15) sin gastar ficha ni aliviar. **30/30 corridas
+  verdes**; los dos fallos que se ven en otras corridas del fichero (S6a ventana
+  de suceso, L56 Fiendish Fluoridators) son flakes PREEXISTENTES: reproducidos
+  5/20 en un worktree limpio de HEAD.
+
+### Leccion
+
+**El Disaster del fixture cambia con el bonus de la carta.** La primera version
+de la regresion uso el Tornado de L68 y fallo: el +6 de la Red Cross sube la
+fuerza a 17, la tirada 10 deja margen 7 > 4 y el Tornado DESTRUYE el Place en vez
+de devastarlo, o que no deja nada a lo que dar Relief. Se cambio a Epidemic
+(margen nulo: "cannot actually destroy the Place"). Un fixture de Disaster que
+devastar debe elegir el Disaster por su `destroyMargin`, no por costumbre.
+
+**Un calificador que falta se paga dos veces.** Anadir `vs.subtype` para una
+carta nueva activo dos calificadores que llevaban lotes enteros escrita en el
+dato y ignorada por el motor (P1-179). Al tocar `vsMatchQ` hay que medir TODAS
+las cartas que ya usen la clave, no solo la que motiva el cambio.
+
+### Backlog
+
+- El Relief multi-jugador ("one or more players... all spent at the same time")
+  no esta implementado: `giveRelief` acepta una lista de uids pero todos del
+  mismo `pid`. Falta la ventana de contribucion simultanea.
+- La regla dice que las acciones de Relief se gastan "AT ANY TIME"; el motor las
+  limita a la fase principal (`S.phase!=='main'`, la misma puerta de todas las
+  acciones de grupo). Consecuencia: no se puede dar Relief durante la ventana de
+  reaccion de un ataque. Declarado, no corregido.
+- "you may draw" (Boy Sprouts) y "can use biological warfare" (CDC) se resuelven
+  automaticamente: falta la decision del jugador.
+- Stats sin datar de las tres cartas (Red Cross y CDC con Power/Resistance null,
+  CDC sin alineaciones ni atributos) siguen en la deuda de datos del roadmap;
+  no afectan a estas mecanicas (el 3x usa el Poder IMPRESO del Place objetivo).
+- La CDC del fixture de L13 (`C13.p3`, comentada "Poder 3") y la cara real
+  (Poder 1, Resistencia 2) no coinciden: pendiente de dirimir.

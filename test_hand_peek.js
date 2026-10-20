@@ -232,6 +232,51 @@ const UIT = fs.readFileSync(UIJS, 'utf8');
   ok(/tsc\.id==='unlucky13'\|\|tsc\.id==='seizethetime'/.test(eng),
      'P1-098: el bucle que abre la ventana de comienzo de turno reconoce las DOS cartas');
 }
+
+/* ---------- 6) L69.d: el cableado de UI de la familia RELIEF ---------- */
+/* Aserciones ESTATICAS del cableado, no una simulacion. El estado del juego vive
+   en el closure de app.js y `window.App` solo expone `start`: no se puede inyectar
+   una mano desde fuera (mismo limite que declaro L13.f). Lo que SI se puede fijar
+   por asercion estatica es que el camino de la UI existe y llama a lo que debe.
+   La logica de las cartas se afirma en test_fase2_rules.js (bloque L69). */
+{
+  const ui69 = fs.readFileSync(UIJS, 'utf8');
+  const app69 = fs.readFileSync(APPJS, 'utf8');
+  const eng69 = fs.readFileSync(path.join(root, 'game', 'js', 'engine.js'), 'utf8');
+  const cards69 = fs.readFileSync(path.join(root, 'game', 'js', 'cards.js'), 'utf8');
+  /* El boton de accion de grupo sale tambien para combo_bonus con `ga`: sin eso
+     Red Cross / CDC / Boy Sprouts (y Fidel Castro, L64) no tendrian boton. */
+  ok(/combo_bonus'\s*&&\s*gc\.effect\.ga/.test(ui69),
+     'L69.d: el boton de accion de grupo reconoce kind===\'combo_bonus\' con ga');
+  ok(/data-act="ga" data-uid="/.test(ui69),
+     'L69.d: el boton emite data-act="ga" con el uid del grupo');
+  /* El objetivo se ELIGE: modo de seleccion + ruta en route() + reenvio de opts. */
+  ok(/mode:\s*'reliefTarget'/.test(ui69),
+     'L69.d: la accion bring_relief entra en modo de seleccion (PASO 2/2)');
+  ok(/m === 'reliefTarget'\)\s*\{\s*var gaU69=d\.uid;\s*clearSel\(\); CB\.onUseGroupAction\(gaU69,\s*\{\s*targetUid:\s*uid\s*\}\)/.test(ui69),
+     'L69.d: route() envia el Place elegido a CB.onUseGroupAction como opts.targetUid');
+  ok(/reliefTarget:/.test(ui69),
+     'L69.d: el panel de pistas explica el modo reliefTarget');
+  ok(/onUseGroupAction:\s*function\s*\(uid,\s*opts\)/.test(app69) &&
+     /E\.useGroupAction\(stG\.currentPid,\s*uid,\s*opts\s*\|\|\s*\{\}\)/.test(app69),
+     'L69.d: app.js reenvia los opts (sin ellos el objetivo elegido se pierde)');
+  /* Motor: la rama existe y gasta la ficha una sola vez. */
+  ok(/act==='bring_relief'/.test(eng69),
+     'L69.d: el motor tiene la rama bring_relief en useGroupAction');
+  ok(/if\(!freeLook&&act!=='bring_relief'\)nd\.tokens--/.test(eng69),
+     'L69.d: la rama bring_relief NO vuelve a gastar la ficha (la gasta giveRelief)');
+  ok(/E\.giveRelief=function/.test(eng69),
+     'L69.d: E.giveRelief esta expuesto (laUI no lo llama, los tests y la API si)');
+  /* Dato: las tres cartas llevan la accion y su texto impreso. */
+  ['redcross', 'centerfordiseasecontrol', 'boysprouts'].forEach(function (id69) {
+    const i = cards69.indexOf('"id":"' + id69 + '"');
+    ok(i >= 0, 'L69.d: el dataset tiene ' + id69);
+    if (i < 0) return;
+    const trozo = cards69.slice(i, i + 8000);
+    ok(/"ga":\{"act":"bring_relief"/.test(trozo), 'L69.d: ' + id69 + ' declara ga.act bring_relief');
+    ok(/"t":"[^"]{40,}/.test(trozo), 'L69.d: ' + id69 + ' lleva su texto impreso verbatim');
+  });
+}
 if (failures.length) {
   console.error('HAND PEEK FAILURES (' + failures.length + '):');
   failures.forEach(function (f) { console.error('  - ' + f); });

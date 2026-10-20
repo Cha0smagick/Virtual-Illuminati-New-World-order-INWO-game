@@ -133,7 +133,11 @@
     [/^Contra-ataque de (.{1,28}): \+(\d+)$/, function (m) { return 'Counter-attack by ' + m[1] + ': +' + m[2]; }],
     [/^(.{1,28}): esconde (\d+) Plot\(s\) expuesta\(s\)$/, function (m) { return m[1] + ': hides ' + m[2] + ' exposed Plot card(s)'; }],
     [/^(.{1,28}): da su ficha de acción a (.+)$/, function (m) { return m[1] + ': gives its Action token to ' + m[2]; }],
-    [/^(.{1,28}): defiende como acción gratis \(Italy\)$/, function (m) { return m[1] + ': defends as a free action (Italy)'; }],
+        /* L69 - el motor emite "accion" sin tilde (engine.js, addSupport de Italy); la regla
+       pedia la forma con tilde, asi que NUNCA casaba y el gate de i18n se ponia rojo en
+       cuanto la IA usaba la defensa gratis de Italy. Leccion de §90: la regla debe casar
+       con lo EMITIDO, no con lo correcto. */
+    [/^(.{1,28}): defiende como accion gratis \(Italy\)$/, function (m) { return m[1] + ': defends as a free action (Italy)'; }],
     [/^(.{1,28}): su Poder se fija en (\d+) para este turno$/, function (m) { return m[1] + ': its Power is set to ' + m[2] + ' for this turn'; }],
     [/^Comic Books: la Resistance del objetivo es 0$/, function () { return 'Comic Books: the target\'s Resistance becomes 0'; }],
     [/^EFF: el Poder de los defensores se dobla$/, function () { return 'EFF: the defenders\' Power is doubled'; }],
@@ -217,7 +221,17 @@
     [/^(.+?) ha crasheado \(11\/12 en la accion extra\): se descarta y se exponen los Plots ocultos de (.+)$/, function (m) { return m[1] + ' has crashed (11/12 on the extra action): discarded and ' + m[2] + "'s hidden Plots are exposed"; }],
     [/^Ataque instant\u00E1neo de (.+)$/, function (m) { return 'Instant attack of ' + m[1]; }],
     [/^Illuminati de (.+) destruido \(ya no tiene t\u00EDteres\)$/, function (m) { return 'Illuminati of ' + m[1] + ' destroyed (no puppets left)'; }],
-    [/^(.+?): \+(\d+) por el control directo de un grupo (.+)$/, function (m) { return m[1] + ': +' + m[2] + ' for directly controlling a ' + m[3] + ' group'; }]
+    [/^(.+?): \+(\d+) por el control directo de un grupo (.+)$/, function (m) { return m[1] + ': +' + m[2] + ' for directly controlling a ' + m[3] + ' group'; }],
+    /* L69 - FAMILIA RELIEF (Red Cross, CDC, Boy Sprouts). Los cuatro mensajes
+       nuevos del motor; sin regla, el gate de i18n (test_i18n_logrules.js) los
+       detecta como pass-through en cuanto la IA usa una de estas cartas. */
+    [/^Relief a (.+) con (.+?) — (\d+) de Poder( \(la accion de la carta cubre el coste\))?$/,
+      function (m) { return 'Relief to ' + m[1] + ' using ' + m[2] + ' — ' + m[3] + ' Power' + (m[4] ? ' (the card\'s action covers the cost)' : ''); }],
+    [/^Boy Sprouts: robas una Plot por ayudar a traer Relief a (.+)$/, function (m) { return 'Boy Sprouts: you draw a Plot card for helping bring Relief to ' + m[1]; }],
+    [/^(.+?): (.+?), su controlador directo, recibe Relief al acabar el turno$/, function (m) { return m[1] + ': ' + m[2] + ', its direct controller, gets Relief at the end of the turn'; }],
+    [/^(.+?): la guerra biologica falla y (.+?) \(dueno del Place\) la destruye$/, function (m) { return m[1] + ': biological warfare fails and ' + m[2] + ' (owner of the Place) destroys it'; }],
+    [/^Sin robo de Plot: el Relief no puede robar este turno$/, function () { return 'No Plot draw: Relief cannot draw this turn'; }],
+    [/^No quedan Plot cards que robar por el Relief$/, function () { return 'No Plot cards left to draw for Relief'; }]
   ];
   function tr(text) {
     if (!text) return text;

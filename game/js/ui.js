@@ -1023,14 +1023,19 @@ function attackPanel(st) {
       'Center for Weird Studies: recargar accion (1 vez/turno)</button></div>');
   }
 
-  /* L46 - acciones de GRUPO del humano: un boton por grupo con group_action y ficha. */
+  /* L46 - acciones de GRUPO del humano: un boton por grupo con group_action y ficha.
+     L69 - tambien las combo_bonus con `ga` (Red Cross, CDC, Boy Sprouts...): el
+     motor las acepta desde L64 (Fidel Castro), pero la UI solo miraba
+     kind==='group_action', asi que esas acciones no tenian boton. */
   (function () {
     var curH = st.players[st.currentPid];
     if (!curH || !curH.human) return;
     (function gaW(gn) {
       if (gn.cardId != null) {
         var gc = C.cards[gn.cardId];
-        if (gc && gc.effect && gc.effect.kind === 'group_action' && (gn.tokens || 0) >= 1) {
+        var hasGa = gc && gc.effect && (gc.effect.kind === 'group_action' ||
+          (gc.effect.kind === 'combo_bonus' && gc.effect.ga));
+        if (hasGa && (gn.tokens || 0) >= 1) {
           $('actionBtns').insertAdjacentHTML('afterbegin', '<div class="pendbar"><button data-act="ga" data-uid="' + gn.uid + '">' + esc(gc.name) + ': usar accion</button></div>');
         }
       }
@@ -1267,6 +1272,8 @@ function hint() {
       : '🎯 Haz CLIC en el grupo a CONTROLAR (borde rojo): rival, área neutral… o elige una carta de TU mano.',
     moveTo: '🎯 Haz CLIC en el nuevo anfitrión dentro de tu estructura.',
     plotTarget: '🎯 Haz CLIC en el grupo objetivo de este Plot.',
+    /* L69 - Relief: el Place devastado se ELIGE (nunca se autoelige). */
+    reliefTarget: '🩹 Haz CLIC en el Place DEVASTADO (borde rojo) que recibe el Relief. Tu grupo gasta su ● token.',
     handPick: '👆 Ahora haz CLIC en una carta de GRUPO o RECURSO de tu mano (abajo).',
     aid: '🎯 Haz CLIC en uno de tus grupos con ● para AYUDAR (+su Power al ataque).',
     oppose: '🎯 Haz CLIC en uno de tus grupos con ● para OPONERTE (−su Power al ataque).'
@@ -1730,6 +1737,10 @@ function route(uid) {
       confirmReorg19(d.handIdx, mv19);
     }
     else if (m === 'aid') { clearSel(); CB.onSupport({ uid: uid, oppose: false }); }
+    /* L69 - Relief: el grupo ya gasto su ficha en el motor, aqui solo se envia
+       el Place elegido. El error oficial del motor se ve en el registro por el
+       catch de route(). */
+    else if (m === 'reliefTarget') { var gaU69=d.uid; clearSel(); CB.onUseGroupAction(gaU69, { targetUid: uid }); }
     else if (m === 'oppose') { clearSel(); CB.onSupport({ uid: uid, oppose: true }); }
     /* L8a — 388 y 411 dan "one extra Action token on one of your own Groups": el
      * jugador ELIGE esos grupos, y pueden ser varios distintos (uno por carta
@@ -3065,7 +3076,22 @@ function bindEvents() {
       log('📜 PASO 2/2 — clic en el grupo TUYO cuyo nombre ira bajo el Ark of the Covenant.');
       render(curState);
     }
-    else if (act === 'ga') { var gaUid = btn.getAttribute('data-uid'); if (!gaUid) return; CB.onUseGroupAction(gaUid); }
+    else if (act === 'ga') { var gaUid = btn.getAttribute('data-uid'); if (!gaUid) return;
+      /* L69 - si la accion del grupo necesita objetivo (bring_relief), no se
+         ejecuta al pulsar: entramos en modo seleccion y el objetivo lo elige
+         el jugador con un clic (DoD 6). Las acciones sin objetivo siguen
+         ejecutandose en el acto. */
+      var gaN = findUiNode(gaUid);
+      var gaC = gaN ? cardOf(gaN.cardId) : null;
+      var gaA = gaC && gaC.effect && gaC.effect.ga ? String(gaC.effect.ga.act || '') : '';
+      if (gaA === 'bring_relief') {
+        sel = { mode: 'reliefTarget', data: { uid: gaUid } };
+        log('\uD83E\uDE79 PASO 2/2 \u2014 haz CLIC en el Place DEVASTADO que recibe el Relief.');
+        render(curState);
+        return;
+      }
+      CB.onUseGroupAction(gaUid);
+    }
     else if (act === 'gadgetuse') { var guUid = btn.getAttribute('data-uid'); if (!guUid) return; CB.onUseGadgetAction(guUid); }
     else if (act === 'resdestroypick') { sel = { mode: 'resDestroy', data: { resUid: btn.getAttribute('data-uid') } }; log('🎯 Paso 2/2 — elige el Resource objetivo y luego TIRA EL DADO.'); render(curState); }
     else if (act === 'resdestroycancel') { clearSel(); render(curState); }

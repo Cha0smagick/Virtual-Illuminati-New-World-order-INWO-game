@@ -12591,6 +12591,128 @@ if (readyToAttack(1) != null) {
   var mM68b = fnd68(E._raw().players[0].structure, 'ms68');
   ok(mM68b && mM68b.reliefPending == null && logHasL13(/Relief/i), 'L68 Survivalists: el Relief se aplica al turno siguiente');
 
+  /* ===== L69 - FAMILIA RELIEF (Red Cross, CDC, Boy Sprouts) ===== */
+  /* A - RELIEF CON LA ACCION DE LA CARTA (regla oficial: "As its action ...
+     bring Relief to one Devastated Place"). El bucle entero: Disaster real ->
+     Place devastado -> accion de grupo -> Place restaurado.
+     El Disaster es EPIDEMIC y no el Tornado de L68: el Tornado tiene
+     destroyMargin 4 y el +6 de la propia Red Cross sube el margen por encima de
+     4, o que DESTRUIRIA el Place en vez de devastarlo (medido: fuerza 17,
+     tirada 10, margen 7 > 4). Epidemic "cannot actually destroy the Place", que
+     es justo el estado que el Relief necesita. */
+  ok(beginL13(), 'L69 A el fixture deja a P0 en su turno principal');
+  stageL13(C13.placeSoft, 'pR');
+  plantAtL13(0, 'pR_g1', 'rcR', idxOfId('redcross'), 1);
+  toHandXL13(0, idxOfId('epidemic'), 1);
+  var rst69 = force2d6L13(0.75);
+  E.playPlot(0, idxOfId('epidemic'), 'pR', {});
+  settleL13();
+  rst69();
+  var pR = nodeByUidL13(0, 'pR');
+  ok(pR && pR.devastated === true, 'L69 A el Disaster deja el Place Devastado (control)');
+  var rcTokAntes = nodeByUidL13(0, 'rcR').tokens;
+  var o69R = E.useGroupAction(0, 'rcR', { targetUid: 'pR' });
+  ok(o69R && o69R.relieved === 'pR', 'L69 A Red Cross trae Relief con su accion -> ' + JSON.stringify(o69R));
+  ok(pR.devastated === false && pR.tokens === 1, 'L69 A el Place deja de estar Devastado y recupera su ficha');
+  var raw69R = E._raw();
+  ok(raw69R.lastRelief && raw69R.lastRelief.areaUid === 'pR' && raw69R.lastRelief.turn === raw69R.turn,
+     'L69 A el Relief queda registrado para el gancho de Corruption (lastRelief)');
+  ok(nodeByUidL13(0, 'rcR').tokens === rcTokAntes - 1 && nodeByUidL13(0, 'rcR').tokens === 0,
+     'L69 A la accion gasta la ficha de la Red Cross UNA sola vez');
+  ok(logHasL13(/Relief a/), 'L69 A el registro explica el Relief -> ' + logTailL13(3));
+  /* A2 - el Relief no se puede repetir sobre el mismo Place: el motor rechaza
+     con el motivo oficial y NO gasta la ficha. */
+  plantAtL13(0, 'pR_g1', 'rcR2', idxOfId('redcross'), 1);
+  var m69A2 = '';
+  try { E.useGroupAction(0, 'rcR2', { targetUid: 'pR' }); } catch (ex69A2) { m69A2 = ex69A2.message; }
+  ok(/no esta Devastado/i.test(m69A2), 'L69 A2 Relief sobre un Place ya restaurado -> ' + (m69A2 || 'no lanzo'));
+  ok(nodeByUidL13(0, 'rcR2').tokens === 1, 'L69 A2 el rechazo NO gasta la ficha');
+
+  /* B - reliefController: "The group that directly controls the Red Cross
+     automatically gets Relief at the end of the turn it is Devastated." El
+     destinatario es el controlador DIRECTO (aqui el Place), no el master:
+     por eso la Red Cross se planta COMO TITERE del Place. Mismo motivo que en A
+     para usar Epidemic: el +6 de la Red Cross inflaria el margen del Tornado. */
+  ok(beginL13(), 'L69 B el fixture deja a P0 en su turno principal');
+  stageL13(C13.placeSoft, 'pB');
+  plantAtL13(0, 'pB', 'rcB', idxOfId('redcross'), 1);
+  toHandXL13(0, idxOfId('epidemic'), 1);
+  var rst69B = force2d6L13(0.75);
+  E.playPlot(0, idxOfId('epidemic'), 'pB', {});
+  settleL13();
+  rst69B();
+  var pB = nodeByUidL13(0, 'pB');
+  ok(pB && pB.devastated === true, 'L69 B el Tornado deja el Place Devastado (control)');
+  ok(pB && pB.reliefPending && pB.reliefPending.untilTurn === E._raw().turn + 1,
+     'L69 B Red Cross: su controlador directo recibe Relief automatico');
+  ok(logHasL13(/controlador directo/i), 'L69 B el registro nombra al controlador directo -> ' + logTailL13(3));
+
+  /* C - "-15 penalty" a cualquier intento de destruir la Red Cross. */
+  fresh('adeptsofhermes1', 'servantsofcthulhu1');
+  if (readyToAttack(1) != null) {
+    plant(0, 'rcC', idxOfId('redcross'), 1);
+    plant(1, 'dtC', idxOfId('dentists'), 1);
+    var m69C = '';
+    try { E.declareAttack(1, 'destroy', { attackerUid: 'dtC', uid: 'rcC' }); } catch (ex69C) { m69C = ex69C.message; }
+    var d69C = E.previewStrength();
+    ok(m69C === '' && d69C.defBoosts === -15, 'L69 C Red Cross: -15 a quien intente destruirla -> defBoosts=' + d69C.defBoosts);
+    ok(d69C.notes.some(function (n69C) { return /-15/.test(n69C); }), 'L69 C la nota explica el -15 -> ' + d69C.notes.join(' | '));
+  } else { ok(true, "L69 C (RC -15) SKIP"); }
+
+  /* D - Guerra biologica del CDC: +15 a destruir un Place, y si el ataque
+     FALLA lo destruye el dueno del Place (no el atacante). */
+  fresh('adeptsofhermes1', 'servantsofcthulhu1');
+  if (readyToAttack(0) != null) {
+    plant(0, 'cdD', idxOfId('centerfordiseasecontrol'), 1);
+    plant(1, 'dpD', idxOfId('dinosaurpark'), 1);
+    var m69D = '';
+    try { E.declareAttack(0, 'destroy', { attackerUid: 'cdD', uid: 'dpD' }); } catch (ex69D) { m69D = ex69D.message; }
+    var d69D = E.previewStrength();
+    ok(m69D === '' && d69D.cthulhu === 15, 'L69 D CDC: +15 (!!) al atacar un Place a destruir -> cthulhu=' + d69D.cthulhu);
+    ok(d69D.notes.some(function (n69D) { return /Center for Disease Control/.test(n69D) && /\+15/.test(n69D); }),
+       'L69 D la nota explica la guerra biologica -> ' + d69D.notes.join(' | '));
+    var mano69D = E._raw().players[0].hand.length;
+    var rst69D = force2d6L13(0.99);
+    E.resolveAttack();
+    settleL13();
+    rst69D();
+    var raw69D = E._raw();
+    ok(raw69D.groupDiscard.indexOf(idxOfId('centerfordiseasecontrol')) >= 0,
+       'L69 D el ataque falla (12 siempre falla) y el CDC queda destruido');
+    ok(raw69D.players[1].destroyedByMe.indexOf(idxOfId('centerfordiseasecontrol')) >= 0,
+       'L69 D la destruccion la ejecuta el DUENO del Place: cuenta para sus metas');
+    var vivo69D = findNode(raw69D.players[0].structure, 'cdD') != null;
+    ok(!vivo69D, 'L69 D el CDC ya no esta en la estructura del atacante');
+    ok(E._raw().players[0].hand.length === mano69D, 'L69 D el fallo no roba Plots');
+  } else { ok(true, "L69 D (CDC bio) SKIP"); }
+
+  /* E - Boy Sprouts: "For purposes of bringing Relief, they have a Power of 12"
+     y "you may draw a Plot card". Gasta SU accion dentro de la regla general
+     (3x el Poder impreso del Place), asi que un Place de Poder 1 le basta. */
+  ok(beginL13(), 'L69 E el fixture deja a P0 en su turno principal');
+  stageL13(C13.placeSoft, 'pE');
+  plantAtL13(0, 'pE_g1', 'bsE', idxOfId('boysprouts'), 1);
+  var nodeE = nodeByUidL13(0, 'pE');
+  nodeE.devastated = true; nodeE.tokens = 0;
+  var manoAntes69 = E._raw().players[0].hand.length;
+  var o69E = E.useGroupAction(0, 'bsE', { targetUid: 'pE' });
+  ok(o69E && o69E.relieved === 'pE' && o69E.power === 12, 'L69 E Boy Sprouts aporta 12 de Poder al Relief -> ' + JSON.stringify(o69E));
+  ok(nodeE.devastated === false && nodeE.tokens === 1, 'L69 E el Place queda restaurado');
+  ok(E._raw().players[0].hand.length === manoAntes69 + 1, 'L69 E robas una Plot por ayudar a traer Relief');
+  ok(logHasL13(/12 para Relief/), 'L69 E el registro declara el Poder 12 a efectos de Relief -> ' + logTailL13(3));
+
+  /* F - el coste de la regla general se hace cumplir: 3x el Poder IMPRESO del
+     Place. Boy Sprouts (12) no alcanza un Place de Poder 5 (Brazil: 15). */
+  ok(beginL13(), 'L69 F el fixture deja a P0 en su turno principal');
+  plant(0, 'pF', idxOfId('brazil'), 1);
+  nodeByUidL13(0, 'pF').devastated = true;
+  plant(0, 'bsF', idxOfId('boysprouts'), 1);
+  var m69F = '';
+  try { E.useGroupAction(0, 'bsF', { targetUid: 'pF' }); } catch (ex69F) { m69F = ex69F.message; }
+  ok(/exige 15/.test(m69F), 'L69 F Brazil (Poder 5) exige 15: Boy Sprouts (12) no llega -> ' + (m69F || 'no lanzo'));
+  ok(nodeByUidL13(0, 'pF').devastated === true, 'L69 F el Relief rechazado NO alivia el Place');
+  ok(nodeByUidL13(0, 'bsF').tokens === 1, 'L69 F el rechazo NO gasta la ficha');
+
   } else { ok(true, "L67 (IWO) SKIP"); }
 
   } else { ok(true, "L66 (Imelda 6) SKIP"); }

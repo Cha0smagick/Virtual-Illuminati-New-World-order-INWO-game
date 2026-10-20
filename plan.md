@@ -1614,3 +1614,51 @@ impreso no aclara el orden y el motor paga por la ventana de reaccion).
 - [x] L40.f CIERRE: ?v=64->65 + audit ##85 + commit 'L40: reglas oficiales finales - P1-171'.
 
 **Lagunas DECLARADAS (L40):** (1) Offer "deck of a rival": mazo global compartido (P1-025) = Plots extra del unico mazo, declarado; el boton generico juega el modo 'two' (el impreso permite 1 o 2). (2) Tax "from each player": 1 Plot por cada OTRO jugador; autorregravarse no tiene sentido con un unico mazo. (3) Xanadu: solo anula el +5 del duplicado (faction_boost), unica via de bonus por duplicado en el motor. (4) Hat Trick "requires an action from a group": auto-pick de la primera ficha propia disponible (declarado). (5) opportunityknocks sigue bloqueada: exige un ataque FUERA DE TURNO contra la carta recien descartada y requireOwnMain veta toda accion fuera de turno. (6) powerforitsownsake: sin fuente local del texto; el texto jugado se RETIRO junto con su logica de victoria. (7) ilied sin subsistema de tratos; coverofdarkness sin mecanica (el OCR corto el efecto).
+
+## [x] L69 - FAMILIA RELIEF: RED CROSS, CENTER FOR DISEASE CONTROL, BOY SPROUTS (P1-172..P1-179; auditoria §91)
+    -> cierra la familia A de docs/audit/ROADMAP_RESTANTE.md (las 3 que quedaban tras L67/L68)
+
+**Cartas:** 3 cartas, 3 mecanicas distintas, UN solo kind de carta (`combo_bonus`) porque las
+tres tienen varias piezas a la vez; las piezas son las que identifican la familia. El roadmap
+las habia marcado como "1-2 piezas nuevas" y fueron 4 nuevas (`reliefController`, `reliefPower`,
+`reliefDraw`, `destroyPenalty`, `bioRisk`) mas la rama `bring_relief`. El "+15 (!!)" del CDC no
+llevo pieza: es clausula `atk` normal (P1-176).
+
+- [x] L69.a AUDIT: 3 textos VERBATIM de las caras (el OCR de las tres estaba truncado:
+      Red Cross daba la mitad, CDC solo "Center for Disease", Boy Sprouts cortaba el "12").
+      Regla oficial leida en inwo_rules_extracted.txt:690-694.
+- [x] L69.b DATOS: `L69_FX`/`L69_FXN` en gen_cards.js + `L69_FXN[key]` en la cadena `pfx`.
+      `game/js/cards.js` regenerado (`node gen_cards.js`).
+- [x] L69.c MOTOR: `E.giveRelief` (nueva) + rama `bring_relief` en `E.useGroupAction` +
+      guard de doble gasto de ficha + bloque `reliefController` en
+      `applyPlotInstantAttackRoll` + `destroyPenalty` en `destroyDefenseBonus` +
+      bloque `bioRisk` en `applyAttackResult` + calificador `vs.subtype` en `vsMatchQ`.
+- [x] L69.d UI + APP: boton de accion de grupo tambien para `combo_bonus` con `ga` (hueco
+      previo: Fidel Castro tenia rama y ningun boton), modo `reliefTarget` (PASO 2/2, clic
+      en el Place Devastado: el objetivo se ELIGE), `CB.onUseGroupAction(uid,opts)` reenvia
+      los opts.
+- [x] L69.e TESTS: bloque L69 A/A2/B/C/D/E/F en `test_fase2_rules.js` (6 escenarios, 24
+      asertos). i18n: 6 reglas nuevas en `LOG_RULES`.
+- [x] L69.f CIERRE: audit §91 (ASCII) + este bloque + ROADMAP_RESTANTE.md actualizado.
+
+**Resultado**: FASE 4 de 336 a **339 cartas clasificadas** (+3 exacto), `implemented-pending-engine`
+317 -> 320, Groups `unverified` 75 -> 72. Los "Plots/Resources sin mecanica" siguen en 4: el
+lote es de GROUPS, que P1-019 saco de la cuenta de deuda. `npm test` ALL TESTS PASSED (13).
+30/30 corridas verdes de la regresion nueva; los 2 fallos que aparecen en otras corridas del
+fichero (S6a ventana de suceso, L56 Fiendish Fluoridators) son flakes PREEXISTENTES,
+reproducidos 5/20 en un worktree limpio de HEAD.
+
+**DESVIO NO PLANEADO (P1-179)**: el calificador `vs.subtype` que exigia el CDC activo dos
+bonificaciones que llevaban lotes enteros escritas en el dato e IGNORADAS por el motor:
+`Recording Industry` y `Empty Vee` daban su bonus a TODOS los grupos del dueno en vez de a
+las Personalities. Ahora cumplen el impreso. La suite entera quedo en verde; si el Maestro de
+forja considera que era mejor el comportamiento anterior, es una linea en `vsMatchQ`.
+
+**Lagunas DECLARADAS (L69)**: (1) el Relief multi-jugador de la regla ("one or more players...
+all spent at the same time") no esta implementado: `giveRelief` acepta una lista de uids pero
+todos del mismo `pid`. (1b) el "at any time" de la regla queda limitado a la fase principal
+(misma puerta que todas las acciones de grupo). (2) "you may draw" (Boy Sprouts) y "can use biological warfare" (CDC)
+se resuelven solos: falta la decision del jugador. (3) Red Cross y CDC siguen sin
+Power/Resistance en el dataset (deuda de datos del roadmap); no afecta a estas mecanicas porque
+el 3x usa el Poder IMPRESO del Place OBJETIVO. (4) La CDC del fixture de L13 (comentada "Poder 3")
+y la cara real (Poder 1, Resistencia 2) no coinciden: pendiente de dirimir.

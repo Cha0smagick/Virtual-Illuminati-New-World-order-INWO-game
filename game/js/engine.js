@@ -608,6 +608,17 @@ function goalPower(nd){
 function destroyDefenseBonus(node,isAssassination){
   if(!node)return 0;
   var b=0;
+  /* L69 - Red Cross: "The Red Cross has such a good reputation that any attempt
+     to destroy it suffers a -15 penalty." Es una propiedad de la CARTA mientras
+     este en juego, no un link que alguien juegue encima (como el destroyBonus de
+     Bodyguard/Talisman de P1-016), asi que se lee en el momento de defender.
+     Se pliega con signo NEGATIVO: `b` se suma a det.defBoosts, que RESTA fuerza,
+     asi que -15 le quita 15 al atacante. */
+  if(node.cardId!=null){
+    var own69=card(node.cardId);
+    var dp69=own69&&bonusPart(own69.effect,'destroyPenalty');
+    if(dp69)b+=(Number(dp69.value)||0);
+  }
   if(typeof node.destroyBonus==='number')b+=node.destroyBonus;
   if(isAssassination&&typeof node.assassinationBonus==='number')b+=node.assassinationBonus;
   /* L35 — 411 Flying Saucer linkeado a una Personality: "+10 against any Attack
@@ -3741,6 +3752,77 @@ function isMasterOrPuppetOf(uid,tNode){
                           con pickChoice).
      discard_groups_top — el rival descarta la primera carta de su Groups deck
                           (Society for Creative Anarchism). */
+/* L69 - FAMILIA RELIEF. Regla OFICIAL, inwo_rules_extracted.txt:690-694
+   (WDH v1.2, "Devastation and Relief"): "Relief restores a Devastated Place to
+   normal. The Place (and its puppets, and their puppets, etc.) will once again
+   count toward victory and be able to get Action tokens. To give Relief, spend
+   actions with a total Power three times the printed Power of the Devastated
+   Place. These actions can be spent at any time by one or more players, as long
+   as they are all spent at the same time."
+   Dos cartas del lote imprimen "As its action ... bring Relief to one
+   Devastated Place" (Red Cross y CDC): su accion cubre el coste entero, y por
+   eso se pasa `opts.free`. Boy Sprouts NO lleva esa frase —gasta su accion
+   dentro de la regla general y cuenta con Poder 12 a efectos de Relief—, asi
+   que su llamada no pasa `free` y paga el 3x como cualquier grupo.
+   LIMITACION DECLARADA (no es la regla, es el motor): la regla permite que
+   VARIOS jugadores aporten acciones al MISMO Relief. Esta funcion acepta una
+   lista de grupos (`uids`), pero todos tienen que ser del mismo `pid`: el
+   estado no tiene manera de que dos jugadores gasten fichas "a la vez" sin una
+   ventana de contribucion que no existe. El API si admite la lista, asi que el
+   dia que esa ventana se monte no hay que tocar el cuerpo de reglas.
+   Relief NO gasta la ficha del grupo que lo pide: la gasta quien llama (ver el
+   `if(!freeLook&&...)` de useGroupAction), igual que todas las acciones de
+   grupo. La razon es que aqui el token se gasta POR REGLA ("spend actions"), no
+   por carta. */
+E.giveRelief=function(pid,uids,targetUid,opts){
+  opts=opts||{};
+  if(!Array.isArray(uids))throw new Error('giveRelief: uids tiene que ser una lista');
+  if(S.phase!=='main')throw new Error('Solo en fase principal');
+  var tn=findNode(targetUid);
+  var tc=tn?card(tn.cardId):null;
+  if(!tn||!tc)throw new Error('Ese Place no esta en juego');
+  if(tc.subtype!=='place')throw new Error('Solo se puede dar Relief a un Place ('+tc.name+' no lo es)');
+  if(!tn.devastated)throw new Error(cap(tc.name)+' no esta Devastado: el Relief no tiene nada que restaurar');
+  var costL69=3*(Number(tc.power)||0);
+  var spentL69=[],powerL69=0,namesL69=[],drawersL69=0;
+  for(var iL69=0;iL69<uids.length;iL69++){
+    var nL69=findNode(uids[iL69]);
+    if(!nL69||nL69.cardId==null)throw new Error('El grupo que gasta la accion no esta en juego');
+    if(findOwnerPid(uids[iL69])!==pid)throw new Error('Solo puedes gastar acciones de TUS grupos');
+    var cnL69=card(nL69.cardId);
+    if(nL69.devastated||nL69.paralyzed||nL69.zapped)throw new Error(cnL69.name+' no puede gastar su accion');
+    if(nL69.tokens==null||nL69.tokens<1)throw new Error(cnL69.name+' no tiene Action token');
+    /* Boy Sprouts: "For purposes of bringing Relief, they have a Power of 12". */
+    var rpL69=bonusPart(cnL69.effect,'reliefPower');
+    var pL69=rpL69?(Number(rpL69.value)||0):curPower(nL69);
+    powerL69+=pL69;
+    namesL69.push(cnL69.name+(rpL69?' ('+pL69+' para Relief)':' ('+pL69+')'));
+    if(bonusPart(cnL69.effect,'reliefDraw'))drawersL69++;
+    spentL69.push(nL69);
+  }
+  if(!spentL69.length)throw new Error('Indica al menos un grupo que gaste su accion para el Relief');
+  if(!opts.free&&powerL69<costL69)
+    throw new Error('El Relief de '+tc.name+' exige '+costL69+' de Poder en acciones (3x su Poder impreso de '+tc.power+'); estos grupos solo suman '+powerL69);
+  spentL69.forEach(function(n69){n69.tokens--;});
+  /* Misma pasada que reliefPending en expireTurnFlags (P1-011): el subarbol
+     ENTERO, porque devastar marca el subarbol entero, y la ficha vuelve a 1. */
+  walk(tn,function(x69){x69.devastated=false;if(x69.tokens!=null&&x69.tokens<1)x69.tokens=1;});
+  S.lastRelief={areaUid:tn.uid,turn:S.turn};
+  log('Relief a '+tc.name+' con '+namesL69.join(', ')+' — '+powerL69+' de Poder'+(opts.free?' (la accion de la carta cubre el coste)':''));
+  /* Boy Sprouts: "Whenever the Boy Sprouts help to bring Relief to any
+     Devastated location, you may draw a Plot card." Una por grupo participante
+     que lleve reliefDraw. DESVIACION DECLARADA: "you may" es una decision del
+     jugador y el motor headless no pregunta; se roba siempre. */
+  for(var dL69=0;dL69<drawersL69;dL69++){
+    if(plotDrawBlocked(pid)){log('Sin robo de Plot: el Relief no puede robar este turno');break;}
+    var ixL69=drawFrom(S.plotDeck,S.plotDiscard,'plots');
+    if(ixL69==null){log('No quedan Plot cards que robar por el Relief');break;}
+    S.players[pid].hand.push(ixL69);
+    log('Boy Sprouts: robas una Plot por ayudar a traer Relief a '+tc.name);
+  }
+  return {relieved:tn.uid,power:powerL69,drawn:drawersL69};
+};
+
 E.useGroupAction=function(pid,uid,opts){
   opts=opts||{};
   if(S.phase!=='main')throw new Error('Solo en fase principal');
@@ -3912,10 +3994,21 @@ E.useGroupAction=function(pid,uid,opts){
     S.groupDiscard.push(ix3);
     log(c.name+': '+rv2.name+' descarta la primera carta de su Groups deck ('+card(ix3).name+')');
     out={discarded:ix3};
+  }else if(act==='bring_relief'){
+    /* L69 - Red Cross ("As its action, the Red Cross can also bring Relief to
+       one Devastated Place") y CDC ("As its action, the CDC can supply Relief to
+       one Devastated location each turn"): `free` = la accion cubre el coste.
+       Boy Sprouts usa la MISMA rama sin `free` y paga el 3x de la regla.
+       El objetivo se ELIGE (opts.targetUid), nunca se autoelige (DoD 6). */
+    if(opts.targetUid==null)throw new Error(c.name+': indica el Place Devastado que recibe el Relief (opts.targetUid)');
+    var res69=E.giveRelief(pid,[uid],opts.targetUid,{free:!!e.free});
+    out={relieved:res69.relieved,power:res69.power};
   }else{
     throw new Error(c.name+': accion de grupo desconocida ('+act+')');
   }
-  if(!freeLook)nd.tokens--;
+  /* L69: 'bring_relief' ya gasto la ficha dentro de E.giveRelief (la regla la
+     gasta, no la carta). Contarla aqui seria gastarla dos veces. */
+  if(!freeLook&&act!=='bring_relief')nd.tokens--;
   return out===undefined?publicState():out;
 };
 /* L46 — privilege_break: "can interfere in any privileged attack... making that
@@ -4232,6 +4325,11 @@ function vsMatchQ(vs,tNode,tCard){
               :vs.attrs.every(function(a){return hasAttr(tCard,String(a).toLowerCase(),tNode);});
     if(!ok)return false;
   }
+  /* L69 - vs.subtype: calificador de TIPO de carta ("a Place", "a Personality").
+     No existia, y sin el una clausula `atk` no puede expresar "+15 contra un
+     Place" (la guerra biologica del CDC). Mismo criterio que vs.attr/vs.align:
+     que la clave este ausente significa "no filtra". */
+  if(vs.subtype&&(!tCard||tCard.subtype!==String(vs.subtype).toLowerCase()))return false;
   if(vs.cardId&&(!tCard||tCard.id!==vs.cardId))return false;
   if(typeof vs.minPower==='number'&&!(tCard&&tCard.power>=vs.minPower))return false;
   if(typeof vs.maxPower==='number'&&!(tCard&&tCard.power<=vs.maxPower))return false;
@@ -4694,7 +4792,9 @@ function computeStrength(resolveMode){
        la prueba P1-005 y no admite campos añadidos. Ojo: esto va DESPUES de
        defenseBase, que es el Poder del objetivo, y no lo sustituye. */
     var pgB=destroyDefenseBonus(tNode,false);
-    if(pgB){det.defBoosts+=pgB;det.notes.push('Proteccion permanente: +'+pgB+' contra el ataque a destruir');}
+    /* L69: el valor puede ser NEGATIVO (Red Cross, -15). El signo se ajusta en la
+       nota para que no se lea "+-15", y el campo sigue restando igual. */
+    if(pgB){det.defBoosts+=pgB;det.notes.push('Proteccion permanente: '+(pgB<0?'-':'+')+Math.abs(pgB)+' contra el ataque a destruir');}
     if(neutralIdx!=null){det.posBonus=0;}
   }
   /* P1-009: Shangri-La concede +5 a defender CUALQUIER ataque (texto oficial). */
@@ -5474,6 +5574,29 @@ function applyAttackResult(A,det,resultText){
       log('Imelda Marcos: saco 6 y queda destruida (cuenta para '+S.players[pid].name+')');
     }
   }
+  /* L69 - Center for Disease Control: "If the CDC makes a direct attack to
+     destroy a Place, it can use biological warfare and get a +15 (!!) to its
+     attack. If the attack fails, the CDC is automatically destroyed by the
+     owner of the Place that it attacked."
+     El +15 no se decide aqui: viaja como clausula `atk` (scope self, atkType
+     destroy, vs subtype place) y la suma groupAttackBonus, asi que este bloque
+     solo comprueba lo que la clausula ya qualifica —que el ataque es a destruir
+     un Place y lo hace el atacante directo con bioRisk— y ejecuta la muerte.
+     La destruccion la EJECUTA el dueno del Place, no el atacante: por eso
+     destroyGroup va con byPid = dueno del objetivo, y la carta cuenta para SUS
+     metas. Precedente de reposicion: destroyGroup() (no el detach a mano de
+     Imelda), porque aqui no hay excepcion deGoals que saltarse. */
+  if(!success&&A.type==='destroy'&&!A.neutralTarget&&!A.handTarget&&tNode&&tNode.cardId!=null){
+    var atC69=findNode(A.attackerUid);
+    var acC69=atC69?card(atC69.cardId):null;
+    if(acC69&&bonusPart(acC69.effect,'bioRisk')&&card(tNode.cardId).subtype==='place'){
+      var ownC69=findOwnerPid(A.targetUid);
+      if(ownC69>=0){
+        destroyGroup(ownC69,A.attackerUid);
+        log(acC69.name+': la guerra biologica falla y '+S.players[ownC69].name+' (dueno del Place) la destruye');
+      }
+    }
+  }
   S.attack=null;
 }
 
@@ -6163,6 +6286,32 @@ function applyPlotInstantAttackRoll(ann,roll,total,forcedFail,byCard){
       walk(sv,function(k){ if(k!==sv)k.reliefPending=rp; });
       log(nm+': sus titeres reciben Relief el turno que viene');
     }catch(eS){}
+  })();
+
+  /* L69 - Red Cross: "The group that directly controls the Red Cross
+     automatically gets Relief at the end of the turn it is Devastated."
+     DISTINTA de reliefAuto (L68): alli el destinatario es el MASTER de la carta
+     que lleva el efecto mas sus titeres; aqui es UN nodo concreto, el
+     controlador DIRECTO, que puede ser master, titere o un Place.
+     No se lista al reves (¿que cartas con reliefController hay?) porque la
+     estructura es pequeña y el destinatario lo fija el nodo devastado: se
+     recorre la estructura del dueno del devastado y se mira, para cada carta
+     con reliefController, si su padre ES el devastado. */
+  (function(){
+    try{
+      if(!nd||nd.uid==null)return;
+      var ownR69=findOwnerPid(nd.uid);
+      if(ownR69<0||!S.players[ownR69]||!S.players[ownR69].structure)return;
+      walk(S.players[ownR69].structure,function(gR69){
+        if(gR69.cardId==null||gR69.uid===nd.uid)return;
+        var gcR69=card(gR69.cardId);
+        if(!gcR69||!bonusPart(gcR69.effect,'reliefController'))return;
+        var parR69=findNodeThatHas(S.players[ownR69].structure,gR69.uid);
+        if(!parR69||parR69.uid!==nd.uid)return;
+        nd.reliefPending={byPid:ownR69,byCard:gR69.cardId,untilTurn:S.turn+1};
+        log(gcR69.name+': '+card(nd.cardId).name+', su controlador directo, recibe Relief al acabar el turno');
+      });
+    }catch(eR69){}
   })();
 
 
