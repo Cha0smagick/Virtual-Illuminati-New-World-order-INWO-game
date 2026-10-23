@@ -2246,6 +2246,8 @@ var EFF_SEC = {
 };
 /* Las 48 familias de mecanica que declara el dataset (45 mecánicas + 3 sinPseudo). */
 var KIND_ES = {
+  resource_recover: 'Recupera un Resource destruido/descartado (Cover of Darkness)',
+  declared_noop: 'Carta declarada sin efecto (subsistema no disponible)',
   /* L35 — familia buffs estaticos/duales (P1-166). */
   clipper_chip: '+2 de Poder a todos tus Government groups (descartado si no queda ninguno)',
   midas_mill: 'Illuminati +2 de Poder y Poder Global, o enlazado a un grupo Coastal',

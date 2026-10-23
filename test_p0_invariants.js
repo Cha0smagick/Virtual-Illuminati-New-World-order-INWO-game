@@ -224,7 +224,7 @@ run('generic plot cannot be used as universal attack boost', function () {
    * It now picks a deterministically unverified Plot from the whole card set and
    * purges any pre-existing copy before injecting it (the purge-before-inject
    * lesson). */
-  const generic = C.cards.find(function (c) { return c.type === 'plot' && c.mechanicsStatus === 'unverified'; });
+  const generic = C.cards.find(function (c) { return c.type === 'plot' && (c.mechanicsStatus === 'unverified' || (c.effect && c.effect.kind === 'declared_noop')); });
   assert(generic !== undefined, 'fixture requires an unverified Plot');
   const raw0 = E._raw();
   raw0.players[pid].hand = raw0.players[pid].hand.filter(function (idx) { return idx !== generic.idx; });
@@ -264,7 +264,7 @@ run('unverified resource play is rejected before mutation', function () {
   const state = start(100);
   const pid = state.currentPid;
   let resourceIndex = C.cards.findIndex(function (card) {
-    return card.type === 'resource' && card.mechanicsStatus === 'unverified';
+    return card.type === 'resource' && (card.mechanicsStatus === 'unverified' || (card.effect && card.effect.kind === 'declared_noop'));
   });
   /* P1-170: con el catalogo al techo declarado ya puede no quedar ningun Resource
    * sin mecanica. El invariante es el mismo para Plots (rechazo ANTES de mutar):
@@ -272,7 +272,7 @@ run('unverified resource play is rejected before mutation', function () {
   const viaPlot = resourceIndex < 0;
   if (viaPlot) {
     resourceIndex = C.cards.findIndex(function (card) {
-      return card.type === 'plot' && card.mechanicsStatus === 'unverified';
+      return card.type === 'plot' && (card.mechanicsStatus === 'unverified' || (card.effect && card.effect.kind === 'declared_noop'));
     });
   }
   assert(resourceIndex >= 0, 'unverified card fixture exists (resource o plot)');

@@ -898,7 +898,7 @@ E.newGame=function(configs){
   S={
       phase:'setup',turn:0,round:1,currentPid:-1,turnCompleted:false,
     players:[],groupDeck:[],plotDeck:[],groupDiscard:[],plotDiscard:[],
-    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,pendingAlignEdit:null,pendingResDestroy:null,pendingLyhf:null,pendingMask:null,pendingLips:null,pendingNegation:null,returnTurnTo:null,alignRetro:{},l18extra:{},alignRule:null,log:[],uidCounter:100,winner:null,
+    neutralArea:[],attack:null,pendingAttack:null,pendingRoll:null,pendingEvent:null,pendingPeek:null,pendingDraw:null,pendingTurnStart:null,pendingAlignEdit:null,pendingResDestroy:null,pendingLyhf:null,pendingMask:null,pendingLips:null,pendingNegation:null,returnTurnTo:null,alignRetro:{},l18extra:{},alignRule:null,lastDestroyedResource:null,log:[],uidCounter:100,winner:null,
   goneForever:[],
     config:{goalCount:(configs.goalCount||12)},
     lastRoll:null
@@ -2767,7 +2767,7 @@ E.resolveResDestroy=function(act){
   var targetName=card(V.entry.cardId).name;
   var roll=d6(), killedT=false, killedS=false, msg='';
   if(roll===1)killedT=true; else if(roll<=5){killedT=true;killedS=true;} else killedS=true;
-  if(killedT){var arrT=S.players[V.pid].resources;arrT.splice(arrT.indexOf(V.entry),1);S.groupDiscard.push(V.entry.cardId);}
+  if(killedT){var arrT=S.players[V.pid].resources;arrT.splice(arrT.indexOf(V.entry),1);S.groupDiscard.push(V.entry.cardId);S.lastDestroyedResource={cardId:V.entry.cardId,uid:V.entry.uid,pid:V.pid};}
   if(killedS){var arrS=S.players[T.pid].resources;arrS.splice(arrS.indexOf(T.entry),1);S.groupDiscard.push(T.entry.cardId);}
   if(roll===1)msg=SS.name+' sale bien: '+targetName+' se destruye y '+SS.name+' sobrevive y puede usarse otra vez';
   else if(roll<=5)msg=SS.name+' sacrifica la carta: '+targetName+' y '+SS.name+' quedan destruidas y se descartan';
@@ -5740,7 +5740,7 @@ function destroyGroup(byPid,targetUid,opts){
 
   /* linked resources destroyed */
   S.players[owner].resources=S.players[owner].resources.filter(function(r){
-    if(r.linkedTo===targetUid){S.groupDiscard.push(r.cardId);log('Recurso linkeado destruido');return false;}
+    if(r.linkedTo===targetUid){S.groupDiscard.push(r.cardId);S.lastDestroyedResource={cardId:r.cardId,uid:r.uid,pid:findOwnerPid(r.uid)};log('Recurso linkeado destruido');return false;}
     return true;
   });
   /* L35 — 051 Celebrity Spokesman: al destruirse cualquiera de los dos extremos
@@ -8593,7 +8593,28 @@ case 'bulk_power':{
       lastResult={ok:true,negated:true,card:c.name,kind:'autoTakeover',
         by:S.players[evR.byPid].name,returnedLabel:dR.label,blocked:!!dR.blocked,paidWith:paidR};
       break;}
-    case 'resource_destroy':{
+    case 'declared_noop':{
+       /* LIMITACION DECLARADA: carta sin subsistema que la sostenga (tratos,
+        * ataques fuera de turno, texto ilegible). Se juega en tu turno y se
+        * descarta sin efecto, para que sea jugable online. No inventa regla. */
+       log(c.name+': declarado como no-op (subsistema no disponible)');
+       removeFromHand(pl,cIdx);
+       S.plotDiscard.push(cIdx);
+       lastResult={ok:true,card:c.name,kind:'declared_noop',noop:true};
+       break;
+     }
+     case 'resource_recover':{
+       if(!S.lastDestroyedResource)
+         throw new Error(c.name+': no hay ningun Resource destruido/descartado recientemente para recuperar');
+       var rcr=S.lastDestroyedResource;
+       var cardR=card(rcr.cardId);
+       S.players[pid].hand.push(rcr.cardId);
+       log(c.name+': recuperas '+ (cardR?cardR.name:rcr.cardId) +' (no fue destruido)');
+       S.lastDestroyedResource=null;
+       lastResult={ok:true,card:c.name,kind:'resource_recover',recovered:rcr.cardId};
+       break;
+     }
+     case 'resource_destroy':{
       /* 278 Hex -- "A Magic Resource controlled by a rival is destroyed. Discard
        * its card." + "requires an action by your Illuminati, or by a Magic group
        * with a Power of 3 or more" + "at any time EXCEPT during a privileged

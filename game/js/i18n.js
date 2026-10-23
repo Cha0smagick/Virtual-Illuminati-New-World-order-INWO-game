@@ -118,7 +118,7 @@
   function build() {
     for (var es in D) REV[es] = D[es].en;
   }
-  var lang = localStorage.getItem('inwo_lang') || 'es';
+  var lang = localStorage.getItem('inwo_lang') || 'en';
 
   /* reglas para mensajes del motor (fuente ES -> EN por patrones) */
   var LOG_RULES = [

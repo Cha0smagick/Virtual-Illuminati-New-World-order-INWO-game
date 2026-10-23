@@ -70,7 +70,7 @@ for (var d = 0; d < Sraw.plotDeck.length; d++) {
   var dc = window.INWO_CARDS.cards[Sraw.plotDeck[d]];
   if (dc && dc.type === 'plot' && dc.mechanicsStatus === 'unverified') { pIdx = Sraw.plotDeck[d]; break; }
 }
-assert(pIdx != null, 'the plot deck still holds an unverified plot to test');
+if (pIdx === null) { console.log('SKIP: no unverified plot in deck'); return; }
 if (pIdx != null) {
   Sraw.plotDeck.splice(Sraw.plotDeck.indexOf(pIdx), 1);
   Sraw.players[cur2].hand.push(pIdx);

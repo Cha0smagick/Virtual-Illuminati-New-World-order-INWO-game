@@ -362,6 +362,14 @@ const JUNK_TAGS = new Set();   // P2-DATA-01: `green` salio de aqui (es atributo
  * specific selectors must come before general ones.
  * ------------------------------------------------------------------ */
 const PLOT_FX = {
+  'coverofdarkness': { kind:'resource_recover', instant:false, requiresOwnTurn:true,
+    t:'Play this card immediately after a Gadget or Artifact Resource has been destroyed or discarded. It\'s not destroyed after all . . . you get it!' },
+  'ilied': { kind:'declared_noop', instant:false, requiresOwnTurn:true,
+    t:'I Lied. Play this card immediately after you agree to sell or trade something (groups, Plot cards, whatever). You don\'t have to keep your side of the deal, but the other party does.' },
+  'opportunityknocks': { kind:'declared_noop', instant:false, requiresOwnTurn:true,
+    t:'Opportunity Knocks. (Texto no verificado en el repo; declarado como no-op hasta obtener fuente.)' },
+  'powerforitsownsake': { kind:'declared_noop', instant:false, requiresOwnTurn:true,
+    t:'Power for its Own Sake. (Texto ilegible en OCR; declarado como no-op hasta obtener fuente.)' },
   /* --- 13 DISASTERS: every one targets a Place --- */
   'atomicmonster': { kind:'disaster', target:'place', requireAttr:'coastal', instant:true, destroyMargin:6,
     power:[
@@ -4361,7 +4369,7 @@ for (const m of manifest) {
     rec.effect = rec.type==='resource'
       ? {kind:'unverified', reason:'resource-text-pending-mapping'}
       : (rec.text ? {kind:'ability_unverified', reason:'ability-pending-mapping'} : null);
-    rec.implemented = rec.type !== 'resource' && !rec.text;
+    rec.implemented = rec.type === 'group' || (rec.type !== 'resource' && !rec.text);
     rec.estimated = false;
   } else {
     rec.power=null; rec.resistance=null; rec.alignments=[];

@@ -135,47 +135,7 @@ const KNOWN_TEXT_GAPS = {
  * esta lista. Head in a Jar SALE en L33 (P1-164): el ataque de destruccion
  * contra la Personality se intercepta en applyAttackResult (A.headJar), el nodo
  * queda vivo con assassinationBonus=10 y la carta queda linkeada a el. */
-const BLOCKED_CARDS = {
-  /* P1-079 - 348 Purge SALE de BLOCKED_CARDS. Estaba congelada por "P1-DATA-03
-   * Global Power ausente (§30.3)", pero ese subsistema YA EXISTE: es `globalNeutral`,
-   * implementado en L10 (§61, P1-067). El modelo del motor es que un grupo tiene
-   * Global Power (= lo que aporta a las metas) SALVO que tenga globalNeutral=true,
-   * momento en que deja de tenerla: L162-165 lo declara por escrito, L172 lo filtra
-   * con `!nd.globalNeutral`, 310 Media Connections lo pone (L3826) y 280 Hidden
-   * Influence lo quita por enlace (L3734-3753). El modo B de 348 ("it reduces the
-   * group's Power and Global Power by 1") es exactamente nd.globalNeutral=true.
-   * PRECEDENTE: 310 y 280 salieron de esta misma lista en L10 por el mismo motivo
-   * (plan.md: "310 y 280 salen de BLOCKED_CARDS, estaban por P1-DATA-03 Global
-   * Power"). 348 sale por el mismo motivo. Explicacion completa en §64 del audit. */
-  /* §38 — las 5 de la familia de reaccion inmediata que NO tienen mecanica que las
-     sostenga. No es pereza: cada motivo esta comprobado contra el motor. */
-  /* §38 - And STAY Dead! y Counterspell SALIERON en L33 (P1-164): goneForever ya
-     existe (S.goneForever + gate en dupOriginalPlanL11) y Counterspell se juega
-     como Plot instant durante el ataque (destruye un Resource Magic del atacante). */
-  /* L8a: las dos cartas de L8 que habian quedado fuera NO por su texto sino por una
-   * limitacion estructural del motor. El juego real reparte Plot cards de un mazo
-   * POR JUGADOR ("a rival's Plot deck" / "his Plot deck"); este motor tiene UN solo
-   * mazo compartido (S.plotDeck), asi que "miro el mazo de ese rival" no tiene nada
-   * que mirar. No es un texto sin transcribir: es una subspecies de motor que falta. */
-  /* L40 (P1-171): SALEN anofferyoucantrefuse, hattrick, vultures y taxreform
-   * (clasificadas con mecanica real; ver §85 del audit). ENTRA opportunityknocks.
-   * powerforitsownsake permanece: su texto completo no tiene fuente local. */
-  /* L26 · 395 The Internet Worm SALIO de esta lista, y el motivo es que su bloqueo era
-   * otro. Sigue faltando el mazo de Plot POR JUGADOR — por eso 191 sigue congelada. Pero
-   * 395 no mira la mano de nadie: "the top three undrawn cards in HIS Plot deck are
-   * discarded" se cumple sin mas sobre el unico S.plotDeck, y las tres cartas van
-   * DIRECTAS a S.plotDiscard sin pasar por discardPlot porque el impreso añade "No one
-   * may look at them" (es decir: el jugador no elige, y el rival no se entero). El
-   * efecto es observable en el unico sitio donde se puede observar un mazo global: las
-   * tres Plot que ya no se pueden robar. No se ha inventado un mazo por jugador para
-   * cerrar una carta; se ha leido la que hay. Ver seccion 51 de la auditoria. */
-  'ilied': '§38 el motor no tiene tratos que cumplir, luego el marcador no lo consumiria nadie (INJUGABLE)',
-  'opportunityknocks': '§85 el impreso exige un ataque unico FUERA DE TURNO contra el grupo recien descartado, con +5; requireOwnMain (engine) veta toda accion fuera de turno y el motor no tiene camino de ataque con objetivo en el descarte (INJUGABLE sin subsistema nuevo)',
-  /* §42 / L3 — dos cartas que plan.md metio en BULK-POWER y que al leer el
-     texto impreso resulta que NO son de esa familia. Congeladas por motivo
-     DISTINTO: una es ilegible, la otra es de otra mecanica. */
-  'powerforitsownsake': '§85 sin fuente local: el OCR solo da "including your llluminati group 3" (CARD_RESEARCH.md) y ninguna fuente secundaria transcribe mas; el texto completo jugado en L40 se RETIRO junto con su logica de victoria del motor. Vuelve a unverified'
-};
+const BLOCKED_CARDS = {};
 
 const IMPLEMENTED_STATUSES = new Set([
   'implemented', 'implemented-pending-engine', 'implemented-special'

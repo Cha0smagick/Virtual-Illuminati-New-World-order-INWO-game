@@ -12215,6 +12215,12 @@ if (readyToAttack(1) != null) {
     var rR56 = Math.random; Math.random = function () { return 0.01; };
     try { E.resolveAttack(); } catch (e56) { }
     Math.random = rR56;
+    for (var _w56 = 0; _w56 < 8; _w56++) {
+      var _s56 = E._raw();
+      if (_s56.pendingRoll) { try { E.resolvePendingRoll(); } catch (e56b) { } continue; }
+      if (_s56.pendingEvent) { try { E.resolvePendingEvent(); } catch (e56c) { } continue; }
+      break;
+    }
     ok(E._raw().players[0].hand.length === hb56 + 1, 'L56 Fiendish Fluoridators roba una Plot al destruir un Conservative');
   /* ===== L57 - Thatcher, Girlie Magazines, Federal Reserve ===== */
   fresh(idxOfId(U), idxOfId(V));
