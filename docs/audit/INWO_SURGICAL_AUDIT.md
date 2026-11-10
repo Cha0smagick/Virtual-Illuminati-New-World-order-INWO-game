@@ -9432,3 +9432,35 @@ subsistema.
 - Subsistema de triggers de suceso para implementar las cuatro fielmente.
 - Clasificacion Gadget/Artifact de los 35 Resources (deuda de datos).
 - Trade/venta entre jugadores para I Lied.
+
+---
+
+## §93. L71 - CANCELAR ACCIONES (Dan Quayle, Elvis, Dentists)
+
+### Hallazgo
+
+Las tres cartas dicen "by using his action, he can cancel any action taken by
+any Media group" (Dan Quayle, Elvis) y "cancel the Action(s) of any Personality"
+(Dentists). El motor ya tenia `l36CancelSpent` (devolver una ficha gastada) pero
+no una accion de GRUPO que la usara.
+
+### Correcciones
+
+- `gen_cards.js`: `L71_FX` con las tres cartas como `group_action`:
+  `cancel_media_action` (Dan Quayle, Elvis) y `cancel_personality_action`
+  (Dentists).
+- `engine.js`: dos ramas nuevas en `E.useGroupAction` que validan el objetivo
+  (Media / Personality), exigen que haya gastado su ficha y llaman a
+  `l36CancelSpent`; el pagador gasta la suya al final.
+- `test_l71_cancels.js`: 11 aserciones observables (catalogo, cancelacion real,
+  devolucion de ficha y rechazo atomico).
+
+### Verificacion
+
+- `npm test` -> ALL TESTS PASSED (14).
+- `FASE 4` -> 346 clasificadas, 0 bloqueadas.
+
+### Backlog
+
+- MI-5 (negar una exposicion / volver a ocultar Plots) y Supreme Court (sin
+  texto local) siguen pendientes.

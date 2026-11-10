@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -15,6 +15,7 @@ const tests = [
   'test_hand_peek.js',
   'test_fase2_rules.js',
   'test_fase3_windows.js',
+  'test_l71_cancels.js',
   'test_i18n_logrules.js',
   'test_fase4_cards.js',
   'test_card_research_manifest.js'

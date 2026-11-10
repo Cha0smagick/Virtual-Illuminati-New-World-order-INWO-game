@@ -1,6 +1,6 @@
 # Roadmap de las cartas restantes — actualizado tras L70
 
-Estado medido (FASE 4, `node test_fase4_cards.js`): **343 cartas clasificadas**,
+Estado medido (FASE 4, `node test_fase4_cards.js`): **346 cartas clasificadas**,
 **3 Plots/Resources sin mecanica** (declaradas `declared_noop`), **0 cartas
 bloqueadas**, 52 con status `unverified` (Groups, no deuda). Suite 13/13 en verde.
 
@@ -12,9 +12,11 @@ bloqueadas**, 52 con status `unverified` (Groups, no deuda). Suite 13/13 en verd
   `bring_relief`/`E.giveRelief` (L69).
 - Lagunas declaradas en §91: Relief multi-jugador y decisiones "you may".
 
-## B. Familia CANCELAR ACCIONES (5 cartas) — REDISEÑO
-- Dan Quayle, Dentists, Elvis, MI-5, Supreme Court.
-- El motor no tiene pila de acciones. Es el rediseño grande del roadmap.
+## B. Familia CANCELAR ACCIONES — L71 (3 de 5 hechas)
+- **Hechas**: Dan Quayle y Elvis (`cancel_media_action`), Dentists
+  (`cancel_personality_action`) en `E.useGroupAction`; devuelven la ficha gastada.
+- **Pendientes**: MI-5 (negar exposicion / volver a ocultar Plots) y Supreme Court
+  (sin texto local).
 
 ## C. DEUDA DE DATOS
 - Global Power ausente: Cable TV, Subliminals, Hollywood.

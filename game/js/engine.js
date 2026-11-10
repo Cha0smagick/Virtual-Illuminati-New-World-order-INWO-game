@@ -3994,6 +3994,18 @@ E.useGroupAction=function(pid,uid,opts){
     S.groupDiscard.push(ix3);
     log(c.name+': '+rv2.name+' descarta la primera carta de su Groups deck ('+card(ix3).name+')');
     out={discarded:ix3};
+  }else if(act==='cancel_media_action'||act==='cancel_personality_action'){
+    /* L71 — Dan Quayle / Elvis / Dentists: "By using his action, he can cancel
+       any action taken by ...". Se cancela una accion YA TOMADA devolviendo la
+       ficha gastada (mismo criterio que l36CancelSpent). */
+    if(opts.targetUid==null)throw new Error(c.name+': elige el grupo cuya accion cancelas (opts.targetUid)');
+    var tgt71=findNode(opts.targetUid);
+    if(!tgt71||tgt71.cardId==null)throw new Error(c.name+': ese grupo no esta en juego');
+    var tc71=card(tgt71.cardId);
+    if(act==='cancel_media_action'&&!hasAttr(tc71,'media',tgt71))throw new Error(c.name+': el objetivo debe ser un grupo Media');
+    if(act==='cancel_personality_action'&&(!tc71||tc71.subtype!=='personality'))throw new Error(c.name+': el objetivo debe ser una Personality');
+    l36CancelSpent(tgt71,c.name);
+    out={cancelled:tgt71.uid};
   }else if(act==='bring_relief'){
     /* L69 - Red Cross ("As its action, the Red Cross can also bring Relief to
        one Devastated Place") y CDC ("As its action, the CDC can supply Relief to
