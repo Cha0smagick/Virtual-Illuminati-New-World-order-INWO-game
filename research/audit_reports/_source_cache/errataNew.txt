@@ -1,0 +1,698 @@
+
+                                  INWO ERRATA
+                                       
+   
+     _________________________________________________________________
+   
+  CHANGES AND CORRECTIONS FOR ILLUMINATI: NEW WORLD ORDER AND SUPPLEMENTS
+                                 AUG 7, 1995
+  
+   
+   
+     _________________________________________________________________
+   
+     See also the Rules FAQ and Card FAQ files, for answers to many
+     Frequently Asked Questions that don't represent errata.
+     
+     For a list of changes between the Limited and Unlimited edition of
+     the rules check out our Unlimited Edition Changes Listing.
+       _______________________________________________________________
+     
+     Copyright (c) 1995 by Steve Jackson Games Incorporated.
+     Illuminati and INWO are trademarks of Steve Jackson Games
+     Incorporated.
+     
+     Everyone makes mistakes, including us, but we do our best to fix our
+     errors. This errata sheet has been prepared by Steve Jackson Games
+     for the convenience of its customers. Permission is granted to
+     photocopy this errata listing for non-commercial use, or to post it
+     on privately-operated Bulletin Board Systems or USENET.
+     
+     Current copies of errata sheets are available from Steve Jackson
+     Games. Send a legal-sized Self-Addressed Stamped Envelope (SASE),
+     along with a list of the specific sheets you would like, to:
+     
+     Steve Jackson Games Incorporated
+     Attn: Errata Sheets
+     Box 18957
+     Austin, TX 78760-8957
+     
+     Please note that because we publish a great many games and keep
+     errata sheets on file for all of them (even those that have been out
+     of print for years), we CANNOT honor requests for ``all current
+     errata sheets'' or anything similar!
+     
+     If you find an error which is not listed on this sheet, please write
+     and tell us! We will also do our best to answer questions about our
+     games, provided that they are phrased in a manner which will allow
+     for a yes-or-no reply or other brief answer. Questions cannot be
+     answered unless a SASE is included! We cannot answer game questions
+     by telephone.
+     
+     However, if you have a modem, you can download all current errata,
+     and lots of other things, from Illuminati Online. Telnet to
+     puck.io.com, or call 512-447-4449.
+     
+     Thanks for buying our games!
+     
+One With Everything Errata
+
+     We know that the box says OMNI when turned around. This was not on
+     purpose!
+     
+INWO Limited Edition
+
+     (We specify ``limited edition,'' because as far as we know, all
+     these errors were corrected in the Limited Edition or the Factory
+     Set, except for some trivia noted below.)
+     
+  ACTUAL CARD MISTAKES IN THE LIMITED EDITION
+  
+     We know of three; all are corrected in the Unlimited Edition and
+     Factory Set.
+     
+     March On Washington requires a discard (as correctly stated in the
+     text) -- but it should also have the large type at the bottom to say
+     Requires Discard.
+     
+     Orbit One -- should not be vulnerable to Earthquakes, but should be
+     vulnerable to Nuclear Disasters.
+     
+     New World Order: Political Correctness -- the third sentence should
+     read "All Conservative groups with a Power of 0 or 1 become Criminal
+     as well."
+     
+  GRAPHICS CHANGES IN THE UNLIMITED EDITION
+  
+     ``Resource'' cards, which have a purple frame, are so dark in the
+     Limited Edition that they can be mistaken for blue Plots. However,
+     the text box is light purple on Resources and light blue on Plots,
+     making them easy to distinguish for most people. In the Unlimited
+     Edition the Resources are a brighter purple and are in italic. When
+     in doubt, look at the back. Resources have a puppet design, while
+     Plots have a hand.
+     
+  RULE CHANGES AND CLARIFICATIONS
+  
+     Based on gamer feedback on the Limited Edition of INWO, we made a
+     number of changes to improve clarity and balance . . . check the
+     Unlimited Edition rules (available in game stores, of course, but
+     also on our Web site) for exact wording. Again, all these things
+     apply only to the Limited Edition rulebook. They have been dealt
+     with in rulebook versions after the very first.
+     
+     They are organized alphabetically by subject rather than by page
+     number, since page numbers are quite different in the two editions
+     of the rules! When a page reference is given, it is to the Unlimited
+     rulebook.
+     
+     Automatic takeover is now explicitly optional. Note also that an
+     Illuminati action can be used for an automatic Resource takeover (p.
+     6).
+     
+     Beginning the game: is clarified as regards attacking players who
+     haven't had their first turn. You can't do it! Also, the "lead"
+     puppet rule is expanded (p. 2).
+     
+     Cancellation of actions is clarified (p. 15).
+     
+     Dead pile: We changed the term to ``destroyed pile'' to avoid
+     confusion. ``Dead'' only applies to a Personality who has been
+     assassinated. A dead Personality is destroyed, but a destroyed group
+     is not necessarily ``dead.''
+     
+     Die rolls changed by cards are modified to the closest legal number
+     (p. 17).
+     
+     Discards are always face up (p. 4).
+     
+     Dropping groups from your power structure is no longer allowed.
+     
+     Elimination happens only after the third turn (p. 12). You cannot
+     eliminate a rival before his third turn is over.
+     
+     Goals: No more than three groups may ever count double for victory,
+     whether the doubling comes from Goal cards or special Illuminati
+     goals.
+     
+     Goal cards can't be canceled after you claim a win (p. 13); if you
+     are caught with more than one in your hand, you lose (p. 13). So if
+     you draw a second Goal, discard one immediately!
+     
+     Immunity is defined at greater length in the new rules (p. 18).
+     
+     Links: The new rules include clarification on moving links and on
+     linking personalities (p. 15).
+     
+     Memory of Cards: A new rules section is added (p. 16). Essentially,
+     groups which leave your Power Structure keep their links unless
+     something happens to make those links illegal, even if the group
+     returns to your hand! Cards ``remember'' any changes in their status
+     unless something explicitly changes them back, or unless they are
+     destroyed.
+     
+     NWO cards take effect in the order they were played (p. 14).
+     
+     Permanent and Temporary changes are explicitly defined (p. 18).
+     
+     Relief requires three times printed Power (p. 11).
+     
+     Secret groups: A Secret group's master and puppets may aid it, even
+     though it is Secret, if they were otherwise qualified to do so.
+     
+     Timing: More rules are added (p. 11).
+     
+     Two-player rules are added (p. 19).
+     
+     Winning: You can't win during the first round.
+     
+Card Changes Between Limited and Later Editions
+
+     This is a complete list of card changes (except trivial art
+     touch-ups) between the Limited Edition of INWO and the first
+     printing of the Unlimited Edition (and the Factory Set, which was
+     created at almost the same time). It was prepared by actual
+     reference to the printed cards . . . just to make sure that it is a
+     record of what we did, and not just what we intended to do!
+     
+     Note that for tournament purposes, the new card text is the text
+     that rules. For instance, if you have a ``Reload'' card from the
+     Limited Edition, then -- for tournament purposes -- its text is
+     considered to be the text below, and not what the card actually
+     says! We hope you like this solution better than just banning the
+     old cards . . . we do.
+     
+  EXECUTIVE SUMMARY OF THE MOST IMPORTANT CARD CHANGES
+  
+     (but look at the listings below to get the whole story!)
+     
+     Zurich has lost its bonus to control Corporate groups.
+     
+     Shangri-La now explicitly gets its +5 defense against Instant
+     attacks.
+     
+     "Reload" cards are now weaker and require an Illuminati action to
+     use. The "Reloads" are: "Reload" (Violent); "Flower Power"
+     (Peaceful); "Dollars for Decency" (Straight); "Freaking the
+     Mundanes" (Weird); "New Federal Budget" (Government); "Tax Breaks"
+     (Conservative); "Pledge Drive" (Liberal); "Red Scare"
+     (Conservative); "Full Moon" (Fanatic); "Gang War" (Criminal); and
+     "Bank Merger" (Banks).
+     
+     "Upheaval," "Voodoo Economics" and "Seize the Time" has been changed
+     significantly, limiting their use.
+     
+     A meaning-changing error was fixed on "Orbit One."
+     
+     "Eliza" and "Clipper Chip" have new minor limitations.
+     
+     Disasters: "The Oregon Crud" and "Volcano" are now better. "Combined
+     Disasters" has been clarified. The effects of the "Weather
+     Satellite" have changed slightly.
+     
+    Generic Fixes
+    
+     The term "free action" has been changed to "free move" on all cards.
+     
+    Special Cards
+    
+     The three Limited Edition special cards, "The Great Pyramid,"
+     "Pyramid Marketing Schemes" and "Trading Card Games," are not in the
+     Unlimited Edition.
+     
+  SPECIFIC CHANGES
+  
+   18 1/2 Minute Gap
+          Reworded for clarity. Change the second paragraph to read:
+          "That card is canceled, but not discarded. Instead, add it to
+          your own hand!"
+          
+   A.M.A.
+          Reworded for clarity. The entire card now reads: "The A.M.A.
+          has +5 for a direct attack on any Science group, or gives a +5
+          bonus when it uses its Power to aid any Science group against
+          an attempt to control or destroy." Unfortunately, the "clear"
+          rewording needs one more sentence; it should also say "May aid
+          or oppose any attack made by, or against, any Science group."
+          
+   Air Magic
+          New art by Dan Smith, colored by Jeff Koke.
+          
+   Albino Alligators
+          Reworded for clarity, along with all other "+10 bonus" cards.
+          The last sentence now reads: "If used for defense, the bonus
+          lasts until the end of the current turn, is good for defense
+          only, and does not count toward Goals."
+          
+   Anti-Nuclear Activists
+          Corrected to refer to the "Nuclear Power Companies," not
+          "Plants."
+          
+   Assertiveness Training
+          Reworded for clarity, like all other similar alignment-changing
+          cards. The reference to the Illuminati is removed from the
+          second sentence. A new second paragraph is added -- a single
+          line reading, "Alternatively, one Illuminati action will do the
+          job." We hope this will eliminate a very Frequently Asked
+          Question.
+          
+   Bank Merger
+          Changed for better game balance, along with all similar
+          "Reload" type Plots (but note that "Full Moon" has a different
+          change). "Bank Merger" now reads:
+          
+          
+          "Place an Action token on any one Bank group, or on two or more
+          Bank groups whose current Power adds up to 5 or less. This card
+          may not benefit a group that already has any tokens, or a group
+          which is suffering from any effect that prevents it from
+          getting Action tokens.
+          
+          
+          "This card may be played at any time. It requires an action
+          from your Illuminati.
+          
+          
+          "Requires Illuminati Action"
+          
+   Benefit Concert
+          Reworded for clarity, as for "Albino Alligators," above.
+          
+   The Big Score
+          Reworded for clarity, as for "Albino Alligators," above.
+          
+   Book of Kells
+          Reworded for clarity. The card now reads:
+          
+          
+          "This powerful grimoire increases the regular and Global Power
+          of the owning Illuminati by 1. Or, if linked to a Magic group,
+          it gives that group an extra Action token each turn. The group
+          can make no Attack to Destroy on any turn it gets an extra
+          token!"
+          
+   Center for Weird Studies
+          Reworded for clarity. Now reads " . . . you may discard any
+          Plot card from your hand . . . "
+          
+   China
+          Clarification. Last sentence now reads "Any attempt to destroy
+          it, even a Disaster, has a penalty of -20."
+          
+   Clipper Chip
+          Changed for better game balance. A sentence is added to the
+          end: "No player may have one Clipper Chip in play at a time."
+          
+   Clone Arrangers
+          Clarification. A sentence is added to the end: "The original
+          Personality no longer counts as `destroyed' for the goals of
+          whoever killed it."
+          
+   Cold Fusion
+          Reworded for clarity, as for "Albino Alligators," above.
+          
+   Combined Disasters
+          Clarification. The first two sentences now read: "You may
+          combine two Disasters on the same Place, as long as both are
+          eligible to be used on it. Play both of the Disaster cards, as
+          well."
+          
+   Dollars for Decency
+          Changed for better game balance, as per "Bank Merger," above --
+          but for Straight groups instead of Banks.
+          
+   Druids
+          Clarification: The first sentence now reads "The Druids may aid
+          or oppose any attack made by, or against, any Magic group, even
+          if it is Secret."
+          
+   Early Warning
+          Reworded for clarity, to "Play this card, as a free move, after
+          any Disaster is played. It gives the target +10 to defend
+          against that one Disaster."
+          
+   Eliza
+          Change for game balance: Add "No group may have more than one
+          Eliza."
+          
+   Flower Power
+          Changed for better game balance, as per "Bank Merger," above --
+          but for Peaceful groups instead of Banks.
+          
+   Flying Saucer
+          Reworded for clarity. The last paragraph now reads: "Left
+          unlinked, as property of the Illuminati, the Flying Saucer lets
+          you make one extra automatic takeover each turn. This may only
+          be used for a Resource. If you make this extra takeover, you
+          must discard your top undrawn Plot card in exchange."
+          
+   Freaking the Mundanes
+          Changed for better game balance, as per "Bank Merger," above --
+          but for Weird groups instead of Banks.
+          
+   Full Moon
+          Changed for better game balance, to require an Illuminati
+          action. (But note that, alone among the "Reload" type cards,
+          "Full Moon" still benefits any number of cards. This is because
+          it helps only Fanatics, and an all-Fanatic deck is not likely
+          to be abusive.)
+          
+   Fundie Money
+          Reworded for clarity, as per "Assertiveness Training," above.
+          
+   Gang War
+          Changed for better game balance, as per "Bank Merger," above --
+          but for Criminal groups instead of Banks.
+          
+   Gnomes of Zurich
+          No longer has a +4 to control Corporate groups!
+          
+   Goal: Criminal Overlords
+          Added an Anatole France quote.
+          
+   Good Polls
+          New art by Dan Smith, colored by Derek Pearcy.
+          
+   Harmonica Virgins
+          Reworded for clarity, as for "Albino Alligators," above.
+          
+   Hawaii
+          Reworded for clarity: it gives its master one extra action
+          token each turn.
+          
+   Hoax
+          Reworded for clarity. The second sentence now says "That card
+          is canceled."
+          
+   I Lied
+          Art blown up so that the hands break the frame.
+          
+   I.R.S.
+          New art by Dan Smith, colored by Derek Pearcy.
+          
+   Immortality Serum
+          Art re-sized so the text box doesn't go off the bottom of the
+          card!
+          
+   Infobahn
+          Reworded for clarity, as for "Albino Alligators," above.
+          
+   Israel
+          New art by Dan Smith, colored by Jeff Koke. Reworded for
+          clarity. The last sentence now reads "The privilege is
+          negated."
+          
+   Italy
+          Reworded for clarity. The last sentence now reads "Italy's
+          Power can be used to defend any Weird group you control, as a
+          free move . . . no Action token required."
+          
+   Jake Day
+          Reworded for clarity, as per "Assertiveness Training," above.
+          
+   Jihad
+          Reworded for clarity, as for "Albino Alligators," above. There
+          is no truth to the rumor that we are changing the name of this
+          card fnord.
+          
+   Just Say No
+          Reworded for clarity, as for "Albino Alligators," above.
+          
+   Kinder and Gentler
+          Reworded for clarity, as per "Assertiveness Training," above.
+          
+   L-4 Society
+          New art by Dan Smith, colored by Derek Pearcy.
+          
+   Lawyers
+          Reworded for clarity. The card now reads:
+          
+          
+          "Any group in your Power Structure gets a +4 defense bonus
+          against any attack made or aided by a Government or Corporate
+          group.
+          
+          
+          "You do not have to pay taxes to the IRS."
+          
+   Liberal Agenda
+          Reworded for clarity, as per "Assertiveness Training," above.
+          
+   March On Washington
+          The words "Requires Discard" are added at the bottom. Note that
+          the card text already stated that a discard was required.
+          
+   Martial Law
+          Reworded for clarity, as for "Albino Alligators," above.
+          
+   Martyrs
+          Reworded for clarity, as for "Albino Alligators," above.
+          
+   Mutual Background
+          New background added by Jeff Koke.
+          
+   Nationalization
+          Reworded for clarity, as per "Assertiveness Training," above.
+          
+   Nephews of God
+          Reworded for clarity. The second and third sentences of the
+          second paragraph now reads: "Each turn, roll 2 dice before you
+          draw any cards. If you roll a 6 or less, you may draw one extra
+          card from either of your decks."
+          
+   New Federal Budget
+          Changed for better game balance, as per "Bank Merger," above --
+          but for Government groups instead of Banks.
+          
+   New World Order cards:
+          For those players who have difficulty distinguishing colors,
+          each NWO card has a line added to the bottom which both
+          indicates its color and restates the way the card is used. For
+          example, each Blue NWO now ends with: "This card replaces any
+          Blue NWO now in play."
+          
+   New World Order: A Thousand Points of Light
+          Reworded for clarity. The second sentence of the second
+          paragraph now reads: "Opposed alignments no longer give the
+          standard +4 bonus to destroy or the +4 penalty to control."
+          
+   New World Order: Fear and Loathing
+          Reworded for clarity. The second sentence now reads: "Identical
+          alignments now give +8 or any attempt to control, and -8 on any
+          attempt to destroy."
+          
+   New World Order: Military-Industrial Complex
+          Massively reworded for clarity. This card now reads:
+          
+          
+          "Government and corporate interests have become nearly
+          identical. The Corporate alignment no longer exists for any
+          purposes except Goals.
+          
+          
+          "All Corporate groups are now considered Government for all
+          purposes except Goals. Cards and special abilities which
+          specifically affect or require Corporate groups are now useless
+          . . .
+          
+          
+          "This card replaces any Yellow NWO card in play."
+          
+   New World Order: Political Correctness
+          An error was corrected; the third sentence now reads "All
+          Conservative groups with a Power of 0 or 1 become Criminal as
+          well."
+          
+   New World Order: Tax Reform
+          Reworded for clarity. The increased "taxing" power of the IRS
+          is now stated as: "The IRS can now tax one Plot card from each
+          player, at the beginning of its own turn, taking the top card
+          from their decks."
+          
+   OPEC
+          Reworded for clarity. The second sentence now reads: "When the
+          card is first controlled, and again each time your turn begins,
+          roll 2 dice, subtracting 2 from the total, to set its Power for
+          that turn."
+          
+   Orbit One
+          An error in the original card was corrected. The last sentence
+          now reads "Orbit One is not affected by any Disaster cards
+          except Nuclear Accident and Meteor."
+          
+   The Oregon Crud
+          Changed for game balance. The Oregon Crud now has a Power of
+          24, and destroys its target if the die roll succeeds by more
+          than 10.
+          
+   Pledge Drive
+          Re-colored by Derek Pearcy. Changed for better game balance, as
+          per "Bank Merger," above -- but for Liberal groups instead of
+          Banks.
+          
+   Power Corrupts
+          Reworded for clarity, as per "Assertiveness Training," above.
+          
+   Privatization
+          Reworded for clarity, as per "Assertiveness Training," above.
+          
+   Pulitzer Prize
+          Reworded for clarity, as for "Albino Alligators," above.
+          
+   Red Scare
+          Changed for better game balance, as per "Bank Merger," above --
+          but for Conservative groups instead of Banks.
+          
+   Reload
+          Changed for better game balance, as per "Bank Merger," above -
+          but for Violent groups instead of Banks.
+          
+   S.M.O.F.
+          One word added for clarity: the second sentence now begins "Has
+          an extra +4 . . . "
+          
+   Save the Whales
+          Reworded for clarity, as for "Albino Alligators," above.
+          
+   Seize the Time!
+          Changed for game balance. The first paragraph is unchanged. The
+          rest of the card now reads:
+          
+          
+          "During your special turn, all your groups except your
+          Illuminati get Action tokens, but you may not draw any cards
+          for any reason, or play any Plot card.
+          
+          
+          "You must spend your Illuminati action to use this card. No
+          player may use this card more than once in a game! This card
+          may not be used until each player has finished his first turn.
+          
+          
+          "Requires Illuminati Action"
+          
+   Slush Fund
+          Reworded for clarity, as for "Albino Alligators," above.
+          
+   Spear of Longinus
+          Reworded for clarity, in the Factory Set only: The first
+          sentence now reads: "This artifact, both sacred and cursed, can
+          be used once per attack, whenever you wish!"
+          
+   Stock Split
+          Reworded for clarity, as for "Albino Alligators," above.
+          
+   Stonehenge
+          Reworded for clarity. Now reads: " . . . immune to all Magic
+          groups, Magic Plots or Magic Resources."
+          
+   Straighten Up
+          Reworded for clarity, as per "Assertiveness Training," above.
+          
+   Tax Breaks
+          Partially recolored by Derek Pearcy. Changed for better game
+          balance, as per "Bank Merger," above -- but for Corporate
+          groups instead of Banks.
+          
+   Templars
+          Partially recolored (for historical accuracy) by Derek Pearcy.
+          
+   Terrorist Nuke
+          Reworded for clarity, as for "Albino Alligators," above.
+          
+   Texas
+          New art by Dan Smith, colored by Derek Pearcy.
+          
+   Upheaval!
+          Added for clarity: "This card may be played at any time, but
+          only after all players have completed their first turns."
+          
+   Video Games
+          Reworded for clarity. Last sentence says: "Gives +1 Power to
+          all your other Computer groups!"
+          
+   Volcano
+          Changed for game balance. The Volcano now has a Power of 18,
+          and destroys its target if the die roll succeeds by more than
+          2.
+          
+   Volunteer Aid
+          Reworded for clarity, to "free move" instead of "free action."
+          
+   Voodoo Economics
+          Changed for game balance. The entire card text is now:
+          
+          
+          "Play this card during your own turn, just after you place
+          Action tokens. You must spend your Illuminati action. Discard
+          up to ten Plot cards from the top of your deck, removing them
+          permanently from play. For each one you discard, you may place
+          one extra Action token on one of your own Groups, except your
+          Illuminati. No Group may get more than one extra Action token
+          from this card.
+          
+          
+          "No player may use this card more than once in a game.
+          
+          
+          "Requires Illuminati Action and Discard"
+          
+   Wall Street
+          Reworded for clarity. The first paragraph now reads:
+          
+          
+          "Wall Street always has the option to treat any Corporate group
+          as though it were Government, or vice versa, when Wall Street
+          makes or aids an attack. This does not affect other groups'
+          participation in the attack."
+          
+   Warehouse 23
+          Reworded for clarity. The card now reads:
+          
+          
+          "When you first play this card, you may look through your hand
+          or deck and choose one Artifact or Gadget Resource, as a free
+          automatic takeover.
+          
+          
+          "Whenever you take over a new Resource, you may choose to hide
+          it under this card. You can't use hidden Resources until you
+          expose them, and once exposed they must stay exposed, but you
+          can expose one at any time and (if its powers allow it) use it
+          immediately. Your rivals cannot look at or affect the cards
+          inside Warehouse 23 except by capturing or destroying it. If it
+          is captured or destroyed, its cards go with it."
+          
+   Weather Satellite
+          Changed for game balance. The first sentence of the second
+          paragraph is now "You may increase by 10, or decrease by 4, the
+          power of any Hurricane, Rain of Frogs, or Tornado."
+          
+    Further Card Changes Needed
+    
+     Brazil and Hawaii should both specify ``each turn.''
+     
+     SMOF -- should say ``Gives +2 to any attempt . . .'', not ``Has +2 .
+     . .''.
+     
+     World Cup Victory should have been reworded for clarity, as for
+     "Albino Alligators," above. We missed it, but we'll make the change
+     in a later printing.
+     
+The INWO Book
+
+     P. 32: The percentage of scoring system, Rule 3, should state that
+     the separate parts of a goal are averaged together, not multiplied!
+     So, for instance, if Bermuda (which needs 10 alignments and 35
+     Power) had all 10 alignments but only 33 power, its percentage would
+     be the average of 80% and 94.3%.
+     
+     P. 146: The Bibliography neglects to credit Jonathan Tweet, who was
+     the primary writer for the Over the Edge RPG and co-writer of On the
+     Edge. Our apologies!
+       _______________________________________________________________
+     
+     [JUMP] 
+       _______________________________________________________________
+     
+     Steve Jackson Games <sjgames@io.com>--last modified 95.Aug.08

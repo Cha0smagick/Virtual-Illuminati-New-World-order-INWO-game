@@ -19,7 +19,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - Total: **421**
 - Tipos runtime: group=167, illuminati=18, plot=201, resource=35
 - Tipo oficial encontrado: **391/421**
-- Texto OCR disponible: **417/421**
+- Texto OCR disponible: **419/421**
 - Stats estimadas: **386**
 - Campos numéricos secundarios: **321**
 - Conflictos secundarios preservados: **17**
@@ -29,18 +29,19 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 | Estado mecánico | Cartas |
 |---|---:|
 | implemented | 1 |
+| implemented-pending-engine | 324 |
 | implemented-special | 18 |
-| source-text-unmapped | 46 |
-| unverified | 356 |
+| source-text-unmapped | 26 |
+| unverified | 52 |
 
 ## Inventario completo
 
 ### A.M.A.
 
 - ID: `ama` · runtime: `group` · oficial: `Grp.`
-- Power: 3 · Resistance: 4 · alineamientos: peaceful, conservative, science · estimado: no
+- Power: 3 · Resistance: 4 · alineamientos: peaceful, conservative · estimado: no
 - Procedencia numérica: runtime-confirmed-secondary · confianza: medium · conflictos: 0
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - A.M.A..png`
 
@@ -54,7 +55,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `algore` · runtime: `group` · oficial: `Per.`
 - Power: 1 · Resistance: 4 · alineamientos: government, liberal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `atk_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Al Gore.png`
 
@@ -66,7 +67,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `americanautoduelassociation` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 5 · alineamientos: violent, weird · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - American Autoduel Association.png`
 
@@ -78,8 +79,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `antinuclearactivists` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 5 · alineamientos: liberal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `atk_bonus` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - Anti-Nuclear Activists.png`
 
 > Texto fuente:
@@ -92,7 +93,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `antiwaractivists` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 3 · alineamientos: peaceful, liberal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `def_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Antiwar Activists.png`
 
@@ -105,7 +106,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `batf` · runtime: `group` · oficial: `Grp.`
 - Power: 3 · Resistance: 2 · alineamientos: violent, government · estimado: no
 - Procedencia numérica: runtime-confirmed-secondary · confianza: medium · conflictos: 0
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - B.A.T.F..png`
 
@@ -132,7 +133,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `bigmedia` · runtime: `group` · oficial: `Grp.`
 - Power: 4 · Resistance: 6 · alineamientos: liberal, straight · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Big Media.png`
 
@@ -181,7 +182,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `blackactivists` · runtime: `group` · oficial: `Grp.`
 - Power: 3 · Resistance: 4 · alineamientos: liberal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Black Activists.png`
 
@@ -194,7 +195,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `boysprouts` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 3 · alineamientos: peaceful, straight · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Boy Sprouts.png`
 
@@ -206,9 +207,9 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Brazil
 
 - ID: `brazil` · runtime: `group` · oficial: `Plc.`
-- Power: 5 · Resistance: 3 · alineamientos: government, huge · estimado: no
+- Power: 5 · Resistance: 3 · alineamientos: government · estimado: no
 - Procedencia numérica: secondary-conflict · confianza: medium · conflictos: 1
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `controller_token_if` · estado: **implemented-pending-engine** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Brazil.png`
 
@@ -222,7 +223,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `cia` · runtime: `group` · oficial: `Grp.`
 - Power: 6 · Resistance: 5 · alineamientos: government, violent · estimado: no
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - C.I.A..png`
 
@@ -254,19 +255,19 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `california` · runtime: `group` · oficial: `Plc.`
 - Power: 5 · Resistance: 4 · alineamientos: government, liberal, weird · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `power_grant` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: no-text-pending; OCR missing; menciones oficiales 0
 - Imagen: `Groups/INWO - California.png`
 
 > Texto fuente:
-> Sin texto OCR disponible.
+> California All your Media groups have +1 Power.
 
 ### Canada
 
 - ID: `canada` · runtime: `group` · oficial: `Plc.`
-- Power: 3 · Resistance: 4 · alineamientos: peaceful, liberal, government, huge · estimado: no
+- Power: 3 · Resistance: 4 · alineamientos: peaceful, liberal, government · estimado: no
 - Procedencia numérica: runtime-confirmed-secondary · confianza: medium · conflictos: 0
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Canada.png`
 
@@ -294,7 +295,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `centerfordiseasecontrol` · runtime: `group` · oficial: `Plc.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Center for Disease Control.png`
 
@@ -327,7 +328,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - China.png`
 
 > Texto fuente:
@@ -343,7 +344,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `churchofelvis` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 3 · alineamientos: peaceful, weird · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `power_if_card` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Church of Elvis.png`
 
@@ -357,7 +358,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `clonearrangers` · runtime: `group` · oficial: `Grp.`
 - Power: 6 · Resistance: 2 · alineamientos: violent, criminal · estimado: no
 - Procedencia numérica: secondary-conflict · confianza: medium · conflictos: 1
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `clone_revive` · estado: **implemented-pending-engine** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Clone Arrangers.png`
 
@@ -373,7 +374,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `comicbooks` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 1 · alineamientos: violent, weird · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `comics_zero` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Comic Books.png`
 
@@ -388,7 +389,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `congressionalwives` · runtime: `group` · oficial: `Grp.`
 - Power: 4 · Resistance: 4 · alineamientos: conservative, straight · estimado: no
 - Procedencia numérica: secondary-conflict · confianza: medium · conflictos: 1
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Congressional Wives.png`
 
@@ -401,7 +402,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `conspiracytheorists` · runtime: `group` · oficial: `Grp.`
 - Power: 0 · Resistance: 6 · alineamientos: weird · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `hand_limit_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Conspiracy Theorists.png`
 
@@ -416,7 +417,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `countdracula` · runtime: `group` · oficial: `Per.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Count Dracula.png`
 
@@ -433,7 +434,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `cyclegangs` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 4 · alineamientos: violent, weird · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Cycle Gangs.png`
 
@@ -463,7 +464,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `democrats` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: 4 · alineamientos: liberal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Democrats.png`
 
@@ -492,7 +493,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `deprogrammers` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 4 · alineamientos: straight · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Deprogrammers.png`
 
@@ -521,10 +522,10 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Druids
 
 - ID: `druids` · runtime: `group` · oficial: `Grp.`
-- Power: null · Resistance: 4 · alineamientos: green, magic · estimado: sí
+- Power: null · Resistance: 4 · alineamientos: — · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Groups/INWO - Druids.png`
 
 > Texto fuente:
@@ -554,7 +555,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `eff` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: 3 · alineamientos: liberal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `eff_shield` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - EFF.png`
 
@@ -570,7 +571,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `eldersofzion` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 7 · alineamientos: fanatic · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Elders of Zion.png`
 
@@ -604,7 +605,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `emptyvee` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: 3 · alineamientos: — · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Empty Vee.png`
 
@@ -618,9 +619,9 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### England
 
 - ID: `england` · runtime: `group` · oficial: `Plc.`
-- Power: 6 · Resistance: 2 · alineamientos: government, huge · estimado: no
+- Power: 6 · Resistance: 2 · alineamientos: government · estimado: no
 - Procedencia numérica: secondary-conflict · confianza: medium · conflictos: 2
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `self_tokens_double` · estado: **implemented-pending-engine** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - England.png`
 
@@ -652,7 +653,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `fbi` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: 6 · alineamientos: government, straight · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `atk_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - F.B.I..png`
 
@@ -666,7 +667,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `fastfoodchains` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 4 · alineamientos: corporate, straight · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Fast Food Chains.png`
 
@@ -686,7 +687,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `federalreserve` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: 7 · alineamientos: government · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Federal Reserve.png`
 
@@ -716,7 +717,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `fidelcastro` · runtime: `group` · oficial: `Per.`
 - Power: 1 · Resistance: 6 · alineamientos: government, liberal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Fidel Castro.png`
 
@@ -734,7 +735,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `fiendishfluoridators` · runtime: `group` · oficial: `Grp.`
 - Power: 3 · Resistance: 5 · alineamientos: fanatic · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Fiendish Fluoridators.png`
 
@@ -745,9 +746,9 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Finland
 
 - ID: `finland` · runtime: `group` · oficial: `Plc.`
-- Power: 6 · Resistance: 5 · alineamientos: liberal, government, computer · estimado: no
+- Power: 6 · Resistance: 5 · alineamientos: liberal, government · estimado: no
 - Procedencia numérica: secondary-conflict · confianza: medium · conflictos: 1
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Finland.png`
 
@@ -761,7 +762,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `flatearthers` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 2 · alineamientos: conservative, weird · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `group_action` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Flat Earthers.png`
 
@@ -792,9 +793,9 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### France
 
 - ID: `france` · runtime: `group` · oficial: `Plc.`
-- Power: 3 · Resistance: 5 · alineamientos: liberal, government, huge · estimado: no
+- Power: 3 · Resistance: 5 · alineamientos: liberal, government · estimado: no
 - Procedencia numérica: runtime-confirmed-secondary · confianza: medium · conflictos: 0
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - France.png`
 
@@ -808,7 +809,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `fraternalorders` · runtime: `group` · oficial: `Grp.`
 - Power: 5 · Resistance: 5 · alineamientos: conservative · estimado: no
 - Procedencia numérica: secondary-conflict · confianza: medium · conflictos: 1
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `fraternal_draw` · estado: **implemented-pending-engine** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Fraternal Orders.png`
 
@@ -823,7 +824,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `fredbirchsociety` · runtime: `group` · oficial: `Grp.`
 - Power: 4 · Resistance: 4 · alineamientos: conservative, straight · estimado: no
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Fred Birch Society.png`
 
@@ -839,7 +840,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `gayactivists` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 3 · alineamientos: weird · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Gay Activists.png`
 
@@ -866,9 +867,9 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Germany
 
 - ID: `germany` · runtime: `group` · oficial: `Plc.`
-- Power: 4 · Resistance: 3 · alineamientos: conservative, government, huge · estimado: no
+- Power: 4 · Resistance: 3 · alineamientos: conservative, government · estimado: no
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Germany.png`
 
@@ -885,7 +886,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `girliemagazines` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: 2 · alineamientos: liberal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Girlie Magazines.png`
 
@@ -898,7 +899,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `goldfishfanciers` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 4 · alineamientos: peaceful, fanatic · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `attack_immune` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Goldfish Fanciers.png`
 
@@ -914,7 +915,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `gordoremora` · runtime: `group` · oficial: `Per.`
 - Power: 1 · Resistance: 0 · alineamientos: liberal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `atk_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Gordo Remora.png`
 
@@ -931,7 +932,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `gunlobby` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 3 · alineamientos: violent, conservative · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Gun Lobby.png`
 
@@ -948,7 +949,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `hackers` · runtime: `group` · oficial: `Grp.`
 - Power: 3 · Resistance: 2 · alineamientos: weird, fanatic · estimado: no
 - Procedencia numérica: secondary-conflict · confianza: medium · conflictos: 1
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Hackers.png`
 
@@ -962,7 +963,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `hawaii` · runtime: `group` · oficial: `Plc.`
 - Power: 0 · Resistance: 2 · alineamientos: corporate · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 1
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `controller_token_if` · estado: **implemented-pending-engine** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Hawaii.png`
 
@@ -976,7 +977,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `hillaryclinton` · runtime: `group` · oficial: `Per.`
 - Power: 2 · Resistance: 4 · alineamientos: liberal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Hillary Clinton.png`
 
@@ -1006,7 +1007,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - Power: null · Resistance: 5 · alineamientos: government, criminal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - I.R.S..png`
 
 > Texto fuente:
@@ -1020,7 +1021,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `imeldamarcos` · runtime: `group` · oficial: `Per.`
 - Power: 1 · Resistance: 1 · alineamientos: criminal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Imelda Marcos.png`
 
@@ -1036,7 +1037,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `intellectuals` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 3 · alineamientos: weird, fanatic · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Intellectuals.png`
 
@@ -1051,7 +1052,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `internationalcocainesmugglers` · runtime: `group` · oficial: `Grp.`
 - Power: 3 · Resistance: 5 · alineamientos: violent, criminal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - International Cocaine Smugglers.png`
 
@@ -1066,7 +1067,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `internationalcommunistconspiracy` · runtime: `group` · oficial: `Grp.`
 - Power: 3 · Resistance: 3 · alineamientos: fanatic · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - International Communist Conspiracy.png`
 
@@ -1082,7 +1083,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `internationalweatherorganization` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 2 · alineamientos: liberal, straight · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - International Weather Organization.png`
 
@@ -1097,8 +1098,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `israel` · runtime: `group` · oficial: `Plc.`
 - Power: 3 · Resistance: 8 · alineamientos: violent, government · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - Israel.png`
 
 > Texto fuente:
@@ -1112,8 +1113,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `italy` · runtime: `group` · oficial: `Plc.`
 - Power: 3 · Resistance: 6 · alineamientos: government, liberal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Groups/INWO - Italy.png`
 
 > Texto fuente:
@@ -1123,9 +1124,9 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Japan
 
 - ID: `japan` · runtime: `group` · oficial: `Plc.`
-- Power: 6 · Resistance: 4 · alineamientos: peaceful, government, computer · estimado: no
+- Power: 6 · Resistance: 4 · alineamientos: peaceful, government · estimado: no
 - Procedencia numérica: secondary-conflict · confianza: medium · conflictos: 1
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Japan.png`
 
@@ -1152,9 +1153,9 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Joggers
 
 - ID: `joggers` · runtime: `group` · oficial: `Grp.`
-- Power: 1 · Resistance: 2 · alineamientos: green · estimado: sí
+- Power: 1 · Resistance: 2 · alineamientos: — · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Joggers.png`
 
@@ -1166,7 +1167,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `junkmail` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 3 · alineamientos: criminal, corporate · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Junk Mail.png`
 
@@ -1182,7 +1183,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `kkk` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 5 · alineamientos: violent, conservative · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `kkk_double` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - KKK.png`
 
@@ -1196,8 +1197,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `l4society` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 2 · alineamientos: weird · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `atk_bonus` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - L-4 Society.png`
 
 > Texto fuente:
@@ -1225,8 +1226,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `lawyers` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: 1 · alineamientos: criminal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - Lawyers.png`
 
 > Texto fuente:
@@ -1239,7 +1240,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `libertarians` · runtime: `group` · oficial: `Grp.`
 - Power: 4 · Resistance: 4 · alineamientos: fanatic · estimado: no
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Libertarians.png`
 
@@ -1273,7 +1274,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `loansharks` · runtime: `group` · oficial: `Grp.`
 - Power: 3 · Resistance: 5 · alineamientos: violent, criminal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `power_per_count` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Loan Sharks.png`
 
@@ -1286,7 +1287,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `localpolicedepartments` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 4 · alineamientos: violent, conservative, straight · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Local Police Departments.png`
 
@@ -1298,7 +1299,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `madisonavenue` · runtime: `group` · oficial: `Grp.`
 - Power: 3 · Resistance: 3 · alineamientos: corporate · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `atk_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Madison Avenue.png`
 
@@ -1329,19 +1330,19 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `margaretthatcher` · runtime: `group` · oficial: `Per.`
 - Power: 1 · Resistance: 6 · alineamientos: government, conservative, straight · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: no-text-pending; OCR missing; menciones oficiales 0
 - Imagen: `Groups/INWO - Margaret Thatcher.png`
 
 > Texto fuente:
-> Sin texto OCR disponible.
+> Margaret Thatcher Gives +10 on any attempt to control England.
 
 ### Media Sensation
 
 - ID: `mediasensation` · runtime: `group` · oficial: `Per.`
 - Power: 1 · Resistance: 1 · alineamientos: — · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `no_goal_destroy` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Media Sensation.png`
 
@@ -1372,7 +1373,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Moonbase
 
 - ID: `moonbase` · runtime: `group` · oficial: `Plc.`
-- Power: 3 · Resistance: 6 · alineamientos: science, computer · estimado: sí
+- Power: 3 · Resistance: 6 · alineamientos: — · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
@@ -1392,7 +1393,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `moonies` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 4 · alineamientos: peaceful, fanatic · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Moonies.png`
 
@@ -1408,7 +1409,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `moralminority` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 1 · alineamientos: conservative, fanatic, straight · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `power_per_count` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Moral Minority.png`
 
@@ -1421,7 +1422,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `mossad` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 1 · alineamientos: violent, government · estimado: no
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Mossad.png`
 
@@ -1448,9 +1449,9 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### N.S.A.
 
 - ID: `nsa` · runtime: `group` · oficial: `Grp.`
-- Power: 5 · Resistance: 2 · alineamientos: government, computer · estimado: no
+- Power: 5 · Resistance: 2 · alineamientos: government · estimado: no
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - N.S.A..png`
 
@@ -1479,7 +1480,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `nasa` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 4 · alineamientos: government · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - NASA.png`
 
@@ -1509,7 +1510,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `nephewsofgod` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 1 · alineamientos: conservative, fanatic · estimado: no
 - Procedencia numérica: secondary-conflict · confianza: medium · conflictos: 1
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Nephews of God.png`
 
@@ -1525,7 +1526,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `newyork` · runtime: `group` · oficial: `Plc.`
 - Power: 7 · Resistance: 8 · alineamientos: government, violent, criminal · estimado: no
 - Procedencia numérica: runtime-confirmed-secondary · confianza: medium · conflictos: 0
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - New York.png`
 
@@ -1538,7 +1539,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `ninjas` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 7 · alineamientos: violent · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Ninjas.png`
 
@@ -1552,9 +1553,9 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Nuclear Power Companies
 
 - ID: `nuclearpowercompanies` · runtime: `group` · oficial: `Grp.`
-- Power: 4 · Resistance: 4 · alineamientos: conservative, corporate, science · estimado: sí
+- Power: 4 · Resistance: 4 · alineamientos: conservative, corporate · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Nuclear Power Companies.png`
 
@@ -1568,7 +1569,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `offshorebanks` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 2 · alineamientos: criminal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Offshore Banks.png`
 
@@ -1597,8 +1598,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `opec` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: 4 · alineamientos: conservative · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `opec_roll` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - OPEC.png`
 
 > Texto fuente:
@@ -1612,10 +1613,10 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Orbit One
 
 - ID: `orbitone` · runtime: `group` · oficial: `Plc.`
-- Power: 2 · Resistance: 5 · alineamientos: science, computer · estimado: sí
+- Power: 2 · Resistance: 5 · alineamientos: — · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 8
 - Imagen: `Groups/INWO - Orbit One.png`
 
 > Texto fuente:
@@ -1648,7 +1649,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `pentagon` · runtime: `group` · oficial: `Plc.`
 - Power: 6 · Resistance: 6 · alineamientos: government, violent, straight, conservative · estimado: no
 - Procedencia numérica: runtime-confirmed-secondary · confianza: medium · conflictos: 0
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `corporate_extra_draw` · estado: **implemented-pending-engine** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Pentagon.png`
 
@@ -1660,7 +1661,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `phonecompany` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: 6 · alineamientos: corporate · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `group_action` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Phone Company.png`
 
@@ -1681,7 +1682,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `phonephreaks` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 1 · alineamientos: criminal, liberal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Phone Phreaks.png`
 
@@ -1699,7 +1700,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `pollsters` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `pollster_shield` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Pollsters.png`
 
@@ -1716,7 +1717,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `postoffice` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: 3 · alineamientos: government · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `group_action` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Post Office.png`
 
@@ -1753,7 +1754,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `princessdi` · runtime: `group` · oficial: `Per.`
 - Power: 2 · Resistance: 5 · alineamientos: peaceful, liberal, straight · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Princess Di.png`
 
@@ -1783,7 +1784,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `psychiatrists` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 6 · alineamientos: weird · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `group_action` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Psychiatrists.png`
 
@@ -1800,7 +1801,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `punkrockers` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 4 · alineamientos: weird · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `punk_ban_aids` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Punk Rockers.png`
 
@@ -1816,7 +1817,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
 - Imagen: `Groups/INWO - Pyramid Marketing Schemes.png`
 
 > Texto fuente:
@@ -1827,7 +1828,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `recordingindustry` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 1 · alineamientos: corporate · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `power_grant` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Recording Industry.png`
 
@@ -1840,7 +1841,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `redcross` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Red Cross.png`
 
@@ -1859,7 +1860,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `reformedchurchofsatan` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 4 · alineamientos: weird, fanatic · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Reformed Church of Satan.png`
 
@@ -1875,7 +1876,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `religiousreich` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: 5 · alineamientos: conservative, straight · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Religious Reich.png`
 
@@ -1890,7 +1891,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `republicans` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: 4 · alineamientos: conservative · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `atk_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Republicans.png`
 
@@ -1924,7 +1925,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `robotseamonsters` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 6 · alineamientos: violent · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Robot Sea Monsters.png`
 
@@ -1952,7 +1953,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Rosicrucians
 
 - ID: `rosicrucians` · runtime: `group` · oficial: `Grp.`
-- Power: 1 · Resistance: 4 · alineamientos: magic · estimado: sí
+- Power: 1 · Resistance: 4 · alineamientos: — · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
@@ -1971,7 +1972,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `rossperot` · runtime: `group` · oficial: `Per.`
 - Power: 2 · Resistance: 6 · alineamientos: conservative, straight · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `puppet_align` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Ross Perot.png`
 
@@ -1985,9 +1986,9 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Russia
 
 - ID: `russia` · runtime: `group` · oficial: `Plc.`
-- Power: 4 · Resistance: 4 · alineamientos: violent, government, huge · estimado: no
+- Power: 4 · Resistance: 4 · alineamientos: violent, government · estimado: no
 - Procedencia numérica: secondary-conflict · confianza: medium · conflictos: 1
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `communist_bonuses` · estado: **implemented-pending-engine** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Russia.png`
 
@@ -2004,8 +2005,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `smof` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - S.M.O.F..png`
 
 > Texto fuente:
@@ -2021,7 +2022,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `saddamhussein` · runtime: `group` · oficial: `Per.`
 - Power: 5 · Resistance: 4 · alineamientos: government, violent · estimado: no
 - Procedencia numérica: secondary-conflict · confianza: medium · conflictos: 1
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Saddam Hussein.png`
 
@@ -2037,7 +2038,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `saturdaymorningcartoons` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 4 · alineamientos: violent · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Saturday Morning Cartoons.png`
 
@@ -2070,7 +2071,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `sciencefictionfans` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 5 · alineamientos: weird · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Science Fiction Fans.png`
 
@@ -2099,7 +2100,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `secularhumanists` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 5 · alineamientos: liberal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `def_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Secular Humanists.png`
 
@@ -2113,8 +2114,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `semiconsciousliberationarmy` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 8 · alineamientos: violent, criminal, liberal, weird · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
+- Mecánica: `atk_bonus` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
 - Imagen: `Groups/INWO - Semiconscious Liberation Army.png`
 
 > Texto fuente:
@@ -2123,9 +2124,9 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Silicon Valley
 
 - ID: `siliconvalley` · runtime: `group` · oficial: `Plc.`
-- Power: null · Resistance: 3 · alineamientos: science, computer · estimado: sí
+- Power: null · Resistance: 3 · alineamientos: — · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `group_action` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Silicon Valley.png`
 
@@ -2139,7 +2140,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `societyforcreativeanarchism` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 4 · alineamientos: violent, weird · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `group_action` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Society for Creative Anarchism.png`
 
@@ -2154,7 +2155,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `southamericannazis` · runtime: `group` · oficial: `Grp.`
 - Power: null · Resistance: 6 · alineamientos: violent, conservative · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - South American Nazis.png`
 
@@ -2165,10 +2166,10 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Stonehenge
 
 - ID: `stonehenge` · runtime: `group` · oficial: `Plc.`
-- Power: 3 · Resistance: 4 · alineamientos: magic · estimado: sí
+- Power: 3 · Resistance: 4 · alineamientos: — · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - Stonehenge.png`
 
 > Texto fuente:
@@ -2206,7 +2207,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `survivalists` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 3 · alineamientos: violent, conservative, fanatic · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Survivalists.png`
 
@@ -2254,7 +2255,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `telephonepsychics` · runtime: `group` · oficial: `Grp.`
 - Power: 2 · Resistance: 4 · alineamientos: peaceful, criminal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `atk_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Telephone Psychics.png`
 
@@ -2266,8 +2267,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `templars` · runtime: `group` · oficial: `Grp.`
 - Power: 3 · Resistance: 6 · alineamientos: conservative · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `group_action` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - Templars.png`
 
 > Texto fuente:
@@ -2279,9 +2280,9 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Texas
 
 - ID: `texas` · runtime: `group` · oficial: `Plc.`
-- Power: 14 · Resistance: 9 · alineamientos: government, violent, conservative, huge · estimado: no
+- Power: 14 · Resistance: 9 · alineamientos: government, violent, conservative · estimado: no
 - Procedencia numérica: secondary-conflict · confianza: medium · conflictos: 2
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `plot_cache` · estado: **implemented-pending-engine** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Texas.png`
 
@@ -2302,7 +2303,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - The Great Pyramid.png`
 
 > Texto fuente:
@@ -2319,7 +2320,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `themafia` · runtime: `group` · oficial: `Grp.`
 - Power: 6 · Resistance: 7 · alineamientos: violent, criminal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - The Mafia.png`
 
@@ -2348,7 +2349,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `tobaccocompanies` · runtime: `group` · oficial: `Grp.`
 - Power: 4 · Resistance: 3 · alineamientos: corporate, straight · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Tobacco Companies.png`
 
@@ -2363,7 +2364,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - Trading Card Games.png`
 
 > Texto fuente:
@@ -2379,7 +2380,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `trekkies` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 4 · alineamientos: peaceful, weird, fanatic · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Trekkies.png`
 
@@ -2424,7 +2425,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `undergroundnewspapers` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 5 · alineamientos: liberal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `undergroundnewspapers` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Underground Newspapers.png`
 
@@ -2438,7 +2439,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `unitednations` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 3 · alineamientos: liberal · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `atk_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - United Nations.png`
 
@@ -2450,7 +2451,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `urbangangs` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 2 · alineamientos: violent · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `atk_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Groups/INWO - Urban Gangs.png`
 
@@ -2491,10 +2492,10 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Video Games
 
 - ID: `videogames` · runtime: `group` · oficial: `Grp.`
-- Power: 2 · Resistance: 3 · alineamientos: computer · estimado: sí
+- Power: 2 · Resistance: 3 · alineamientos: — · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
 - Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Groups/INWO - Video Games.png`
 
 > Texto fuente:
@@ -2521,9 +2522,9 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### W.I.T.C.H.
 
 - ID: `witch` · runtime: `group` · oficial: `Grp.`
-- Power: 3 · Resistance: 3 · alineamientos: weird, violent, fanatic, magic · estimado: no
+- Power: 3 · Resistance: 3 · alineamientos: weird, violent, fanatic · estimado: no
 - Procedencia numérica: secondary-conflict · confianza: medium · conflictos: 1
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - W.I.T.C.H..png`
 
@@ -2537,8 +2538,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `wallstreet` · runtime: `group` · oficial: `Grp.`
 - Power: 4 · Resistance: 3 · alineamientos: corporate · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 3
+- Mecánica: `combo_bonus` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 6
 - Imagen: `Groups/INWO - Wall Street.png`
 
 > Texto fuente:
@@ -2552,7 +2553,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `wargamers` · runtime: `group` · oficial: `Grp.`
 - Power: 1 · Resistance: 5 · alineamientos: weird · estimado: sí
 - Procedencia numérica: secondary · confianza: medium · conflictos: 0
-- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `ability_unverified` · estado: **source-text-unmapped** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Groups/INWO - Wargamers.png`
 
@@ -2564,26 +2565,26 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 ### Adepts of Hermes 1
 
 - ID: `adeptsofhermes1` · runtime: `illuminati` · oficial: `Ill.`
-- Power: 8 · Resistance: null · alineamientos: — · estimado: no
+- Power: 7 · Resistance: null · alineamientos: — · estimado: no
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Adepts of Hermes 1.png`
 
 > Texto fuente:
-> When an attempt to control one of your uncontrolled Groups fails, or you fail to control a Group from your hand, you keep it instead of discarding it.
+> If you fail an Attack to Control against a Group from your own hand, you do not lose the group . . . just return the card to your hand. The Adepts of Hermes have a +6 on any attempt to control or destroy a Magic group. GOAL: Each Magic Resource you control counts as one group toward the Basic Goal.
 
 ### Adepts of Hermes 2
 
 - ID: `adeptsofhermes2` · runtime: `illuminati` · oficial: `Ill.`
-- Power: 8 · Resistance: null · alineamientos: — · estimado: sí
+- Power: 7 · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Adepts of Hermes 2.png`
 
 > Texto fuente:
-> When an attempt to control one of your uncontrolled Groups fails, or you fail to control a Group from your hand, you keep it instead of discarding it.
+> If you fail an Attack to Control against a Group from your own hand, you do not lose the group . . . just return the card to your hand. The Adepts of Hermes have a +6 on any attempt to control or destroy a Magic group. GOAL: Each Magic Resource you control counts as one group toward the Basic Goal.
 
 ### Bavarian Illuminati 1
 
@@ -2595,7 +2596,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - Imagen: `Illuminati/INWO - Bavarian Illuminati 1.png`
 
 > Texto fuente:
-> Once per turn may declare one attack Privileged. Power 10.
+> Each turn, you may declare one of your attacks privileged. GOAL: Control a total Power of 50 or more, counting Bavaria's own Power.
 
 ### Bavarian Illuminati 2
 
@@ -2607,7 +2608,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - Imagen: `Illuminati/INWO - Bavarian Illuminati 2.png`
 
 > Texto fuente:
-> Once per turn may declare one attack Privileged. Power 10.
+> Each turn, you may declare one of your attacks privileged. GOAL: Control a total Power of 50 or more, counting Bavaria's own Power.
 
 ### Bermuda Triangle 1
 
@@ -2619,7 +2620,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - Imagen: `Illuminati/INWO - Bermuda Triangle 1.png`
 
 > Texto fuente:
-> At end of your turn you may reorganize your power structure freely.
+> You may reorganize your groups freely at the end of your turn. GOAL: Control a total Power of at least 35, counting Bermuda's own Power, and at least one group of each alignment. A group with more than one alignment counts for all its alignments.
 
 ### Bermuda Triangle 2
 
@@ -2631,55 +2632,55 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - Imagen: `Illuminati/INWO - Bermuda Triangle 2.png`
 
 > Texto fuente:
-> At end of your turn you may reorganize your power structure freely.
+> You may reorganize your groups freely at the end of your turn. GOAL: Control a total Power of at least 35, counting Bermuda's own Power, and at least one group of each alignment. A group with more than one alignment counts for all its alignments.
 
 ### Discordian Society 1
 
 - ID: `discordiansociety1` · runtime: `illuminati` · oficial: `Ill.`
-- Power: 8 · Resistance: null · alineamientos: — · estimado: no
+- Power: 7 · Resistance: null · alineamientos: — · estimado: no
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Discordian Society 1.png`
 
 > Texto fuente:
-> Your entire power structure is immune to Straight AND Government groups. Weird groups count double toward your Basic Goal.
+> You have a +4 on any attempt to control Weird groups. Your power structure is immune to attacks from Government or Straight groups, and to all special abilities of these groups. GOAL: Any Weird group with a Power of 3 or more counts double toward your total number of groups controlled.
 
 ### Discordian Society 2
 
 - ID: `discordiansociety2` · runtime: `illuminati` · oficial: `Ill.`
-- Power: 8 · Resistance: null · alineamientos: — · estimado: sí
+- Power: 7 · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Discordian Society 2.png`
 
 > Texto fuente:
-> Your entire power structure is immune to Straight AND Government groups. Weird groups count double toward your Basic Goal.
+> You have a +4 on any attempt to control Weird groups. Your power structure is immune to attacks from Government or Straight groups, and to all special abilities of these groups. GOAL: Any Weird group with a Power of 3 or more counts double toward your total number of groups controlled.
 
 ### Gnomes of Zurich 1
 
 - ID: `gnomesofzurich1` · runtime: `illuminati` · oficial: `Ill.`
-- Power: 8 · Resistance: null · alineamientos: — · estimado: no
+- Power: 9 · Resistance: null · alineamientos: — · estimado: no
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Gnomes of Zurich 1.png`
 
 > Texto fuente:
-> +4 to control any Bank group. Corporate groups count double toward your Basic Goal.
+> You may hold 6 Plot cards in your hand, rather than the usual 5. You have a +4 on any attempt to control Corporate groups or Banks. GOAL: Any Corporate group or Bank with a Power of 4 or more counts double toward your total number of groups controlled.
 
 ### Gnomes of Zurich 2
 
 - ID: `gnomesofzurich2` · runtime: `illuminati` · oficial: `Ill.`
-- Power: 8 · Resistance: null · alineamientos: — · estimado: sí
+- Power: 9 · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Gnomes of Zurich 2.png`
 
 > Texto fuente:
-> +4 to control any Bank group. Corporate groups count double toward your Basic Goal.
+> You may hold 6 Plot cards in your hand, rather than the usual 5. You have a +4 on any attempt to control Corporate groups or Banks. GOAL: Any Corporate group or Bank with a Power of 4 or more counts double toward your total number of groups controlled.
 
 ### Servants of Cthulhu 1
 
@@ -2691,7 +2692,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - Imagen: `Illuminati/INWO - Servants of Cthulhu 1.png`
 
 > Texto fuente:
-> +4 on all your attacks to destroy (not instant). GOAL: destroy 8 groups.
+> You have a +4 on any attempt to destroy, even with Disasters and Assassinations. Draw a Plot card whenever you destroy a group! GOAL: For every group you destroy, reduce by 1 the number of groups you need to control in order to win. You may also count rival Illuminati which you destroy by removing their last group. If you destroy 8 groups, you win, regardless of how many you control!
 
 ### Servants of Cthulhu 2
 
@@ -2703,31 +2704,31 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - Imagen: `Illuminati/INWO - Servants of Cthulhu 2.png`
 
 > Texto fuente:
-> +4 on all your attacks to destroy (not instant). GOAL: destroy 8 groups.
+> You have a +4 on any attempt to destroy, even with Disasters and Assassinations. Draw a Plot card whenever you destroy a group! GOAL: For every group you destroy, reduce by 1 the number of groups you need to control in order to win. You may also count rival Illuminati which you destroy by removing their last group. If you destroy 8 groups, you win, regardless of how many you control!
 
 ### Shangri-La 1
 
 - ID: `shangrila1` · runtime: `illuminati` · oficial: `Ill.`
-- Power: 8 · Resistance: null · alineamientos: — · estimado: no
+- Power: 7 · Resistance: null · alineamientos: — · estimado: no
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Shangri-La 1.png`
 
 > Texto fuente:
-> +5 defense against Instant Attacks on your groups. You may never attack to destroy a non-Violent group. GOAL: control Peaceful groups with total printed Power of 30.
+> Any group in your Power Structure has an extra +5 to defend against any attack. You cannot destroy any groups except Violent ones and rival Illuminati. GOAL: Have Peaceful groups with a total Power of 30 in play, regardless of who controls them! If this happens, all Shangri-La players share the victory.
 
 ### Shangri-La 2
 
 - ID: `shangrila2` · runtime: `illuminati` · oficial: `Ill.`
-- Power: 8 · Resistance: null · alineamientos: — · estimado: sí
+- Power: 7 · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - Shangri-La 2.png`
 
 > Texto fuente:
-> +5 defense against Instant Attacks on your groups. You may never attack to destroy a non-Violent group. GOAL: control Peaceful groups with total printed Power of 30.
+> Any group in your Power Structure has an extra +5 to defend against any attack. You cannot destroy any groups except Violent ones and rival Illuminati. GOAL: Have Peaceful groups with a total Power of 30 in play, regardless of who controls them! If this happens, all Shangri-La players share the victory.
 
 ### The Network 1
 
@@ -2739,7 +2740,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - Imagen: `Illuminati/INWO - The Network 1.png`
 
 > Texto fuente:
-> Draw two Plot cards at start of each turn. Computer groups count double toward your Basic Goal.
+> You start your turn by drawing two Plot cards, rather than one. GOAL: Any Computer group with a Power of 3 or more counts double toward your total number of groups controlled.
 
 ### The Network 2
 
@@ -2751,38 +2752,38 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - Imagen: `Illuminati/INWO - The Network 2.png`
 
 > Texto fuente:
-> Draw two Plot cards at start of each turn. Computer groups count double toward your Basic Goal.
+> You start your turn by drawing two Plot cards, rather than one. GOAL: Any Computer group with a Power of 3 or more counts double toward your total number of groups controlled.
 
 ### UFOs 1
 
 - ID: `ufos1` · runtime: `illuminati` · oficial: `Ill.`
-- Power: 8 · Resistance: null · alineamientos: — · estimado: no
+- Power: 6 · Resistance: null · alineamientos: — · estimado: no
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - UFOs 1.png`
 
 > Texto fuente:
-> You get TWO Illuminati action tokens per turn. GOAL: secretly pick 3 non-Illuminati groups when game starts; control all 3 to win.
+> The UFOs have two actions per turn — they get two tokens! These may not be used in the same attack. GOAL: The UFOs can have up to 3 different Goal cards in play, and win with any of them.
 
 ### UFOs 2
 
 - ID: `ufos2` · runtime: `illuminati` · oficial: `Ill.`
-- Power: 8 · Resistance: null · alineamientos: — · estimado: sí
+- Power: 6 · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
 - Mecánica: `illu_special` · estado: **implemented-special** · implementada: sí
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Illuminati/INWO - UFOs 2.png`
 
 > Texto fuente:
-> You get TWO Illuminati action tokens per turn. GOAL: secretly pick 3 non-Illuminati groups when game starts; control all 3 to win.
+> The UFOs have two actions per turn — they get two tokens! These may not be used in the same attack. GOAL: The UFOs can have up to 3 different Goal cards in play, and win with any of them.
 
 ### 18 and a Half Minute Gap
 
 - ID: `18andahalfminutegap` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `plot_negate_steal` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - 18 and a Half Minute Gap.png`
 
@@ -2799,8 +2800,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `athousandpointsoflight` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `light_no_opposed` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - A Thousand Points of Light.png`
 
 > Texto fuente:
@@ -2815,7 +2816,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `agentinplace` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `peek_discard` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Agent in Place.png`
 
@@ -2831,8 +2832,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `airmagic` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `disaster_defence` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Air Magic.png`
 
 > Texto fuente:
@@ -2850,8 +2851,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `albinoalligators` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 5
+- Mecánica: `group_boost_timed` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 10
 - Imagen: `Plots/INWO - Albino Alligators.png`
 
 > Texto fuente:
@@ -2866,7 +2867,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `alternategoals` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `goal` · estado: **source-text-unmapped** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Alternate Goals.png`
 
@@ -2879,7 +2880,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `anofferyoucantrefuse` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `offer_refuse` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - An Offer You Can_t Refuse.png`
 
@@ -2895,7 +2896,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `andstaydead` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `stay_dead` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - And STAY Dead!.png`
 
@@ -2912,7 +2913,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `angelsfeather` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `angel_reroll` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Angel_s Feather.png`
 
@@ -2929,7 +2930,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `angst` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `angst` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Angst.png`
 
@@ -2949,7 +2950,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `annualconvention` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `annual_strike` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Annual Convention.png`
 
@@ -2970,7 +2971,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `arewehavingfunyet` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `arewe_cancel` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Are We Having Fun Yet.png`
 
@@ -2989,7 +2990,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `arkofthecovenant` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `ark_note` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Ark of the Covenant.png`
 
@@ -3010,8 +3011,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `assertivenesstraining` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 5
+- Mecánica: `force_align` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 10
 - Imagen: `Plots/INWO - Assertiveness Training.png`
 
 > Texto fuente:
@@ -3029,7 +3030,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `atomicmonster` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `disaster` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Atomic Monster.png`
 
@@ -3046,7 +3047,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `backlash` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `backlash_undo` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Backlash.png`
 
@@ -3064,8 +3065,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `bankmerger` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 5
+- Mecánica: `token_gift` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 10
 - Imagen: `Plots/INWO - Bank Merger.png`
 
 > Texto fuente:
@@ -3081,8 +3082,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `benefitconcert` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `boost10` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Benefit Concert.png`
 
 > Texto fuente:
@@ -3098,7 +3099,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `bigfoot` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `bigfoot_cancel` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Bigfoot.png`
 
@@ -3113,7 +3114,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `biggerbusiness` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `bulk_power` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Bigger Business.png`
 
@@ -3127,7 +3128,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `bimboateleven` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `bimbo_strike` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Bimbo at Eleven.png`
 
@@ -3146,7 +3147,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `blitzkrieg` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `blitz_token` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Blitzkrieg.png`
 
@@ -3160,7 +3161,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `bloodtoiltearsandsweat` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `nwo_discard_one` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Blood, Toil, Tears and Sweat.png`
 
@@ -3176,7 +3177,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `bodyguard` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `bodyguard` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Bodyguard.png`
 
@@ -3194,8 +3195,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `bookofkells` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `kells_boost` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Book of Kells.png`
 
 > Texto fuente:
@@ -3213,7 +3214,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `botchedcontact` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `takeover_return` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Botched Contact.png`
 
@@ -3229,7 +3230,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `bribery` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `bribery` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Bribery.png`
 
@@ -3248,7 +3249,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `carbomb` · runtime: `plot` · oficial: `Ass.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `assassination` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `assassination` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Car Bomb.png`
 
@@ -3263,7 +3264,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `celebrityspokesman` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `spokesman_link` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Celebrity Spokesman.png`
 
@@ -3280,7 +3281,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `censorship` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `censor_boost` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Censorship.png`
 
@@ -3296,8 +3297,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `centerforweirdstudies` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `weird_refuel` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Center for Weird Studies.png`
 
 > Texto fuente:
@@ -3316,7 +3317,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `charismaticleader` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `power_increase` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Charismatic Leader.png`
 
@@ -3336,7 +3337,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `chickenineverypot` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `bulk_power` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Chicken in Every Pot.png`
 
@@ -3350,7 +3351,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `citizenshipaward` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `power_increase` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Citizenship Award.png`
 
@@ -3369,8 +3370,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `clipperchip` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 3
+- Mecánica: `clipper_chip` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 6
 - Imagen: `Plots/INWO - Clipper Chip.png`
 
 > Texto fuente:
@@ -3387,8 +3388,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `clone` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `dup_enabler` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Clone.png`
 
 > Texto fuente:
@@ -3405,8 +3406,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `coldfusion` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `boost10` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Cold Fusion.png`
 
 > Texto fuente:
@@ -3422,8 +3423,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `combineddisasters` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `combo_attack` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Combined Disasters.png`
 
 > Texto fuente:
@@ -3438,7 +3439,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `commitment` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `resistance_increase` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Commitment.png`
 
@@ -3456,7 +3457,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `computersecurity` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `plot_negate_computer` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Computer Security.png`
 
@@ -3474,7 +3475,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `computervirus` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `computervirus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Computer Virus.png`
 
@@ -3491,7 +3492,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `corruption` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `corruption_relief` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Corruption.png`
 
@@ -3507,7 +3508,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `counterrevolution` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `dup_enabler` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Counter-Revolution.png`
 
@@ -3527,7 +3528,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `counterspell` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `counterspell` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Counterspell.png`
 
@@ -3546,7 +3547,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `coverofdarkness` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `resource_recover` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Cover of Darkness.png`
 
@@ -3563,7 +3564,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `coverup` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `coverup_react` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Cover-Up.png`
 
@@ -3581,8 +3582,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `criminaloverlords` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `goal` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Criminal Overlords.png`
 
 > Texto fuente:
@@ -3594,7 +3595,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `cropcircles` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `cropcircles` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Crop Circles.png`
 
@@ -3619,7 +3620,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `crystalskull` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `draw_hook` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Crystal Skull.png`
 
@@ -3638,7 +3639,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `currencyspeculation` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `tripled_once` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Currency Speculation.png`
 
@@ -3650,7 +3651,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `cyborgsoldiers` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `cyborg_link` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Cyborg Soldiers.png`
 
@@ -3664,7 +3665,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `deasilengine` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `resource_effect` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Deasil Engine.png`
 
@@ -3680,7 +3681,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `deathmask` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `mask_join` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Death Mask.png`
 
@@ -3699,7 +3700,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `deepagent` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `attack_privilege` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Deep Agent.png`
 
@@ -3715,7 +3716,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `dictatorship` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `dictatorship` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Dictatorship.png`
 
@@ -3731,8 +3732,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `dollarsfordecency` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Mecánica: `token_gift` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Dollars for Decency.png`
 
 > Texto fuente:
@@ -3748,7 +3749,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `dontforgettosmashthestate` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `bulk_power` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Don_t Forget to Smash the State.png`
 
@@ -3765,7 +3766,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `doublecross` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `peek_block` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Double-Cross.png`
 
@@ -3781,8 +3782,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `earlywarning` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `disaster_defence` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Early Warning.png`
 
 > Texto fuente:
@@ -3794,7 +3795,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `earthmagic` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `disaster_defence` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Earth Magic.png`
 
@@ -3808,7 +3809,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `earthquakeprojector` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `disaster_defence` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Earthquake Projector.png`
 
@@ -3821,7 +3822,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `earthquake` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `disaster` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Earthquake.png`
 
@@ -3837,7 +3838,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `eattherich` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `rich_boost` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Eat the Rich!.png`
 
@@ -3857,8 +3858,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `eliza` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 3
+- Mecánica: `eliza_link` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 6
 - Imagen: `Plots/INWO - Eliza.png`
 
 > Texto fuente:
@@ -3873,7 +3874,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `embezzlement` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `embezzlement` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Embezzlement.png`
 
@@ -3890,7 +3891,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `emergencypowers` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `power_increase` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Emergency Powers.png`
 
@@ -3909,7 +3910,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `energycrisis` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `bulk_power` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Energy Crisis.png`
 
@@ -3923,7 +3924,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `epidemic` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `disaster` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Epidemic.png`
 
@@ -3939,7 +3940,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `exposed` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `secret_expose` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Exposed!.png`
 
@@ -3957,7 +3958,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `factionfight` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `faction_boost` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Faction Fight.png`
 
@@ -3972,8 +3973,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `fearandloathing` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `align_rule` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Fear and Loathing.png`
 
 > Texto fuente:
@@ -3986,8 +3987,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `flowerpower` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Mecánica: `token_gift` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Flower Power.png`
 
 > Texto fuente:
@@ -4003,8 +4004,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `flyingsaucer` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Mecánica: `saucer_def` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Flying Saucer.png`
 
 > Texto fuente:
@@ -4024,7 +4025,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `fnord` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `fnord` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Fnord!.png`
 
@@ -4062,7 +4063,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `foiled` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `force_discard_exposed` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Foiled!.png`
 
@@ -4077,7 +4078,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `forgery` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `resource_forge` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Forgery.png`
 
@@ -4094,7 +4095,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `fratricide` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `goal` · estado: **source-text-unmapped** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Fratricide.png`
 
@@ -4113,8 +4114,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `freakingthemundanes` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Mecánica: `token_gift` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 3
 - Imagen: `Plots/INWO - Freaking the Mundanes.png`
 
 > Texto fuente:
@@ -4130,8 +4131,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `fullmoon` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
+- Mecánica: `token_gift` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 8
 - Imagen: `Plots/INWO - Full Moon.png`
 
 > Texto fuente:
@@ -4148,8 +4149,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `fundiemoney` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `force_align` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Fundie Money.png`
 
 > Texto fuente:
@@ -4167,8 +4168,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `gangwar` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Mecánica: `token_gift` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Gang War.png`
 
 > Texto fuente:
@@ -4184,7 +4185,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `georgethejanitor` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `peek_choice` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - George the Janitor.png`
 
@@ -4201,7 +4202,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `giantkudzu` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `disaster` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Giant Kudzu.png`
 
@@ -4220,8 +4221,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `goodpolls` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `def_triple` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Good Polls.png`
 
 > Texto fuente:
@@ -4233,7 +4234,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `grassrootssupport` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `power_increase` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Grassroots Support.png`
 
@@ -4251,7 +4252,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `gremlins` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `token_strip` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Gremlins.png`
 
@@ -4268,7 +4269,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `guncontrol` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `bulk_power` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Gun Control.png`
 
@@ -4281,7 +4282,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `haileris` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `goal` · estado: **source-text-unmapped** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Hail Eris!.png`
 
@@ -4295,7 +4296,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `hallucinations` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `hallu_cancel` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Hallucinations.png`
 
@@ -4310,7 +4311,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `hammerofthor` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `thor_boost` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Hammer of Thor.png`
 
@@ -4325,8 +4326,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `harmonicavirgins` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `boost10` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Harmonica Virgins.png`
 
 > Texto fuente:
@@ -4342,7 +4343,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `hattrick` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `hat_trick` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Hat Trick.png`
 
@@ -4358,7 +4359,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `headinajar` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `head_jar` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Head in a Jar.png`
 
@@ -4377,7 +4378,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `hex` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `resource_destroy` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Hex.png`
 
@@ -4394,7 +4395,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `hiddencity` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `hidden_city` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Hidden City.png`
 
@@ -4411,7 +4412,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `hiddeninfluence` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `link_effect` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Hidden Influence.png`
 
@@ -4427,7 +4428,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `hitandrun` · runtime: `plot` · oficial: `Ass.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `assassination` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `assassination` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Hit and Run.png`
 
@@ -4442,7 +4443,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `hitlersbrain` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `brain_draw` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Hitler_s Brain.png`
 
@@ -4459,8 +4460,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `hoax` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `plot_negate_prev` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Hoax.png`
 
 > Texto fuente:
@@ -4477,7 +4478,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `hurricane` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `disaster` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Hurricane.png`
 
@@ -4492,8 +4493,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `ilied` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `declared_noop` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - I Lied.png`
 
 > Texto fuente:
@@ -4509,8 +4510,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `immortalityserum` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `serum_link` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Immortality Serum.png`
 
 > Texto fuente:
@@ -4531,7 +4532,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `imposter` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `dup_enabler` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Imposter.png`
 
@@ -4549,8 +4550,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `infobahn` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `boost10` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Infobahn.png`
 
 > Texto fuente:
@@ -4566,7 +4567,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `interference` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `attack_privilege` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Interference.png`
 
@@ -4582,8 +4583,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `jakeday` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `force_align` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Jake Day.png`
 
 > Texto fuente:
@@ -4601,8 +4602,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `jihad` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `boost10` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Jihad.png`
 
 > Texto fuente:
@@ -4618,8 +4619,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `justsayno` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `boost10` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Just Say No.png`
 
 > Texto fuente:
@@ -4635,7 +4636,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `ketchupisavegetable` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `attack_privilege` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Ketchup is a Vegetable.png`
 
@@ -4651,7 +4652,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `killforpeace` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `goal` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Kill for Peace.png`
 
@@ -4666,8 +4667,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `kinderandgentler` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `force_align` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Kinder and Gentler.png`
 
 > Texto fuente:
@@ -4687,7 +4688,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `lawandorder` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `bulk_power` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Law and Order.png`
 
@@ -4702,7 +4703,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `letthemeatcake` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `goal` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Let Them Eat Cake!.png`
 
@@ -4718,7 +4719,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `letsgetorganized` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `control_arrows` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Let_s Get Organized.png`
 
@@ -4738,7 +4739,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `letsgetreallyorganized` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `control_arrows` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Let_s Get REALLY Organized.png`
 
@@ -4757,7 +4758,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `letsyouandhimfight` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `feud_pick` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Let_s You and Him Fight.png`
 
@@ -4778,8 +4779,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `liberalagenda` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `force_align` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Liberal Agenda.png`
 
 > Texto fuente:
@@ -4797,7 +4798,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `lochnessmonster` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `ness_cancel` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Loch Ness Monster.png`
 
@@ -4812,7 +4813,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `logicbomb` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `peek_steal` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Logic Bomb.png`
 
@@ -4828,8 +4829,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `marchonwashington` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Mecánica: `march_substitute` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - March on Washington.png`
 
 > Texto fuente:
@@ -4846,7 +4847,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `marketmanipulation` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `market_strip` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Market Manipulation.png`
 
@@ -4867,8 +4868,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `martiallaw` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `boost10` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Martial Law.png`
 
 > Texto fuente:
@@ -4884,8 +4885,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `martyrs` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `boost10` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Martyrs.png`
 
 > Texto fuente:
@@ -4903,7 +4904,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `massmurder` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `massmurder_tokens` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Mass Murder.png`
 
@@ -4923,7 +4924,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `mediablitz` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `dup_enabler` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Media Blitz.png`
 
@@ -4943,7 +4944,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `mediaconnections` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `link_effect` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Media Connections.png`
 
@@ -4960,7 +4961,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `mercenaries` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `res_attack_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Mercenaries.png`
 
@@ -4974,7 +4975,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `messiah` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `messiah` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Messiah.png`
 
@@ -4992,7 +4993,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `meteorstrike` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `disaster` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Meteor Strike.png`
 
@@ -5007,7 +5008,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `midasmill` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `midas_mill` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Midas Mill.png`
 
@@ -5024,8 +5025,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `militaryindustrialcomplex` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `goal` · estado: **source-text-unmapped** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Military-Industrial Complex.png`
 
 > Texto fuente:
@@ -5038,7 +5039,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `miracledietplan` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `miracledietplan` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Miracle Diet Plan.png`
 
@@ -5058,7 +5059,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `mistakenidentity` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `mistakenidentity` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Mistaken Identity.png`
 
@@ -5075,7 +5076,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `mobinfluence` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `power_increase` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Mob Influence.png`
 
@@ -5093,7 +5094,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `monopoly` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `power_increase` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Monopoly.png`
 
@@ -5110,7 +5111,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `mothersmarch` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `mothersmarch` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Mothers_ March.png`
 
@@ -5126,7 +5127,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `murphyslaw` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `murphyslaw` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Murphy_s Law.png`
 
@@ -5142,7 +5143,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `mutualbetrayal` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `peek_expose` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Mutual Betrayal.png`
 
@@ -5160,8 +5161,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `nationalization` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `force_align` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Nationalization.png`
 
 > Texto fuente:
@@ -5179,7 +5180,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `necronomicon` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `necro_link` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Necronomicon.png`
 
@@ -5195,7 +5196,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `neversurrender` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `resistance_increase` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Never Surrender.png`
 
@@ -5213,7 +5214,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `newblood` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `power_increase` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - New Blood.png`
 
@@ -5230,8 +5231,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `newfederalbudget` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Mecánica: `token_gift` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - New Federal Budget.png`
 
 > Texto fuente:
@@ -5247,7 +5248,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `niceideaitsminenow` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `niceidea_steal` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Nice Idea. It_s Mine Now..png`
 
@@ -5264,7 +5265,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `nobelpeaceprize` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `power_increase` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Nobel Peace Prize.png`
 
@@ -5282,7 +5283,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `nuclearaccident` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `disaster` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Nuclear Accident.png`
 
@@ -5300,7 +5301,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `opportunityknocks` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `declared_noop` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Opportunity Knocks.png`
 
@@ -5320,7 +5321,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `orbitalmindcontrollasers` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `align_edit` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Orbital Mind Control Lasers.png`
 
@@ -5338,7 +5339,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `payoff` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `dup_payoff` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Payoff.png`
 
@@ -5353,7 +5354,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `peaceinourtime` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `goal` · estado: **source-text-unmapped** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Peace in Our Time.png`
 
@@ -5370,7 +5371,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `perpetualmotionmachine` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `linked_token_source` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Perpetual Motion Machine.png`
 
@@ -5386,7 +5387,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `plagueofdemons` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `disaster` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Plague of Demons.png`
 
@@ -5406,8 +5407,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `pledgedrive` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Mecánica: `token_gift` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Pledge Drive.png`
 
 > Texto fuente:
@@ -5423,7 +5424,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `poison` · runtime: `plot` · oficial: `Ass.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `assassination` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `assassination` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Poison.png`
 
@@ -5439,8 +5440,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `politicalcorrectness` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Mecánica: `bulk_power` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Political Correctness.png`
 
 > Texto fuente:
@@ -5455,8 +5456,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `powercorrupts` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `force_align` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Power Corrupts.png`
 
 > Texto fuente:
@@ -5473,7 +5474,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `powerforitsownsake` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `declared_noop` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Power for its Own Sake.png`
 
@@ -5485,7 +5486,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `powergrab` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `extra_takeover` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Power Grab.png`
 
@@ -5501,7 +5502,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `powertothepeople` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `goal` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Power to the People.png`
 
@@ -5517,7 +5518,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `principiadiscordia` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `bulk_power` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Principia Discordia.png`
 
@@ -5534,8 +5535,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `privatization` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `force_align` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Privatization.png`
 
 > Texto fuente:
@@ -5556,7 +5557,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `privilegedattack` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `privileged_attack` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Privileged Attack.png`
 
@@ -5573,8 +5574,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `pulitzerprize` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `boost10` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Pulitzer Prize.png`
 
 > Texto fuente:
@@ -5590,7 +5591,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `purge` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `resource_effect` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Purge.png`
 
@@ -5610,7 +5611,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `rainoffrogs` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `disaster` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Rain of Frogs.png`
 
@@ -5627,7 +5628,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `reachout` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `token_strip` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Reach Out . . ..png`
 
@@ -5645,7 +5646,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `readmylips` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `lips_undo` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Read My Lips.png`
 
@@ -5661,8 +5662,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `redscare` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Mecánica: `token_gift` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Red Scare.png`
 
 > Texto fuente:
@@ -5678,7 +5679,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `reload` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `token_gift` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Reload!.png`
 
@@ -5695,7 +5696,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `reorganization` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `structure_reorg` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Reorganization.png`
 
@@ -5710,7 +5711,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `resistanceisuseless` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `res_nullify` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Resistance is Useless!.png`
 
@@ -5729,7 +5730,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `revolution` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `attack_boost` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Revolution!.png`
 
@@ -5745,7 +5746,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `rewritinghistory` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `align_edit` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Rewriting History.png`
 
@@ -5764,7 +5765,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `rogueboomer` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `rogue_boost` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Rogue Boomer.png`
 
@@ -5779,7 +5780,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `sabotage` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `takeover_return` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Sabotage.png`
 
@@ -5797,8 +5798,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `savethewhales` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `boost10` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Save the Whales.png`
 
 > Texto fuente:
@@ -5816,7 +5817,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `savingsloanscam` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `deck_manip` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Savings & Loan Scam.png`
 
@@ -5829,7 +5830,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `scandal` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `token_strip_aligned` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Scandal.png`
 
@@ -5847,7 +5848,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `secretsmanwasnotmeanttoknow` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `plot_negate_prev` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Secrets Man Was Not Meant to Know.png`
 
@@ -5866,8 +5867,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `seizethetime` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `turn_control` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Seize the Time!.png`
 
 > Texto fuente:
@@ -5886,7 +5887,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `selfesteem` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `power_increase` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Self-Esteem.png`
 
@@ -5903,7 +5904,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `senateinvestigatingcommittee` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `turn_start_lock` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Senate Investigating Committee.png`
 
@@ -5924,7 +5925,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `shroudofturin` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `draw_hook` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Shroud of Turin.png`
 
@@ -5943,8 +5944,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `slushfund` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `boost10` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Slush Fund.png`
 
 > Texto fuente:
@@ -5960,7 +5961,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `sniper` · runtime: `plot` · oficial: `Ass.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `assassination` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `assassination` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Sniper.png`
 
@@ -5975,7 +5976,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `solidarity` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `solidarity_x2` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Solidarity.png`
 
@@ -5990,7 +5991,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `soulburner` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `soulburner_hook` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Soulburner.png`
 
@@ -6008,7 +6009,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `spasmofviolence` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `combo_attack` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Spasm of Violence.png`
 
@@ -6026,8 +6027,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `spearoflonginus` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `res_attack_bonus` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Spear of Longinus.png`
 
 > Texto fuente:
@@ -6042,7 +6043,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `stealingtheplans` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `stealing_the_plans` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Stealing the Plans.png`
 
@@ -6058,8 +6059,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `stocksplit` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `boost10` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Stock Split.png`
 
 > Texto fuente:
@@ -6075,8 +6076,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `straightenup` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `force_align` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Straighten Up.png`
 
 > Texto fuente:
@@ -6094,7 +6095,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `suckeddryandcastaside` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `sucked_burst` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Sucked Dry and Cast Aside!.png`
 
@@ -6107,7 +6108,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `suicidesquad` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `resource_effect` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Suicide Squad.png`
 
@@ -6126,7 +6127,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `sweepingreforms` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `nwo_discard_all` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Sweeping Reforms.png`
 
@@ -6143,7 +6144,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `sweepstakesprize` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `sweepstakes_link` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Sweepstakes Prize.png`
 
@@ -6162,7 +6163,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `swissbankaccount` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `attack_boost` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Swiss Bank Account.png`
 
@@ -6175,7 +6176,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `talismanofahrimanes` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `talisman` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Talisman of Ahrimanes.png`
 
@@ -6195,8 +6196,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `taxbreaks` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Mecánica: `token_gift` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Tax Breaks.png`
 
 > Texto fuente:
@@ -6215,8 +6216,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `taxreform` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `tax_reform` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Tax Reform.png`
 
 > Texto fuente:
@@ -6233,8 +6234,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `terroristnuke` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `boost10` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Terrorist Nuke.png`
 
 > Texto fuente:
@@ -6250,7 +6251,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `theauditorfromhell` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `peek_rob` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Auditor from Hell.png`
 
@@ -6268,8 +6269,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `thebigscore` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `boost10` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - The Big Score.png`
 
 > Texto fuente:
@@ -6285,7 +6286,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `thebigsellout` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `deck_manip` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Big Sellout.png`
 
@@ -6305,7 +6306,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `thebronzehead` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `bronze_keep` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Bronze Head.png`
 
@@ -6322,7 +6323,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `thecorporatemasters` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `corporate_double` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Corporate Masters.png`
 
@@ -6335,7 +6336,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `thefirstthingwedoletskillallthelawyers` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `attack_boost` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The First Thing We Do, Let_s Kill All The Lawyers.png`
 
@@ -6352,7 +6353,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `thefroggod` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `froggod_interfere` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Frog God.png`
 
@@ -6371,7 +6372,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `thehandofmadness` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `goal` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Hand of Madness.png`
 
@@ -6385,7 +6386,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `theholygrail` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `grail_note` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Holy Grail.png`
 
@@ -6405,7 +6406,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `theinternetworm` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `deck_burn` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Internet Worm.png`
 
@@ -6425,7 +6426,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `thelibraryatalexandria` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `res_attack_bonus` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Library at Alexandria.png`
 
@@ -6443,7 +6444,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `theoregoncrud` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `disaster` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - The Oregon Crud.png`
 
@@ -6459,7 +6460,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `thesecondbullet` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `second_bullet` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Second Bullet.png`
 
@@ -6475,7 +6476,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `thestarsareright` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `stars_takeover` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Stars are Right.png`
 
@@ -6491,7 +6492,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `theweaklink` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `resource_effect` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Weak Link.png`
 
@@ -6510,7 +6511,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `theweirdturnpro` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `power_increase` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - The Weird Turn Pro.png`
 
@@ -6529,7 +6530,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `tidalwave` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `disaster` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Tidal Wave.png`
 
@@ -6545,7 +6546,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `timewarp` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `timewarp` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Time Warp.png`
 
@@ -6560,7 +6561,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `tornado` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `disaster` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Tornado.png`
 
@@ -6575,7 +6576,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `unlucky13` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `turn_start_block` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Unlucky 13.png`
 
@@ -6590,7 +6591,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `unmasked` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `unmasked_illum` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Unmasked!.png`
 
@@ -6609,7 +6610,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `upagainstthewall` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `goal` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Up Against the Wall.png`
 
@@ -6623,8 +6624,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `upheaval` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `global_discard` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Upheaval!.png`
 
 > Texto fuente:
@@ -6641,7 +6642,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `volcano` · runtime: `plot` · oficial: `Dis.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `disaster` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `disaster` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Volcano.png`
 
@@ -6656,8 +6657,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `volunteeraid` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `disaster_defence` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - Volunteer Aid.png`
 
 > Texto fuente:
@@ -6669,8 +6670,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `voodooeconomics` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Mecánica: `deck_manip` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Voodoo Economics.png`
 
 > Texto fuente:
@@ -6687,7 +6688,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `vultures` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `vultures_grab` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Vultures.png`
 
@@ -6704,8 +6705,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `warehouse23` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Mecánica: `resource_effect` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 4
 - Imagen: `Plots/INWO - Warehouse 23.png`
 
 > Texto fuente:
@@ -6727,8 +6728,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `weathersatellite` · runtime: `resource` · oficial: `Res.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
+- Mecánica: `disaster_mod` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 3
 - Imagen: `Plots/INWO - Weather Satellite.png`
 
 > Texto fuente:
@@ -6745,7 +6746,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `whisperingcampaign` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `attack_boost` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Whispering Campaign.png`
 
@@ -6765,7 +6766,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `witheringcurse` · runtime: `plot` · oficial: `Ass.`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `assassination` · estado: **source-text-unmapped** · implementada: no
+- Mecánica: `assassination` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: sin manifest (carta ya verificada o pendiente de regenerar)
 - Imagen: `Plots/INWO - Withering Curse.png`
 
@@ -6781,8 +6782,8 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `worldcupvictory` · runtime: `plot` · oficial: `Plot`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
-- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 1
+- Mecánica: `boost10` · estado: **implemented-pending-engine** · implementada: no
+- Investigación Internet: official-mention-review-required; OCR ocr-reference; menciones oficiales 2
 - Imagen: `Plots/INWO - World Cup Victory.png`
 
 > Texto fuente:
@@ -6798,7 +6799,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `worldhunger` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `token_wither` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - World Hunger.png`
 
@@ -6817,7 +6818,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `worldwarthree` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `goal` · estado: **source-text-unmapped** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - World War Three.png`
 
@@ -6835,7 +6836,7 @@ Una carta con estado `unverified` o `source-text-unmapped` no debe recibir una m
 - ID: `xanadu` · runtime: `plot` · oficial: `no encontrado`
 - Power: null · Resistance: null · alineamientos: — · estimado: sí
 - Procedencia numérica: runtime/local · confianza: no aplica · conflictos: 0
-- Mecánica: `unverified` · estado: **unverified** · implementada: no
+- Mecánica: `xanadu_loyal` · estado: **implemented-pending-engine** · implementada: no
 - Investigación Internet: ocr-only-pending; OCR ocr-reference; menciones oficiales 0
 - Imagen: `Plots/INWO - Xanadu.png`
 

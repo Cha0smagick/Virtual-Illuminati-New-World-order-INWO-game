@@ -1,0 +1,1053 @@
+
+                                    INWO
+                         Frequently Asked Questions
+                            about the _INWO_ cards
+                                      
+                         Prepared by Steve Jackson
+                                      
+  Updated on May 24, 1996 by John Karakash -- changed entries indicated by
+                   [INLINE] (or by *** if Steve did 'em)
+                                      
+   [INLINE]
+   
+   Eventually, we may want HTML links from here to the card database, and
+   vice versa. There are separate files for frequently asked [1]rules
+   questions and for genuine [2]errata.
+   
+   Now including the [3]Assassins Errata and play FAQ.
+   
+   Plus, for those questions that go beyond 'Frequently Asked' we have
+   the new [4]Very Frequently Asked Questions page! New stuff will be
+   added here as it is deemed worthy of inclusion.
+   
+   Many of these questions were dealt with in the Unlimited Edition by
+   wording changes; any reference to a change in wording may be assumed
+   to have been accomplished in the Unlimited Edition (and in the Factory
+   Set, which has the same text).
+   
+   [INLINE]
+   
+  General Classifications
+     * [5]+10 Cards
+     * [6]Agent Cards
+     * [7]Alignment Changers
+     * [8]Goals
+     * [9]Instant Attacks
+     * [10]Paralyze
+     * [11]Power Boosting Cards
+     * [12]United States Cards
+     * [13]Zaps
+     * [14]Zaps: Can't take foo group
+   
+  Specific Cards
+     * [15]Apathy
+     * [16]Arc of the Covenant
+     * [17]Are We Having Fun Yet?
+     * [18]Australian Rules
+     * [19]Backlash
+     * [20]Big Prawn
+     * [21]Bill Clinton
+     * [22]Bjorne
+     * [23]Black Helicopters
+     * [24]Book of Kells
+     * [25]Bribery
+     * [26]Center for Weird Studies
+     * [27]Church of Violentology
+     * [28]CIA
+     * [29]Clipper Chip
+     * [30]Clone Arrangers
+     * [31]Combined Disasters
+     * [32]Count Dracula
+     * [33]Crop Circles
+     * [INLINE] [34]Currency Speculation
+     * [35]Deasil Engine
+     * [36]Death Mask
+     * [37]Discordian Society
+     * [38]Dittoheads
+     * [39]Drug Companies
+     * [40]Druids
+     * [41]Early Warning
+     * [42]Eliza
+     * [43]Evil Geniuses for a Better Tomorrow
+     * [44]Fickle Finger of Fate
+     * [45]Fidel Castro
+     * [46]Flying Saucer
+     * [47]Forgery
+     * [48]Fred Birch Society
+     * [49]George Bush
+     * [50]Germany
+     * [51]Giant Kudzu
+     * [52]Go Fish!
+     * [53]Hat Trick
+     * [54]Hidden Influence
+     * [55]Hoax
+     * [56]I Lied
+     * [57]Illuminati University
+     * [58]Interesting Times
+     * [59]International Cocaine Smugglers
+     * [60]Internet Worm
+     * [61]Israel
+     * [62]KKK
+     * [63]Lawyers
+     * [64]Libertarians
+     * [65]Lyndon LaRouche
+     * [INLINE] [66]The Magic Goes Away
+     * [INLINE] [67]March on Washington
+     * [68]Media Sensation
+     * [69]Militia
+     * [70]Murphy's Law
+     * [71]Necronomicon
+     * [72]Nephews of God
+     * [73]New York
+     * [74]Ninjas
+     * [75]Nuclear Power Companies
+     * [76]Nutrition Nazis
+     * [77]Orbital Mind Control Lasers
+     * [78]OPEC
+     * [79]Orbit One
+     * [80]Peace in Our Time
+     * [81]Perpetual Motion Machine
+     * [82]Recycling Centers
+     * [83]Regi$tered Trademark
+     * [84]Seize the Time
+     * [85]Senate Investigating Committee
+     * [86]Shang-ri La
+     * [87]Society of Assassins
+     * [88]Speark of Longinus
+     * [89]Stonehenge
+     * [90]Sucked Dry and Cast Aside
+     * [91]Sufficiently Advanced Technology
+     * [92]Switzerland
+     * [93]Texas
+     * [94]Trading Card Games
+     * [95]Triliberal Commission
+     * [96]TV Preachers
+     * [97]Upheaval!
+     * [98]Vampires
+     * [99]Vatican
+     * [100]Video Games
+     * [101]Wall Street
+     * [102]Warehouse 23
+     * [103]Withering Curse
+       
+   [INLINE]
+   
+General Classifications
+
+   +10 Cards
+          _These cards can give +10 to Power for the rest of the turn, if
+          used for defense against an Attack to Destroy. Is it legal to
+          set up a situation in which the group survives and uses its
+          increased Power in an attack?_ No. Sneaky idea, but no. We
+          changed the card wording to make that explicit.
+          _Can you have more than one +10 card on a group at one time?_
+          Yes, as long as they are _different_ cards.
+          
+   Agent Cards
+          _Does Immunity give immunity to agents?_ No. Agents do not
+          count as a group card for purposes of immunity.
+          
+   Alignment Changers
+          _If you use your Illuminati group to power one of these cards,
+          do you need any other groups?_ No. One of these cards can be
+          powered EITHER by your Illuminati action, OR by token(s) from
+          groups of the desired alignment equal to the Resistance of the
+          target group (doubled if its alignment is currently opposite).
+          _What about when the group has 0 power?_ You still have to
+          spend a token, but it can be of any power.
+          
+   Goals
+          _Some cards affect exposed Goal cards. But aren't Goals exposed
+          only at the end of the game?_ No. Goals are useless unless
+          they're in your hand of Plot cards, and if something exposes
+          your Plots, it can catch a Goal as easily as anything else.
+          _Does a Goal count as exposed when you play it for a win?_ No,
+          (unless it had already been exposed before) but it _does_ count
+          as exposed if the attempt for a win fails.
+          _Can you hold more than one Goal Card if they have the same
+          goal?_ No, you can't hold two or more goal _cards_ irregardless
+          of what's on them.
+          
+   Instant Attacks
+          _Do you get the +5 rival illuminati bonus on instant attacks?_
+          No. The only things which affect Instant Attacks are proximity
+          to your Illuminati and cards which state that they may.
+          
+   +- Paralyze
+          _Can the Paralyze be removed at any time or just during the
+          player's turn?_ At any time... most certainly during victory
+          attempts!
+          
+   Power Boosting Cards (like Nobel Peace Prize)
+          _If I have a Nobel Peace Prize in play, what happens if I take
+          over a group that also has a Nobel Peace Prize?_ You must
+          discard one of the Nobel Peace Prizes.
+          
+   United States Cards (as in 'part of the US')
+          _What cards count as part of the US (especially when you
+          consider that, especially for Bill Clinton, any card can become
+          Government)?_ "Any card that is named after a particular place
+          in the US would qualify for a Clinton bonus if it becomes
+          Government, whether it is actually designated a Place or not.
+          Other cards would not qualify. Thus, for instance, Hollywood
+          and Silicon Valley would qualify. So do Wall Street and Madison
+          Avenue.
+          Yes, this begs the definitional question of whether other
+          places would be "part of the government" if they gained the
+          Government attribute. We acknowledge that certain non-place
+          groups are arguably "part of the US," but only in the sense
+          that they are primarily "American." Rather than argue over, and
+          list, every Corporate group in the game, we offer this ruling,
+          which can be applied not only to existing cards but also to
+          homemade, foreign and yet-to-be-created cards." --Steve Jackson
+          
+   +- ZAPS
+          _Does a Zap only affect the things that your Illuminati group
+          itself can do?_ No! When a Zap is played on your Illuminati, it
+          has the stated effect on your entire Power Structure until it
+          is removed.
+          
+   +- ZAPS - Can't take FOO group
+          _Does this mean the target Illuminati cannot make direct
+          attacks to control FOO groups or does it mean that FOO groups
+          cannot be added to that player's power structure at all?_
+          Cannot be added at all. Rough ain't it?
+          
+   [INLINE]
+   
+Specific Cards
+
+   +- Apathy
+          _If Apathy is played in the middle of an attack, making the use
+          of aiding tokens illegal, what happens to them?_ They are lost.
+          But you might be able to find them hanging around the mall, not
+          doing much of anything. =)
+          
+   Arc of the Covenant
+          _If AotC is linked to your last group and that group is
+          destroyed, is your attacker still destroyed?_ Yes. You're out
+          of the game, of course, unless you are Cthulhu wiping out your
+          own Group to make your destruction goal.
+          
+   Are We Having Fun Yet?
+          _Can this card take away China's "-20 to being destroyed"
+          ability? How about the special powers of the Illuminati?_ Sure!
+          It will also work on other _passive_ abilities too. Tired of
+          Discordia's immunity to Government or Straight groups? Well,
+          get rid of it! One warning, though. When getting rid of that
+          immunity you cannot power AWHFY with Government or Straight
+          power because the immunity will still be in play _until_ you
+          manage to play the card.
+          _When would you play AWHFY when some tries, for example, to
+          bring back General Disorder using his special ability?_ You use
+          AWHFY when the special ability is declared or used-- in this
+          case, when he tries to put General Disorder back in his power
+          structure.
+          
+   +- Australian Rules
+          _When do you get to draw your plot card?_ You draw after the
+          dice are rolled, since the attack could be cancelled or made
+          impossible (note that if you have less than a two to succeed on
+          the attack roll, you can't roll the dice).
+          
+   Backlash
+          _Can Backlash be used to discard plots that cause two_ changes,
+          such as Dictatorship and Messiah? No, the card specifically
+          says 'one change'.
+          
+   +- Big Prawn
+          _Is the alignment change caused by Big Prawn permanent even
+          after the Prawn goes away?_ Yep, it's permanent.
+          
+   Bill Clinton
+          _Why aren't the arrows lined up so Hillary can control Bill (or
+          vice versa) with her card just to the right of his, so the card
+          art ``works'' together?_ Because every other group has its
+          incoming control arrow on either the top or the bottom. If you
+          wish to have a house rule that says Hillary can control Bill
+          from any side, the blessings of Eris upon you.
+          _Can I declare an attack on Clinton (or with him), roll a die
+          to determine his alignment, and then call off the attack if I
+          don't like the result?_ No. Roll the dice, then roll a die for
+          Bill. If Clinton's alignment change wrecks the whole plan,
+          well, now you know what it's like to be in the Senate.
+          _Does Clinton flipflop alignments randomly even after he's
+          dead?_ Yes. If his Liberal status matters after he's out of
+          play, for any reason, roll a die.
+          _If, for some reason, Bill's alignment is important TWICE in
+          one action, do you roll for each?_ Nope. One roll is enough,
+          Bill can't be both liberal and not for a single action! Just
+          remember you roll the die for Bill _after_ the dice are rolled
+          for the action.
+          _If Bill's alignment is important for a victory attempt, when
+          do you roll the die?_ After everyone admits they can't stop
+          you.
+          _What cards are 'part of the US', especially when you consider
+          the government attribute can be added to non-place cards?_ See
+          the [104]United States Cards question.
+          
+   Bjorne
+          _What sex is Bjorne?_ Male. The card refers to him as a ``he''.
+          Yes, the Bimbo at Eleven can get him. The mind reels ....
+          
+   +- Black Helicopters
+          _Can a temporary change that makes a group neither Secret or
+          Govenment be used to cause Black Helicopters to be discarded?_
+          Yup.
+          
+   Book of Kells
+          _Does this give an extra Action token, or some kind of action
+          without a token?_ We changed the card to read ``... gives that
+          group one extra Action token each turn ...''
+          
+   Bribery
+          _Can I play a Bribery when someone has just played a Murphy's
+          Law card?_ Yes!
+          
+   Center for Weird Studies
+          _When I discard any Plot Card, does this mean from my hand?_
+          Yes. When a discard is called for, it is from your hand unless
+          ``deck'' is specified.
+          
+   +- Church of Violentology
+          _Do you get one card for particpating in the attack, or one
+          card for each group participating?_ One for each group.
+          
+   CIA
+          _When the CIA makes an attack to destroy a personality, it can
+          make the attempt an Assassination. The attack becomes an
+          instant, and if the attack succeeds, the target is dead. Can
+          other groups aid this attack with global or regular power?_ Not
+          unless they have some way of boosting an Assassination.
+          _Can 'any attempt to destroy' bonuses that don't mention
+          Assassination improve this attack?_ No.
+          _Do modifiers for opposite alignment apply to this
+          Assassination?_ Yes.
+          _Can '+10 boosters' and other plots be played to increase the
+          roll?_ Yes, assuming they are played when the attack is
+          announced.
+          _Can the Nuclear Power Companies cancel this Assassination?_
+          It's an action so the answer is yes.
+          
+   Clipper Chip
+          _Can one player have multiple Clipper Chips in play?_ No. This
+          has been made explicit.
+          
+   Clone Arrangers
+          _Should this card be read as ``+4 on any attempt to control''?_
+          Yes, and that's what the Unlimited Edition says.
+          _Does the original personality still count as ``destroyed''?_
+          No; the card was changed to make this explicit.
+          
+   Combined Disasters
+          _If a Place is ordinarily immune to a Disaster, can a Combined
+          Disaster be used to let that Disaster hit that Place? For
+          instance, could Oregon Crud be the second disaster in a
+          Combined Disaster against Moonbase?_ No. If a Disaster
+          ordinarily works only on Coastal places, for instance, or only
+          on non-Huge places, it can't be added to a Combined Disaster
+          against such a place.
+          _What happens if someone cancels Combined Disasters?_ Discard
+          Combined Disasters, the _primary_ disaster is played normally
+          and the secondary disaster is returned to the hand of the
+          player. (It does _not_ count as exposed, even though everyone
+          has seen it!)
+          
+   Count Dracula
+          _Can the Count attack Vampires, even though they're Secret?_
+          Yes! His card specifically mentions them, and therefore
+          overrides the general rule.
+          _Does the Dracula card confuse the game meanings of ``kill''
+          and ``destroy''?_ Not really -- it's a special effect. Dracula
+          cannot be destroyed by any means, including ``killing''
+          assassinations, unless Magic is used. But if he's destroyed by
+          any means, he's considered killed and permanently dead. (The
+          rationale was that if the ancient Dracula were to be stripped
+          of his power, which is what ``destroyed'' implies, he WOULD
+          die.) This is different from ordinary vampire Personalities
+          created by the Vampire group card.
+          
+   Crop Circles
+          _Can this card let you look through someone else's deck?_ No.
+          [THWACK!]
+          _Can you use this card in any way to trade Plot draws for Group
+          draws (or vice versa), or look through one deck and then draw
+          from the other?_ No.
+          
+   [LINK]Currency Speculation
+          _This card is used like the +10 card, right? Someone said it
+          has to be used in advance_ and would wait around for the next
+          action or defense. It's used like a +10, and you spend it as
+          the situation occurs (i.e. when the Power of Resistance is
+          used.)
+          
+   Deasil Engine
+          _Is this spelled right?_ Look it up.
+          
+   Death Mask
+          _Can this resource make an attack fail (like W.I.T.C.H.)?_ Yes.
+          Or make it succeed, if it failed. That's the whole point.
+          
+   Discordian Society
+          _Can Discordia use the special powers of Straight and
+          Government groups that it owns?_ Sure it can. Fnord. It just
+          cannot be attacked by such groups.
+          _So, can Discordia use one of its own Straight or Government
+          groups to attack another of its own groups, or those of a rival
+          Discordian player?_ See the definition of Immunity. A
+          Discordian player can use his Straight and Government groups
+          freely against his own groups, but not against those of an
+          enemy Discordian.
+          _If Discordia plays the ``Hail Eris!'' Goal, how do its goals
+          change?_ They don't. This Goal card just lets someone else use
+          the Discordian goal. The card is worthless to Discordia fnord.
+          
+   +- Dittoheads
+          _Can Dittoheads be moved (by Phone Phreaks, for example) so
+          their new master is not a personality?_ Their new master _must_
+          be a personality and if there are no legal spaces open, they
+          cannot be moved.
+          
+   +- Drug Companies
+          _Can the Drug Companies remove an alignment from itself?_ No, A
+          group may not attack itself.
+          
+   Druids
+          _Can they attack/aid/interfere with Secret groups, if the
+          attacker or target is Magic?_ Yes. Specifically, they can
+          attack Secret Magic groups even though they are not themselves
+          Secret.
+          _Can their Power be used without an action?_ No! Their special
+          ability just lets them use their regular Power (which is
+          greater than their Global Power) for or against a Magic group.
+          
+   Early Warning
+          _Is this card discarded after a single disaster?_ Yes.
+          
+   Eliza
+          _The card says the group it is linked to gets an extra action.
+          Does this mean ``an extra action token''?_ Yes, and the card
+          has been rephrased to make that explicit.
+          _Can more than one copy of Eliza be linked to the same Group?_
+          I think not! We now specify that on the card, too.
+          _If a player uses an action granted by Eliza to play Murphy's
+          Law, does Eliza crash?_ No. Eliza only crashes if the 11 or 12
+          was the result of an action her side was attempting-- i.e.
+          Eliza aids an attack, the roll is a 12, she crashes; Eliza aids
+          a defense, the attacker rolls a 12, she doesn't crash.
+          _May Eliza grant an action on the turn that she comes into
+          play?_ If she comes into play before the token-placement phase,
+          yes. If not, no.
+          _Can Eliza build up actions?_ Nope.
+          
+   Evil Geniuses for a Better Tomorrow
+          _If Soulburner comes into play by way of the Evil Geniuses and
+          is linked to them, does Soulburner's ability come into play
+          when Evil Geniuses for a Better Tomorrow are taken over or
+          destroyed?_ Yes.
+          _Can Evil Geniuses be used to take over Eliza? (Eliza can only
+          be linked to Computer groups or the Network)_ If the resource
+          says it cannot be linked to a card (like EGfaBT), then it can't
+          be linked.
+          _Evil Geniuses say that Resources linked to them cannot be
+          unlinked. Does this provide any protection from Forgery or
+          Resource destruction?_ No. It merely means the link can't be
+          moved.
+          
+   +- Fickle Finger of Fate
+          _If you have two FFoF's in your power structure, what is your
+          bonus to attack?_ It's a flat +10 just once-- you only lose
+          your Automatic Takeover once, after all.
+          
+   Fidel Castro
+          _Does the Plot Card under Fidel count against your total?_ Yes.
+          
+   Flying Saucer
+          _Do you have to play a resource as your automatic takeover in
+          order to use the special ability of taking over an ``extra
+          resource''?_ No. Your first takeover can be anything you want.
+          _Can you make your first free takeover of a Resource on the
+          same turn you get the Flying Saucer?_ Yes.
+          _When can use the auto-takeover ability?_ Only on the action
+          phase (phase 5) of your turn. So this means that you couldn't
+          use it with Power Grab which ends your turn immediately after
+          the normal auto-takeover.
+          
+   Forgery
+          _Does Forgery allow an extra takeover (in addition to you Auto
+          Takeover) or do you have to play it when you are normally
+          allowed to get a new resource?_ Forgery does not allow a 'free'
+          takeover; you must play it when you would normally play a
+          resource from your hand.
+          
+   Fred Birch Society
+          _This card ``counts as two Conversative groups for any
+          Illuminated goal''. What exactly does this mean?_ For any Goal
+          that requires one to count groups that are Conservative, either
+          to control or to be destroyed, Fred Birch counts double.
+          _If they become liberal, how does this affect their special
+          ability?_ They would count as one liberal group and _two_
+          conservative groups!
+          
+   George Bush
+          _Is he conservative before he is taken over?_ No. He is
+          conservative when the owning Illuminati want him to be.
+          Therefore, he can only be Conservative while in a power
+          structure. When unowned -- or if he is destroyed or killed --
+          he has no conservative convictions.
+          
+   Germany
+          _If Germany uses multiple tokens in a single attack, and the
+          ``action'' is canceled (for example, by the Nuclear Power
+          Companies), does the entire attack get canceled?_ Indeed it
+          does. In this case, the entire attack is an ``action.''
+          
+   Giant Kudzu
+          _Can a place attacked by Giant Kudzu use its Action token to
+          defend itself, since Giant Kudzu is not an Instant attack?_ No
+          -- any Disaster costs its target an Action token immediately.
+          
+   +- Go Fish!
+          _If I ask for someone's Hoax card and they want to Hoax my Go
+          Fish! can they do it?_ Only if they used Hoax _before_ you name
+          the card. Try to put a pause between saying you will use Go
+          Fish! and naming the card you want so that you avoid 'speed
+          play' problems.
+          _Can I ask for exposed plot cards?_ Nope. Go Fish! only affects
+          hidden Plots. You can, however, still use it hoping that have a
+          duplicate of the exposed card still hidden in their hand.
+          
+   Hat Trick
+          _Does this work on any Plot card?_ No, only on those that are
+          discarded after play. Since Hat Trick says to discard the other
+          card, it would be self-defeating to use it on a card that was
+          supposed to stay on the table.
+          _If this card is played immediately, does it keep the preceding
+          Plot card from being canceled or neutralized?_ No. It gives you
+          the right to pick up that Plot card and put it back in your
+          hand, but it doesn't protect the effect of the card in any way.
+          
+   Hidden Influence
+          _What is a card's global power when linked to Hidden Influence?
+          _It is equal to its _permanent_ regular power. So, for example,
+          the Mafia normally has 6 regular and 0 global power. With
+          Cyborg Soldiers and Hidden influence it would have 12 regular
+          _and_ global power!
+          
+   Hoax
+          _Can Hoax block instant attacks?_ Absolutely. It eliminates the
+          Plot card that created the instant attack. There was no Plague
+          of Demons - it was all just a hoax.
+          _If I play a Hoax to block a plot card and someone Hoaxes my
+          Hoax,can I play a Hoax on THEIR Hoax to let my first one go
+          through?_ Yes, sort of. You cannot _successfully_ play the same
+          plot card twice in one attack. So while you couldn't Hoax their
+          Hoax (That would mean that both of your Hoaxes worked), you
+          could play the second Hoax on the plot card that started the
+          whole mess (since your first Hoax _never happened_) =)
+          _If your plot deck is empty can you put a plot card from your
+          hand back into the plot deck to satisfy the requirements for
+          Hoax?_ Yes.
+          
+   I Lied
+          _What happens if the second person in a deal plays the I Lied
+          plot card on top of the first person's I Lied card?_ The last
+          played card rules in this case. Now if the first player has
+          ANOTHER I Lied card...
+          
+   +- Illuminati University
+          _If the master of IOU is the illuminati itself, is the whole
+          power structure immune to Straight and Government groups?_
+          Nope.
+          
+   +- Interesting Times
+          _If you have to use the percentage of goal scoring system and
+          Interesting Times is in play, do you calculate your percentage
+          only using the Basic Goal?_ You bet you do.
+          
+   International Cocaine Smugglers
+          _Do you really mean the decision has to be unanimous?_
+          Absolutely.
+          
+   Internet Worm
+          _Internet Worm says to that no one may look at the discarded
+          cards, but the WDH 1.1 says that 'All discarded cards go face
+          up,'. Which way is it?_ All discarded cards go face up unless a
+          card says specifically you may not look at the discard or to
+          discard face down. You can scavenge for the plots, using
+          various cards, but you are taking a gamble as to what you get.
+          
+   Israel
+          _If Israel participates in an attack, is the privilege negated
+          for everyone?_ Absolutely.
+          
+   KKK
+          _Suppose that a Violent group has its power doubled - for
+          instance, by the Cyborg Soldiers. Then it and the KKK
+          participate in an attack. Does the KKK double its power again,
+          or is this a case of ``no multiple doubling''?_ This is a clear
+          case of multiple doubling. Not legal.
+          
+   Lawyers
+          _Do the Lawyers get their bonus if the attacker is not
+          Government or Corporate, but the target IS?_ No, no, no, that's
+          not what the card says :-(
+          
+   Libertarians
+          _If Libertarians are controlling a group that allows them to
+          use their special ability and that group has doubled power, can
+          they get their own power doubler and get twice the power they
+          just received?_ The Libertarians only 'inherit' the non-doubled
+          power. Other modifiers to the group they control (power
+          changes, additions and subtractions)still apply.
+          
+   +- Lyndon LaRouche
+          _Do Lyndon's aligments really not count at 'any time' or only
+          when you roll a 1-3 at the beginning of a particular turn?_ His
+          alignment never count for any goal... ever.
+          _If Lyndon is linked to the Perpetual Motion Machine, how many
+          tokens does he get per turn?_ One free one for the PMM and roll
+          to see if gets his normal one.
+          _When should you roll for Lyndon?_ At the beginning of your
+          token replacement phase. If he has a token from last turn and
+          loses the rool, he loses it. Better use it while you can!
+          
+   +- [LINK]The Magic Goes Away
+          _Only NWOs can affect a player before their first turn, but
+          this NWO takes away automatic takeovers. Can you use TMGA
+          before someone's first turn?_ Yes indeed!
+          
+   [LINK]March on Washington
+          _Can you use this plot to substitute for needed actions that
+          specify Illuminati actions or the actions of a specific group?_
+          Nope, nohow, no way. So you could use it for Dictatorship
+          (which demands a token from a Nation or its master, but doesn't
+          specify a _specific_ group card that must supply the token),
+          but not with Dollars for Decency which requires an Illuminati
+          action.
+          
+   Media Sensation
+          _How do you determine the sex of a Media Sensation card?_ The
+          card has to represent a real person in the news. There is
+          usually a consensus about the sex of real people in the news.
+          _Can a Media Sensation card be declared as a person who has a
+          ``real'' card?_ No, never. Not even if there is no card for
+          that person currently in play. For instance, Bill Clinton can
+          _never_ be a Media Sensation, because there is a real Bill
+          Clinton card.
+          
+   +- Militia
+          _The Militia card says that its printed_ Power can increase for
+          successful attacks, but that its _regular_ Power goes down for
+          failed attacks. Is this right? No, both references to power on
+          the card should refer to printed power.
+          
+   Murphy's Law
+          _Can you play a Murphy's Law after someone's Bribery?_ Yep!
+          
+   Necronomicon
+          _Can you link the Necronomicon to a group that cannot be
+          destroyed?_ Yes, and since a special ability NOT to be subject
+          to something always takes precedence over cards that do that
+          thing -- unless of course the target group is specifically
+          named, which it's not in this case -- an indestructible group
+          could get the benefit of the Necronomicon without the risk.
+          
+   Nephews of God
+          _Isn't the wording ambiguous if you happen to be entitled to
+          draw more than one Plot per turn?_ Arguably yes. Try ``Each
+          turn, roll 2 dice before you draw any cards. If you roll a 6 or
+          less, you may draw one extra card from either of your decks.''
+          That's what the Unlimited card says.
+          
+   New York
+          _Is New York a state or a city?_ It's a state.
+          
+   Ninjas
+          _Can you attack Ninjas in your own power structure to try and
+          get a 'free' action token?_ Yes, but this is a risky maneuver
+          because your opponents could _help_ you destroy them!
+          
+   Nuclear Power Companies
+          _Can they remove an action token from an enemy card before it's
+          spent?_ No. They must wait for the action to be taken, then
+          cancel it.
+          _Can you cancel the token for a privledged attack?_ No.
+          _Can they cancel March on Washington's ''action''?_ No.
+          
+   +- Nutrition Nazis
+          _If Nutrition Nazis are being used as a Plot card, can you also
+          bring them out as a group?_ Not unless the 'plot' is removed
+          first.
+          
+   Orbital Mind Control Lasers
+          _Do alignment changes made by the OMCL count for (or against)
+          victory?_ You bet they do. But only as long as they last. So a
+          group that is made liberal by the OMCL and then destroyed will
+          only count as a "destroyed Liberal group" if the person who is
+          claiming victory can do so on the same turn the group was
+          destroyed. (Rationale: A group which was destroyed while in the
+          throes of temporary strangeness will not be remembered as
+          Liberal - or whatever - in the long run.)
+          _So I can use OMCL after someone has announced victory
+          dependent on alignments to foil that victory attempt?_ Yes.
+          _Can the OMCL add an alignment opposite to one a group has?_
+          No. They can reverse an alignment, but nothing can let a group
+          hold two opposing alignments at the same time.
+          _What if you turn a group peaceful, for example, and this
+          allows Shangri-La to win?_ That's legal too . . . if a player
+          can pull off victory _on that turn_.
+          
+   OPEC
+          _What if OPEC gets attacked before its first turn? What is its
+          Power?_ Roll to determine its power when you first take over
+          the card.
+          _Is OPEC's Power considered Temporary, since it expires at the
+          end of the turn?_ OPEC's Power, as rolled on the dice, is
+          considered Permanent for purposes of Goals.
+          _Can you use Murphy's Law or Bribery to change the die roll
+          here?_ You certainly can.
+          
+   Orbit One
+          _Should Orbit One really be affected by Earthquakes?_ No,
+          that's an error on the Limited card. It is immune to
+          Earthquakes, but vulnerable to Nuclear Disasters.
+          
+   Peace in Our Time
+          _Does this give Peaceful groups a +3 Power against direct
+          Attacks to Destroy only, or can they aid against such attacks
+          with the increased Power?_ Only if they themselves are the
+          target.
+          
+   Perpetual Motion Machine
+          _Can the PPM be linked to your Illuminati?_ Yes!
+          
+   +- Recycling Centers
+          _To whose hand does the salvaged card go to?_ The owner of the
+          recycling centers.
+          _Can you use the Recycling Centers when someone fails to take
+          over a group and discards it?_ Yes!
+          
+   +- Regi$tered Trademark
+          _What about those German INWO cards?_ Yep, you have to use
+          their full name. We don't require that you pronounce them
+          correctly, though! (Zuvieldienstleistende is a _really_ good
+          one btw...)
+          _Can I 'extend' the name a little? For example, 'the thrice
+          damned and unpronounceable Zuvieldienstleistende is being
+          attacked by the Servants of Cthulhu'?_ Go for it, have fun,
+          just make sure you include ALL of the original text and you can
+          tack on embellishments galore. Just don't _insert_ extra words
+          within the registered name.
+          _What about Partitioned countries and Media Sensations?_ You
+          have to use their full new name. So you get things like 'North
+          Russia' or 'Media Sensation The Artist Formerly Known As
+          Prince' as the proper Regi$tered Trademark. The new name is
+          considered to be 'the name printed on the card'.
+          _What if someone does something like make the name of the card
+          the entire dictionary (using Partition for example)?_ In a
+          tournament, this kind of behavior would be considered
+          'disruptive' and the referee has the power to stop it. At home,
+          you can threaten the perpetrator with dire punishments (this is
+          a good time to use the photos from the New Year's party). But,
+          according to the rules, this is perfectly legal.
+          _Is W.I.T.C.H. pronounced 'witch' or 'double-yoo eye tee see
+          aitch' or even 'double-yoo dot eye dot tee dot see dot aitch
+          dot'?_ For R$T the pronounciation is whatever your opponents
+          will accept. For those who want a more specific ruling, any
+          pronounciation that gets all the syllables/letters is
+          acceptable. You might get some strange looks when you pronounce
+          ACLU as 'akloo', though!
+          _If R$T was on a government group, would the discordians be
+          immune to the effects of the R$T?_ Nope. The effect comes from
+          the R$T, _not_ the group it is on. So pay up (smiling is
+          optional). =)
+          
+   Seize the Time
+          _Can you play this card before each person has finished their
+          first turn?_ No, because interrupting their turn is doing
+          something ``to'' them. The card text has been changed to make
+          this explicit.
+          _Is the 'taxing' with the IRS considered drawing a plot card
+          and not allowed by Seize the Time?_ This is the use of a
+          special ability and is allowable under Seize the Time.
+          
+   Senate Investigating Committee
+          _The SIC says you may draw cards and place tokens, but nothing
+          else. Can you buy Plot Cards with your tokens at this time?_
+          Yes.
+          
+   Shangri-La
+          _Do they get their +5 defensive bonus against Instant attacks?_
+          Yes. The Unlimited Edition makes this explicit.
+          _Can Shangri-la interfere on the attacking side of an attack to
+          destroy a non-violent group?_ Yes, but this still doesn't allow
+          Shangri-la to use an Assassination or disaster card on a
+          non-violent group.
+          
+   +- Society of Assassins
+          _The Assassins' Fanatic groups have global power equal to their
+          regular power. Does this mean that the use of a +10 card would
+          also boost their global power?_ "Absolutely" -Steve Jackson
+          
+   Spear of Longinus
+          _Can this card be used more than once in the same attack?_ No.
+          [THWACK!]
+          _If you also have Stonehenge, can you automatically stop
+          Disasters or Attacks to Destroy against you, by aiding them
+          with the Spear, making them Magic, and therefore unable to hurt
+          you?_ Nice try, but no. The Spear is your own, and your
+          immunity doesn't protect you against your own things.
+          
+   Stonehenge
+          _Should this card really say ``... immune to all Magic groups,
+          Magic Plots and Magic Resources''?_ Yes, it should, and now it
+          does.
+          _If I have Stonehenge and the Spear of Longinus, is that a
+          killer combo?_ No. See the Spear of Longinus listing.
+          
+   Sucked Dry and Cast Aside!
+          _What happens when you play this card on a group like Local
+          Police Departments which states that it cannot be destroyed?_
+          You cannot play Sucked Dry! in this case... check out the
+          meta-rules.
+          
+   +- Sufficiently Advanced Technology
+          _Could you use this card on a Rival's group to make it Science
+          or Magic?_ It has to be used on a group you control.
+          
+   Switzerland
+          _Zurich cannot destroy Switzerland. Can it make an ``attack to
+          destroy'' that it knows will only_ _devastate_ _Switzerland?_
+          No. Zurich cannot make any attack to destroy against
+          Switzerland.
+          
+   Texas
+          _What does "involving Texas" mean, on the Texas card?_ The
+          intent is that Texas must use its own Action token, its own
+          special ability (self-referentially!) or be defending itself. A
+          resource linked to Texas and aiding or affecting Texas would
+          also "involve" Texas. If there were a personality that gave a
+          benefit to Texas by being linked to it, something involving
+          that personality would "involve" Texas too.
+          
+   Trading Card Games
+          _Where did this card COME from, anyway?_ It was the freebie in
+          issue #4 of Duelist Magazine. Except that the press run of the
+          magazine exceeded the number of cards we printed, so not every
+          copy included the card. Hope you got one.
+          _What is its frequency?_ Very common; there are more of these
+          than any other Limited card. And it will be in the Factory Set.
+          But we do _not_ plan to issue an Unlimited version.
+          _Once this group is traded in and discarded, can it be returned
+          to play?_ No, not by any means. It's not "destroyed," it's just
+          gone. Duplicate cards are no use.
+          _What happens if I give outgoing arrows to TCG and then replace
+          it with another card? Howabout cards and links on TCG when I
+          replace it?_ If the new card has enough arrows, it gets any
+          puppets that TCG had _if_ they can fit and they are legal.
+          Additionally any plots and links that are legal or only
+          temporarily illegal that were put on TCG's stay for the new
+          card; any permanently illegal cards, groups or plots get
+          discarded.
+          
+   Triliberal Commission
+          _If they are turned conservative, how does this affect their
+          special ability?_ They are counted as one conservative group
+          and _two_ liberal groups!
+          
+   TV Preachers
+          _If the TV Preachers were controlled by the Society of
+          Assassins, what bonus would they get for direct control of a
+          Straight, Fanatic group?_ They would get +6 for their special
+          power and +4 more for Fanatic vs. Fanatic for a total of +10.
+          
+   Upheaval!
+          _Groups 'discarded' by Upheaval! do not count as destroyed for
+          victory conditions, do they count as destroyed for other
+          purposes?_ They count as destroyed for all purposes except for
+          victory conditions.
+          _Can you play this card before each person has finished their
+          first turn?_ No, because making them lose a group is doing
+          something ``to'' them. The card or rules text have been changed
+          to make this explicit.
+          _If an Upheaval removes the last puppet of an Illuminati,
+          destroying it, does that Illuminati count as a kill for
+          purposes of Cthulhu or Fratricide?_ Yes, in both cases, because
+          the Goal wording on the cards says ``remove'', and doesn't
+          specify how.
+          _If the discarded card from an Upheaval! is treated as a
+          destroyed group (except for goals), then if I have Hitler's
+          Brain out as a resource ("Draw an extra Plot card...any time
+          you destroy a group"), do I get to draw an extra Plot card for
+          each group discarded whenever I play Upheaval!?_ Yes.... neat,
+          ain't it?
+          
+   Vampires
+          _They can't be killed (assassinated) without Magic. Can they be
+          destroyed without Magic?_ Yes. A regular attack to destroy will
+          still work. They just can't be killed without Magic. (Note also
+          that no Magic is required to destroy the Vampires group itself
+          ... but, since it's an ordinary organization-type Group rather
+          than an individual, it can't be ``killed''.)
+          _Do personalities become vampires if taken over by vampires as
+          an automatic takeover?_ Nope. Wasn't a direct attack to
+          control. And no, you can't move a personality to the Vampires'
+          control arrow and make them a vampire.
+          
+   Vatican
+          _Does the Vatican have immunity just from attacks_ by peaceful
+          groups or full immunity as defined in the rulebook? Full
+          immunity, not just against uses of Power.
+          
+   Video Games
+          _Do they give themselves a +1 to power?_ No, they don't.
+          
+   Wall Street
+          _Does the ``it'' in Wall Street's power description refer to
+          Wall Street itself?_ Yes, yes, yes. Wall Street can treat any
+          Corporate group as Government, or vice versa, when WALL STREET
+          makes or aids an attack.
+          _Does Wall Street's special ability transfer to other groups in
+          any way?_ No.
+          
+   Warehouse 23
+          _Do you have to use your automatic takeovers to put Resources
+          in Warehouse 23?_ After the first free Artifact or Gadget,
+          Warehouse 23 gives you no more freebies ... you must get any
+          further Resources by automatic takeovers or the special
+          abilities of your cards.
+          _If you lose Warehouse 23, can you remove the contents first?_
+          No way!
+          _What if you have a unique Resource in Warehouse 23, and
+          someone else plays it?_ If you immediately reveal your Resource
+          by removing it from the Warehouse, it's yours. If not, then the
+          other person has that Resource and you don't.
+          _If a Resource which normally has Action tokens is played from
+          Warehouse 23, does it have tokens when it appears?_ Yes. It
+          enters play with its full normal complement of Action tokens.
+          _If someone 'takes' Warehouse 23 from you with a Forgery, what
+          happens to the stuff in it?_ The original warehouse is burned
+          down (discarded) as an obvious forgery, along with its
+          contents. Whoops! ;)
+          
+   Withering Curse
+          _Is this attack magic?_ Certainly it is, apprentice.
+          
+     _________________________________________________________________
+                                      
+   [105][JUMP]
+     _________________________________________________________________
+                                      
+   _[106]Steve Jackson Games [107]<sjgames@io.com>--last modified
+   96.May.24_
+
+References
+
+[1]file://localhost/sjgames/inwo/errata/rulesfaq.html
+[2]file://localhost/sjgames/inwo/errata/errata.html
+[3]file://localhost/home/www/sjgames/inwo/errata/assassins.erratafaq.html
+[4]file://localhost/home/www/sjgames/inwo/errata/vfaq.html
+[5]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#plustencards
+[6]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#agentcards
+[7]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#alignmentchangers
+[8]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#goals
+[9]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#instantattacks
+[10]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#paralyze
+[11]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#powerboostingcards
+[12]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#unitedstatescards
+[13]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#zaps
+[14]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#zapscanttakefoo
+[15]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#apathy
+[16]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#arcofthecovenant
+[17]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#arewehavingfunyet
+[18]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#australianrules
+[19]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#backlash
+[20]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#bigprawn
+[21]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#billclinton
+[22]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#bjorne
+[23]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#blackhelicopters
+[24]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#bookofkells
+[25]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#bribery
+[26]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#centerforweirdstudies
+[27]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#churchofviolentology
+[28]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#cia
+[29]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#clipperchip
+[30]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#clonearrangers
+[31]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#combineddisasters
+[32]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#countdracula
+[33]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#cropcircles
+[34]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#currencyspeculation
+[35]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#deasilengine
+[36]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#deathmask
+[37]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#discordiansociety
+[38]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#dittoheads
+[39]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#drugcompanies
+[40]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#druids
+[41]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#earlywarning
+[42]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#eliza
+[43]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#evilgeniusesforabettertomorrow
+[44]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#ficklefingeroffate
+[45]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#fidelcastro
+[46]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#flyingsaucer
+[47]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#forgery
+[48]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#fredbirchsociety
+[49]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#georgebush
+[50]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#germany
+[51]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#giantkudzu
+[52]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#gofish
+[53]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#hattrick
+[54]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#hiddeninfluence
+[55]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#hoax
+[56]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#ilied
+[57]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#illuminatiuniversity
+[58]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#interestingtimes
+[59]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#internationalcocainesmugglers
+[60]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#internetworm
+[61]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#israel
+[62]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#kkk
+[63]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#lawyers
+[64]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#libertarians
+[65]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#lyndonlarouche
+[66]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#themagicgoesaway
+[67]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#marchonwashington
+[68]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#mediasensation
+[69]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#militia
+[70]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#murphyslaw
+[71]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#necronomicon
+[72]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#nephewsofgod
+[73]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#newyork
+[74]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#ninjas
+[75]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#nuclearpowercompanies
+[76]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#nutritionnazis
+[77]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#orbitalmindcontrollasers
+[78]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#opec
+[79]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#orbitone
+[80]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#peaceinourtime
+[81]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#perpetualmotionmachine
+[82]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#recyclingcenters
+[83]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#registeredtrademark
+[84]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#seizethetime
+[85]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#senateinvestigatingcommittee
+[86]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#shangrila
+[87]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#societyofassassins
+[88]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#spearoflonginus
+[89]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#stonehenge
+[90]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#suckeddryandcastaside
+[91]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#sufficientlyadvancedtechnology
+[92]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#switzerland
+[93]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#texas
+[94]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#tradingcardgames
+[95]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#triliberalcommission
+[96]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#tvpreachers
+[97]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#upheaval
+[98]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#vampires
+[99]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#vatican
+[100]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#videogames
+[101]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#wallstreet
+[102]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#warehouse23
+[103]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#witheringcurse
+[104]file://localhost/home/www/sjgames/inwo/errata/cardfaq.html#unitedstatescards
+[105]file://localhost/goto/
+[106]http://www.sjgames.com/
+[107]mailto:sjgames@io.com

@@ -1,0 +1,596 @@
+
+                                     INWO
+                                       
+   FAQ
+     _________________________________________________________________
+                                      
+                         Frequently Asked Questions
+                                      
+   
+         Prepared by Steve Jackson and Maintained by John Karakash
+                                      
+               Updated on September 11, 1995 by Steve Jackson
+                                      
+              And again on November 11, 1995 by John karakash
+                                      
+   This is a FAQ for general questions about the _INWO_ game itself. If
+   you are looking for rules information, there are three other files to
+   check:
+     * _INWO_ [1]Errata -- actual changes or errors in the cards and
+       rules. This includes a guide to the changes between the Limited
+       and Unlimited Editions.
+     * [2]Rules FAQ -- specific ``Frequently Asked Questions'' about the
+       rules.
+     * [3]Card FAQ -- specific ``Frequently Asked Questions'' about the
+       cards.
+     * [4]Very ``Frequently Asked Questions'' -- about the cards and
+       rules.
+       
+General Information
+
+   What is _INWO_?
+          _INWO_ is a ``trading card game'' version of the original
+          [5]Illuminati. Like the original game, it's my design (with
+          lots of suggestions from the net, thankyouverymuch). It was
+          released in December by SJ Games.
+          Many of the game mechanics are exactly the same. Some are
+          changed.
+          
+   What's ``the original [6]Illuminati''?
+          Ahh. All right. Yes, I guess there are some people who never
+          saw the original game. So ...
+          _INWO_ is a trading card game in which every weird thing in the
+          tabloid papers is true, and there are secret conspiracies
+          everywhere. Each player represents a group of the Illuminati
+          ... the ``secret masters'' who were behind everything from the
+          Kennedy assassination to the cancellation of ``Max Headroom.''
+          Each player starts by building a deck of cards. You play Group
+          cards to build a ``power structure'' on the table; you can also
+          take Groups away from your rivals. There are also Plot cards
+          (representing everything from assassinations to World War III).
+          The groups interact in wild and wonderful ways. So, for
+          instance, the Semiconscious Liberation Army can cooperate with
+          the FBI to destroy the Telephone Company. And then the UFOs can
+          order the Congressional Wives to use a Media Campaign to bring
+          it back -- _UNDER THEIR CONTROL!_
+          The object, of course, is to take over the world. Different
+          players can do this in a variety of ways; it all depends on
+          which Illuminati you are playing.
+          
+   What's the purpose of the game?
+          To sell lots of copies, make huge disgusting clots of money,
+          and update [7]Illuminati with all the improvements (and new
+          cards) that I've wanted to add for years and years.
+          Oh. Well, that's MY purpose. And it's going very nicely; thank
+          you for asking. But when you play the game, YOUR purpose is to
+          control the world by taking over the various power groups that
+          really run everything, and/or destroying anything that gets in
+          your way. In the process, you get to stab your friends in the
+          back. Repeatedly.
+          It's also possible to win in other ways, if you have a Plot
+          card with the right Goal. This makes it important to ``expose''
+          as many enemy Plots as you can ... so a hidden Goal doesn't
+          catch you by surprise.
+          And it IS possible to share a victory. Thus, betrayals become
+          truly meaningful, because there's always the chance that your
+          rival really thought you were going to keep your promises.
+          
+   Will the original [8]Illuminati game remain in print?
+          No. It's already out of print. The new version is the result of
+          ten years of notes on how to improve the game. Totally aside
+          from the trading-card aspect, it is nastier and faster-moving.
+          I like _INWO_ better.
+          By popular demand (and I use the word ``demand'' in the most
+          literal sense) I'm working on variants that will get back to
+          the original card-game paradigm ... that is, there is a central
+          deck of cards from which everyone draws. The people who simply
+          don't care for the collecting aspect of the game will still be
+          able to play with the new cards and rules. One such variant
+          appeared in issue #11 of [9]Pyramid Magazine, and is now
+          [10]available on the Net.
+          
+   Is this intended as a game for gamers, or as a trading card set?
+          I am doing this game for gamers, not for collectors -- but if I
+          can make collectors happy without hurting the game at all, I
+          will.
+          I do feel that the ``trade and collect'' aspect is an important
+          part of the game for many players, but we'll provide variants
+          for the people who would rather be torn to pieces by wild
+          gerbils than collect a deck.
+          The plan has always been to make the cards so beautiful, weird
+          and witty that any sensible collector would lust after them.
+          But I want that because it will make the GAME more fun. Do I
+          contradict myself? Very well, I contradict myself. I am large,
+          I contain multitudes, sometimes I require an extra seat on the
+          bus.
+          
+   Do you need more playtesters?
+          From time to time we post proposed new rules or cards (or
+          proposed modifications) to the net. We look for feedback on
+          [11]rec.games.trading-cards.misc.
+          
+   Where can I get more information?
+          If you're an [12]Illuminati Online member, read
+          [13]io.games.sjg.inwo. If you're on Usenet, read
+          [14]rec.games.trading-cards.misc. We answer questions in both
+          groups.
+          There are also [15]mailing lists for _INWO_ fans maintained by
+          Mike Dalton <[16]>.
+          If you read [17]Pyramid, The Duellist or Scrye, there will be
+          _INWO_ articles there.
+          Please do NOT send rules questions to SJ Games staff via
+          e-mail, as it might cause us to go mad and chew holes in the
+          carpet. Especially me. And you probably won't get an answer,
+          either.
+          You can send _written_ questions to SJ Games. Include an SASE
+          -- a self-addressed, stamped envelope. If you include the
+          envelope and we can figure out your writing, we'll answer.
+          
+   Can I read the rules online?
+          You bet. Several [18]HTML versions of the rules have been
+          created by various volunteers.
+          
+   Is an official card list available?
+          Several, and you can [19]see them online.
+          
+   Is it all right to post ``spoilers'' to the net?
+          ``Spoilers'' -- that is, complete reports of what a card says,
+          text and all -- are of questionable legality (not that anyone's
+          going to get dragged into court for posting a single card).
+          Posting a whole LIST of spoilers would be a clear copyright
+          violation and would make us unhappy. Worse, it would make a lot
+          of other people unhappy -- they don't WANT to read all the card
+          info before they see the cards. So if you are going to do this
+          tacky, bad-mannered, illegal thing, please AT LEAST title your
+          post ``SPOILER'' so that others can avoid reading it and so our
+          Men In Black can start looking for you immediately.
+          
+   Is this a Deckmaster game?
+          No. Deckmaster is a trademark of Richard Garfield, and is used
+          on those games (like MAGIC) designed by Garfield Games and
+          published by Wizards of the Coast. WotC has given us all kinds
+          of help -- technical, financial, and moral support -- but _INWO_
+          is a SJ Games release, and does not use the Deckmaster
+          mechanics or carry the trademark. And SJ Games will not do
+          anything that might lead to their mark becoming a ``generic''
+          term. It should only be used to identify specific Carfield
+          Games/WotC products.
+          
+GENERAL GAME PLAY
+
+        How many players?
+                Eventually, millions, worldwide. [THWACK] [STRAIGHT
+                ANSWER MODE ON]
+                It plays well with two (very little negotiation, just
+                attack and counterattack). Version 1.1 of the rulebook
+                (the one released with the Unlimited Edition) includes
+                some rules hacks to make 2-player games last longer. With
+                3 to 5 players, evil negotiations become very important.
+                At 6 players it begins to slow down more than I like.
+                Trying to play with more than 8 is just not the right
+                thing to do.
+                The very best numbers are 2, 3 and 5.
+                
+        How long does it take to play?
+                30 minutes or less for a 2-player game, once you know the
+                rules. An hour and a half or so for a 5-player game,
+                unless one of the players is the type who just can't make
+                up his mind. In that case, wipe him out first.
+                
+        What are the biggest changes from the original [20]Illuminati
+                game, aside from the obvious?
+                Money has been eliminated. Power is everything now :-)
+                Uncontrolled (neutral) groups have been eliminated. You
+                capture from your own hand; you can also capture or
+                destroy from your rivals' Power Structures.
+                All power is now transferable, within limits, based on
+                group alignment. Some groups still have a slash in their
+                power number -- e.g., 5/4. The second number is ``Global
+                Power,'' which is transferable with almost no limits.
+                Groups now have ``action tokens'' to show when they have
+                acted. You are not limited to two actions a turn, and you
+                can save your actions and use them during your rivals'
+                turns, to aid or hinder their attacks. Or for other evil,
+                special things fnord.
+                
+        Can two or more people play the same Illuminati?
+                Yes. This automatically makes them bitter enemies. They
+                cannot share a victory (except for Shangri-La...) and
+                either one will get special bonuses for destroying the
+                other.
+                
+        Can duplicates of other cards be useful?
+                Yes. If you hold a duplicate of an Illuminati or Group
+                card that is already in play, you can use it (once) to
+                get a better attack on that enemy. And duplicate Plot
+                cards are fine! But we don't want to have ANY cards of
+                the ``one is good, two are better, ten are even better,
+                20 are better yet'' variety. Any time you put a duplicate
+                in your deck, you lose in flexibility what you gain in
+                depth ... be careful.
+                
+        Can you change goals or strategy in the middle of the game?
+                Yes, of course. A player who is not capable of this had
+                better find another game ... you build a deck with a
+                strategy in mind, but if you don't have wheels within
+                wheels, you'll be MEAT when events overtake you. You can
+                build a deck to make this easier, of course.
+                
+        Is alignment still important?
+                Even more important than it was before. It has the same
+                effects it used to, and more. For instance, a group now
+                gets +4 to DEFEND against an attempt to control or
+                destroy for each alignment it has in common with its
+                master (the group controlling it).
+                
+        Can I build the Killer Deck From Hell?
+                There are a lot of ways to build good decks. But any deck
+                can be thwarted if your rivals know what cards you're
+                using and prepare for it. Your Killer Deck From Hell will
+                die like a dog if you keep using the same cards and
+                strategy over and over.
+                It's better to have several decks and switch between
+                them, and to make slight modifications each game based on
+                what you expect your rivals to do. For instance, a power
+                deck of big hairy Government and Violent groups plays one
+                way if you're Cthulhu, and a very different way if you're
+                Bavaria.
+                Abusive decks do better in two-player games (Version 1.1
+                of the rules does some things to deal with this). In a
+                multi-player game, looking too strong, too quickly, is
+                the equivalent of painting a target on your forehead.
+                
+        Will a rich player be able to buy a victory?
+                Somebody who owns all the cards will always have an
+                advantage. But everybody has to play with the same size
+                deck (we recommend 45). If you don't know how to use
+                them, you can be stomped by someone who is a good player
+                and has a well-thought-out deck of common cards. We've
+                proved this in playtest. I give someone a real killer
+                deck and go head-to-head with them, using any old handful
+                of stuff. And I tromp them. Of course, I've played before
+                :-)
+                The cards work together in lots of interesting ways. The
+                more familiar you are with your cards, the better you can
+                do. Money is nice, but brains and guile will trump mere
+                bucks every time.
+                If you're really filthy rich, the best way to win is not
+                to buy more cards, but to bribe your rivals to throw the
+                game. Now that's Illuminated, and cuts right to the heart
+                of things. Just don't let me catch you doing it in one of
+                my tournaments, unless you give me a cut. Fnord.
+                
+        Does the game include ante?
+                It's not part of the rules. But you can bet anything you
+                want. This is for world domination, so betting one card
+                is kind of cheap, anyhow. Bet ALL your cards. Bet real
+                money. Bet 24 hours of unlimited personal service, with
+                groveling. Whatever floats your boat, folks.
+                
+        Are Propaganda, Brainwashing, and the other special rules from
+                the old _Illuminati_ Expansion Set 3 in here?
+                Yes and no. There are different mechanics for the same
+                effects.
+                For instance, Brainwashing let you change the alignments
+                of a group. There are now Plot Cards that will allow
+                that.
+                Propaganda let you change the political climate of the
+                whole world, which affected the power of various groups.
+                The ``New World Order'' Plot Cards now allow that. But
+                the mechanic is completely different -- there is no
+                ``world alignment''.
+                Hidden victory conditions (now called Goals, 'cause it's
+                a shorter term) are possible in _INWO_, but enemy action
+                can expose them, too.
+                However, the new Illuminati groups from ILX3 are not in
+                the current card set of _INWO_.
+                
+SALES
+
+        Will the game, in general, be sold like _Magic: The Gathering_?
+                Yep. Starter sets and booster packs. However, the starter
+                set is a set of 110 cards, in two decks of 55 cards each,
+                retailing for $9.95. Our recommended deck for play is 45
+                cards. So, for $5 each, you and a friend can split a
+                starter set and each have enough cards to build a
+                beginning deck, with some left to trade.
+                Incidentally, the decks have been collated so you will
+                have very few duplicate cards -- ideally, none at all --
+                in each 110-card Starter Set.
+                Limited Edition Booster packs have 15 cards each, and
+                retail for $2.25. There are more uncommons and rares,
+                proportionately, in booster packs than in starter sets,
+                but no Illuminati cards -- just Groups and Plots. The
+                Unlimited Edition has 16 cards per Booster pack,
+                including an occasional Illuminati card.
+                
+        What's the release date?
+                It's out. The Limited Edition was released to retailers
+                on December 16, 1994; the first printing of the Unlimtied
+                Edition was released on April 4, 1995. The Factory Set
+                was released later that month.
+                
+        Will there be a ``Factory Set,'' with one of every card?
+                Yes. It's out. We call it `One With Everything.'' It
+                retails for $70, and includes one of each of the 400
+                Groups and Plots in the Limited Edition, plus the three
+                special Groups to be released in magazines. There are 3
+                of each Illuminati group, and 10 each blank Plots and
+                Groups.
+                It IS playable as a stand-alone game set. It includes
+                rules for at least two variant versions that will use
+                only the cards from the factory set -- thus, a group of
+                people can play with the factory set, instead of each
+                owning their own decks.
+                The card faces are different from those of the original
+                edition, though the art is mostly the same (we did
+                enhance or replace a few illustrations when we went from
+                Limited to Unlimited editions). The backs and the corners
+                are the same. Thus, you can combine cards from the two
+                sets, if you want to, but it is also easy to EXCLUDE
+                cards of either type if that's the way you want to play.
+                
+        Will there be supplements?
+                Yes. The first supplement, _Assassins_, will ship in
+                December, 1995. Yeah, that's the ticket. Or later. It
+                will contain over a hundred new cards. It will be
+                available only in 8-card booster packs.
+                
+        Any other add-on projects in the works?
+                Several are already out, including:
+                
+                [21]The INWO Book. It is 144 pages, full-color
+                throughout, with a complete card list (with the art),
+                game variants, commentary, and other strange stuff fnord.
+                
+                _Blank INWO Cards_. Packs of 20 blanks so you can invent
+                your own groups and plots.
+                
+                The _World Domination Kit_, a player's kit released by
+                Chessex.
+                
+                _Frankencard for INWO_, a deck-design program for
+                Windows, published by Geekware.
+                
+        Will there be official tournaments and official tournament rules?
+                
+                Yes. There will be an annual championship tournament at
+                GenCon. We will be happy to sponsor tournaments at other
+                gaming conventions ... for information, write to Scott
+                Haring <[22]dkb@io.com>.
+                You can read the [23]official tournament rules online.
+                
+        Are you planning other trading-card games?
+                That's beyond the scope of this FAQ. The answer is yes,
+                no, maybe, I'm too busy to think about it, one is enough,
+                if it makes money, do you think this will last, why are
+                you asking, and it all depends.
+                
+        Will you maintain an Internet site for information about the
+                game?
+                Yes. We already have a site, io.com, with a Pentium host
+                and a T-1 connection to the net. You can read this FAQ,
+                and see some card gifs, by ftp at [24]ftp.io.com -- the
+                directory is [25]/pub/sjgames/inwo. We will keep good
+                archives, now that the game has been released.
+                You can also find _INWO_ material on the WWW, at
+                <URL:[26]http://www.io.com/sjgames/inwo/>.
+                
+Cards, Rarity, and Stuff
+
+        How many cards are there?
+                There are 400 cards, plus 9 different Illuminati, in the
+                initial distribution. There were three other ``special''
+                cards, distributed only in magazines, which are also
+                considered part of the original Limited Edition.
+                
+        What is the total number of _INWO_ cards in circulation?
+                There are about 23 million Limited Edition cards in
+                circulation. The first printing of the Unlimited Edition
+                was not quite 32 million. The Factory Set added around 10
+                million cards. The German Edition of _INWO_ had a
+                classified print run (translation: don't know, will ask).
+                
+        Where did the three special Limited Edition cards appear?
+                Pyramid issue #12 contained two Limited Edition group
+                cards that were not in the initial distribution. Duellist
+                issue #4 contained one more Limited Edition group that
+                was not in the initial distribution.
+                Their rarity worked out to be less rare than Rare -- in
+                other words, there were more of each of these cards than
+                there of each rare card. They are NOT ``ultra-rares.''
+                They are for fun and for promotion, not to make the
+                collectors go crazy. (However, quite a few of the ones we
+                printed went to Brazil, France and Germany, which may
+                make them effectively more rare than we intended.)
+                
+        How does card rarity work?
+                There are three levels of rarity, plus the Illuminati
+                cards (which are occasionally found in Unlimited booster
+                packs, but are mainly in the starter sets-- usually 4 in
+                each starter set, therefore two per deck). Frequency of
+                cards in starter and booster sets is, percentage-wise,
+                very similar to those of the original _Magic: The
+                Gathering_.
+                The initial release had 200 common, 100 uncommon, and 100
+                rare, plus the 9 Illuminati cards.
+                
+        What's the exact distribution of card types in Starters and
+                Boosters?
+                In the first place, you're not cleared for that. In the
+                second place, we don't guarantee an exact distribution in
+                every set. In the third place, we threw a bunch of extra
+                Rares into the Limited Edition booster pack mix, just for
+                fun ...
+                
+        What do the cards look like?
+                Like, ya know, cards, man. Kinda square, but not exactly,
+                with a front and a back, and [THWACK]
+                Ahem. There are two different back designs: PLOTS and
+                GROUPS. All cards are full-color on both front and back.
+                The cards are standard trading-card size, so you can use
+                standard card sleeves, albums, boxes and so on.
+                Size of the picture varies; some cards have very little
+                text, so we used the extra room to make the picture
+                bigger.
+                The cards have frames -- the art does not go all the way
+                to the edge of the card.
+                
+        How are limited-edition cards distinguished from the unlimited
+                edition and the factory set?
+                The limited-edition cards have colored frames (red for
+                Groups, blue for Plots, purple for Resources); the card
+                names are in gold. The factory set has black frames, and
+                the card names are in different colors, keeping the same
+                colors: red for Groups, blue for Plots, purple for
+                Resources.
+                The cards for the Unlimited Edition look generally
+                similar to those for the Limited Edition, with two
+                differences -- both in the card titles. In the first
+                place, the card titles are in italic type rather than
+                regular. In the second place, instead of being
+                gold-colored, the Unlimited titles are the same color as
+                the card's text box - light blue for Plots, light purple
+                for Resources, pink for Groups. Sounds awful; looks good.
+                Illuminati still have gold titles.
+                And thanks to everyone who commented on the early designs
+                we posted here! We read your feedback and didn't use any
+                of those designs in their original form, but combined the
+                best points from all of them.
+                Card backs and corners are the same in all sets.
+                
+        Are the cards thick enough to survive play?
+                Yes. We used 14-point stock (expensive, and thicker than
+                standard playing cards) with a coating over the printing.
+                User comments so far have been mostly favorable. If
+                anything, the cards are a bit too thick for really easy
+                shuffling, but they break in nicely.
+                
+        Were the cards printed at Carta Mundi in Belgium, like those for
+                _Magic_?
+                No. (It's interesting that this is such a frequent
+                question. Never before could gamers tell you the name of
+                a *printer*!!)
+                We considered Carta Mundi -- they do good work -- but we
+                settled on Steketee-Van Huis for the Limited Edition
+                printing and EPI for the collation and assembly. Both
+                plants are located in Michigan. The Unlimited Edition was
+                printed at Steketee and assembled at Outlook Graphics, in
+                Neenah, Wisconsin.
+                
+        Is all the card art original?
+                Almost all of it. We re-used a few really great pieces,
+                not to cheap out, but because they were too good NOT to
+                use. Most of these pieces actually inspired the cards
+                that use them (like HIT & RUN, and the group W.I.T.C.H.).
+                
+                All these re-used pieces started out as black-and-white
+                illustrations, which were then colored or re-colored on
+                the Macintosh. There are no (for instance) recycled game
+                maps in _INWO_!
+                The rest of the art was created just for these cards.
+                Incidentally, we reworked the art for several cards after
+                the Limited Edition was released ... just because we felt
+                like it :-)
+                
+        Who are the artists?
+                Dan Smith and Shea Ryan, mostly. John Kovalic did about
+                20 cards. They created the line art. Derek Pearcy, Jeff
+                Koke and Rick Martin were responsible for the graphics
+                and coloring.
+                
+        How many cards in the first press run?
+                The first press run, a.k.a. the Limited Edition, was
+                around 23 million cards.
+                
+        Did that mean ``instant shortages''?
+                It appears that all the distributors, or almost all of
+                them, sold out before we shipped any cards. We have No
+                sets of the Limited Edition AT ALL left; some Unlimited
+                Edition are available.
+                
+        Did the ``controversial'' groups return in this edition?
+                Heh, heh. Yes, and they brought their friends.
+                
+        What does THAT mean?
+                Beg pardon? Did you say something? ;-)
+                
+        Does _INWO_ include ALL the groups from the original game?
+                No, just most of them. A few were omitted because they no
+                longer seemed topical, or because they just weren't as
+                neat as some of the new ideas. A few more were knocked
+                out for game balance, and may return in an expansion set.
+                
+        Is it true that you were giving away free Rare cards?
+                Yes. However, that offer ended January 31, 1995.
+                
+        Will blank cards be available?
+                They're available right now. The Factory Set (see above)
+                includes blanks.
+                We have also released packages of 20 blank cards (10 each
+                of PLOTS and GROUPS). These will be of no interest to
+                collectors, but gamers can use them to (for instance)
+                substitute for a card they don't want to scuff up in
+                play, or even to invent new cards. Of course, each group
+                will have to have its own house-rule decisions on the
+                cards they invent themselves. We will NOT volunteer as
+                mediators! Nor will we offer ``official guidelines'' for
+                inventing new cards and making them ``legal'' ... !! The
+                blank cards are intended for fun among friends, and NOT
+                to encourage weird, abusive strategies at tournaments.
+                
+        Are the cards numbered?
+                No. Originally, we thought we would, but customer
+                feedback was very strongly against it. So we didn't.
+                
+        Will _INWO_ be available in other languages?
+                The German edition has already been released by
+                Spieltreffe Pegasus, Some US distributors have picked it
+                up, so some shops carry it . . . and our Direct Mail
+                department still has a supply.
+                We have had inquiries from publishers in several other
+                countries, but that is the only deal we have actually
+                closed so far. A Portuguese-language edition, published
+                in Brazil, does seem very likely.
+                
+        Is this the last question in the FAQ?
+                Yes.
+                  ____________________________________________________
+                                            
+                [27][JUMP]
+                  ____________________________________________________
+                                            
+                _[28]Steve Jackson Games [29]<sjgames@io.com>--last
+                modified 95.Nov.23_
+
+References
+
+[1]file://localhost/sjgames/inwo/errata/errata.html
+[2]file://localhost/sjgames/inwo/errata/rulesfaq.html
+[3]file://localhost/sjgames/inwo/errata/cardfaq.html
+[4]file://localhost/sjgames/inwo/errata/vfaq.html
+[5]file://localhost/sjgames/illuminati/
+[6]file://localhost/sjgames/illuminati/
+[7]file://localhost/sjgames/illuminati/
+[8]file://localhost/sjgames/illuminati/
+[9]file://localhost/sjgames/pyramid/
+[10]file://localhost/sjgames/inwo/rules/variants/onebigdeck.html
+[11]news:rec.games.trading-cards.misc
+[12]file://localhost/www/
+[13]news:io.games.sjg.inwo
+[14]news:rec.games.trading-cards.misc
+[15]file://localhost/sjgames/inwo/news_lists/index.html#lists
+[16]mailto:gaucho@io.com
+[17]file://localhost/sjgames/pyramid/
+[18]file://localhost/sjgames/inwo/rules/
+[19]file://localhost/sjgames/inwo/lists/
+[20]file://localhost/sjgames/illuminati/
+[21]file://localhost/sjgames/inwo/products/INWObook/INWObook-front.jpg
+[22]mailto:sdharing@io.com
+[23]file://localhost/sjgames/inwo/rules/variants/inwo-tourney-rules.html
+[24]ftp://ftp.io.com/
+[25]http://www.io.com/anon-ftp/pub/sjgames/inwo/
+[26]http://www.io.com/sjgames/inwo/
+[27]file://localhost/goto/
+[28]http://www.sjgames.com/
+[29]mailto:sjgames@io.com

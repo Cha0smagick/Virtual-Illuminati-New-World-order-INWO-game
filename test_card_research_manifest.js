@@ -69,11 +69,11 @@ for (const entry of entries) {
 
 assert.strictEqual(entries.find((entry) => entry.id === 'california').ocr.status, 'missing', 'known California OCR gap must remain explicit');
 assert.ok(entries.some((entry) => entry.id === 'algore' && entry.ocr.status === 'ocr-reference'), 'OCR-backed pending cards must be linked');
-assert.strictEqual(catalog.summary.mechanicStatus.unverified, 356, 'catalog must expose all 356 unverified cards');
+assert.strictEqual(catalog.summary.mechanicStatus.unverified, 52, 'catalog must expose the 52 unverified cards left after L70');
 const catalogResearch = catalog.cards.filter((card) => card.research);
 assert.strictEqual(catalogResearch.length, 356, 'catalog must link all manifest records');
 assert.ok(catalogResearch.every((card) => card.research.id === card.id), 'catalog research links must use matching card ids');
 assert.ok(catalog.summary.secondaryStatFields > 0, 'catalog must expose secondary numeric fills');
 assert.ok(catalog.summary.secondaryConflictFields > 0, 'catalog must preserve secondary conflicts');
 
-console.log('CARD RESEARCH MANIFEST PASSED (356 pending cards; OCR and provenance linked)');
+console.log('CARD RESEARCH MANIFEST PASSED (356 pending cards; 52 unverified cards; OCR and provenance linked)');

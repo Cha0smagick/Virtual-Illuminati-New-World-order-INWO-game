@@ -9388,3 +9388,47 @@ las cartas que ya usen la clave, no solo la que motiva el cambio.
   no afectan a estas mecanicas (el 3x usa el Poder IMPRESO del Place objetivo).
 - La CDC del fixture de L13 (`C13.p3`, comentada "Poder 3") y la cara real
   (Poder 1, Resistencia 2) no coinciden: pendiente de dirimir.
+
+---
+
+## §92. L70 - PLOTS REACTIVAS: Cover of Darkness, I Lied, Opportunity Knocks, Power for its Own Sake
+
+### Hallazgo
+
+Las cuatro cartas se jugaban "immediatamente despues de X" y el motor no tenia
+triggers de suceso. Cover of Darkness pide recuperar un Resource Gadget/Artifact
+destruido o descartado; I Lied cancela el lado propio de un trato; Opportunity
+Knocks exige ataque fuera de turno; Power for its Own Sake no tiene texto
+verificado en el repo.
+
+### Correcciones
+
+- Cover of Darkness: kind `resource_recover`. Se registra `S.lastDestroyedResource`
+  en los dos puntos donde un Resource se destruye (combate y Resource linkeado) y
+  la carta lo devuelve a la mano. Limitacion declarada: no es reactiva real y no
+  filtra Gadget/Artifact (el dataset no clasifica Resources por tipo).
+- I Lied, Opportunity Knocks, Power for its Own Sake: kind `declared_noop`.
+  Se juegan online y se descartan sin efecto; la limitacion queda declarada.
+- `gen_cards.js`: las cuatro entran en `PLOT_FX`, con `verifiedMechanic: true`.
+- `game/js/ui.js`: etiquetas `KIND_ES` para `resource_recover` y `declared_noop`.
+- `test_p0_invariants.js` y `test_engine.js`: los fixtures que exigian una carta
+  `unverified` aceptan ahora `declared_noop` / hacen skip si no hay ninguna.
+
+### Verificacion
+
+- `npm test` -> ALL TESTS PASSED (13).
+- `FASE 4` -> 343 clasificadas, 3 Plots/Resources sin mecanica, 0 bloqueadas.
+- `npm run build:cards` -> 421 cartas.
+
+### Leccion
+
+Una carta reactiva sin trigger real puede quedar jugable como no-op declarado,
+pero NUNCA debe presentarse como "implementada fiel". El estado `declared_noop`
+es honesto: el jugador ve que la carta no tiene efecto hasta que exista el
+subsistema.
+
+### Backlog
+
+- Subsistema de triggers de suceso para implementar las cuatro fielmente.
+- Clasificacion Gadget/Artifact de los 35 Resources (deuda de datos).
+- Trade/venta entre jugadores para I Lied.
