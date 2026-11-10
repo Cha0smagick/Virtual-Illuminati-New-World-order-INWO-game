@@ -963,3 +963,30 @@ button.handCard { padding: 0; }
     scroll-behavior: auto !important;
   }
 }
+
+/* ============================================================
+   AUDITORIA ATOMICA - fixes de intuitividad/estetica (2026-11-10)
+   ============================================================ */
+:root { --muted: #A8B0D0; }
+
+button { min-height: 40px; min-width: 40px; }
+button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+@media (max-width: 900px) {
+  main { grid-template-columns: 1fr; padding: 10px; }
+  #board .panel:first-of-type, #board .panel:last-of-type { grid-area: auto; }
+  #app > header { padding: 8px 12px; gap: 8px; }
+  #app > header h1 { font-size: 20px; letter-spacing: .15em; }
+  #app > header h1::after { font-size: 8px; letter-spacing: .35em; }
+  .hpill { font-size: 11px; padding: 3px 8px; }
+  button { font-size: 14px; padding: 8px 12px; }
+}
+
+@media (max-width: 600px) {
+  .kids { padding-left: 8px; gap: 6px; }
+  .node { padding: 4px; font-size: 12px; }
+  .phead { flex-direction: column; align-items: flex-start; }
+  .phead .handbadge { margin-left: 0; border-left: none; padding-left: 0; }
+}
+
+.panel.active-turn { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(255,176,58,.35), inset 0 0 60px rgba(0,0,0,.35); }
