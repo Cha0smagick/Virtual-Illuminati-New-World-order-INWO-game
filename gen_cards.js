@@ -4096,6 +4096,11 @@ const L71_FXN = {};
 for (const k71 in L71_FX) { L71_FXN[norm(k71)] = L71_FX[k71]; }
 
 const L71B_FX = {
+  'Supreme Court': {
+    kind: 'group_action',
+    act: 'cancel_government_action',
+    t: 'By using its action, the Supreme Court can cancel one action of any other Government group.'
+  },
   'MI-5': {
     kind: 'group_action',
     act: 'hide_exposed',

@@ -3994,7 +3994,7 @@ E.useGroupAction=function(pid,uid,opts){
     S.groupDiscard.push(ix3);
     log(c.name+': '+rv2.name+' descarta la primera carta de su Groups deck ('+card(ix3).name+')');
     out={discarded:ix3};
-  }else if(act==='cancel_media_action'||act==='cancel_personality_action'){
+  }else if(act==='cancel_media_action'||act==='cancel_personality_action'||act==='cancel_government_action'){
     /* L71 — Dan Quayle / Elvis / Dentists: "By using his action, he can cancel
        any action taken by ...". Se cancela una accion YA TOMADA devolviendo la
        ficha gastada (mismo criterio que l36CancelSpent). */
@@ -4004,6 +4004,7 @@ E.useGroupAction=function(pid,uid,opts){
     var tc71=card(tgt71.cardId);
     if(act==='cancel_media_action'&&!hasAttr(tc71,'media',tgt71))throw new Error(c.name+': el objetivo debe ser un grupo Media');
     if(act==='cancel_personality_action'&&(!tc71||tc71.subtype!=='personality'))throw new Error(c.name+': el objetivo debe ser una Personality');
+    if(act==='cancel_government_action'&&nodeAligns(tgt71,tc71).indexOf('government')<0)throw new Error(c.name+': el objetivo debe ser un grupo Government');
     l36CancelSpent(tgt71,c.name);
     out={cancelled:tgt71.uid};
   }else if(act==='bring_relief'){

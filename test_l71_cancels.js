@@ -1,4 +1,4 @@
-/* L71 - Dan Quayle / Elvis / Dentists: cancelar una accion ya tomada. */
+﻿/* L71 - Dan Quayle / Elvis / Dentists: cancelar una accion ya tomada. */
 global.window = {};
 require('./game/js/images.js');
 require('./game/js/cards.js');
@@ -48,5 +48,16 @@ E.useGroupAction(0, 'mi71', {});
 ok(E._raw().players[0].exposedPlots.length === 0, 'MI-5 oculta todas las Plots expuestas (' + beforeExp + ' -> 0)');
 ok(E._raw().players[0].structure.children[0].tokens === 0, 'MI-5 gasta su ficha');
 
+console.log('L71 - Supreme Court cancela un Government');
+fresh(); turn(0);
+plant(0, 'sc71', idxOf('supremecourt'), 1);
+plant(1, 'gov71', idxOf('algore'), 0);
+E._raw().players[1].structure.children[0].tokensAtTurnStart = 1;
+const scOut = E.useGroupAction(0, 'sc71', { targetUid: 'gov71' });
+ok(scOut && scOut.cancelled === 'gov71', 'Supreme Court devuelve la ficha al Government');
+ok(E._raw().players[1].structure.children[0].tokens === 1, 'la ficha del Government vuelve a 1');
+ok(E._raw().players[0].structure.children[0].tokens === 0, 'Supreme Court gasta su ficha');
+
 if (fails) { console.error('\nL71 FAILURES: ' + fails); process.exit(1); }
 console.log('\nL71 CANCEL ACTIONS PASSED');
+
