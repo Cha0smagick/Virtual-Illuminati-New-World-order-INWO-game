@@ -39,5 +39,14 @@ const m = (() => { try { E.useGroupAction(0, 'd71', { targetUid: 'm72' }); retur
 ok(/Personality/.test(m), 'Dentists rechaza un grupo que no es Personality: ' + m);
 ok(E._raw().players[1].structure.children[0].tokens === 2, 'el rechazo no toca la ficha del objetivo');
 
+console.log('L71 - MI-5 vuelve a ocultar tus Plots expuestas');
+fresh(); turn(0);
+plant(0, 'mi71', idxOf('mi5'), 1);
+E._raw().players[0].exposedPlots = [idxOf('redscare'), idxOf('taxbreaks')];
+const beforeExp = E._raw().players[0].exposedPlots.length;
+E.useGroupAction(0, 'mi71', {});
+ok(E._raw().players[0].exposedPlots.length === 0, 'MI-5 oculta todas las Plots expuestas (' + beforeExp + ' -> 0)');
+ok(E._raw().players[0].structure.children[0].tokens === 0, 'MI-5 gasta su ficha');
+
 if (fails) { console.error('\nL71 FAILURES: ' + fails); process.exit(1); }
 console.log('\nL71 CANCEL ACTIONS PASSED');
