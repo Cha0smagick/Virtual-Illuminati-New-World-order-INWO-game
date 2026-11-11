@@ -5668,6 +5668,10 @@ function destroyGroup(byPid,targetUid,opts){
       log(cN44.name+' no puede ser destruido: la destruccion se anula');
       return false;
     }
+    if(cN44&&cN44.effect&&cN44.effect.noDestroyUnlessPower===true&&curPower(node)<=0){
+      log(cN44.name+' no puede ser destruido sin Poder: la destruccion se anula');
+      return false;
+    }
   }
   /* L37 — serum en el subarbol: los Personalities immortal sobreviven y vuelven
      a su dueno con todo su titere. */

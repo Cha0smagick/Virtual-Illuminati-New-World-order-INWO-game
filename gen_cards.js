@@ -4101,6 +4101,13 @@ const L71B_FX = {
     act: 'cancel_government_action',
     t: 'By using its action, the Supreme Court can cancel one action of any other Government group.'
   },
+  'Paranoids': {
+    kind: 'combo_bonus',
+    def: { clauses: [{ scope: 'owner', mode: 'both', value: 2 }] },
+    noTokens: true,
+    noDestroyUnlessPower: true,
+    t: 'Paranoids The Paranoids give your whole Power Structure a +2 to defend against any attack or Assassination (but not against Disasters). Theyre the only ones, except for the Secret Masters themselves, who really understand what is going on However, this group gets no Action tokens and can do nothing, unless something gives it Power! And it cannot be destroyed unless it has Power. Power: 0 Resistance: 6'
+  },
   'Stonehenge': {
     kind: 'combo_bonus',
     immune: { vsAtk: { attr: 'magic' } },
