@@ -4101,6 +4101,11 @@ const L71B_FX = {
     act: 'cancel_government_action',
     t: 'By using its action, the Supreme Court can cancel one action of any other Government group.'
   },
+  'Stonehenge': {
+    kind: 'combo_bonus',
+    immune: { vsAtk: { attr: 'magic' } },
+    t: 'Stonehenge Place If Stonehenge is in your Power Structure, you are immune to all attacks from Magic groups, Plots or Resources. Power: 3 / 3 Resistance: 4 Magic'
+  },
   'MI-5': {
     kind: 'group_action',
     act: 'hide_exposed',

@@ -16,6 +16,7 @@ const tests = [
   'test_fase2_rules.js',
   'test_fase3_windows.js',
   'test_l71_cancels.js',
+  'test_l72_immunity.js',
   'test_i18n_logrules.js',
   'test_fase4_cards.js',
   'test_card_research_manifest.js'

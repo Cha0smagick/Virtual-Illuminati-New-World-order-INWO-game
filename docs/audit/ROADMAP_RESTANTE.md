@@ -1,6 +1,6 @@
 ﻿# Roadmap de las cartas restantes â€” actualizado tras L70
 
-Estado medido (FASE 4, `node test_fase4_cards.js`): **348 cartas clasificadas**,
+Estado medido (FASE 4, `node test_fase4_cards.js`): **349 cartas clasificadas**,
 **3 Plots/Resources sin mecanica** (declaradas `declared_noop`), **0 cartas
 bloqueadas**, 52 con status `unverified` (Groups, no deuda). Suite 13/13 en verde.
 
@@ -27,7 +27,9 @@ bloqueadas**, 52 con status `unverified` (Groups, no deuda). Suite 13/13 en verd
   dataset no tiene ningun Recurso con atributo `gadget`.
 
 ## D. MIXTAS que necesitan 2+ piezas
-- Moonbase, Orbit One, Stonehenge, Paranoids, Tabloids, Ronald Reagan,
+- **Stonehenge HECHA (L72)**: `immune.vsAtk={attr:'magic'}` (inmunidad de
+  estructura a grupos Magic; Plots/Resources Magic quedan como limitacion).
+- Moonbase, Orbit One, Paranoids, Tabloids, Ronald Reagan,
   Prince Charles, Professional Sports, Voudonistas, Vampires, Video Games,
   Savings and Loans, Jimmy Hoffa, Bill Clinton, Rifkinites, The Men in Black,
   Trading Card Games, Druids, Las Vegas, Multinational Oil Companies (solo >2
@@ -45,4 +47,5 @@ bloqueadas**, 52 con status `unverified` (Groups, no deuda). Suite 13/13 en verd
 ## Ya resuelto (L41..L70)
 Cartas mapeadas en los lotes L41-L70, con su seccion de auditoria (Â§78-Â§92).
 Suite 13/13 en verde.
+
 
