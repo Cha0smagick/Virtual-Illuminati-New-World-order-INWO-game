@@ -6228,6 +6228,23 @@ function applyPlotInstantAttack(ann){
     }catch(eD67){}
   })();
 
+  /* L74 - Moonbase: inmunidad a Disasters concretos ("not affected by any
+     Disaster cards except Earthquake and Meteor"). */
+  (function(){
+    try{
+      if(eff.kind!=='disaster'||!ann.nd||ann.nd.uid==null)return;
+      var owM74=findOwnerPid(ann.nd.uid);
+      if(owM74<0||!S.players[owM74]||!S.players[owM74].structure)return;
+      walk(S.players[owM74].structure,function(gM74){
+        if(gM74.cardId==null)return;
+        var gcM74=card(gM74.cardId);
+        var diM74=gcM74&&bonusPart(gcM74.effect,'disasterImmune');
+        if(!diM74)return;
+        var exM74=diM74.except||[];
+        if(exM74.indexOf(pc.id)<0){ str=0; ann.notes.push(gcM74.name+': inmune al Disaster '+pc.name); }
+      });
+    }catch(eM74){}
+  })();
   var res={strength:str,power:ann.power,defense:ann.defPower,target:tc.name,plot:pc.name};
   res.notes=ann.notes.slice();
   if(str<2){

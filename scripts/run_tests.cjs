@@ -18,6 +18,7 @@ const tests = [
   'test_l71_cancels.js',
   'test_l72_immunity.js',
   'test_l73_paranoids.js',
+  'test_l74_moonbase.js',
   'test_i18n_logrules.js',
   'test_fase4_cards.js',
   'test_card_research_manifest.js'

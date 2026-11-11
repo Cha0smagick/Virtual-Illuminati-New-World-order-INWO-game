@@ -4101,6 +4101,12 @@ const L71B_FX = {
     act: 'cancel_government_action',
     t: 'By using its action, the Supreme Court can cancel one action of any other Government group.'
   },
+  'Moonbase': {
+    kind: 'combo_bonus',
+    disasterImmune: { except: ['earthquake', 'meteorstrike'] },
+    atk: { clauses: [{ scope: 'owner', atkType: 'any', vs: { attr: 'space' }, value: 4 }] },
+    t: 'Moonbase Place Moonbase is not affected by any Disaster cards except Earthquake and Meteor. Moonbase gives a +4 on any attempt to control or destroy any Space group. If a Personality is linked to Moonbase, any Assassination attempt against that Personality is at -6. However, if Moonbase is destroyed, all Personalities there are killed. Power: 3 Resistance: 6 Space, Science, Computer'
+  },
   'Paranoids': {
     kind: 'combo_bonus',
     def: { clauses: [{ scope: 'owner', mode: 'both', value: 2 }] },
